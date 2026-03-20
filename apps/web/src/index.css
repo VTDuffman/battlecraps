@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Prevent text selection on game UI elements */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-black text-white overflow-x-hidden;
+    /* Disable rubber-band scroll on iOS — feels wrong for a table game */
+    overscroll-behavior: none;
+  }
+}
+
+@layer utilities {
+  /* Pixel-crisp rendering for sprite art (Phase 5) */
+  .pixelated {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+}

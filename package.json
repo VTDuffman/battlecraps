@@ -1,0 +1,21 @@
+{
+  "name": "battlecraps",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run build -w @battlecraps/shared && concurrently --names \"shared,api,web\" --prefix-colors \"yellow,cyan,magenta\" \"npm run dev -w @battlecraps/shared\" \"npm run dev -w @battlecraps/api\" \"npm run dev -w @battlecraps/web\"",
+    "build": "npm run build -w @battlecraps/shared && npm run build -w @battlecraps/api && npm run build -w @battlecraps/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test -w @battlecraps/shared",
+    "db:migrate": "npm run db:push -w @battlecraps/api",
+    "db:seed": "npx tsx apps/api/src/db/seed.ts",
+    "db:studio": "npm run db:studio -w @battlecraps/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}

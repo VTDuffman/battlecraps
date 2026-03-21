@@ -29,6 +29,7 @@ import {
   validateOddsBet,
   buildRollReceipt,
   MARKER_TARGETS,
+  OLD_PRO_ID,
   type CascadeEvent,
   type CrewMember,
   type Bets,
@@ -279,6 +280,16 @@ async function rollHandler(
 
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const nextState = computeNextState(run, finalContext, newBankroll, incomingBets);
+
+  // ── 11b. Old Pro — +1 shooter on marker clear ─────────────────────────────
+  // The Old Pro's execute() is a no-op; his ability is a meta-progression
+  // effect applied here when the run transitions to a new marker segment.
+  if (nextState.status === 'TRANSITION') {
+    const hasOldPro = updatedCrewSlots.some((c) => c?.id === OLD_PRO_ID);
+    if (hasOldPro) {
+      nextState.shooters += 1;
+    }
+  }
 
   // ── 12. Persist (with optimistic locking) ─────────────────────────────────
   // Include updatedAt in the WHERE clause so that a concurrent request that

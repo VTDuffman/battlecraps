@@ -20,7 +20,7 @@
 // =============================================================================
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
 
@@ -89,7 +89,11 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
       }
 
       // ── 4. Apply purchase (if not skipping) ───────────────────────────────
-      const newCrewSlots: StoredCrewSlots = [...run.crewSlots] as StoredCrewSlots;
+      // Reset all cooldowns to 0 — the pub starts a fresh segment with new
+      // shooters, so per_shooter and per_roll cooldowns should all be fresh.
+      const newCrewSlots: StoredCrewSlots = run.crewSlots.map(
+        (slot) => slot === null ? null : { ...slot, cooldownState: 0 },
+      ) as StoredCrewSlots;
       let newBankroll = run.bankrollCents;
 
       if (hasCrew && hasSlot) {
@@ -108,7 +112,7 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         newCrewSlots[slotIndex!] = { crewId: crewId!, cooldownState: 0 };
       }
 
-      // ── 5. Persist — reset shooters, return to table ───────────────────────
+      // ── 5. Persist — reset shooters, return to table (with optimistic lock) ─
       const updated = await db
         .update(runs)
         .set({
@@ -119,12 +123,14 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
           crewSlots:     newCrewSlots,
           updatedAt:     new Date(),
         })
-        .where(eq(runs.id, runId))
+        .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
         .returning();
 
       const persistedRun = updated[0];
       if (!persistedRun) {
-        return reply.status(500).send({ error: 'Failed to persist run state.' });
+        return reply.status(409).send({
+          error: 'Conflict: run was modified by another request. Please retry.',
+        });
       }
 
       return reply.send({

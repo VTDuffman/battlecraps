@@ -9,7 +9,7 @@
 //   Crew: Big Spender → Shark → Whale
 //   Dice: [4,4] = Hard 8 = POINT_HIT + Hard 8 win
 //   Hype: 2.0 (built up over several rolls)
-//   Expected: $1,104.00 net win on a $210 total bet
+//   Expected: $1,224.00 net win on a $210 total bet
 //
 // SCENARIO 2: "The Yo-leven Jackpot"
 //   Crew: Nervous Intern → Hype-Train Holly → Whale
@@ -51,17 +51,17 @@ function fresh<T extends CrewMember>(c: T): T {
 //   grossProfit         = 31000
 //
 // Cascade:
-//   slot 0 → Big Spender: hard8 win (9000 > 0) → additives += 5000  → additives = 5000
-//   slot 1 → The Shark:   POINT_HIT            → additives += 10000 → additives = 15000
+//   slot 0 → Big Spender: hard8 win (9000 > 0) → additives += 10000 → additives = 10000
+//   slot 1 → The Shark:   POINT_HIT            → additives += 10000 → additives = 20000
 //   slot 2 → The Whale:   hasWin               → multipliers += 1.2 → multipliers = [1.2]
 //
 // settleTurn():
-//   boostedProfit   = grossProfit + additives = 31000 + 15000 = 46000
+//   boostedProfit   = grossProfit + additives = 31000 + 20000 = 51000
 //   crewMultiplier  = 1.2  (product of [1.2])
 //   finalMultiplier = round(2.0 × 1.2 × 10000) / 10000 = round(24000) / 10000 = 2.4
-//   amplifiedProfit = floor(46000 × 2.4) = floor(110400) = 110400
-//   totalPayout     = stakeReturned + amplifiedProfit = 21000 + 110400 = 131400
-//   (net gain to player = 131400 − 21000 placement deduction = +110400 = +$1,104.00)
+//   amplifiedProfit = floor(51000 × 2.4) = floor(122400) = 122400
+//   totalPayout     = stakeReturned + amplifiedProfit = 21000 + 122400 = 143400
+//   (net gain to player = 143400 − 21000 placement deduction = +122400 = +$1,224.00)
 //
 // =============================================================================
 
@@ -108,10 +108,10 @@ describe('GOD BUILD 1: "The Perfect Hard Eight" — Big Spender + Shark + Whale'
 
     // Verify Big Spender fired (slot 0 event)
     const bigSpenderEvent = events.find(e => e.slotIndex === 0);
-    expect(bigSpenderEvent?.contextDelta.additives).toBe(5_000);
+    expect(bigSpenderEvent?.contextDelta.additives).toBe(10_000);
 
     // Verify final additives after all three crew
-    expect(finalContext.additives).toBe(15_000); // 5000 + 10000
+    expect(finalContext.additives).toBe(20_000); // 10000 + 10000
   });
 
   it('[step 2] The Shark fires and adds $100 (10000c) to additives', () => {
@@ -119,7 +119,7 @@ describe('GOD BUILD 1: "The Perfect Hard Eight" — Big Spender + Shark + Whale'
     const { events } = resolveCascade(crew, ctx, neverCalledRng);
 
     const sharkEvent = events.find(e => e.slotIndex === 1);
-    expect(sharkEvent?.contextDelta.additives).toBe(15_000); // cumulative delta at Shark's fire
+    expect(sharkEvent?.contextDelta.additives).toBe(20_000); // cumulative delta at Shark's fire
   });
 
   it('[step 2] The Whale fires and adds 1.2× to multipliers', () => {
@@ -142,28 +142,28 @@ describe('GOD BUILD 1: "The Perfect Hard Eight" — Big Spender + Shark + Whale'
 
   // ── Step 3: settleTurn ───────────────────────────────────────────────────
 
-  it('[step 3] settleTurn math: stakeReturned(21000) + floor((31000+15000) × 2.4) = 131400', () => {
+  it('[step 3] settleTurn math: stakeReturned(21000) + floor((31000+20000) × 2.4) = 143400', () => {
     const ctx = resolveRoll(DICE, { phase: 'POINT_ACTIVE', currentPoint: POINT, bets: BETS, hype: HYPE });
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
 
     //   grossProfit    = 10000 + 12000 + 9000 = 31000
-    //   boostedProfit  = 31000 + 15000        = 46000
+    //   boostedProfit  = 31000 + 20000        = 51000
     //   finalMult      = 2.0 × 1.2            = 2.4
-    //   amplifiedProfit = floor(46000 × 2.4)  = 110400
+    //   amplifiedProfit = floor(51000 × 2.4)  = 122400
     //   stakeReturned  = 21000
-    //   totalPayout    = 21000 + 110400        = 131400
-    expect(settleTurn(finalContext)).toBe(131_400);
+    //   totalPayout    = 21000 + 122400        = 143400
+    expect(settleTurn(finalContext)).toBe(143_400);
   });
 
-  it('[step 3] net player gain is $1,104.00 on a $210 total bet placed (5.26× return on profit)', () => {
+  it('[step 3] net player gain is $1,224.00 on a $210 total bet placed', () => {
     const ctx = resolveRoll(DICE, { phase: 'POINT_ACTIVE', currentPoint: POINT, bets: BETS, hype: HYPE });
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
     const totalPayout = settleTurn(finalContext);
-    // totalPayout = $1,314.00 ($210 stake return + $1,104.00 amplified profit)
+    // totalPayout = $1,434.00 ($210 stake return + $1,224.00 amplified profit)
     // bankroll placement deduction was $210 (pass $100 + odds $100 + hard8 $10)
-    // net gain = 131400 − 21000 = 110400 cents = $1,104.00
-    expect(totalPayout).toBe(131_400);
-    expect((totalPayout - 21_000) / 100).toBeCloseTo(1104.00, 2); // net gain = $1,104.00
+    // net gain = 143400 − 21000 = 122400 cents = $1,224.00
+    expect(totalPayout).toBe(143_400);
+    expect((totalPayout - 21_000) / 100).toBeCloseTo(1224.00, 2); // net gain = $1,224.00
   });
 });
 

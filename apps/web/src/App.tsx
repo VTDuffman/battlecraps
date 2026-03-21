@@ -14,6 +14,7 @@ import { PubScreen }       from './components/PubScreen.js';
 import { GameOverScreen }  from './components/GameOverScreen.js';
 import { useGameStore }    from './store/useGameStore.js';
 import type { StoredCrewSlots } from './store/useGameStore.js';
+import type { Bets } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // Marker Celebration Modal
@@ -116,6 +117,7 @@ interface BootstrapResponse {
     point:              number | null;
     crewSlots:          StoredCrewSlots;
     currentMarkerIndex: number;
+    bets?:              Bets;
   };
 }
 
@@ -175,6 +177,7 @@ export const App: React.FC = () => {
             point:              data.point,
             crewSlots:          data.crewSlots,
             currentMarkerIndex: data.currentMarkerIndex,
+            ...(data.bets && { bets: data.bets }),
           });
           setLoading(false);
           return;
@@ -200,6 +203,7 @@ export const App: React.FC = () => {
         point:              data.run.point,
         crewSlots:          data.run.crewSlots,
         currentMarkerIndex: data.run.currentMarkerIndex,
+        ...(data.run.bets && { bets: data.run.bets }),
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

@@ -65,6 +65,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
         point:              run.currentPoint ?? null,
         crewSlots:          run.crewSlots,
         currentMarkerIndex: run.currentMarkerIndex,
+        bets:               run.bets,
       });
     },
   );

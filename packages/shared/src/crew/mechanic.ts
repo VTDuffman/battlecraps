@@ -60,6 +60,8 @@ export const mechanic: CrewMember = {
         basePassLinePayout: newPayouts.passLine,
         baseOddsPayout:     newPayouts.odds,
         baseHardwaysPayout: newPayouts.hardways,
+        baseStakeReturned:  newPayouts.stakeReturned,
+        resolvedBets:       newPayouts.resolvedBets,
       },
       // 4-roll cooldown: the cascade will decrement this by 1 each roll.
       newCooldown: 4,

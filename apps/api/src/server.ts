@@ -8,7 +8,11 @@ import cors from '@fastify/cors';
 import { Server as SocketIO } from 'socket.io';
 import type { Server as HttpServer } from 'node:http';
 
+import { eq } from 'drizzle-orm';
+
 import { initIO } from './lib/io.js';
+import { db }     from './db/client.js';
+import { runs }   from './db/schema.js';
 import { rollsPlugin }     from './routes/rolls.js';
 import { bootstrapPlugin } from './routes/bootstrap.js';
 import { recruitPlugin }   from './routes/recruit.js';
@@ -76,11 +80,27 @@ const io = new SocketIO(app.server as HttpServer, {
 initIO(io);
 
 // ---------------------------------------------------------------------------
+// Socket.IO auth middleware
+// ---------------------------------------------------------------------------
+// Require a userId in the handshake auth payload. In production this would be
+// a JWT verified here; for now we mirror the x-user-id header convention.
+
+io.use((socket, next) => {
+  const userId = socket.handshake.auth?.['userId'];
+  if (typeof userId !== 'string' || userId.length === 0) {
+    return next(new Error('Unauthorized — userId required in auth payload'));
+  }
+  // Stash on socket.data so downstream handlers can reference it.
+  socket.data['userId'] = userId;
+  next();
+});
+
+// ---------------------------------------------------------------------------
 // Socket.IO connection handler
 // ---------------------------------------------------------------------------
 
 io.on('connection', (socket) => {
-  app.log.info(`[ws] client connected: ${socket.id}`);
+  app.log.info(`[ws] client connected: ${socket.id} (user: ${socket.data['userId']})`);
 
   /**
    * 'subscribe:run' — Client joins the room for a specific run.
@@ -91,9 +111,23 @@ io.on('connection', (socket) => {
    *
    * The client should emit this immediately after the page loads for an
    * in-progress run, or right after creating a new run.
+   *
+   * Ownership guard: the run must belong to the authenticated socket user.
    */
-  socket.on('subscribe:run', (data: { runId: string }) => {
+  socket.on('subscribe:run', async (data: { runId: string }) => {
     if (typeof data.runId !== 'string') return;
+
+    // Verify the requesting user owns this run.
+    const run = await db.query.runs.findFirst({
+      where:   eq(runs.id, data.runId),
+      columns: { userId: true },
+    });
+
+    if (!run || run.userId !== socket.data['userId']) {
+      socket.emit('error:forbidden', { message: 'Not your run.' });
+      return;
+    }
+
     const room = `run:${data.runId}`;
     void socket.join(room);
     app.log.info(`[ws] ${socket.id} joined room ${room}`);

@@ -20,7 +20,7 @@ export const physicsProfessor: CrewMember = {
   abilityCategory:  'DICE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         20_000,  // $200.00
+  baseCost:         12_000,  // $120.00 — reduced from $200; 17% activation rate was overpriced
   visualId:         'physics_prof',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
@@ -77,6 +77,8 @@ export const physicsProfessor: CrewMember = {
         basePassLinePayout: newPayouts.passLine,
         baseOddsPayout:     newPayouts.odds,
         baseHardwaysPayout: newPayouts.hardways,
+        baseStakeReturned:  newPayouts.stakeReturned,
+        resolvedBets:       newPayouts.resolvedBets,
       },
       newCooldown: 0,
     };

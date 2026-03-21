@@ -3,19 +3,19 @@
 // packages/shared/src/crew/bigSpender.ts
 //
 // Category:    PAYOUT
-// Ability:     +$50 (5000 cents) flat bonus added to the payout on any
+// Ability:     +$100 (10000 cents) flat bonus added to the payout on any
 //              roll where a Hardway bet wins.
 // Cooldown:    none
 //
 // The Big Spender is a straightforward PAYOUT crew member. When any hardway
-// bet wins, he slaps an extra $50 into the pot. Critically, this additive
+// bet wins, he slaps an extra $100 into the pot. Critically, this additive
 // is boosted by Hype and other multipliers in settleTurn() — so with Hype
-// at 2.0x and The Whale active, that $50 effectively becomes $120.
+// at 2.0x and The Whale active, that $100 effectively becomes $240.
 // =============================================================================
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const BONUS_CENTS = 5_000; // +$50.00
+const BONUS_CENTS = 10_000; // +$100.00
 
 export const bigSpender: CrewMember = {
   id:               7,

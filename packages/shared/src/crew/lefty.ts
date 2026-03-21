@@ -106,6 +106,8 @@ export const lefty: CrewMember = {
       basePassLinePayout:  newPayouts.passLine,
       baseOddsPayout:      newPayouts.odds,
       baseHardwaysPayout:  newPayouts.hardways,
+      baseStakeReturned:   newPayouts.stakeReturned,
+      resolvedBets:        newPayouts.resolvedBets,
       flags: {
         ...ctx.flags,
         // Signal the client that a Lefty intervention occurred.

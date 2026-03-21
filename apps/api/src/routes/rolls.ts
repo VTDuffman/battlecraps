@@ -20,7 +20,7 @@
 // =============================================================================
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 import {
   resolveRoll,
@@ -29,6 +29,8 @@ import {
   validateOddsBet,
   buildRollReceipt,
   MARKER_TARGETS,
+  getMaxBet,
+  OLD_PRO_ID,
   type CascadeEvent,
   type CrewMember,
   type Bets,
@@ -209,6 +211,24 @@ async function rollHandler(
     });
   }
 
+  // ── Table max: 10 % of the current marker target ───────────────────────
+  const maxBet = getMaxBet(run.currentMarkerIndex);
+
+  if (incomingBets.passLine > maxBet) {
+    return reply.status(422).send({
+      error: `Pass Line bet of ${incomingBets.passLine}¢ exceeds the table maximum of ${maxBet}¢ ($${maxBet / 100}).`,
+    });
+  }
+
+  const hwKeys = ['hard4', 'hard6', 'hard8', 'hard10'] as const;
+  for (const key of hwKeys) {
+    if (incomingBets.hardways[key] > maxBet) {
+      return reply.status(422).send({
+        error: `${key} bet of ${incomingBets.hardways[key]}¢ exceeds the table maximum of ${maxBet}¢ ($${maxBet / 100}).`,
+      });
+    }
+  }
+
   // Odds bets are only legal once a point is set.
   if (incomingBets.odds > 0 && run.phase !== 'POINT_ACTIVE') {
     return reply.status(422).send({
@@ -258,23 +278,7 @@ async function rollHandler(
   const cascadeResult = resolveCascade(crewSlots, initialCtx, rollDice);
   const { finalContext, events, updatedCrewSlots } = cascadeResult;
 
-  // ── 9. WebSocket — emit cascade events ────────────────────────────────────
-  //
-  // Emit one 'cascade:trigger' per crew member that actually changed the context.
-  // The client queues these and animates them sequentially — each portrait flashes
-  // before the next event is processed. We emit them all immediately and let the
-  // client control timing.
-  //
-  // Room: 'run:{runId}' — the client subscribes on connect.
-  const io = getIO();
-  const runRoom = `run:${runId}`;
-
-  for (const event of events) {
-    const payload: WsCascadeTriggerPayload = event;
-    io.to(runRoom).emit('cascade:trigger', payload);
-  }
-
-  // ── 10. Settle the turn ───────────────────────────────────────────────────
+  // ── 9. Settle the turn ─────────────────────────────────────────────────────
   //
   // Deduct-on-placement model:
   //   payout    = stake returned + amplified profit (0 on losses)
@@ -296,7 +300,20 @@ async function rollHandler(
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const nextState = computeNextState(run, finalContext, newBankroll, incomingBets);
 
-  // ── 12. Persist ───────────────────────────────────────────────────────────
+  // ── 11b. Old Pro — +1 shooter on marker clear ─────────────────────────────
+  // The Old Pro's execute() is a no-op; his ability is a meta-progression
+  // effect applied here when the run transitions to a new marker segment.
+  if (nextState.status === 'TRANSITION') {
+    const hasOldPro = updatedCrewSlots.some((c) => c?.id === OLD_PRO_ID);
+    if (hasOldPro) {
+      nextState.shooters += 1;
+    }
+  }
+
+  // ── 12. Persist (with optimistic locking) ─────────────────────────────────
+  // Include updatedAt in the WHERE clause so that a concurrent request that
+  // modified the run between our read and this write will cause 0 rows to be
+  // updated, which we detect and return 409 Conflict.
   const updatedRun = await db
     .update(runs)
     .set({
@@ -307,19 +324,36 @@ async function rollHandler(
       currentPoint:       nextState.currentPoint,
       hype:               nextState.hype,
       bets:               nextState.bets,
-      crewSlots:          serialiseCrewSlots(updatedCrewSlots),
+      crewSlots:          serialiseCrewSlots(
+                            updatedCrewSlots,
+                            nextState.shooters < run.shooters, // new shooter → reset per_shooter cooldowns
+                          ),
       currentMarkerIndex: nextState.currentMarkerIndex,
       updatedAt:          new Date(),
     })
-    .where(eq(runs.id, runId))
+    .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
     .returning();
 
   const persistedRun = updatedRun[0];
   if (persistedRun === undefined) {
-    return reply.status(500).send({ error: 'Failed to persist run state.' });
+    return reply.status(409).send({
+      error: 'Conflict: run was modified by another request. Please retry.',
+    });
   }
 
-  // ── 13. WebSocket — emit settlement summary ────────────────────────────────
+  // ── 13. WebSocket — emit cascade events + settlement summary ────────────────
+  //
+  // Emitted AFTER persistence so the client never receives events for a roll
+  // that failed to persist (e.g., due to optimistic lock conflict).
+  //
+  // Room: 'run:{runId}' — the client subscribes on connect.
+  const io = getIO();
+  const runRoom = `run:${runId}`;
+
+  for (const event of events) {
+    const payload: WsCascadeTriggerPayload = event;
+    io.to(runRoom).emit('cascade:trigger', payload);
+  }
   const settledPayload: WsTurnSettledPayload = {
     runId,
     dice:           finalContext.dice,
@@ -475,7 +509,10 @@ function computeNextState(
     // ── Seven-out — shooter life lost ──────────────────────────────────────
 
     case 'SEVEN_OUT': {
-      const shooterLost = !flags.sevenOutBlocked && !flags.passLineProtected;
+      // Only Lefty's sevenOutBlocked prevents a shooter death (he re-rolls
+      // the dice). Floor Walker's passLineProtected only saves the bet —
+      // the shooter still dies, hype still resets, point still clears.
+      const shooterLost = !flags.sevenOutBlocked;
       const newShooters = shooterLost ? run.shooters - 1 : run.shooters;
 
       let nextStatus: RunRow['status'];
@@ -626,11 +663,22 @@ function clearResolvedBets(
  * StoredCrewSlots shape for database persistence.
  *
  * Only cooldownState needs to be written — it's the only mutable field.
+ *
+ * @param resetPerShooter  When true, resets cooldownState to 0 for any crew
+ *                         with cooldownType === 'per_shooter'. Pass true when
+ *                         a new shooter begins (i.e., a shooter life was lost
+ *                         on SEVEN_OUT and the next shooter is stepping up).
  */
-function serialiseCrewSlots(slots: (CrewMember | null)[]): StoredCrewSlots {
+function serialiseCrewSlots(
+  slots: (CrewMember | null)[],
+  resetPerShooter = false,
+): StoredCrewSlots {
   const result: (StoredCrewSlot | null)[] = slots.slice(0, 5).map((slot) => {
     if (slot === null) return null;
-    return { crewId: slot.id, cooldownState: slot.cooldownState };
+    const cooldown = resetPerShooter && slot.cooldownType === 'per_shooter'
+      ? 0
+      : slot.cooldownState;
+    return { crewId: slot.id, cooldownState: cooldown };
   });
 
   // Pad to exactly 5 slots if the array is shorter (shouldn't happen in prod).

@@ -29,6 +29,7 @@ import {
   validateOddsBet,
   buildRollReceipt,
   MARKER_TARGETS,
+  getMaxBet,
   OLD_PRO_ID,
   type CascadeEvent,
   type CrewMember,
@@ -208,6 +209,24 @@ async function rollHandler(
     return reply.status(422).send({
       error: `Insufficient funds: need ${betDelta}¢, have ${run.bankrollCents}¢.`,
     });
+  }
+
+  // ── Table max: 10 % of the current marker target ───────────────────────
+  const maxBet = getMaxBet(run.currentMarkerIndex);
+
+  if (incomingBets.passLine > maxBet) {
+    return reply.status(422).send({
+      error: `Pass Line bet of ${incomingBets.passLine}¢ exceeds the table maximum of ${maxBet}¢ ($${maxBet / 100}).`,
+    });
+  }
+
+  const hwKeys = ['hard4', 'hard6', 'hard8', 'hard10'] as const;
+  for (const key of hwKeys) {
+    if (incomingBets.hardways[key] > maxBet) {
+      return reply.status(422).send({
+        error: `${key} bet of ${incomingBets.hardways[key]}¢ exceeds the table maximum of ${maxBet}¢ ($${maxBet / 100}).`,
+      });
+    }
   }
 
   // Odds bets are only legal once a point is set.

@@ -26,3 +26,18 @@ export const MARKER_TARGETS: readonly number[] = [
   120_000,  // $1,200 — Marker 3
   250_000,  // $2,500 — Marker 4 (Boss / Gauntlet End)
 ];
+
+/**
+ * Maximum single bet (pass line or individual hardway) for a given marker.
+ *
+ * Set at 10 % of the current marker target so the player must sustain a
+ * winning streak rather than YOLO-ing once.  Scales naturally as the
+ * gauntlet difficulty rises.
+ *
+ * @param currentMarkerIndex  The marker the player is currently chasing (0-based).
+ * @returns Maximum bet in cents.
+ */
+export function getMaxBet(currentMarkerIndex: number): number {
+  const target = MARKER_TARGETS[currentMarkerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
+  return Math.floor(target * 0.10);
+}

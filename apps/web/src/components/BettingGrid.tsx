@@ -16,6 +16,7 @@
 import React, { useCallback } from 'react';
 import { useGameStore } from '../store/useGameStore.js';
 import type { BetField } from '../store/useGameStore.js';
+import { getMaxBet } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // Chip denominations available for selection
@@ -174,13 +175,20 @@ export const BettingGrid: React.FC = () => {
   const isRolling  = useGameStore((s) => s.isRolling);
   const activeChip = useGameStore((s) => s.activeChip);
 
+  const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
   const isComeOut     = phase === 'COME_OUT' || phase === null;
   const isPointActive = phase === 'POINT_ACTIVE';
+  const maxBet = getMaxBet(currentMarkerIndex);
 
   return (
     <div className="w-full space-y-2">
       {/* ── Chip selector ───────────────────────────────────────────────── */}
       <ChipSelector activeChip={activeChip} disabled={isRolling} />
+
+      {/* ── Table max indicator ──────────────────────────────────────────── */}
+      <div className="text-center font-pixel text-[7px] text-white/40 -mb-1">
+        TABLE MAX: ${maxBet / 100}
+      </div>
 
       {/* ── Row 1: Pass Line + Odds ──────────────────────────────────────── */}
       <div className="grid grid-cols-4 gap-2">

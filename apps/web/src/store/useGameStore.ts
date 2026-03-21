@@ -27,7 +27,7 @@ import type {
   RollResult,
   RollReceipt,
 } from '@battlecraps/shared';
-import { validateOddsBet } from '@battlecraps/shared';
+import { validateOddsBet, getMaxBet } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // Bet field type — identifies a single wager within the Bets structure
@@ -456,6 +456,21 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   placeBet(field, amount) {
     set((state) => {
       if (state.bankroll < amount) return state; // insufficient funds — no-op
+
+      // ── Table max: 10 % of current marker target ─────────────────────────
+      // Applies to pass line and individual hardway bets (not odds, which
+      // have their own 3-4-5x cap relative to the pass line).
+      if (field !== 'odds') {
+        const maxBet = getMaxBet(state.currentMarkerIndex);
+        const currentBet = getBetField(state.bets, field);
+        if (currentBet + amount > maxBet) {
+          console.warn(
+            `[placeBet] ${field} rejected: $${((currentBet + amount) / 100).toFixed(2)}` +
+            ` exceeds table max $${(maxBet / 100).toFixed(2)}.`,
+          );
+          return state;
+        }
+      }
 
       // ── 3-4-5x Odds cap (front-door validation) ──────────────────────────
       // Reject the entire chip placement if it would push the Odds bet past

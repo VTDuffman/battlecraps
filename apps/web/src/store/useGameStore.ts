@@ -403,6 +403,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     });
 
     // ── Connect ───────────────────────────────────────────────────────────
+    // Pass userId in the auth payload so the server can verify ownership
+    // on both connection and room subscription.
+    socket.auth = { userId };
+
     if (!socket.connected) {
       socket.connect();
     } else {

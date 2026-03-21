@@ -22,8 +22,8 @@
  */
 export const MARKER_TARGETS: readonly number[] = [
   40_000,   //  $400 — Marker 1
-  75_000,   //  $750 — Marker 2
-  120_000,  // $1,200 — Marker 3
+  60_000,   //  $600 — Marker 2 (softened — survivable after crew buy)
+  150_000,  // $1,500 — Marker 3 (the real wall — 150 % growth with 2 crew)
   250_000,  // $2,500 — Marker 4 (Boss / Gauntlet End)
 ];
 

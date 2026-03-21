@@ -3,12 +3,12 @@
 // packages/shared/src/crew/drunkUncle.ts
 //
 // Category:    HYPE
-// Ability:     Random +0.1 to +0.5 Hype added every single roll.
-// Cooldown:    none
+// Ability:     Random +0.1 to +0.5 Hype added on every activation.
+// Cooldown:    per_roll (2-roll cooldown — fires every 3rd roll)
 //
-// The Drunk Uncle fires unconditionally — wins, losses, no-resolutions, all
-// of it. He's chaotic but reliable in his chaos. Every roll, he calls into
-// rollDice() to generate a "bonus roll" that maps to a Hype bonus:
+// The Drunk Uncle fires unconditionally when off cooldown — wins, losses,
+// no-resolutions, all of it. He's chaotic and unreliable. When he fires,
+// he calls into rollDice() to generate a "bonus roll" that maps to a Hype bonus:
 //
 //   Bonus = 0.1 + ((d1 + d2 - 2) / 10) × 0.4
 //     [1,1] → 0.10  (unlucky uncle)
@@ -30,7 +30,7 @@ export const drunkUncle: CrewMember = {
   id:               12,
   name:             'The Drunk Uncle',
   abilityCategory:  'HYPE',
-  cooldownType:     'none',
+  cooldownType:     'per_roll',
   cooldownState:    0,
   baseCost:         6_000,  // $60.00 — cheap, unreliable, loveable
   visualId:         'drunk_uncle',
@@ -52,7 +52,7 @@ export const drunkUncle: CrewMember = {
 
     return {
       context: { ...ctx, hype: newHype },
-      newCooldown: 0,
+      newCooldown: 2,  // 2-roll cooldown — fires every 3rd roll
     };
   },
 };

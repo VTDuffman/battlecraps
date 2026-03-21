@@ -3,8 +3,9 @@
 // packages/shared/src/crew/regular.ts
 //
 // Category:    TABLE
-// Ability:     On a Point Hit, any Hardway bet that was hit "soft" (and would
-//              therefore be cleared as a loss) is instead refunded/reset.
+// Ability:     Hardway insurance — protects hardway bets in two scenarios:
+//              1. On a soft Point Hit (same as before): refund the hardway bet
+//              2. On a SEVEN_OUT: refund ALL active hardway bets
 // Cooldown:    none
 //
 // Craps detail: A point can be hit by either the "hard" version (paired dice)
@@ -12,12 +13,12 @@
 //   [3,3] = Hard 6 → POINT_HIT + Hard 6 BET WINS
 //   [2,4] = Soft 6 → POINT_HIT + Hard 6 BET LOSES
 //
-// The Regular only triggers in the second scenario: point hit via soft dice,
-// which would normally clear the active hardway bet as a loss.
+// The Regular triggers in the second scenario (soft point hit) and ALSO
+// saves all hardway bets on a seven-out — a unique niche that The Mathlete
+// does NOT cover (Mathlete explicitly skips SEVEN_OUT).
 //
-// Works in concert with The Mathlete (who protects on soft rolls in general).
-// The Regular's value is specifically tied to the POINT_HIT moment, which
-// also often coincides with other crew (Big Spender, Shark) firing.
+// This makes The Regular a hardway insurance specialist: Mathlete protects
+// mid-run, Regular protects at the catastrophic seven-out moment.
 // =============================================================================
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext, HardwayBets } from '../types.js';
@@ -39,13 +40,41 @@ export const regular: CrewMember = {
   visualId:         'regular',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
+    // ── Trigger 1: SEVEN_OUT → refund ALL active hardway bets ──────────
+    // On a seven-out, all hardways are wiped. The Regular saves them by
+    // refunding every active hardway stake. This is the Regular's unique
+    // niche — The Mathlete explicitly does NOT cover seven-outs.
+    if (ctx.rollResult === 'SEVEN_OUT') {
+      const keys = Object.keys(HARDWAY_BET_KEY) as unknown as number[];
+      let totalRefund = 0;
+      const restoredHardways = { ...ctx.resolvedBets.hardways };
+
+      for (const num of keys) {
+        const betKey = HARDWAY_BET_KEY[num]!;
+        const betAmount = ctx.bets.hardways[betKey];
+        if (betAmount > 0) {
+          totalRefund += betAmount;
+          restoredHardways[betKey] = betAmount;
+        }
+      }
+
+      if (totalRefund === 0) {
+        return { context: ctx, newCooldown: 0 };
+      }
+
+      return {
+        context: {
+          ...ctx,
+          baseStakeReturned: ctx.baseStakeReturned + totalRefund,
+          resolvedBets: { ...ctx.resolvedBets, hardways: restoredHardways },
+        },
+        newCooldown: 0,
+      };
+    }
+
+    // ── Trigger 2: Soft Point Hit → refund the matching hardway bet ────
     // Activates when: POINT_HIT via soft dice AND there's a hardway bet on
-    // that number that would be lost. In the deduct-on-placement model,
-    // losses return 0, so we detect the loss by checking the dice directly:
-    //   1. Roll result is POINT_HIT
-    //   2. Dice total is a hardway number (4/6/8/10)
-    //   3. Dice are NOT paired (soft hit — the hardway bet loses)
-    //   4. There's an active bet on that hardway number
+    // that number that would be lost.
     if (ctx.rollResult !== 'POINT_HIT') {
       return { context: ctx, newCooldown: 0 };
     }

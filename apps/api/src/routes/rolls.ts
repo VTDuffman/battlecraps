@@ -258,23 +258,7 @@ async function rollHandler(
   const cascadeResult = resolveCascade(crewSlots, initialCtx, rollDice);
   const { finalContext, events, updatedCrewSlots } = cascadeResult;
 
-  // ── 9. WebSocket — emit cascade events ────────────────────────────────────
-  //
-  // Emit one 'cascade:trigger' per crew member that actually changed the context.
-  // The client queues these and animates them sequentially — each portrait flashes
-  // before the next event is processed. We emit them all immediately and let the
-  // client control timing.
-  //
-  // Room: 'run:{runId}' — the client subscribes on connect.
-  const io = getIO();
-  const runRoom = `run:${runId}`;
-
-  for (const event of events) {
-    const payload: WsCascadeTriggerPayload = event;
-    io.to(runRoom).emit('cascade:trigger', payload);
-  }
-
-  // ── 10. Settle the turn ───────────────────────────────────────────────────
+  // ── 9. Settle the turn ─────────────────────────────────────────────────────
   //
   // Deduct-on-placement model:
   //   payout    = stake returned + amplified profit (0 on losses)
@@ -327,7 +311,19 @@ async function rollHandler(
     });
   }
 
-  // ── 13. WebSocket — emit settlement summary ────────────────────────────────
+  // ── 13. WebSocket — emit cascade events + settlement summary ────────────────
+  //
+  // Emitted AFTER persistence so the client never receives events for a roll
+  // that failed to persist (e.g., due to optimistic lock conflict).
+  //
+  // Room: 'run:{runId}' — the client subscribes on connect.
+  const io = getIO();
+  const runRoom = `run:${runId}`;
+
+  for (const event of events) {
+    const payload: WsCascadeTriggerPayload = event;
+    io.to(runRoom).emit('cascade:trigger', payload);
+  }
   const settledPayload: WsTurnSettledPayload = {
     runId,
     dice:           finalContext.dice,

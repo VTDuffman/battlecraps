@@ -483,7 +483,10 @@ function computeNextState(
     // ── Seven-out — shooter life lost ──────────────────────────────────────
 
     case 'SEVEN_OUT': {
-      const shooterLost = !flags.sevenOutBlocked && !flags.passLineProtected;
+      // Only Lefty's sevenOutBlocked prevents a shooter death (he re-rolls
+      // the dice). Floor Walker's passLineProtected only saves the bet —
+      // the shooter still dies, hype still resets, point still clears.
+      const shooterLost = !flags.sevenOutBlocked;
       const newShooters = shooterLost ? run.shooters - 1 : run.shooters;
 
       let nextStatus: RunRow['status'];

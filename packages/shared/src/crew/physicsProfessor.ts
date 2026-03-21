@@ -77,6 +77,8 @@ export const physicsProfessor: CrewMember = {
         basePassLinePayout: newPayouts.passLine,
         baseOddsPayout:     newPayouts.odds,
         baseHardwaysPayout: newPayouts.hardways,
+        baseStakeReturned:  newPayouts.stakeReturned,
+        resolvedBets:       newPayouts.resolvedBets,
       },
       newCooldown: 0,
     };

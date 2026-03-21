@@ -307,7 +307,10 @@ async function rollHandler(
       currentPoint:       nextState.currentPoint,
       hype:               nextState.hype,
       bets:               nextState.bets,
-      crewSlots:          serialiseCrewSlots(updatedCrewSlots),
+      crewSlots:          serialiseCrewSlots(
+                            updatedCrewSlots,
+                            nextState.shooters < run.shooters, // new shooter → reset per_shooter cooldowns
+                          ),
       currentMarkerIndex: nextState.currentMarkerIndex,
       updatedAt:          new Date(),
     })
@@ -626,11 +629,22 @@ function clearResolvedBets(
  * StoredCrewSlots shape for database persistence.
  *
  * Only cooldownState needs to be written — it's the only mutable field.
+ *
+ * @param resetPerShooter  When true, resets cooldownState to 0 for any crew
+ *                         with cooldownType === 'per_shooter'. Pass true when
+ *                         a new shooter begins (i.e., a shooter life was lost
+ *                         on SEVEN_OUT and the next shooter is stepping up).
  */
-function serialiseCrewSlots(slots: (CrewMember | null)[]): StoredCrewSlots {
+function serialiseCrewSlots(
+  slots: (CrewMember | null)[],
+  resetPerShooter = false,
+): StoredCrewSlots {
   const result: (StoredCrewSlot | null)[] = slots.slice(0, 5).map((slot) => {
     if (slot === null) return null;
-    return { crewId: slot.id, cooldownState: slot.cooldownState };
+    const cooldown = resetPerShooter && slot.cooldownType === 'per_shooter'
+      ? 0
+      : slot.cooldownState;
+    return { crewId: slot.id, cooldownState: cooldown };
   });
 
   // Pad to exactly 5 slots if the array is shorter (shouldn't happen in prod).

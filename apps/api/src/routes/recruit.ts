@@ -89,7 +89,11 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
       }
 
       // ── 4. Apply purchase (if not skipping) ───────────────────────────────
-      const newCrewSlots: StoredCrewSlots = [...run.crewSlots] as StoredCrewSlots;
+      // Reset all cooldowns to 0 — the pub starts a fresh segment with new
+      // shooters, so per_shooter and per_roll cooldowns should all be fresh.
+      const newCrewSlots: StoredCrewSlots = run.crewSlots.map(
+        (slot) => slot === null ? null : { ...slot, cooldownState: 0 },
+      ) as StoredCrewSlots;
       let newBankroll = run.bankrollCents;
 
       if (hasCrew && hasSlot) {

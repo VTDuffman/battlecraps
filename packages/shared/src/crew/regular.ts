@@ -20,7 +20,14 @@
 // also often coincides with other crew (Big Spender, Shark) firing.
 // =============================================================================
 
-import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
+import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext, HardwayBets } from '../types.js';
+
+/** The four hardway numbers and their corresponding bet field keys. */
+const HARDWAY_BET_KEY: Readonly<Record<number, keyof HardwayBets>> = {
+  4: 'hard4', 6: 'hard6', 8: 'hard8', 10: 'hard10',
+};
+
+const HARDWAY_NUMBERS = new Set([4, 6, 8, 10]);
 
 export const regular: CrewMember = {
   id:               6,
@@ -32,17 +39,38 @@ export const regular: CrewMember = {
   visualId:         'regular',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
-    // Activates when: POINT_HIT AND a hardway bet was lost (soft roll of the point).
-    if (ctx.rollResult !== 'POINT_HIT' || ctx.baseHardwaysPayout >= 0) {
+    // Activates when: POINT_HIT via soft dice AND there's a hardway bet on
+    // that number that would be lost. In the deduct-on-placement model,
+    // losses return 0, so we detect the loss by checking the dice directly:
+    //   1. Roll result is POINT_HIT
+    //   2. Dice total is a hardway number (4/6/8/10)
+    //   3. Dice are NOT paired (soft hit — the hardway bet loses)
+    //   4. There's an active bet on that hardway number
+    if (ctx.rollResult !== 'POINT_HIT') {
       return { context: ctx, newCooldown: 0 };
     }
 
-    // Ability fires: negate the hardway loss on this point hit.
-    // The bet isn't "won" — it's saved (refunded). No additive, no multiplier.
+    if (!HARDWAY_NUMBERS.has(ctx.diceTotal) || ctx.isHardway) {
+      return { context: ctx, newCooldown: 0 };
+    }
+
+    const betKey = HARDWAY_BET_KEY[ctx.diceTotal];
+    if (betKey === undefined || ctx.bets.hardways[betKey] === 0) {
+      return { context: ctx, newCooldown: 0 };
+    }
+
+    // Ability fires: refund the hardway stake. The bet was already deducted
+    // at placement, so we add it to baseStakeReturned to give the money back
+    // without hype/multiplier amplification (it's a refund, not a win).
+    // Also restore the bet in resolvedBets since the engine pre-cleared it.
+    const refundAmount = ctx.bets.hardways[betKey];
+    const restoredHardways = { ...ctx.resolvedBets.hardways, [betKey]: ctx.bets.hardways[betKey] };
+
     return {
       context: {
         ...ctx,
-        baseHardwaysPayout: 0,
+        baseStakeReturned: ctx.baseStakeReturned + refundAmount,
+        resolvedBets: { ...ctx.resolvedBets, hardways: restoredHardways },
       },
       newCooldown: 0,
     };

@@ -26,17 +26,22 @@ export const floorWalker: CrewMember = {
   visualId:         'floor_walker',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
-    // Only activates on a Seven Out when the Pass Line bet would be lost.
-    if (ctx.rollResult !== 'SEVEN_OUT' || ctx.basePassLinePayout >= 0) {
+    // Only activates on a Seven Out when there is a Pass Line bet to protect.
+    // In the deduct-on-placement model, losses return 0 (not negative) because
+    // the stake was already deducted at bet placement. We detect a loss by
+    // checking that a pass line bet exists — on SEVEN_OUT it is always lost.
+    if (ctx.rollResult !== 'SEVEN_OUT' || ctx.bets.passLine === 0) {
       return { context: ctx, newCooldown: 0 };
     }
 
-    // Ability fires: neutralise the Pass Line loss (bet is refunded, not won).
-    // The pass line payout goes from negative (loss) to 0 (refund).
+    // Ability fires: refund the Pass Line stake by adding it to stakeReturned.
+    // The pass line bet was already deducted from the bankroll at placement,
+    // so returning the stake via baseStakeReturned gives the player their
+    // money back without it being amplified by hype/multipliers.
     return {
       context: {
         ...ctx,
-        basePassLinePayout: 0,
+        baseStakeReturned: ctx.baseStakeReturned + ctx.bets.passLine,
         flags: { ...ctx.flags, passLineProtected: true },
       },
       // per_shooter cooldown: 1 = spent for rest of shooter.

@@ -16,7 +16,14 @@
 // Does NOT fire on hardway WINS — only activates to prevent losses.
 // =============================================================================
 
-import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
+import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext, HardwayBets } from '../types.js';
+
+/** The four hardway numbers and their corresponding bet field keys. */
+const HARDWAY_BET_KEY: Readonly<Record<number, keyof HardwayBets>> = {
+  4: 'hard4', 6: 'hard6', 8: 'hard8', 10: 'hard10',
+};
+
+const HARDWAY_NUMBERS = new Set([4, 6, 8, 10]);
 
 export const mathlete: CrewMember = {
   id:               4,
@@ -28,18 +35,35 @@ export const mathlete: CrewMember = {
   visualId:         'mathlete',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
-    // Activates when: a hardway bet would have LOST due to a soft roll (not seven-out).
-    // Condition: negative hardways payout AND the roll is NOT a seven-out.
-    if (ctx.baseHardwaysPayout >= 0 || ctx.rollResult === 'SEVEN_OUT') {
+    // Activates when: a soft roll of a hardway number would clear an active
+    // hardway bet. In the deduct-on-placement model, losses return 0 (not
+    // negative), so we detect the loss by checking the dice directly:
+    //   1. Not a seven-out (those clear everything, Mathlete can't help)
+    //   2. Dice total is a hardway number (4/6/8/10)
+    //   3. Dice are NOT paired (it's a "soft" / "easy" roll)
+    //   4. There's an active bet on that hardway number
+    if (ctx.rollResult === 'SEVEN_OUT') {
+      return { context: ctx, newCooldown: 0 };
+    }
+
+    if (!HARDWAY_NUMBERS.has(ctx.diceTotal) || ctx.isHardway) {
+      return { context: ctx, newCooldown: 0 };
+    }
+
+    const betKey = HARDWAY_BET_KEY[ctx.diceTotal];
+    if (betKey === undefined || ctx.bets.hardways[betKey] === 0) {
       return { context: ctx, newCooldown: 0 };
     }
 
     // Ability fires: protect the hardway bet from being cleared.
-    // Set baseHardwaysPayout to 0 (saved, not lost) and raise the flag.
+    // The engine already zeroed this bet in resolvedBets (via calcResolvedBets),
+    // so we must restore it to keep the bet alive on the table.
+    const restoredHardways = { ...ctx.resolvedBets.hardways, [betKey]: ctx.bets.hardways[betKey] };
+
     return {
       context: {
         ...ctx,
-        baseHardwaysPayout: 0,
+        resolvedBets: { ...ctx.resolvedBets, hardways: restoredHardways },
         flags: { ...ctx.flags, hardwayProtected: true },
       },
       newCooldown: 0,

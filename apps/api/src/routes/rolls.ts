@@ -20,7 +20,7 @@
 // =============================================================================
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 import {
   resolveRoll,
@@ -296,7 +296,10 @@ async function rollHandler(
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const nextState = computeNextState(run, finalContext, newBankroll, incomingBets);
 
-  // ── 12. Persist ───────────────────────────────────────────────────────────
+  // ── 12. Persist (with optimistic locking) ─────────────────────────────────
+  // Include updatedAt in the WHERE clause so that a concurrent request that
+  // modified the run between our read and this write will cause 0 rows to be
+  // updated, which we detect and return 409 Conflict.
   const updatedRun = await db
     .update(runs)
     .set({
@@ -314,12 +317,14 @@ async function rollHandler(
       currentMarkerIndex: nextState.currentMarkerIndex,
       updatedAt:          new Date(),
     })
-    .where(eq(runs.id, runId))
+    .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
     .returning();
 
   const persistedRun = updatedRun[0];
   if (persistedRun === undefined) {
-    return reply.status(500).send({ error: 'Failed to persist run state.' });
+    return reply.status(409).send({
+      error: 'Conflict: run was modified by another request. Please retry.',
+    });
   }
 
   // ── 13. WebSocket — emit settlement summary ────────────────────────────────

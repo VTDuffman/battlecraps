@@ -70,8 +70,41 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post<{ Body: { startingBankroll?: number; startingShooters?: number } }>(
+  app.post<{
+    Body: {
+      startingBankroll?: number;
+      startingShooters?: number;
+      startingHype?:     number;
+      startingCrew?:     Array<{ crewId: number; slot: number }>;
+    };
+  }>(
     '/dev/bootstrap',
+    {
+      schema: {
+        body: {
+          type: 'object',
+          properties: {
+            startingBankroll: { type: 'number',  minimum: 0 },
+            startingShooters: { type: 'integer', minimum: 1, maximum: 20 },
+            startingHype:     { type: 'number',  minimum: 0 },
+            startingCrew: {
+              type: 'array',
+              maxItems: 5,
+              items: {
+                type: 'object',
+                required: ['crewId', 'slot'],
+                properties: {
+                  crewId: { type: 'integer', minimum: 1 },
+                  slot:   { type: 'integer', minimum: 0, maximum: 4 },
+                },
+                additionalProperties: false,
+              },
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
     async (req, reply): Promise<void> => {
       if (process.env['NODE_ENV'] === 'production') {
         return reply.status(403).send({ error: 'Dev bootstrap is disabled in production.' });
@@ -79,6 +112,8 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
 
       const startingBankroll = req.body?.startingBankroll ?? 250;
       const startingShooters = req.body?.startingShooters ?? 5;
+      const startingHype     = req.body?.startingHype     ?? 1.0;
+      const startingCrew     = req.body?.startingCrew     ?? [];
 
       // ── 1. Find or create the stable dev user ────────────────────────────
       let user = await db.query.users.findFirst({
@@ -102,7 +137,15 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
         app.log.info(`[bootstrap] Created dev user ${user.id}`);
       }
 
-      // ── 2. Create a fresh run ─────────────────────────────────────────────
+      // ── 2. Build crew slots ───────────────────────────────────────────────
+      // Start from all-empty and populate from the startingCrew array.
+      // Duplicate slots (same slot index specified twice) take the last entry.
+      const crewSlots: StoredCrewSlots = [...DEV_CREW_SLOTS];
+      for (const { crewId, slot } of startingCrew) {
+        crewSlots[slot] = { crewId, cooldownState: 0 };
+      }
+
+      // ── 3. Create a fresh run ─────────────────────────────────────────────
       // We always create a NEW run so each page refresh gives a clean slate.
       const inserted = await db
         .insert(runs)
@@ -112,8 +155,8 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
           phase:        'COME_OUT',
           bankrollCents: Math.round(startingBankroll * 100),
           shooters:     startingShooters,
-          hype:         1.0,
-          crewSlots:    DEV_CREW_SLOTS,
+          hype:         startingHype,
+          crewSlots,
           // Use a JS Date (ms precision) instead of defaultNow() (µs precision).
           // PostgreSQL timestamps have 6-decimal precision but JS Date only has 3.
           // The optimistic-lock WHERE clause compares updatedAt via a JS Date, so

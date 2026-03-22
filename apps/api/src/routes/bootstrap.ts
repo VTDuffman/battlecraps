@@ -70,12 +70,15 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
     },
   );
 
-  app.post(
+  app.post<{ Body: { startingBankroll?: number; startingShooters?: number } }>(
     '/dev/bootstrap',
-    async (_req: FastifyRequest, reply: FastifyReply): Promise<void> => {
+    async (req, reply): Promise<void> => {
       if (process.env['NODE_ENV'] === 'production') {
         return reply.status(403).send({ error: 'Dev bootstrap is disabled in production.' });
       }
+
+      const startingBankroll = req.body?.startingBankroll ?? 250;
+      const startingShooters = req.body?.startingShooters ?? 5;
 
       // ── 1. Find or create the stable dev user ────────────────────────────
       let user = await db.query.users.findFirst({
@@ -107,10 +110,15 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
           userId:       user.id,
           status:       'IDLE_TABLE',
           phase:        'COME_OUT',
-          bankrollCents: 25_000,   // $250.00 starting bankroll per PRD §2
-          shooters:     5,
+          bankrollCents: Math.round(startingBankroll * 100),
+          shooters:     startingShooters,
           hype:         1.0,
           crewSlots:    DEV_CREW_SLOTS,
+          // Use a JS Date (ms precision) instead of defaultNow() (µs precision).
+          // PostgreSQL timestamps have 6-decimal precision but JS Date only has 3.
+          // The optimistic-lock WHERE clause compares updatedAt via a JS Date, so
+          // a µs-precision default will never match → every roll returns 409.
+          updatedAt:    new Date(),
         })
         .returning();
 

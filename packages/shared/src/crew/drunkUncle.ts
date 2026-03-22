@@ -3,25 +3,24 @@
 // packages/shared/src/crew/drunkUncle.ts
 //
 // Category:    HYPE
-// Ability:     Random +0.1 to +0.5 Hype added on every activation.
-// Cooldown:    per_roll (2-roll cooldown — fires every 3rd roll)
+// Ability:     33% chance each roll to fire. When he fires, it's either
+//              +0.5 Hype (good uncle) or −0.1 Hype (bad uncle). No cooldown.
 //
-// The Drunk Uncle fires unconditionally when off cooldown — wins, losses,
-// no-resolutions, all of it. He's chaotic and unreliable. When he fires,
-// he calls into rollDice() to generate a "bonus roll" that maps to a Hype bonus:
+// Activation uses d1 of a bonus dice roll:
+//   d1 = 1 or 2  → fires (≈33%)
+//   d1 = 3–6     → nothing happens
 //
-//   Bonus = 0.1 + ((d1 + d2 - 2) / 10) × 0.4
-//     [1,1] → 0.10  (unlucky uncle)
-//     [3,3] → 0.26  (average uncle)
-//     [6,6] → 0.50  (legendary uncle)
+// Direction uses d2 of the same roll:
+//   d2 odd  (1, 3, 5) → +0.5 Hype
+//   d2 even (2, 4, 6) → −0.1 Hype
 //
 // SERVER IMPLEMENTATION NOTE:
 //   The Drunk Uncle causes the server to call its RNG one extra time per
 //   roll (beyond the main game dice). This extra call must be logged in
 //   the RNG audit trail alongside the main dice for full reproducibility.
 //
-// On a SEVEN_OUT, his hype boost is immediately wiped by the server's
-// post-roll hype reset (GameState.hype → 1.0) — but that's very on-brand.
+// On a SEVEN_OUT, any hype boost is wiped by the server's post-roll hype
+// reset (GameState.hype → 1.0) — but that's very on-brand.
 // =============================================================================
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
@@ -30,7 +29,7 @@ export const drunkUncle: CrewMember = {
   id:               12,
   name:             'The Drunk Uncle',
   abilityCategory:  'HYPE',
-  cooldownType:     'per_roll',
+  cooldownType:     'none',
   cooldownState:    0,
   baseCost:         6_000,  // $60.00 — cheap, unreliable, loveable
   visualId:         'drunk_uncle',
@@ -39,20 +38,20 @@ export const drunkUncle: CrewMember = {
     // Roll the bonus dice (server-side RNG, separate from main game dice).
     const [d1, d2] = rollDice();
 
-    // Map the 2d6 total (range 2–12) to a Hype bonus in [0.1, 0.5].
-    // Formula: 0.1 + ((total - 2) / 10) × 0.4
-    const rawBonus = 0.1 + ((d1 + d2 - 2) / 10) * 0.4;
+    // 33% activation: d1 of 1 or 2 fires, 3–6 does nothing.
+    if (d1 > 2) {
+      return { context: ctx, newCooldown: 0 };
+    }
 
-    // Round to 2 decimal places to keep the hype value clean and prevent
-    // floating-point accumulation across many rolls.
-    const bonus = Math.round(rawBonus * 100) / 100;
+    // Direction: d2 odd → +0.5 Hype, d2 even → −0.1 Hype.
+    const delta = (d2 % 2 === 1) ? 0.5 : -0.1;
 
-    // Round the resulting hype to 4 decimal places (consistent with other HYPE crew).
-    const newHype = Math.round((ctx.hype + bonus) * 10_000) / 10_000;
+    // Round to 4 decimal places (consistent with other HYPE crew).
+    const newHype = Math.round((ctx.hype + delta) * 10_000) / 10_000;
 
     return {
       context: { ...ctx, hype: newHype },
-      newCooldown: 2,  // 2-roll cooldown — fires every 3rd roll
+      newCooldown: 0,
     };
   },
 };

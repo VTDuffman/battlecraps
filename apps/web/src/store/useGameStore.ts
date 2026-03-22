@@ -332,6 +332,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastDelta:      null,
       lastBetDelta:   null,
       isRolling:      false,
+      // Reset bets to zero so a new run never inherits a live bet from the
+      // previous run. initialState.bets (present when reloading an existing
+      // run via /runs/:id) will override this via the spread below.
+      bets:           DEFAULT_BETS,
       ...initialState,
     });
 

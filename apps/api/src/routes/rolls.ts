@@ -430,9 +430,10 @@ function computeNextState(
   const { rollResult, flags } = finalCtx;
   const currentMarkerIndex = run.currentMarkerIndex;
 
-  // Shared "reset bets after resolution" helper — passLine and odds clear to 0,
-  // hardways that resolved also clear, but unresolved hardways stay up.
-  const clearedBets = clearResolvedBets(incomingBets, rollResult, finalCtx);
+  // Use the resolved bets from the final TurnContext — this is the authoritative
+  // post-roll bet state, including any crew modifications (e.g. Mathlete restoring
+  // a hardway bet that would have been cleared by a soft roll).
+  const clearedBets = finalCtx.resolvedBets;
 
   switch (rollResult) {
     // ── Come-out wins / losses ──────────────────────────────────────────────
@@ -590,69 +591,6 @@ function sumBets(bets: Bets): number {
   );
 }
 
-/**
- * Returns a new Bets object with resolved bets cleared to 0.
- *
- * - passLine & odds: cleared on NATURAL, CRAPS_OUT, POINT_HIT, SEVEN_OUT.
- * - hardways: a specific hardway clears if it resolved (won or lost) this roll.
- *   A hardway resolves when: its number was rolled (win if hard, loss if soft)
- *   OR when SEVEN_OUT fires (all hardways lose).
- * - On POINT_SET / NO_RESOLUTION: bets are not cleared — return as-is.
- */
-function clearResolvedBets(
-  bets:      Bets,
-  result:    string,
-  finalCtx:  { diceTotal: number; isHardway: boolean },
-): Bets {
-  // Point just set — all bets freeze on the table, nothing clears.
-  if (result === 'POINT_SET') {
-    return bets;
-  }
-
-  // On a 7-out, all bets clear simultaneously.
-  if (result === 'SEVEN_OUT') {
-    return {
-      passLine: 0,
-      odds:     0,
-      hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 },
-    };
-  }
-
-  const { diceTotal } = finalCtx;
-  const hardwayNumbers = new Set([4, 6, 8, 10]);
-  const thisHardwayResolved = hardwayNumbers.has(diceTotal);
-
-  // NO_RESOLUTION: pass line and odds stay locked on the table.
-  // BUT if the dice showed a hardway number (4/6/8/10), that specific
-  // hardway bet resolves independently — hard win OR soft loss — and must
-  // be cleared so the player cannot re-roll it for free next turn.
-  if (result === 'NO_RESOLUTION') {
-    if (!thisHardwayResolved) return bets;
-    return {
-      passLine: bets.passLine,
-      odds:     bets.odds,
-      hardways: {
-        hard4:  diceTotal === 4  ? 0 : bets.hardways.hard4,
-        hard6:  diceTotal === 6  ? 0 : bets.hardways.hard6,
-        hard8:  diceTotal === 8  ? 0 : bets.hardways.hard8,
-        hard10: diceTotal === 10 ? 0 : bets.hardways.hard10,
-      },
-    };
-  }
-
-  // NATURAL / CRAPS_OUT / POINT_HIT: passLine and odds clear.
-  // Hardways: only the specific hardway number that was resolved clears.
-  return {
-    passLine: 0,
-    odds:     0,
-    hardways: {
-      hard4:  thisHardwayResolved && diceTotal === 4  ? 0 : bets.hardways.hard4,
-      hard6:  thisHardwayResolved && diceTotal === 6  ? 0 : bets.hardways.hard6,
-      hard8:  thisHardwayResolved && diceTotal === 8  ? 0 : bets.hardways.hard8,
-      hard10: thisHardwayResolved && diceTotal === 10 ? 0 : bets.hardways.hard10,
-    },
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Crew slot serialisation / hydration

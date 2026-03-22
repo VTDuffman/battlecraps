@@ -134,9 +134,9 @@ The Mathlete (Table): Hardways stay up on "Soft" rolls.
 
 The Floor Walker (Table): First Seven Out doesn't clear the Pass Line.
 
-The Regular (Table): Resets losing Hardway bets on a Point hit.
+The Regular (Payout): Grants a free Odds bonus equal to the Pass Line bet on a Natural.
 
-The Big Spender (Payout): +$50 to Hardway wins.
+The Big Spender (Payout): +$100 to Hardway wins.
 
 The Shark (Payout): +$100 flat bonus on Point hit.
 

@@ -3,27 +3,23 @@
 // packages/shared/src/crew/hypeTrainHolly.ts
 //
 // Category:    HYPE
-// Ability:     Hype multiplier on any NATURAL (7 or 11 on the Come Out).
-//              - Yo-leven (11): 1.5× Hype  (the big moment)
-//              - Lucky 7:       1.2× Hype  (still hype-worthy)
+// Ability:     +0.3× Hype on every Point Hit.
+//              When the shooter wins, the whole table gets more excited.
+//              Hype accumulates across a run — every point hit builds the crowd.
 // Cooldown:    none
 //
-// Holly fires on any NATURAL, making her far more consistent than before.
-// She compounds with previously accumulated Hype rather than adding flat:
-//
-//   Hype 1.4 → Holly fires on 11 → Hype 1.4 × 1.5 = 2.1
-//   Hype 1.4 → Holly fires on 7  → Hype 1.4 × 1.2 = 1.68
-//   Hype 2.0 → Holly fires on 11 → Hype 2.0 × 1.5 = 3.0
+// Examples:
+//   Hype 1.0 → Holly fires on Point Hit → Hype 1.3
+//   Hype 1.3 → Holly fires on Point Hit → Hype 1.6
+//   Hype 1.6 → Holly fires on Point Hit → Hype 1.9
 //
 // Rounding to 4 decimal places prevents IEEE-754 float accumulation from
-// corrupting the final Math.floor() in settleTurn(). e.g., 1.2 × 1.5 would
-// otherwise produce 1.7999... instead of 1.8.
+// corrupting the final Math.floor() in settleTurn().
 // =============================================================================
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const HYPE_MULTIPLIER_YO  = 1.5;  // Yo-leven (11) — the big moment
-const HYPE_MULTIPLIER_7   = 1.2;  // Lucky 7 — still hype-worthy
+const HYPE_BOOST = 0.3;
 
 export const hypeTrainHolly: CrewMember = {
   id:               11,
@@ -31,21 +27,17 @@ export const hypeTrainHolly: CrewMember = {
   abilityCategory:  'HYPE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         10_000,  // $100.00 — down from $140; broader trigger justifies lower price
+  baseCost:         10_000,
   visualId:         'hype_train_holly',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
-    // Only activates on a NATURAL (7 or 11 on the come-out).
-    if (ctx.rollResult !== 'NATURAL') {
+    // Only activates on a POINT_HIT — when the shooter makes their point.
+    if (ctx.rollResult !== 'POINT_HIT') {
       return { context: ctx, newCooldown: 0 };
     }
 
-    // Pick multiplier: Yo-leven (11) gets the big boost, Lucky 7 gets a smaller one.
-    const multiplier = ctx.diceTotal === 11 ? HYPE_MULTIPLIER_YO : HYPE_MULTIPLIER_7;
-
     // Round to 4 decimal places to prevent float accumulation errors.
-    // e.g., 1.2 × 1.5 = 1.7999... in IEEE-754 → rounds to 1.8
-    const newHype = Math.round(ctx.hype * multiplier * 10_000) / 10_000;
+    const newHype = Math.round((ctx.hype + HYPE_BOOST) * 10_000) / 10_000;
 
     return {
       context: { ...ctx, hype: newHype },

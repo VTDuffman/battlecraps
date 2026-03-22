@@ -102,7 +102,7 @@ describe('GOD BUILD 1: "The Perfect Hard Eight" — Big Spender + Shark + Whale'
 
   // ── Step 2: resolveCascade ───────────────────────────────────────────────
 
-  it('[step 2] Big Spender fires and adds $50 (5000c) to additives', () => {
+  it('[step 2] Big Spender fires and adds $100 (10000c) to additives', () => {
     const ctx = resolveRoll(DICE, { phase: 'POINT_ACTIVE', currentPoint: POINT, bets: BETS, hype: HYPE });
     const { finalContext, events } = resolveCascade(crew, ctx, neverCalledRng);
 

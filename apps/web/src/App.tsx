@@ -185,7 +185,11 @@ export const App: React.FC = () => {
       }
 
       // No cached run (or stale) — hit the bootstrap endpoint.
-      const res = await fetch('/api/v1/dev/bootstrap', { method: 'POST' });
+      const res = await fetch('/api/v1/dev/bootstrap', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    '{}',
+      });
       if (!res.ok) {
         throw new Error(`Bootstrap failed: ${res.status} ${res.statusText}`);
       }

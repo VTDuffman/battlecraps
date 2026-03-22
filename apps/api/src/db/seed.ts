@@ -12,7 +12,6 @@
 // seed will update the DB to match without needing a manual migration.
 // =============================================================================
 
-process.loadEnvFile();
 import {
   lefty,
   physicsProfessor,

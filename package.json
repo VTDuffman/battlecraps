@@ -12,7 +12,7 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test -w @battlecraps/shared",
     "db:migrate": "npm run db:push -w @battlecraps/api",
-    "db:seed": "npx tsx apps/api/src/db/seed.ts",
+    "db:seed": "npx tsx --env-file=.env apps/api/src/db/seed.ts",
     "db:studio": "npm run db:studio -w @battlecraps/api"
   },
   "devDependencies": {

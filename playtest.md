@@ -25,13 +25,15 @@
 
 ## Defect Log
 
-### DEF-001 — Bankroll Incorrect After Crew Recruitment
+### DEF-001 — Bankroll Incorrect After Crew Recruitment ❓ CANNOT REPRODUCE
 **Test:** Test 6 — Recruit a Crew Member
 **Severity:** Medium
 **Context:** After clearing Marker 1 with a bankroll of $418.00, the Pub screen correctly showed $418.00. "Hype-Train" Holly was hired for $100.00. The game returned to the Table Board showing Marker 2.
 **Expected Behavior:** Bankroll should be $418.00 − $100.00 = **$318.00**.
 **Actual Behavior:** Bankroll displayed as **$278.00** — $40 short of the expected value.
 **Notes:** The $40 discrepancy exactly matches the Table Max bet size at the time ($40 for Marker 1). This may indicate that the final winning roll's Pass Line bet is being double-deducted, or that outstanding bets are not being fully returned during the TRANSITION state settlement. Reproducibility should be confirmed with a pure UI test run (no API-direct rolls).
+
+**2026-03-22 Update:** Not reproduced in L3 full regression run (regression-test-results.md Run 1, test PRG-03). Multiple crew hire scenarios tested — deductions correct. Defect may have been a one-time scenario or resolved by subsequent development.
 
 ---
 

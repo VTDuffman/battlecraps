@@ -98,6 +98,28 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
 }) => {
   const portraitRef = useRef<HTMLDivElement>(null);
 
+  // ── Cooldown fill tracking ─────────────────────────────────────────────────
+  // We need the maximum cooldown value (= value right after firing) to compute
+  // what fraction of the bar to fill. Track it in a ref so changes don't cause
+  // re-renders. Reset when a different crew member is recruited into this slot.
+  const maxCooldownRef = useRef(cooldownState);
+  const prevCrewIdRef  = useRef(crewId);
+
+  if (crewId !== prevCrewIdRef.current) {
+    // Different crew seated — reset the tracked max for the new member
+    prevCrewIdRef.current  = crewId;
+    maxCooldownRef.current = cooldownState;
+  }
+  if (cooldownState > maxCooldownRef.current) {
+    // Just fired: record the new cooldown length as the max
+    maxCooldownRef.current = cooldownState;
+  }
+
+  // fillPct: 0 = just fired / empty, 1 = fully charged / ready
+  const fillPct = maxCooldownRef.current > 0
+    ? 1 - cooldownState / maxCooldownRef.current
+    : 1; // never fired yet → show as fully charged
+
   // When isTriggering flips true, the CSS class `animate-portrait-flash` is
   // applied. We listen for the animationend event to fire onAnimationEnd(),
   // which tells the store to dequeue this event and show the next portrait.
@@ -166,9 +188,14 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
             ? 'border-felt-light/40 bg-felt-dark/60'
             : 'border-gold/60 bg-felt-dark',
 
-          // Triggering: apply the glow animation
+          // Triggering: flash animation takes full visual control
           isTriggering
             ? 'animate-portrait-flash border-white'
+            : '',
+
+          // Ready: slow gold border pulse
+          !isEmpty && !onCooldown && !isTriggering
+            ? 'animate-portrait-ready'
             : '',
 
           // Cooldown: dim the portrait
@@ -191,17 +218,21 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
           </div>
         )}
 
-        {/* Cooldown counter badge */}
-        {onCooldown && (
-          <div
-            className="
-              absolute inset-0 flex items-center justify-center
-              bg-black/60
-            "
-          >
-            <span className="font-pixel text-[10px] text-white/80">
-              {cooldownState}
-            </span>
+        {/* ── Energy / charge bar ─────────────────────────────────────────
+            Always rendered for seated crew. Fills upward as cooldown ticks
+            down: 0% = just fired, 100% = ready to fire again.
+            3px wide strip on the left edge — visible but unobtrusive.      */}
+        {!isEmpty && (
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-black/40 z-10">
+            <div
+              className="absolute bottom-0 left-0 right-0 transition-all duration-500 ease-out"
+              style={{
+                height: `${fillPct * 100}%`,
+                background: fillPct >= 1
+                  ? '#f5c842'                                       // fully charged: gold
+                  : `linear-gradient(to top, #f97316, #f5c842 ${fillPct * 130}%)`, // charging: orange → gold
+              }}
+            />
           </div>
         )}
       </div>

@@ -22,3 +22,295 @@
     image-rendering: crisp-edges;
   }
 }
+
+/* ── Dice throw animation keyframes ────────────────────────────────────────
+   Defined here (not in tailwind.config.ts) so Vite HMR picks them up
+   without a dev-server restart when iterating on the animation.
+
+   Top-down craps toss arc:
+     throw  — dice shoot up the table; scale GROWS at the apex (elevation)
+              then shrinks as they land far away at the back wall
+     tumble — wall bounce at the back-wall position; dice stay there (fill:
+              forwards) while we wait for the server response
+     land   — dice return from back wall to display position; squash/stretch
+              on arrival to sell the weight of the landing
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Dice throw animation keyframes ────────────────────────────────────────
+   ALL three animations use `linear` timing. The motion curve is baked into
+   the keyframe positions rather than per-segment easing. Using any easing
+   curve (ease, ease-out, cubic-bezier) applies independently to EVERY
+   keyframe segment, which creates the "micro-decelerate, micro-jump" still-
+   shot look the user sees. Linear + dense keyframes = truly smooth motion.
+
+   Multi-axis rotation: rotateZ does the main continuous spin; rotateX/Y
+   oscillate within ±22 ° so the dice never show their back face but the
+   motion reads as 3-D tumbling. Requires `perspective` on the parent div.
+
+   Rotation budget — strictly increasing across all three phases so the
+   browser always interpolates forward:
+     throw : Z 0 → 630°,  X/Y oscillate → 0   (travel 0 → -660px)
+     tumble: Z 630 → 690°, X/Y small wobble    (bounce at -660px → -640px)
+     land  : Z 690 → 720°, X/Y damp → 0       (return -640px → 0px)
+   720° = exactly 2 full turns, visually identical to 0° — no snap when the
+   animation class is removed at the end.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@keyframes dice-throw {
+  /* translateY baked to an ease-out curve via keyframe spacing.
+     Apex scaled to -660px so the dice travel past the betting grid and
+     status zone, visually reaching the BATTLECRAPS back-wall title area.
+     All values: translateY  scaleX  scaleY  rotateZ  rotateX  rotateY      */
+  0%   { transform: translateY(   0px) scaleX(1.00) scaleY(1.00) rotateZ(  0deg) rotateX(  0deg) rotateY(  0deg); }
+  8%   { transform: translateY( -89px) scaleX(1.14) scaleY(1.14) rotateZ( 50deg) rotateX( 12deg) rotateY(-16deg); }
+  17%  { transform: translateY(-172px) scaleX(1.30) scaleY(1.30) rotateZ(107deg) rotateX(-18deg) rotateY( 14deg); }
+  27%  { transform: translateY(-261px) scaleX(1.44) scaleY(1.44) rotateZ(170deg) rotateX( 20deg) rotateY(-12deg); }
+  38%  { transform: translateY(-333px) scaleX(1.56) scaleY(1.56) rotateZ(239deg) rotateX(-16deg) rotateY( 18deg); } /* apex */
+  50%  { transform: translateY(-416px) scaleX(1.36) scaleY(1.36) rotateZ(315deg) rotateX( 14deg) rotateY(-20deg); }
+  62%  { transform: translateY(-509px) scaleX(1.08) scaleY(1.08) rotateZ(389deg) rotateX(-12deg) rotateY( 14deg); }
+  73%  { transform: translateY(-586px) scaleX(0.82) scaleY(0.82) rotateZ(460deg) rotateX(  8deg) rotateY( -8deg); }
+  84%  { transform: translateY(-632px) scaleX(0.66) scaleY(0.66) rotateZ(526deg) rotateX( -4deg) rotateY(  5deg); }
+  93%  { transform: translateY(-653px) scaleX(0.59) scaleY(0.59) rotateZ(588deg) rotateX(  2deg) rotateY( -2deg); }
+  100% { transform: translateY(-660px) scaleX(0.57) scaleY(0.57) rotateZ(630deg) rotateX(  0deg) rotateY(  0deg); }
+}
+
+@keyframes dice-tumble {
+  /* wall bounce — impact kick then settle; all Y values shifted +200px from
+     old values to match the new -660px back-wall position                   */
+  0%   { transform: translateY(-660px) scaleX(0.57) scaleY(0.57) rotateZ(630deg) rotateX( 0deg) rotateY( 0deg); }
+  22%  { transform: translateY(-624px) scaleX(0.63) scaleY(0.63) rotateZ(649deg) rotateX( 9deg) rotateY(-6deg); }
+  45%  { transform: translateY(-645px) scaleX(0.58) scaleY(0.58) rotateZ(662deg) rotateX(-5deg) rotateY( 4deg); }
+  70%  { transform: translateY(-638px) scaleX(0.57) scaleY(0.57) rotateZ(673deg) rotateX( 2deg) rotateY(-2deg); }
+  100% { transform: translateY(-640px) scaleX(0.57) scaleY(0.57) rotateZ(690deg) rotateX( 0deg) rotateY( 0deg); }
+}
+
+@keyframes dice-land {
+  /* return flight — starting from -640px (new tumble end); long-distance
+     return keyframes scaled ×1.455; squash/stretch kept at original pixel
+     values since landing impact is independent of throw distance           */
+  0%   { transform: translateY(-640px) scaleX(0.57) scaleY(0.57) rotateZ(690deg) rotateX( 0deg) rotateY( 0deg); }
+  12%  { transform: translateY(-549px) scaleX(0.67) scaleY(0.67) rotateZ(696deg) rotateX( 6deg) rotateY(-4deg); }
+  25%  { transform: translateY(-404px) scaleX(0.86) scaleY(0.86) rotateZ(702deg) rotateX(-4deg) rotateY( 3deg); }
+  39%  { transform: translateY(-221px) scaleX(1.08) scaleY(1.08) rotateZ(708deg) rotateX( 2deg) rotateY(-2deg); }
+  50%  { transform: translateY( -58px) scaleX(1.20) scaleY(1.20) rotateZ(713deg) rotateX( 0deg) rotateY( 0deg); }
+  /* squash — wide and flat on first contact */
+  58%  { transform: translateY(  14px) scaleX(1.24) scaleY(0.68) rotateZ(716deg) rotateX( 0deg) rotateY( 0deg); }
+  /* stretch — tall rebound */
+  68%  { transform: translateY(  -5px) scaleX(0.90) scaleY(1.16) rotateZ(718deg) rotateX( 0deg) rotateY( 0deg); }
+  /* minor counter-squash settle */
+  80%  { transform: translateY(   2px) scaleX(1.04) scaleY(0.97) rotateZ(720deg) rotateX( 0deg) rotateY( 0deg); }
+  /* rest — Z:720° = 2 × 360° = visually 0°; seamless class removal */
+  100% { transform: translateY(   0px) scaleX(1.00) scaleY(1.00) rotateZ(720deg) rotateX( 0deg) rotateY( 0deg); }
+}
+
+@keyframes screen-flash-win {
+  /* Gold/white burst on NATURAL or POINT HIT */
+  0%   { background: rgba(245, 200, 66, 0);    }
+  18%  { background: rgba(245, 200, 66, 0.32); }
+  100% { background: rgba(245, 200, 66, 0);    }
+}
+
+@keyframes screen-flash-lose {
+  /* Deep red pulse on SEVEN OUT or CRAPS OUT */
+  0%   { background: rgba(160, 20, 20, 0);    }
+  22%  { background: rgba(160, 20, 20, 0.42); }
+  100% { background: rgba(160, 20, 20, 0);    }
+}
+
+.animate-screen-flash-win  { animation: screen-flash-win  450ms ease-out; }
+.animate-screen-flash-lose { animation: screen-flash-lose 550ms ease-out; }
+
+@keyframes wall-flash {
+  0%   { opacity: 0; }
+  20%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes result-pop-in {
+  0%   { transform: scale(0.3); opacity: 0; }
+  65%  { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes result-pop-out {
+  0%   { transform: scale(1);    opacity: 1; }
+  100% { transform: scale(0.88); opacity: 0; }
+}
+
+/* linear timing: the curve lives in the keyframe data, not the easing function */
+.animate-dice-throw   { animation: dice-throw  720ms linear  forwards; }
+.animate-dice-tumble  { animation: dice-tumble 480ms linear  forwards; }
+.animate-dice-land    { animation: dice-land   640ms linear  forwards; }
+.animate-wall-flash   { animation: wall-flash  300ms ease-out forwards; }
+.animate-result-pop-in  { animation: result-pop-in  260ms cubic-bezier(0.34,1.56,0.64,1) forwards; }
+.animate-result-pop-out { animation: result-pop-out 200ms ease-in                        forwards; }
+
+@keyframes payout-pop {
+  0%   { transform: translateX(-50%) translateY(0px);   opacity: 0;   }
+  15%  { transform: translateX(-50%) translateY(-8px);  opacity: 1;   }
+  70%  { transform: translateX(-50%) translateY(-28px); opacity: 1;   }
+  100% { transform: translateX(-50%) translateY(-44px); opacity: 0;   }
+}
+
+.animate-payout-pop { animation: payout-pop 900ms ease-out forwards; }
+
+/* ── Dice micro-animations — POINT_SET / POINT_HIT ──────────────────────────
+   dice-converge: both dice briefly squeeze together (scaleX) and spring back,
+                  selling the "dice came to rest at THIS number" moment.
+   dice-gold-glow: drop-shadow pulse across the dice pair on POINT_HIT.
+   point-ring-set: blue radial ring expands from the puck on POINT_SET.
+   point-ring-hit: gold radial ring on POINT_HIT — wider and brighter.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@keyframes dice-converge {
+  0%   { transform: scaleX(1)    scaleY(1);    }
+  35%  { transform: scaleX(0.86) scaleY(1.05); }
+  65%  { transform: scaleX(1.04) scaleY(0.97); }
+  100% { transform: scaleX(1)    scaleY(1);    }
+}
+
+@keyframes dice-gold-glow {
+  0%   { filter: drop-shadow(0 0  0px rgba(245, 200, 66, 0));   }
+  30%  { filter: drop-shadow(0 0 10px rgba(245, 200, 66, 0.9)); }
+  100% { filter: drop-shadow(0 0  0px rgba(245, 200, 66, 0));   }
+}
+
+@keyframes point-ring-set {
+  0%   { box-shadow: 0 0  0px  0px rgba( 96, 165, 250, 0.9); }
+  40%  { box-shadow: 0 0 22px 10px rgba( 96, 165, 250, 0.5); }
+  100% { box-shadow: 0 0  0px  0px rgba( 96, 165, 250, 0);   }
+}
+
+@keyframes point-ring-hit {
+  0%   { box-shadow: 0 0  0px  0px rgba(245, 200,  66, 0.9); }
+  30%  { box-shadow: 0 0 32px 16px rgba(245, 200,  66, 0.7); }
+  100% { box-shadow: 0 0  0px  0px rgba(245, 200,  66, 0);   }
+}
+
+.animate-dice-converge  { animation: dice-converge  520ms ease-out forwards; }
+.animate-dice-gold-glow { animation: dice-gold-glow 520ms ease-out forwards; }
+.animate-point-ring-set { animation: point-ring-set 700ms ease-out forwards; }
+.animate-point-ring-hit { animation: point-ring-hit 700ms ease-out forwards; }
+
+/* ── Hype streak heat animations ─────────────────────────────────────────────
+   Three tiers of escalating intensity applied to the HYPE display in GameStatus.
+   animate-hype-pulse  — existing subtle pulse (streak 1-2, hype > 1.0)
+   animate-hype-hot    — orange throb (streak 3 — getting serious)
+   animate-hype-blaze  — red strobe flash (streak 4+ — crowd is losing it)
+   ────────────────────────────────────────────────────────────────────────── */
+
+@keyframes hype-hot {
+  0%,  100% { opacity: 1;    text-shadow: 0 0 6px rgba(251,146,60,0.5);  }
+  50%        { opacity: 0.75; text-shadow: 0 0 16px rgba(251,146,60,0.9); }
+}
+
+@keyframes hype-blaze {
+  0%         { opacity: 1;    text-shadow: 0 0 8px  rgba(248,113,113,0.6); }
+  20%        { opacity: 0.6;  text-shadow: 0 0 24px rgba(248,113,113,1.0); }
+  40%        { opacity: 1;    text-shadow: 0 0 10px rgba(248,113,113,0.7); }
+  60%        { opacity: 0.5;  text-shadow: 0 0 28px rgba(248,113,113,1.0); }
+  80%        { opacity: 1;    text-shadow: 0 0 8px  rgba(248,113,113,0.6); }
+  100%       { opacity: 0.7;  text-shadow: 0 0 20px rgba(248,113,113,0.9); }
+}
+
+.animate-hype-hot   { animation: hype-hot   900ms ease-in-out infinite; }
+.animate-hype-blaze { animation: hype-blaze 500ms linear      infinite; }
+
+/* ── Chip Rain ────────────────────────────────────────────────────────────────
+   chip-arc    — single shared keyframe for all chip particles; per-chip
+                 trajectory is baked into CSS custom properties set inline.
+   table-shake — full-table impact tremor, TORRENT tier only.
+   kaching-pop — "KA-CHING!" banner that pops in and fades, TORRENT tier only.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@keyframes chip-arc {
+  /* All motion is encoded in custom properties; keyframe just defines the shape.
+     0 % = spawn position (left/top set inline), 35 % = arc apex, 100 % = landing. */
+  0%   { transform: translate(0, 0)
+                    scale(1.00) rotate(0deg);
+         opacity: 1; }
+  35%  { transform: translate(var(--cx-apex), var(--cy-apex))
+                    scale(1.20) rotate(var(--cr-apex));
+         opacity: 1; }
+  100% { transform: translate(var(--cx-end),  var(--cy-end))
+                    scale(0.45) rotate(var(--cr-end));
+         opacity: 0; }
+}
+
+@keyframes table-shake {
+  0%   { transform: translateX(0)    rotate( 0.00deg); }
+  14%  { transform: translateX(-5px) rotate(-0.30deg); }
+  28%  { transform: translateX( 5px) rotate( 0.30deg); }
+  42%  { transform: translateX(-4px) rotate(-0.20deg); }
+  57%  { transform: translateX( 4px) rotate( 0.20deg); }
+  71%  { transform: translateX(-2px) rotate(-0.10deg); }
+  85%  { transform: translateX( 2px) rotate( 0.10deg); }
+  100% { transform: translateX(0)    rotate( 0.00deg); }
+}
+
+@keyframes kaching-pop {
+  0%   { transform: translate(-50%, -50%) scale(0.30); opacity: 0; }
+  25%  { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  60%  { transform: translate(-50%, -50%) scale(1.00); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.90); opacity: 0; }
+}
+
+/* duration/delay are set inline per-chip so the class only supplies the name */
+.animate-chip-arc    { animation: chip-arc    linear                           forwards; }
+.animate-table-shake { animation: table-shake 420ms ease-out; }
+.animate-kaching-pop { animation: kaching-pop 1100ms cubic-bezier(0.34,1.56,0.64,1) forwards; }
+
+/* ── Crew portrait ready-pulse ────────────────────────────────────────────────
+   Slow gold border glow on portraits with cooldownState === 0.
+   Signals "I'm charged and ready to fire" without being distracting.
+   Stops naturally when isTriggering adds animate-portrait-flash (which has
+   its own box-shadow keyframes and overrides this one).
+   ────────────────────────────────────────────────────────────────────────── */
+
+@keyframes portrait-ready {
+  0%, 100% { box-shadow: 0 0  0px 0px rgba(212,160,23,0.00); }
+  50%       { box-shadow: 0 0 10px 3px rgba(212,160,23,0.55); }
+}
+
+.animate-portrait-ready { animation: portrait-ready 2s ease-in-out infinite; }
+
+/* ── Felt table breathing — ambient atmosphere overlay ────────────────────────
+   Three tiers of radial shimmer that pulse over the table felt.
+   The overlay div is absolute/inset-0/pointer-events-none so it never
+   blocks interaction. Opacity is animated; background colour is baked into
+   the utility class so the tier change (class swap) also shifts the hue.
+
+   Cold  — slow (5 s), cool green  — baseline, no streak
+   Warm  — medium (3 s), amber     — streak 1–2 or hype > 1.2
+   Hot   — fast (1.5 s), red-orange — streak 3+ or hype ≥ 2.0
+   ────────────────────────────────────────────────────────────────────────── */
+
+@keyframes felt-breathe-cold {
+  0%, 100% { opacity: 0.25; }
+  50%       { opacity: 1.00; }
+}
+
+@keyframes felt-breathe-warm {
+  0%, 100% { opacity: 0.30; }
+  50%       { opacity: 1.00; }
+}
+
+@keyframes felt-breathe-hot {
+  0%, 100% { opacity: 0.40; }
+  50%       { opacity: 1.00; }
+}
+
+.animate-felt-cold {
+  background: radial-gradient(ellipse 85% 55% at 50% 22%, rgba(37,96,64,0.28) 0%, transparent 70%);
+  animation: felt-breathe-cold 5.0s ease-in-out infinite;
+}
+
+.animate-felt-warm {
+  background: radial-gradient(ellipse 85% 55% at 50% 22%, rgba(212,160,23,0.22) 0%, transparent 70%);
+  animation: felt-breathe-warm 3.0s ease-in-out infinite;
+}
+
+.animate-felt-hot {
+  background: radial-gradient(ellipse 85% 55% at 50% 22%, rgba(220,80,30,0.28) 0%, transparent 70%);
+  animation: felt-breathe-hot  1.5s ease-in-out infinite;
+}

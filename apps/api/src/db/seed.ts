@@ -41,7 +41,7 @@ import { sql } from 'drizzle-orm';
 
 const DESCRIPTIONS: Record<number, string> = {
   1:  'Re-rolls a Seven Out once per shooter.',
-  2:  'Occasionally swaps a 7 for the active Point number.',
+  2:  'On any paired roll, nudges both dice ±1 to land on the active point.',
   3:  'Locks a chosen die value for up to 4 rolls.',
   4:  'Active Hardway bets survive a soft-number hit.',
   5:  'The first Seven Out of a shooter refunds your Pass Line bet.',

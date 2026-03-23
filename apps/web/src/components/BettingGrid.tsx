@@ -16,7 +16,6 @@
 import React, { useCallback } from 'react';
 import { useGameStore } from '../store/useGameStore.js';
 import type { BetField } from '../store/useGameStore.js';
-import { getMaxBet } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // Chip denominations available for selection
@@ -40,7 +39,7 @@ function formatCents(cents: number): string {
 // Chip selector
 // ---------------------------------------------------------------------------
 
-const ChipSelector: React.FC<{ activeChip: number; disabled: boolean }> = ({
+export const ChipSelector: React.FC<{ activeChip: number; disabled: boolean }> = ({
   activeChip,
   disabled,
 }) => {
@@ -83,13 +82,18 @@ const ChipSelector: React.FC<{ activeChip: number; disabled: boolean }> = ({
 // ---------------------------------------------------------------------------
 
 interface BetZoneProps {
-  label:      string;
-  sublabel?:  string;
-  field:      BetField;
-  amount:     number;
-  disabled:   boolean;
-  highlight?: boolean;
-  wide?:      boolean;
+  label:           string;
+  sublabel?:       string;
+  field:           BetField;
+  amount:          number;
+  committedAmount: number;
+  disabled:        boolean;
+  highlight?:      boolean;
+  wide?:           boolean;
+  popAmount?:      number;   // cents — show floating pop if > 0
+  popKey?:         number;   // React key to re-fire animation each reveal
+  popDelay?:       number;   // ms stagger delay
+  streakCount?:    number;   // consecutive point hits — shows flame badge >= 2
 }
 
 const BetZone: React.FC<BetZoneProps> = ({
@@ -97,13 +101,23 @@ const BetZone: React.FC<BetZoneProps> = ({
   sublabel,
   field,
   amount,
+  committedAmount,
   disabled,
   highlight = false,
   wide = false,
+  popAmount = 0,
+  popKey = 0,
+  popDelay = 0,
+  streakCount = 0,
 }) => {
-  const placeBet  = useGameStore((s) => s.placeBet);
-  const removeBet = useGameStore((s) => s.removeBet);
+  const placeBet   = useGameStore((s) => s.placeBet);
+  const removeBet  = useGameStore((s) => s.removeBet);
   const activeChip = useGameStore((s) => s.activeChip);
+
+  // A bet is "locked" when the entire amount is committed from the last roll.
+  // Right-click is a no-op in this state — nothing pending to undo.
+  const isLocked  = committedAmount > 0 && amount <= committedAmount;
+  const hasPending = amount > committedAmount;
 
   const handleClick = useCallback(() => {
     placeBet(field, activeChip);
@@ -111,8 +125,9 @@ const BetZone: React.FC<BetZoneProps> = ({
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    if (!hasPending) return; // nothing above the committed floor — no-op
     removeBet(field);
-  }, [field, removeBet]);
+  }, [field, removeBet, hasPending]);
 
   const hasBet = amount > 0;
 
@@ -147,17 +162,54 @@ const BetZone: React.FC<BetZoneProps> = ({
       {/* Chip stack overlay */}
       {hasBet && (
         <div
-          className="
-            absolute -top-2 -right-2
-            w-7 h-7 rounded-full
-            flex items-center justify-center
-            bg-chip-red border-2 border-white/80
-            font-pixel text-[6px] text-white
-            shadow-md
-            animate-bet-drop
-          "
+          className={[
+            'absolute -top-2 -right-2',
+            'w-7 h-7 rounded-full',
+            'flex items-center justify-center',
+            'border-2 font-pixel text-[6px] text-white shadow-md',
+            // Locked chips use a muted orange to signal "can't undo";
+            // pending chips use the standard chip-red.
+            isLocked
+              ? 'bg-amber-700/80 border-amber-400/60'
+              : 'bg-chip-red border-white/80 animate-bet-drop',
+          ].join(' ')}
         >
           {formatCents(amount)}
+        </div>
+      )}
+
+      {/* Lock icon on the chip when fully committed */}
+      {isLocked && (
+        <div className="absolute -top-2 -right-2 w-7 h-7 flex items-end justify-start pointer-events-none">
+          <span className="text-[7px] leading-none text-amber-300/80">🔒</span>
+        </div>
+      )}
+
+      {/* Pass line streak badge — bottom-left, visible when streak >= 2 */}
+      {streakCount >= 2 && (
+        <div
+          className={[
+            'absolute bottom-1 left-1 pointer-events-none',
+            'font-pixel leading-none',
+            streakCount >= 4
+              ? 'text-[9px] text-red-400 animate-hype-blaze'
+              : streakCount === 3
+                ? 'text-[8px] text-orange-400 animate-hype-hot'
+                : 'text-[7px] text-yellow-300',
+          ].join(' ')}
+        >
+          {'🔥'.repeat(Math.min(streakCount, 4))}
+        </div>
+      )}
+
+      {/* Floating payout pop */}
+      {popAmount > 0 && (
+        <div
+          key={popKey}
+          className="absolute bottom-full left-1/2 -translate-x-1/2 pointer-events-none font-pixel text-[8px] text-yellow-300 animate-payout-pop"
+          style={{ animationDelay: `${popDelay}ms` }}
+        >
+          +${(popAmount / 100).toFixed(2)}
         </div>
       )}
     </button>
@@ -169,27 +221,20 @@ const BetZone: React.FC<BetZoneProps> = ({
 // ---------------------------------------------------------------------------
 
 export const BettingGrid: React.FC = () => {
-  const phase      = useGameStore((s) => s.phase);
-  const point      = useGameStore((s) => s.point);
-  const bets       = useGameStore((s) => s.bets);
-  const isRolling  = useGameStore((s) => s.isRolling);
-  const activeChip = useGameStore((s) => s.activeChip);
+  const phase                = useGameStore((s) => s.phase);
+  const point                = useGameStore((s) => s.point);
+  const bets                 = useGameStore((s) => s.bets);
+  const committedBets        = useGameStore((s) => s.committedBets);
+  const isRolling            = useGameStore((s) => s.isRolling);
+  const payoutPops           = useGameStore((s) => s.payoutPops);
+  const _popsKey             = useGameStore((s) => s._popsKey);
+  const consecutivePointHits = useGameStore((s) => s.consecutivePointHits);
 
-  const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
   const isComeOut     = phase === 'COME_OUT' || phase === null;
   const isPointActive = phase === 'POINT_ACTIVE';
-  const maxBet = getMaxBet(currentMarkerIndex);
 
   return (
     <div className="w-full space-y-2">
-      {/* ── Chip selector ───────────────────────────────────────────────── */}
-      <ChipSelector activeChip={activeChip} disabled={isRolling} />
-
-      {/* ── Table max indicator ──────────────────────────────────────────── */}
-      <div className="text-center font-pixel text-[7px] text-white/40 -mb-1">
-        TABLE MAX: ${maxBet / 100}
-      </div>
-
       {/* ── Row 1: Pass Line + Odds ──────────────────────────────────────── */}
       <div className="grid grid-cols-4 gap-2">
         <BetZone
@@ -197,16 +242,25 @@ export const BettingGrid: React.FC = () => {
           sublabel="1:1"
           field="passLine"
           amount={bets.passLine}
+          committedAmount={committedBets.passLine}
           disabled={isRolling || isPointActive}
           wide
+          popAmount={payoutPops?.passLine ?? 0}
+          popKey={_popsKey}
+          popDelay={0}
+          streakCount={consecutivePointHits}
         />
         <BetZone
           label="ODDS"
           sublabel={point ? oddsLabel(point) : 'TRUE ODDS'}
           field="odds"
           amount={bets.odds}
+          committedAmount={committedBets.odds}
           disabled={isRolling || isComeOut}
           wide
+          popAmount={payoutPops?.odds ?? 0}
+          popKey={_popsKey}
+          popDelay={80}
         />
       </div>
 
@@ -219,14 +273,18 @@ export const BettingGrid: React.FC = () => {
             { field: 'hard8'  as BetField, label: 'HARD 8',  sublabel: '9:1' },
             { field: 'hard10' as BetField, label: 'HARD 10', sublabel: '7:1' },
           ]
-        ).map(({ field, label, sublabel }) => (
+        ).map(({ field, label, sublabel }, idx) => (
           <BetZone
             key={field}
             label={label}
             sublabel={sublabel}
             field={field}
             amount={bets.hardways[field as keyof typeof bets.hardways]}
+            committedAmount={committedBets.hardways[field as keyof typeof committedBets.hardways]}
             disabled={isRolling}
+            popAmount={payoutPops?.hardwayField === field ? (payoutPops?.hardways ?? 0) : 0}
+            popKey={_popsKey}
+            popDelay={160 + idx * 80}
           />
         ))}
       </div>

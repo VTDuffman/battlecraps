@@ -58,6 +58,8 @@ export default {
         'bark-rise':       'bark-rise 900ms ease-out forwards',
         'bet-drop':        'bet-drop 200ms ease-out forwards',
         'hype-pulse':      'hype-pulse 1.4s ease-in-out infinite',
+        // Dice throw animations are defined in index.css (not here) so that
+        // Vite HMR picks them up without a dev-server restart.
       },
       // ── Felt texture pattern ──────────────────────────────────────────────
       backgroundImage: {

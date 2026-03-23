@@ -4,7 +4,7 @@
 // =============================================================================
 
 // Shared game configuration (marker targets, etc.)
-export { MARKER_TARGETS, getMaxBet } from './config.js';
+export { MARKER_TARGETS, getMaxBet, getBaseHypeTick, STREAK_BASE_TICK, STREAK_INCREMENT, STREAK_CAP } from './config.js';
 
 // All TypeScript interfaces and type aliases
 export type {

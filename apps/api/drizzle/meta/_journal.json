@@ -1,0 +1,13 @@
+{
+  "version": "6",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1774237890999,
+      "tag": "0000_add_consecutive_point_hits",
+      "breakpoints": true
+    }
+  ]
+}

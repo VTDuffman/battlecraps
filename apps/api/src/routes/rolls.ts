@@ -30,7 +30,9 @@ import {
   buildRollReceipt,
   MARKER_TARGETS,
   getMaxBet,
+  getBaseHypeTick,
   OLD_PRO_ID,
+  LUCKY_CHARM_ID,
   type CascadeEvent,
   type CrewMember,
   type Bets,
@@ -134,7 +136,14 @@ interface WsTurnSettledPayload {
   newPoint:         number | null;
   runStatus:        string;
   newMarkerIndex:   number;  // currentMarkerIndex after this roll (may have advanced)
-  newBets:          Bets;    // bets remaining on the table after this roll
+  newBets:                Bets;    // bets remaining on the table after this roll
+  newConsecutivePointHits: number; // streak counter — drives base hype tick + client UI
+  /**
+   * Per-zone win amounts in cents (post-multiplier, pre-additives).
+   * Used by the client to render floating payout pops over each bet zone.
+   * All three are 0 on a losing roll.
+   */
+  payoutBreakdown:  { passLine: number; odds: number; hardways: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -271,11 +280,24 @@ async function rollHandler(
     hype:         run.hype,
   });
 
+  // ── 7b. Base-game Point Streak Hype tick ───────────────────────────────────
+  //
+  // On a POINT_HIT, the crowd's excitement escalates before any crew fire.
+  // The tick is applied to initialCtx.hype BEFORE resolveCascade so Holly and
+  // other HYPE crew layer their bonuses on top of the already-seeded excitement.
+  //   Streak entering → tick: 0→+0.05, 1→+0.10, 2→+0.15, 3+→+0.20 (cap)
+  const baseHypeTick = initialCtx.rollResult === 'POINT_HIT'
+    ? getBaseHypeTick(run.consecutivePointHits)
+    : 0;
+  const seededCtx = baseHypeTick > 0
+    ? { ...initialCtx, hype: Math.round((initialCtx.hype + baseHypeTick) * 10_000) / 10_000 }
+    : initialCtx;
+
   // ── 8. Run the Clockwise Cascade ───────────────────────────────────────────
   //
   // Each crew member's execute() fires left-to-right (slot 0 → 4), each one
   // seeing the TurnContext as modified by all previous crew members.
-  const cascadeResult = resolveCascade(crewSlots, initialCtx, rollDice);
+  const cascadeResult = resolveCascade(crewSlots, seededCtx, rollDice);
   const { finalContext, events, updatedCrewSlots } = cascadeResult;
 
   // ── 9. Settle the turn ─────────────────────────────────────────────────────
@@ -322,8 +344,9 @@ async function rollHandler(
       bankrollCents:      nextState.bankrollCents,
       shooters:           nextState.shooters,
       currentPoint:       nextState.currentPoint,
-      hype:               nextState.hype,
-      bets:               nextState.bets,
+      hype:                 nextState.hype,
+      consecutivePointHits: nextState.consecutivePointHits,
+      bets:                 nextState.bets,
       crewSlots:          serialiseCrewSlots(
                             updatedCrewSlots,
                             nextState.shooters < run.shooters, // new shooter → reset per_shooter cooldowns
@@ -354,20 +377,38 @@ async function rollHandler(
     const payload: WsCascadeTriggerPayload = event;
     io.to(runRoom).emit('cascade:trigger', payload);
   }
+  // Per-zone win amounts for the client's floating payout pops.
+  // Apply the same final multiplier as settleTurn() but per-zone so each
+  // bet zone can show its own "+$X.XX" pop. Crew additives (flat bonuses)
+  // are not included — they are not attributable to a specific zone.
+  const finalMultiplier =
+    Math.round(
+      finalContext.hype *
+      finalContext.multipliers.reduce((acc, m) => acc * m, 1.0) *
+      10_000,
+    ) / 10_000;
+  const payoutBreakdown = {
+    passLine: Math.floor(finalContext.basePassLinePayout * finalMultiplier),
+    odds:     Math.floor(finalContext.baseOddsPayout     * finalMultiplier),
+    hardways: Math.floor(finalContext.baseHardwaysPayout * finalMultiplier),
+  };
+
   const settledPayload: WsTurnSettledPayload = {
     runId,
-    dice:           finalContext.dice,
-    diceTotal:      finalContext.diceTotal,
-    rollResult:     finalContext.rollResult,
+    dice:            finalContext.dice,
+    diceTotal:       finalContext.diceTotal,
+    rollResult:      finalContext.rollResult,
     bankrollDelta,
-    newBankroll:    persistedRun.bankrollCents,
-    newShooters:    persistedRun.shooters,
-    newHype:        persistedRun.hype,
-    newPhase:       persistedRun.phase as GamePhase,
-    newPoint:       persistedRun.currentPoint ?? null,
-    runStatus:      persistedRun.status,
-    newMarkerIndex: persistedRun.currentMarkerIndex,
-    newBets:        nextState.bets,
+    newBankroll:     persistedRun.bankrollCents,
+    newShooters:     persistedRun.shooters,
+    newHype:         persistedRun.hype,
+    newPhase:        persistedRun.phase as GamePhase,
+    newPoint:        persistedRun.currentPoint ?? null,
+    runStatus:       persistedRun.status,
+    newMarkerIndex:  persistedRun.currentMarkerIndex,
+    newBets:                 nextState.bets,
+    newConsecutivePointHits: nextState.consecutivePointHits,
+    payoutBreakdown,
   };
   io.to(runRoom).emit('turn:settled', settledPayload);
 
@@ -418,14 +459,15 @@ function computeNextState(
   newBankroll:  number,
   incomingBets: Bets,
 ): {
-  status:             RunRow['status'];
-  phase:              RunRow['phase'];
-  bankrollCents:      number;
-  shooters:           number;
-  currentPoint:       number | null;
-  hype:               number;
-  bets:               Bets;
-  currentMarkerIndex: number;
+  status:               RunRow['status'];
+  phase:                RunRow['phase'];
+  bankrollCents:        number;
+  shooters:             number;
+  currentPoint:         number | null;
+  hype:                 number;
+  bets:                 Bets;
+  currentMarkerIndex:   number;
+  consecutivePointHits: number;
 } {
   const { rollResult, flags } = finalCtx;
   const currentMarkerIndex = run.currentMarkerIndex;
@@ -440,26 +482,28 @@ function computeNextState(
 
     case 'NATURAL':
       return {
-        status:             'IDLE_TABLE',
-        phase:              'COME_OUT',
-        bankrollCents:      newBankroll,
-        shooters:           run.shooters,
-        currentPoint:       null,
-        hype:               finalCtx.hype,  // Hype accumulates on a NATURAL
-        bets:               clearedBets,
+        status:               'IDLE_TABLE',
+        phase:                'COME_OUT',
+        bankrollCents:        newBankroll,
+        shooters:             run.shooters,
+        currentPoint:         null,
+        hype:                 finalCtx.hype,  // Hype accumulates on a NATURAL
+        bets:                 clearedBets,
         currentMarkerIndex,
+        consecutivePointHits: run.consecutivePointHits, // streak unaffected by naturals
       };
 
     case 'CRAPS_OUT':
       return {
-        status:             'IDLE_TABLE',
-        phase:              'COME_OUT',
-        bankrollCents:      newBankroll,
-        shooters:           run.shooters,
-        currentPoint:       null,
-        hype:               finalCtx.hype,  // Hype is NOT reset on craps-out (only 7-out)
-        bets:               clearedBets,
+        status:               'IDLE_TABLE',
+        phase:                'COME_OUT',
+        bankrollCents:        newBankroll,
+        shooters:             run.shooters,
+        currentPoint:         null,
+        hype:                 finalCtx.hype,  // Hype is NOT reset on craps-out (only 7-out)
+        bets:                 clearedBets,
         currentMarkerIndex,
+        consecutivePointHits: run.consecutivePointHits, // streak unaffected by craps-out
       };
 
     // ── Point established ───────────────────────────────────────────────────
@@ -468,14 +512,15 @@ function computeNextState(
       // No payout. Bets freeze — passLine stays, odds can now be added.
       // Bankroll reflects the deduction of bets placed this come-out roll.
       return {
-        status:             'POINT_ACTIVE',
-        phase:              'POINT_ACTIVE',
-        bankrollCents:      newBankroll,
-        shooters:           run.shooters,
-        currentPoint:       finalCtx.diceTotal,
-        hype:               finalCtx.hype,
-        bets:               incomingBets,       // Bets are now locked/frozen
+        status:               'POINT_ACTIVE',
+        phase:                'POINT_ACTIVE',
+        bankrollCents:        newBankroll,
+        shooters:             run.shooters,
+        currentPoint:         finalCtx.diceTotal,
+        hype:                 finalCtx.hype,
+        bets:                 incomingBets,       // Bets are now locked/frozen
         currentMarkerIndex,
+        consecutivePointHits: run.consecutivePointHits, // unchanged until the point resolves
       };
 
     // ── Point hit — check for marker / game completion ─────────────────────
@@ -496,14 +541,16 @@ function computeNextState(
       }
 
       return {
-        status:             nextStatus,
-        phase:              'COME_OUT',       // New come-out after point resolved
-        bankrollCents:      newBankroll,
-        shooters:           run.shooters,
-        currentPoint:       null,
-        hype:               finalCtx.hype,   // Hype persists across point hit
-        bets:               clearedBets,
-        currentMarkerIndex: hitMarker ? currentMarkerIndex + 1 : currentMarkerIndex,
+        status:               nextStatus,
+        phase:                'COME_OUT',     // New come-out after point resolved
+        bankrollCents:        newBankroll,
+        shooters:             run.shooters,
+        currentPoint:         null,
+        hype:                 finalCtx.hype, // Hype persists (already ticked above)
+        bets:                 clearedBets,
+        currentMarkerIndex:   hitMarker ? currentMarkerIndex + 1 : currentMarkerIndex,
+        // Streak resets on marker clear (new chapter); otherwise increments.
+        consecutivePointHits: hitMarker ? 0 : run.consecutivePointHits + 1,
       };
     }
 
@@ -513,6 +560,13 @@ function computeNextState(
       // Only Lefty's sevenOutBlocked prevents a shooter death (he re-rolls
       // the dice). Floor Walker's passLineProtected only saves the bet —
       // the shooter still dies, hype still resets, point still clears.
+
+      // Lucky Charm solo check: if she is the only crew, her 2.0× floor
+      // must be re-applied AFTER the hype reset so it survives the seven-out.
+      const activeSlots = (run.crewSlots as StoredCrewSlots).filter(Boolean);
+      const isLuckyCharmSolo =
+        activeSlots.length === 1 && activeSlots[0]?.crewId === LUCKY_CHARM_ID;
+
       const shooterLost = !flags.sevenOutBlocked;
       const newShooters = shooterLost ? run.shooters - 1 : run.shooters;
 
@@ -543,14 +597,15 @@ function computeNextState(
       }
 
       return {
-        status:             nextStatus,
-        phase:              'COME_OUT',
-        bankrollCents:      newBankroll,
-        shooters:           Math.max(0, newShooters),
-        currentPoint:       null,
-        hype:               1.0,    // SEVEN_OUT always resets Hype (per PRD)
-        bets:               clearedBets,
-        currentMarkerIndex: nextMarkerIndex,
+        status:               nextStatus,
+        phase:                'COME_OUT',
+        bankrollCents:        newBankroll,
+        shooters:             Math.max(0, newShooters),
+        currentPoint:         null,
+        hype:                 isLuckyCharmSolo ? 2.0 : 1.0,  // SEVEN_OUT resets Hype; Lucky Charm re-floors to 2.0 if solo
+        bets:                 clearedBets,
+        currentMarkerIndex:   nextMarkerIndex,
+        consecutivePointHits: 0,  // Seven Out kills the streak
       };
     }
 
@@ -563,14 +618,15 @@ function computeNextState(
       // the main point is unresolved. clearedBets handles this correctly while
       // leaving passLine and odds untouched.
       return {
-        status:             'POINT_ACTIVE',
-        phase:              'POINT_ACTIVE',
-        bankrollCents:      newBankroll,
-        shooters:           run.shooters,
-        currentPoint:       run.currentPoint ?? null,
-        hype:               finalCtx.hype,
-        bets:               clearedBets,
+        status:               'POINT_ACTIVE',
+        phase:                'POINT_ACTIVE',
+        bankrollCents:        newBankroll,
+        shooters:             run.shooters,
+        currentPoint:         run.currentPoint ?? null,
+        hype:                 finalCtx.hype,
+        bets:                 clearedBets,
         currentMarkerIndex,
+        consecutivePointHits: run.consecutivePointHits, // no change on non-resolving roll
       };
   }
 }

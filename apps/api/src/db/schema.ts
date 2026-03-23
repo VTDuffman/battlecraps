@@ -194,6 +194,13 @@ export const runs = pgTable(
      */
     hype: real('hype').notNull().default(1.0),
 
+    /**
+     * Number of consecutive point hits by the current shooter.
+     * Increments on every POINT_HIT; resets to 0 on SEVEN_OUT or TRANSITION.
+     * Drives the base-game escalating hype tick (see getBaseHypeTick in shared).
+     */
+    consecutivePointHits: smallint('consecutive_point_hits').notNull().default(0),
+
     // ── Active bets — JSONB, values in cents ──────────────────────────────
 
     /**

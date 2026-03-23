@@ -83,7 +83,9 @@ describe('cascade: Nervous Intern + Whale on a Yo-leven', () => {
 // Hype stacking: Nervous Intern + Holly on a Yo-leven
 // ---------------------------------------------------------------------------
 
-describe('cascade: Nervous Intern + Holly — hype stacking on Yo-leven', () => {
+// Holly now triggers on POINT_HIT (+0.3 additive), not NATURAL.
+// On a NATURAL: only Intern (+0.2) and Whale (×1.2) fire. Holly is silent.
+describe('cascade: Nervous Intern + Holly + Whale on a NATURAL (Holly does NOT fire)', () => {
   const ctx = makeCtx({
     rollResult:         'NATURAL',
     dice:               [5, 6],
@@ -95,23 +97,49 @@ describe('cascade: Nervous Intern + Holly — hype stacking on Yo-leven', () => 
   });
   const crew: (CrewMember | null)[] = [fresh(nervousIntern), fresh(hypeTrainHolly), fresh(whale), null, null];
 
-  it('Nervous Intern fires (+0.2) → Holly fires (×1.5): hype = 1.0 → 1.2 → 1.8', () => {
+  it('Intern fires (+0.2), Holly silent on NATURAL: hype = 1.0 → 1.2', () => {
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
-    // 1.0 + 0.2 = 1.2; 1.2 × 1.5 = 1.8 (rounded to 4dp in Holly)
-    expect(finalContext.hype).toBe(1.8);
+    expect(finalContext.hype).toBe(1.2);
   });
 
-  it('emits 3 events (all three crew fire)', () => {
+  it('emits 2 events (Intern + Whale fire; Holly silent on NATURAL)', () => {
     const { events } = resolveCascade(crew, ctx, neverCalledRng);
-    expect(events).toHaveLength(3);
+    expect(events).toHaveLength(2);
   });
 
-  it('settleTurn: floor(20000 × 1.8 × 1.2) = 43200 (verifies float fix)', () => {
-    // Critical test: without the rounding fix in settleTurn,
-    // 1.8 × 1.2 = 2.1599... and floor(20000 × 2.1599) = 43199 (wrong).
-    // With the fix: 43200 (correct).
+  it('settleTurn: floor(20000 × 1.2 × 1.2) = 28800', () => {
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
-    expect(settleTurn(finalContext)).toBe(43_200);
+    expect(settleTurn(finalContext)).toBe(28_800);
+  });
+});
+
+// On a POINT_HIT: Holly fires (+0.3 additive). Intern is silent (POINT_HIT ≠ NATURAL).
+describe('cascade: Holly + Whale on a POINT_HIT (Holly fires +0.3)', () => {
+  const ctx = makeCtx({
+    rollResult:         'POINT_HIT',
+    dice:               [4, 4],
+    diceTotal:          8,
+    activePoint:        8,
+    bets:               makeBets({ passLine: 20_000 }),
+    basePassLinePayout: 20_000,
+    hype:               1.0,
+  });
+  const crew: (CrewMember | null)[] = [fresh(nervousIntern), fresh(hypeTrainHolly), fresh(whale), null, null];
+
+  it('Holly fires (+0.3), Intern silent on POINT_HIT: hype = 1.0 → 1.3', () => {
+    const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
+    expect(finalContext.hype).toBe(1.3);
+  });
+
+  it('emits 2 events (Holly + Whale fire; Intern silent on POINT_HIT)', () => {
+    const { events } = resolveCascade(crew, ctx, neverCalledRng);
+    expect(events).toHaveLength(2);
+  });
+
+  it('settleTurn: floor(20000 × 1.3 × 1.2) = 31200', () => {
+    const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
+    // 1.3 × 1.2 = 1.56; floor(20000 × 1.56) = 31200
+    expect(settleTurn(finalContext)).toBe(31_200);
   });
 });
 
@@ -226,6 +254,24 @@ describe('cascade: The Lucky Charm', () => {
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
 
     expect(finalContext.hype).toBe(3.5); // max(3.5, 2.0) = 3.5
+  });
+
+  it('emits a cascadeEvent when hype is floored from below 2.0×', () => {
+    const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 1.0 });
+    const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
+    const { events } = resolveCascade(crew, ctx, neverCalledRng);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.crewId).toBe(15);
+    expect(events[0]?.contextDelta.hype).toBe(2.0);
+  });
+
+  it('does NOT emit a cascadeEvent when hype is already at or above 2.0×', () => {
+    const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 2.5 });
+    const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
+    const { events } = resolveCascade(crew, ctx, neverCalledRng);
+
+    expect(events).toHaveLength(0); // no-op, hype already above floor
   });
 
   it('does NOT activate when other crew are present', () => {

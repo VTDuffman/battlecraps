@@ -198,7 +198,12 @@ describe('GOD BUILD 1: "The Perfect Hard Eight" — Big Spender + Shark + Whale'
 //
 // =============================================================================
 
-describe('GOD BUILD 2: "The Yo-leven Jackpot" — Nervous Intern + Holly + Whale', () => {
+// GOD BUILD 2 updated: Holly now triggers on POINT_HIT (+0.3 additive), not NATURAL.
+// On a NATURAL, only Intern (+0.2) and Whale (×1.2) fire. Holly is silent.
+// The "Yo-leven Jackpot" concept now splits across two roll types:
+//   NATURAL:    Intern boosts Hype (+0.2) → Whale multiplies the payout
+//   POINT_HIT:  Holly boosts Hype (+0.3) → Whale multiplies the payout
+describe('GOD BUILD 2: Nervous Intern + Holly + Whale — NATURAL roll (Holly silent)', () => {
   const BETS = makeBets({ passLine: 20_000 }); // $200 pass line
   const HYPE = 1.0;
   const DICE: [number, number] = [5, 6];
@@ -217,42 +222,70 @@ describe('GOD BUILD 2: "The Yo-leven Jackpot" — Nervous Intern + Holly + Whale
     expect(ctx.diceTotal).toBe(11);
   });
 
-  it('[step 2] Nervous Intern fires: hype 1.0 → 1.2', () => {
+  it('[step 2] Nervous Intern fires: hype 1.0 → 1.2; Holly silent on NATURAL', () => {
     const ctx = resolveRoll(DICE, { phase: 'COME_OUT', currentPoint: null, bets: BETS, hype: HYPE });
     const { events } = resolveCascade(crew, ctx, neverCalledRng);
     const internEvent = events.find(e => e.slotIndex === 0);
+    const hollyEvent  = events.find(e => e.slotIndex === 1);
     expect(internEvent?.contextDelta.hype).toBe(1.2);
+    expect(hollyEvent).toBeUndefined(); // Holly does not fire on NATURAL
   });
 
-  it('[step 2] Holly fires on Yo-leven: hype 1.2 → 1.8 (rounded, not 1.7999...)', () => {
-    const ctx = resolveRoll(DICE, { phase: 'COME_OUT', currentPoint: null, bets: BETS, hype: HYPE });
-    const { events } = resolveCascade(crew, ctx, neverCalledRng);
-    const hollyEvent = events.find(e => e.slotIndex === 1);
-    expect(hollyEvent?.contextDelta.hype).toBe(1.8);
-  });
-
-  it('[step 2] final context: hype=1.8, multipliers=[1.2]', () => {
+  it('[step 2] final context: hype=1.2, multipliers=[1.2]', () => {
     const ctx = resolveRoll(DICE, { phase: 'COME_OUT', currentPoint: null, bets: BETS, hype: HYPE });
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
-    expect(finalContext.hype).toBe(1.8);
+    expect(finalContext.hype).toBe(1.2);
     expect(finalContext.multipliers).toEqual([1.2]);
   });
 
-  it('[step 3] settleTurn: stake(20000) + floor(20000 × 2.16) = 63200 (validates float rounding fix)', () => {
+  it('[step 3] settleTurn: stake(20000) + floor(20000 × 1.44) = 28800 + 20000 = 48800', () => {
     const ctx = resolveRoll(DICE, { phase: 'COME_OUT', currentPoint: null, bets: BETS, hype: HYPE });
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
-    // Key: 1.8 × 1.2 = 2.1599... in IEEE-754.
-    // Our fix: round(1.8 × 1.2 × 10000) / 10000 = 2.16 exactly.
-    // floor(20000 × 2.16) = 43200; + stake 20000 = 63200
-    expect(settleTurn(finalContext)).toBe(63_200);
+    // 1.2 hype × 1.2 whale = 1.44; floor(20000 × 1.44) = 28800; + stake 20000 = 48800
+    expect(settleTurn(finalContext)).toBe(48_800);
   });
 
-  it('[step 3] net player gain is $432.00 on a $200 pass line bet placed', () => {
+  it('[step 3] net player gain is $288.00 on a $200 pass line bet placed', () => {
     const ctx = resolveRoll(DICE, { phase: 'COME_OUT', currentPoint: null, bets: BETS, hype: HYPE });
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
     const totalPayout = settleTurn(finalContext);
-    // totalPayout = $632.00 ($200 stake return + $432.00 amplified profit)
-    // net gain = 63200 − 20000 = 43200 cents = $432.00
-    expect((totalPayout - 20_000) / 100).toBeCloseTo(432.00, 2);
+    // net gain = 48800 − 20000 = 28800 cents = $288.00
+    expect((totalPayout - 20_000) / 100).toBeCloseTo(288.00, 2);
+  });
+});
+
+describe('GOD BUILD 2: Nervous Intern + Holly + Whale — POINT_HIT roll (Holly fires)', () => {
+  const BETS = makeBets({ passLine: 20_000 }); // $200 pass line
+  const DICE: [number, number] = [4, 4];
+
+  const crew: (CrewMember | null)[] = [
+    fresh(nervousIntern),   // slot 0
+    fresh(hypeTrainHolly),  // slot 1
+    fresh(whale),           // slot 2
+    null,
+    null,
+  ];
+
+  it('[step 2] Holly fires (+0.3) on POINT_HIT: hype 1.0 → 1.3; Intern silent', () => {
+    const ctx = resolveRoll(DICE, { phase: 'POINT_ACTIVE', currentPoint: 8, bets: BETS, hype: 1.0 });
+    const { events } = resolveCascade(crew, ctx, neverCalledRng);
+    const internEvent = events.find(e => e.slotIndex === 0);
+    const hollyEvent  = events.find(e => e.slotIndex === 1);
+    expect(internEvent).toBeUndefined(); // Intern does not fire on POINT_HIT
+    expect(hollyEvent?.contextDelta.hype).toBe(1.3);
+  });
+
+  it('[step 2] final context: hype=1.3, multipliers=[1.2]', () => {
+    const ctx = resolveRoll(DICE, { phase: 'POINT_ACTIVE', currentPoint: 8, bets: BETS, hype: 1.0 });
+    const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
+    expect(finalContext.hype).toBe(1.3);
+    expect(finalContext.multipliers).toEqual([1.2]);
+  });
+
+  it('[step 3] settleTurn: stake(20000) + floor(20000 × 1.56) = 31200 + 20000 = 51200', () => {
+    const ctx = resolveRoll(DICE, { phase: 'POINT_ACTIVE', currentPoint: 8, bets: BETS, hype: 1.0 });
+    const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
+    // 1.3 hype × 1.2 whale = 1.56; floor(20000 × 1.56) = 31200; + stake 20000 = 51200
+    expect(settleTurn(finalContext)).toBe(51_200);
   });
 });

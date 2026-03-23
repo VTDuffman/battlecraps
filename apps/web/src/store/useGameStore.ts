@@ -107,7 +107,9 @@ interface TurnSettledPayload {
   newPoint:         number | null;
   runStatus:        RunStatus;
   newMarkerIndex:   number;
-  newBets:          Bets;
+  newBets:                 Bets;
+  newConsecutivePointHits: number;
+  payoutBreakdown:         { passLine: number; odds: number; hardways: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -142,11 +144,22 @@ export interface GameState {
   /** Current Hype multiplier. 1.0 = baseline. */
   hype:     number;
 
+  /** Consecutive point hits by the current shooter. Resets on Seven Out or marker clear. */
+  consecutivePointHits: number;
+
   /** Remaining shooter lives. */
   shooters: number;
 
   /** Active bets for the current roll (in cents). */
   bets: Bets;
+
+  /**
+   * Bets locked in as of the last completed roll.
+   * This is the floor — right-clicking a bet zone can only reduce bets
+   * down to the committed amount, never below it.
+   * Synced from `newBets` on every `turn:settled` event.
+   */
+  committedBets: Bets;
 
   /** The currently selected chip denomination in cents (e.g. 500 = $5). */
   activeChip: number;
@@ -181,6 +194,51 @@ export interface GameState {
   // ── Roll in-flight ────────────────────────────────────────────────────────
   /** True while the POST /runs/:id/roll request is pending. */
   isRolling: boolean;
+
+  // ── Deferred settlement ───────────────────────────────────────────────────
+  /**
+   * Buffered turn:settled payload waiting for the dice animation + result
+   * popup to complete before the visible game state is updated.
+   * Null when no roll is in flight or after applyPendingSettlement() is called.
+   */
+  pendingSettlement: TurnSettledPayload | null;
+
+  // ── Back-wall flash (dice hit the far wall) ───────────────────────────────
+  /** True for the duration of the wall-flash animation (~300ms). */
+  wallFlash: boolean;
+  /** Increments each throw so the CSS animation re-fires on every roll. */
+  _wallFlashKey: number;
+
+  // ── Screen flash ──────────────────────────────────────────────────────────
+  /** Which flash colour to show: 'win' (gold) | 'lose' (red) | null (none). */
+  flashType: 'win' | 'lose' | null;
+  /**
+   * Increments on every applyPendingSettlement() call that produces a flash.
+   * Used as the React key on the overlay so the CSS animation re-fires even
+   * when the same flashType occurs on consecutive rolls.
+   */
+  _flashKey: number;
+
+  // ── Payout pops ───────────────────────────────────────────────────────────
+  /**
+   * Per-zone win amounts (cents) to display as floating "+$X.XX" pops.
+   * Null between rolls. Set by applyPendingSettlement(), cleared next roll.
+   * hardwayField identifies WHICH hardway zone shows the pop (null if none won).
+   */
+  payoutPops: {
+    passLine:     number;
+    odds:         number;
+    hardways:     number;
+    hardwayField: BetField | null;
+  } | null;
+  /** Increments on each winning reveal — React key to re-fire pop animations. */
+  _popsKey: number;
+
+  // ── Point ring animation ──────────────────────────────────────────────────
+  /** 'set' while POINT_SET ring is playing; 'hit' for POINT_HIT; null otherwise. */
+  pointRingType: 'set' | 'hit' | null;
+  /** Increments each time triggerPointRing() fires — React key to re-fire. */
+  _pointRingKey: number;
 
   // ── Cascade animation queue ───────────────────────────────────────────────
   /**
@@ -229,7 +287,9 @@ export interface GameActions {
   placeBet(field: BetField, amount: number): void;
 
   /**
-   * Remove the entire bet on `field` and return the amount to bankroll.
+   * Remove any bet added since the last roll on `field`, returning the
+   * pending amount to bankroll. Bets at or below the committed floor
+   * (locked in from the previous roll) are untouched.
    */
   removeBet(field: BetField): void;
 
@@ -254,6 +314,27 @@ export interface GameActions {
    * locks up.
    */
   rollDice(): Promise<void>;
+
+  /**
+   * Apply the buffered turn:settled payload to visible game state.
+   *
+   * Called by DiceZone after the dice animation completes and the result
+   * popup begins to fade — this is the "reveal" moment. Clears isRolling
+   * so the Roll button re-enables only after the full sequence is done.
+   */
+  applyPendingSettlement(): void;
+
+  /**
+   * Fires the back-wall flash for ~300ms. Called by DiceZone when the throw
+   * animation ends and the dice "hit" the far wall of the table.
+   */
+  triggerWallFlash(): void;
+
+  /**
+   * Fires the point puck ring animation for ~750ms. Called by DiceZone at
+   * dice-landing time on POINT_SET or POINT_HIT results.
+   */
+  triggerPointRing(type: 'set' | 'hit'): void;
 
   /**
    * Hire a crew member at the Seven-Proof Pub, or skip (pass null).
@@ -292,9 +373,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   bankroll:            0,
   point:               null,
   hype:                1.0,
+  consecutivePointHits: 0,
   shooters:            5,
   currentMarkerIndex:  0,
   bets:                DEFAULT_BETS,
+  committedBets:       DEFAULT_BETS,
   activeChip:          500,  // $5 default
   crewSlots:           DEFAULT_CREW_SLOTS,
   lastDice:       null,
@@ -302,7 +385,16 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   lastDelta:      null,
   lastBetDelta:   null,
   _betDeltaKey:   0,
-  isRolling:      false,
+  isRolling:          false,
+  pendingSettlement:  null,
+  wallFlash:          false,
+  _wallFlashKey:      0,
+  flashType:          null,
+  _flashKey:          0,
+  payoutPops:         null,
+  _popsKey:           0,
+  pointRingType:      null,
+  _pointRingKey:      0,
   cascadeQueue:   [],
   _seqCounter:    0,
   rollHistory:    [],
@@ -327,16 +419,30 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // inherits stale dice, result labels, or delta animations from the
       // previous run. initialState may also set these, but we zero them
       // first so any missing key in initialState doesn't leave stale data.
-      lastDice:       null,
-      lastRollResult: null,
-      lastDelta:      null,
-      lastBetDelta:   null,
-      isRolling:      false,
+      lastDice:          null,
+      lastRollResult:    null,
+      lastDelta:         null,
+      lastBetDelta:      null,
+      isRolling:         false,
+      pendingSettlement: null,
+      wallFlash:         false,
+      _wallFlashKey:     0,
+      flashType:         null,
+      _flashKey:         0,
+      payoutPops:        null,
+      _popsKey:          0,
+      pointRingType:     null,
+      _pointRingKey:     0,
       // Reset bets to zero so a new run never inherits a live bet from the
       // previous run. initialState.bets (present when reloading an existing
       // run via /runs/:id) will override this via the spread below.
       bets:           DEFAULT_BETS,
       ...initialState,
+      // Always sync committedBets to the server's confirmed bet state so
+      // that right-click undo has the correct floor when reconnecting.
+      // initialState may spread its own committedBets, but we always override
+      // to ensure the floor matches the server's last-settled bets.
+      committedBets:  initialState.bets ?? DEFAULT_BETS,
     });
 
     // ── Socket event handlers ─────────────────────────────────────────────
@@ -383,26 +489,24 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
     // ── turn:settled ──────────────────────────────────────────────────────
     //
-    // Arrives after ALL cascade events have been emitted. We update the
-    // persistent run state here. The animation queue may still have events
-    // in it — the UI continues draining it while showing the updated bankroll.
+    // Arrives after ALL cascade events have been emitted. We split the
+    // payload into two parts:
+    //   • Immediate  — lastDice / lastRollResult: the animation uses these
+    //                  to know when to advance from tumbling → landing.
+    //   • Deferred   — everything else (bankroll, bets, hype, phase, …):
+    //                  stored in pendingSettlement and applied by
+    //                  applyPendingSettlement() after the dice animation
+    //                  completes and the result popup begins to fade.
+    //                  This prevents the "spoiler" where chips clear, the
+    //                  bankroll changes, and the phase flips before the
+    //                  player has seen the dice result.
     socket.on('turn:settled', (payload: TurnSettledPayload) => {
       set({
-        bankroll:           payload.newBankroll,
-        bets:               payload.newBets,
-        shooters:           payload.newShooters,
-        hype:               payload.newHype,
-        phase:              payload.newPhase,
-        point:              payload.newPoint,
-        status:             payload.runStatus,
-        currentMarkerIndex: payload.newMarkerIndex,
-        lastDice:           payload.dice,
-        lastRollResult:     payload.rollResult,
-        lastDelta:          payload.bankrollDelta,
-        // Roll has resolved — clear the bet-placement delta so the
-        // placement animation doesn't re-fire on any future re-render.
-        lastBetDelta:       null,
-        isRolling:          false,
+        lastDice:          payload.dice,
+        lastRollResult:    payload.rollResult,
+        pendingSettlement: payload,
+        // isRolling stays true — cleared in applyPendingSettlement() so
+        // the Roll button stays disabled until the full reveal is done.
       });
     });
 
@@ -437,9 +541,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bankroll:            0,
       point:               null,
       hype:                1.0,
+      consecutivePointHits: 0,
       shooters:            5,
       currentMarkerIndex:  0,
       bets:                DEFAULT_BETS,
+      committedBets:       DEFAULT_BETS,
       crewSlots:           DEFAULT_CREW_SLOTS,
       lastDice:            null,
       lastRollResult:      null,
@@ -447,6 +553,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastBetDelta:        null,
       _betDeltaKey:        0,
       isRolling:           false,
+      pendingSettlement:   null,
+      flashType:           null,
+      _flashKey:           0,
+      payoutPops:          null,
+      _popsKey:            0,
       cascadeQueue:        [],
       rollHistory:         [],
       socketStatus:        'disconnected',
@@ -514,10 +625,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   removeBet(field) {
     set((state) => {
       const current = getBetField(state.bets, field);
-      if (current === 0) return state;
+      const floor   = getBetField(state.committedBets, field);
+      const pending = current - floor;
+      if (pending <= 0) return state; // nothing to undo above the committed floor
       return {
-        bankroll: state.bankroll + current,
-        bets: withBetField(state.bets, field, 0),
+        bankroll: state.bankroll + pending,
+        bets:     withBetField(state.bets, field, floor),
       };
     });
   },
@@ -530,6 +643,64 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set((state) => ({
       cascadeQueue: state.cascadeQueue.slice(1),
     }));
+  },
+
+  applyPendingSettlement() {
+    const { pendingSettlement: p, _flashKey, _popsKey } = get();
+    if (!p) return;
+
+    const flashType: 'win' | 'lose' | null =
+      p.rollResult === 'NATURAL'   || p.rollResult === 'POINT_HIT'  ? 'win'  :
+      p.rollResult === 'SEVEN_OUT' || p.rollResult === 'CRAPS_OUT'  ? 'lose' :
+      null;
+
+    // Derive which hardway zone gets the pop from the dice.
+    // Hardways are paired dice totalling 4/6/8/10. Only one can resolve per roll.
+    const [d1, d2] = p.dice;
+    const hardwayField: BetField | null =
+      p.payoutBreakdown.hardways > 0 && d1 === d2
+        ? (`hard${d1 + d2}` as BetField)
+        : null;
+
+    const hasPops =
+      p.payoutBreakdown.passLine > 0 ||
+      p.payoutBreakdown.odds     > 0 ||
+      p.payoutBreakdown.hardways > 0;
+
+    const payoutPops = hasPops
+      ? { ...p.payoutBreakdown, hardwayField }
+      : null;
+
+    set({
+      bankroll:             p.newBankroll,
+      bets:                 p.newBets,
+      committedBets:        p.newBets,
+      shooters:             p.newShooters,
+      hype:                 p.newHype,
+      consecutivePointHits: p.newConsecutivePointHits,
+      phase:                p.newPhase,
+      point:                p.newPoint,
+      status:               p.runStatus,
+      currentMarkerIndex:   p.newMarkerIndex,
+      lastDelta:          p.bankrollDelta,
+      lastBetDelta:       null,
+      isRolling:          false,
+      pendingSettlement:  null,
+      flashType,
+      _flashKey:          flashType !== null ? _flashKey + 1 : _flashKey,
+      payoutPops,
+      _popsKey:           hasPops ? _popsKey + 1 : _popsKey,
+    });
+  },
+
+  triggerWallFlash() {
+    set((s) => ({ wallFlash: true, _wallFlashKey: s._wallFlashKey + 1 }));
+    setTimeout(() => set({ wallFlash: false }), 300);
+  },
+
+  triggerPointRing(type) {
+    set((s) => ({ pointRingType: type, _pointRingKey: s._pointRingKey + 1 }));
+    setTimeout(() => set({ pointRingType: null }), 750);
   },
 
   async rollDice() {
@@ -552,19 +723,17 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         throw new Error(body.error ?? `Roll failed: ${res.status}`);
       }
 
-      // Sync bet state and QA receipt immediately from the HTTP response.
-      // The server is the source of truth for which chips are still on the
-      // table — applying this before turn:settled eliminates the window where
-      // cleared bets (e.g., a soft-loss hardway) still show as live chips.
+      // Log the QA receipt immediately; everything else (bets, bankroll, …)
+      // is deferred via pendingSettlement and applied after the animation.
       const data = await res.json() as {
         roll: { receipt: RollReceipt; resolvedBets: Bets };
       };
-      const { receipt, resolvedBets } = data.roll;
+      const { receipt } = data.roll;
       set((state) => ({
-        ...(resolvedBets && { bets: resolvedBets }),
         ...(receipt && { rollHistory: [receipt, ...state.rollHistory].slice(0, 50) }),
       }));
-      // On success: 'turn:settled' WS event clears isRolling (and re-confirms bets).
+      // On success: 'turn:settled' WS event buffers the result; DiceZone
+      // calls applyPendingSettlement() after the animation reveal.
     } catch (err) {
       console.error('[rollDice] engine error:', err);
       set({ isRolling: false });

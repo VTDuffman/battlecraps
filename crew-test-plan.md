@@ -10,28 +10,30 @@
 
 Before testing begins, the following discrepancies were found between in-game descriptions and actual source code. Each should be treated as a defect candidate until confirmed intentional.
 
-| Crew | Description | Actual Code Implementation |
-|------|-------------|---------------------------|
-| "Hype-Train" Holly | "+0.3× Hype on every **Point Hit**" | ~~Was triggering on NATURAL — code bug, now fixed.~~ Corrected to trigger on POINT_HIT, additive +0.3. Description was accurate; implementation was wrong. |
-| Big Spender | "+$50 flat to Hardway wins" | Code adds **10,000¢ = $100**, not $50 |
-| Drunk Uncle | "Random +0.1 to +0.5× Hype per roll **(or -0.1×)**" | Code only produces **positive** bonuses (+0.10 to +0.50). Has a **2-roll cooldown** (fires every 3rd roll), description implies every roll |
-| The Mechanic | "Set one die to 6" | Sets the **lower-valued** die to 6. Can **accidentally cause a Seven Out** (e.g., [1,4] → [6,4]=10, but [1,x] where x+6=7 → Seven Out). No guard for this. |
-| Nervous Intern | "+0.2× Hype on Natural 7/11" | Matches description. Fires on NATURAL only. **Additive.** |
-| Holly (again) | n/a | Holly's cooldown description in pub says it's a HYPE crew — but its actual trigger (NATURAL) overlaps with Nervous Intern's trigger |
+| Crew | Description | Actual Code Implementation | Status |
+|------|-------------|---------------------------|--------|
+| "Hype-Train" Holly | "+0.3× Hype on every **Point Hit**" | Previously triggered on NATURAL (×1.2/×1.5). Fixed — now correctly triggers on POINT_HIT, additive +0.3. Description matches implementation. | ✅ Resolved |
+| Big Spender | "+$100 flat to Hardway wins" | Code adds **10,000¢ = $100**. Both `seed.ts` and `PubScreen.tsx` correctly say $100. No mismatch. | ✅ Matches implementation |
+| Drunk Uncle | "33% chance to add +0.5× Hype — or subtract 0.1× Hype" | Confirmed correct. d1 ≤ 2 (33%) triggers Uncle each roll; odd d2 → +0.5 hype, even d2 → −0.1 hype. **No cooldown** (`cooldownType: 'none'`). Fires every roll subject to the 33% probability. | ✅ Matches implementation |
+| The Mechanic | "Set one die to 6" | Sets the **lower-valued** die to 6. Can cause a Seven Out if the other die is 1 (e.g., [1,1] → [6,1] = 7). This is a known risk, not a bug. | ✅ Matches implementation |
+| Nervous Intern | "+0.2× Hype on Natural 7/11" | Matches description. Fires on NATURAL only. Additive. | ✅ Matches implementation |
 
 ---
 
 ## Test Setup Reference
 
-All tests use the modified dev bootstrap endpoint:
+All tests use the dev bootstrap endpoint with direct crew seeding:
 ```
 POST /api/v1/dev/bootstrap
-{ "startingBankroll": <$>, "startingShooters": <n> }
+{
+  "startingBankroll": <dollars>,
+  "startingShooters": <n>,
+  "startingCrew": [{ "crewId": <id>, "slot": 0 }],
+  "startingHype": <float>
+}
 ```
 
-Crew is recruited via the Pub screen (by bootstrapping to $395, playing to $400 to trigger the Pub, then hiring the target crew member). Alternatively, crew can be seeded directly via the recruit API endpoint once in TRANSITION state.
-
-To reach TRANSITION state quickly: bootstrap at $395, place $5 Pass Line, roll until Natural (net $400+).
+Crew is seeded directly via `startingCrew` — no need to play through the Pub flow. `startingHype` sets the initial Hype multiplier (default 1.0).
 
 To observe cascade events: inspect the API roll response's `roll.cascadeEvents` array AND the `roll.rollResult` and `run.hype` values. Also observe UI for portrait flash animation and bark text.
 
@@ -50,7 +52,7 @@ To observe cascade events: inspect the API roll response's `roll.cascadeEvents` 
 **HP-LEFTY-01: Seven Out is re-rolled and shooter survives**
 - Setup: Recruit Lefty. Set a point. Roll until Seven Out occurs.
 - Expected: Lefty fires (appears in `cascadeEvents`). Dice change to re-rolled values. If re-roll is not a 7, shooter survives, Hype does NOT reset, game continues in POINT_ACTIVE or resolves per new roll result.
-- Verify: `cascadeEvents[0].crewName === "Lefty McGuffin"`, `run.shooters` unchanged, `run.hype` not reset to 1.0 (assuming Lefty blocked the seven out).
+- Verify: `cascadeEvents[0].crewId === 1` (note: `crewName` is `'"Lefty" McGuffin'` with embedded quotes — use `crewId` for reliable matching), `run.shooters` unchanged, `run.hype` not reset to 1.0 (assuming Lefty blocked the seven out).
 
 **HP-LEFTY-02: Lefty fires and re-roll is a winning result (Point Hit)**
 - Setup: Recruit Lefty. Set a specific point (e.g., 6). Artificially trigger a Seven Out when point is 6. Lefty re-rolls.
@@ -93,10 +95,8 @@ To observe cascade events: inspect the API roll response's `roll.cascadeEvents` 
 ---
 
 ### Crew 2 — The Physics Professor ($75)
-**Stated Ability:** Modify pair values by ±1 (4-roll cooldown).
-**Actual Implementation:** Triggers only when `dice[0] === dice[1]` (paired dice). Nudges both dice by ±1 toward the active point. Cooldown: `per_roll`, `newCooldown: 4`.
-
-**Note on trigger:** The description says "4-roll cooldown" and the code confirms this. However, the trigger is pairs only, not every roll.
+**Stated Ability:** Modify pair values by ±1.
+**Actual Implementation:** Triggers only when `dice[0] === dice[1]` (paired dice). Nudges both dice by ±1 toward the active point. Cooldown: `none` — fires on every paired roll with no restriction.
 
 #### Happy Path
 
@@ -105,10 +105,10 @@ To observe cascade events: inspect the API roll response's `roll.cascadeEvents` 
 - Expected: Professor fires. Since 6+2=8 (within 1 step), dice nudge to [4,4]=8. Roll result changes to POINT_HIT if point is 8 (hard eight!).
 - Verify: `cascadeEvents[0].crewName` contains Prof. `roll.dice` change from [3,3] to [4,4]. `roll.rollResult === 'POINT_HIT'`.
 
-**HP-PROF-02: Cooldown activates and counts down**
-- Setup: Recruit Physics Prof. Roll a pair to trigger it.
-- Expected: Prof fires, cooldown becomes 4. For next 4 rolls, Prof does NOT fire (even if pairs come up). After 4 rolls, Prof fires again.
-- Verify: `run.crewSlots[profSlot].cooldownState` decrements: 4→3→2→1→0. Prof not in `cascadeEvents` during cooldown.
+**HP-PROF-02: Prof fires on every paired roll (no cooldown)**
+- Setup: Recruit Physics Prof. Roll several pairs across multiple rolls.
+- Expected: Prof fires every time a pair comes up — no cooldown between triggers. `cooldownState` stays 0.
+- Verify: `run.crewSlots[profSlot].cooldownState === 0` after every trigger. Prof in `cascadeEvents` on each paired roll.
 
 **HP-PROF-03: Non-pair roll — Professor does not fire**
 - Setup: Recruit Physics Prof (off cooldown). Roll non-pair dice (e.g., [3,4]=7).
@@ -137,10 +137,10 @@ To observe cascade events: inspect the API roll response's `roll.cascadeEvents` 
 - Consider: Can nudge logic ever produce [x,x] where sum = 7? Pairs always produce even numbers (2,4,6,8,10,12), and 7 is odd — so pairs can never produce a natural or seven-out. This is actually a key insight: **Prof can never directly cause a Seven Out** on the re-classified result.
 - Verify: This assumption — pairs sum to even numbers only, so SEVEN_OUT (sum=7) is impossible after Prof fires.
 
-**EC-PROF-05: Prof fires during cooldown — should not fire**
-- Setup: Recruit Prof. Fire it (pair rolled). Then immediately roll another pair on next turn.
-- Expected: Prof is on cooldown (state=4). Does NOT fire. Original pair stands.
-- Verify: `cascadeEvents` does not contain Prof. Dice unchanged.
+**EC-PROF-05: Prof fires on consecutive pairs**
+- Setup: Recruit Prof. Roll two pairs in back-to-back rolls.
+- Expected: Prof fires on both rolls (no cooldown). Dice modified on each.
+- Verify: Prof in `cascadeEvents` on both rolls. `cooldownState === 0` throughout.
 
 ---
 
@@ -332,17 +332,15 @@ To observe cascade events: inspect the API roll response's `roll.cascadeEvents` 
 ---
 
 ### Crew 7 — Big Spender ($100)
-**Stated Ability:** "+$50 flat to Hardway wins."
-**Actual Implementation:** Triggers when `baseHardwaysPayout > 0`. Adds **10,000 cents ($100)** — NOT $50 as described — to `additives`. This bonus IS amplified by Hype and multipliers in `settleTurn()`.
-
-**Defect candidate:** UI/description says +$50, code pays +$100.
+**Stated Ability:** "+$100 flat to Hardway wins."
+**Actual Implementation:** Triggers when `baseHardwaysPayout > 0`. Adds **10,000 cents ($100)** to `additives`. This bonus IS amplified by Hype and multipliers in `settleTurn()`.
 
 #### Happy Path
 
-**HP-BIG-01: Hard 8 hit — flat bonus added to payout**
+**HP-BIG-01: Hard 8 hit — flat $100 bonus added to payout**
 - Setup: Recruit Big Spender. Place Hard 8 bet ($10). Roll [4,4]=8 (Hard 8).
-- Expected: Hard 8 pays 9:1 = $90 on $10 bet. Big Spender adds $100 (per code) or $50 (per description). With Hype 1.0× and no multipliers: total win = $90 + $100 = $190 (code) or $90 + $50 = $140 (description).
-- Verify: Big Spender in `cascadeEvents`. Check exact payout in Roll Log vs. both expected values to identify which is implemented.
+- Expected: Hard 8 pays 9:1 = $90 on $10 bet. Big Spender adds $100. With Hype 1.0× and no multipliers: total win = $90 + $100 = $190.
+- Verify: Big Spender in `cascadeEvents`. Payout delta = $190.
 
 **HP-BIG-02: Big Spender fires on any hardway hit (Hard 4, 6, 8, 10)**
 - Setup: Recruit Big Spender. Test each hardway: Hard 4 ([2,2]=4), Hard 6 ([3,3]=6), Hard 10 ([5,5]=10).
@@ -530,49 +528,42 @@ To observe cascade events: inspect the API roll response's `roll.cascadeEvents` 
 ---
 
 ### Crew 12 — The Drunk Uncle ($100)
-**Stated Ability:** "Random +0.1 to +0.5× Hype per roll (or -0.1×)."
-**Actual Implementation:** Fires every roll when off cooldown. Rolls phantom dice, maps result to bonus: range is +0.10 to +0.50 (always positive — no -0.1× in code). Has a 2-roll cooldown (fires every 3rd roll).
-
-**Defect candidates:** (1) No negative Hype modifier despite description. (2) Not every roll (2-roll cooldown).
+**Stated Ability:** "Has a 33% chance to add +0.5× Hype — or subtract 0.1× Hype."
+**Actual Implementation:** No cooldown (`cooldownType: 'none'`). On every roll, rolls phantom dice d1 and d2. Activates when `d1 ≤ 2` (~33% chance). If active: odd d2 → Hype **+0.5**; even d2 → Hype **−0.1**. Probability split when active is ~50/50 between the two outcomes. Description matches implementation.
 
 #### Happy Path
 
-**HP-UNCLE-01: Hype increases on first active roll**
+**HP-UNCLE-01: Uncle activates — Hype increases by +0.5**
 - Setup: Recruit Drunk Uncle. Roll any outcome.
-- Expected: Uncle fires. Hype increases by some amount between 0.10 and 0.50. No way to predict exact value (random). Cooldown becomes 2.
-- Verify: Uncle in `cascadeEvents`. `run.hype > 1.0`. Cooldown state = 2.
+- Expected: Uncle fires when d1 ≤ 2 and d2 is odd. Hype increases by 0.5. Uncle may or may not fire on any given roll (~33% chance overall, ~16.7% for the +0.5 outcome specifically).
+- Verify: When Uncle in `cascadeEvents` with a positive delta: `run.hype` increases by 0.5.
 
-**HP-UNCLE-02: Cooldown — Uncle does NOT fire for 2 rolls**
-- Setup: Continue from HP-UNCLE-01. Roll 2 more times.
-- Expected: Uncle NOT in `cascadeEvents` for rolls 2 and 3. Cooldown: 2→1→0.
-- Verify: Uncle absent from cascadeEvents during cooldown.
+**HP-UNCLE-02: Uncle activates — Hype decreases by -0.1**
+- Setup: Recruit Drunk Uncle. Roll many times until Uncle fires with even d2.
+- Expected: Hype decreases by 0.1. This is expected behaviour, not a defect.
+- Verify: When Uncle in `cascadeEvents` with a negative delta: `run.hype` decreases by 0.1.
 
-**HP-UNCLE-03: Uncle fires again after cooldown expires**
-- Setup: Continue from HP-UNCLE-02. Roll a 4th time.
-- Expected: Uncle fires again. Hype increases further.
-- Verify: Uncle in `cascadeEvents`. Hype increases again.
+**HP-UNCLE-03: Uncle does NOT fire every roll**
+- Setup: Recruit Drunk Uncle. Roll 10 times.
+- Expected: Uncle fires on roughly 1/3 of rolls (d1 ≤ 2). Many rolls will have no Uncle in `cascadeEvents`.
+- Verify: Not every roll has Uncle in `cascadeEvents`.
 
 **HP-UNCLE-04: Hype accumulates across multiple Uncle triggers**
-- Setup: Recruit Drunk Uncle. Roll 10 times (Uncle fires on rolls 1, 4, 7, 10).
-- Expected: Hype grows with each Uncle trigger. Total Hype = 1.0 + (sum of 4 bonus values).
-- Verify: Hype is noticeably higher after 10 rolls than at start.
+- Setup: Recruit Drunk Uncle. Roll 20+ times.
+- Expected: Net Hype change depends on the mix of +0.5 and −0.1 outcomes. On average, Hype trends upward (expected value per activation = 0.5×0.5 − 0.1×0.5 = +0.2).
+- Verify: Hype fluctuates but generally trends upward over many rolls.
 
 #### Edge Cases
 
-**EC-UNCLE-01: Description says "-0.1×" possible — verify this never occurs**
-- Setup: Recruit Drunk Uncle. Roll 20+ times to sample multiple triggers.
-- Expected: Per code, all bonuses are positive (no negative subtraction in implementation). Hype should never decrease due to Uncle.
-- Verify: `run.hype` never decreases between Uncle triggers (ignoring Seven Out resets). Log finding as DEF candidate if negative Hype was intentional design.
-
-**EC-UNCLE-02: Hype after Seven Out — Uncle fires on same roll?**
+**EC-UNCLE-01: Hype after Seven Out — Uncle fires on same roll?**
 - Setup: Recruit Drunk Uncle (off cooldown). Roll Seven Out.
-- Expected: Uncle trigger is unconditional (every roll when off cooldown). Does Uncle fire BEFORE or AFTER Hype reset? The cascade runs before `computeNextState()`, so Uncle fires and boosts Hype, but then Seven Out processing resets Hype to 1.0.
-- Verify: Uncle fires (cascadeEvents), but `run.hype === 1.0` after (Seven Out reset wins). Uncle's boost is effectively canceled by Seven Out reset.
+- Expected: Uncle may fire during the cascade (if d1 ≤ 2). The cascade runs before `computeNextState()`, so any hype change from Uncle is applied but then immediately overwritten by the Seven Out reset to 1.0.
+- Verify: If Uncle in `cascadeEvents`, `run.hype === 1.0` after (Seven Out reset wins). Uncle's boost/penalty is canceled by the reset.
 
-**EC-UNCLE-03: Minimum and maximum possible bonus**
-- Setup: Roll many times and log all Uncle bonus amounts.
-- Expected: Minimum bonus = +0.10 ([1,1]=2 mapped to formula minimum). Maximum = +0.50 ([6,6]=12 mapped to formula maximum).
-- Verify: Observed range is [0.10, 0.50].
+**EC-UNCLE-02: Hype floor — Uncle cannot reduce Hype below 0**
+- Setup: Start with low Hype (1.0), roll until Uncle fires with −0.1 multiple times in a row.
+- Expected: Hype decreases correctly with each −0.1 hit. No floor observed in code — Hype can theoretically reach 0 or below if −0.1 fires repeatedly without recovery.
+- Verify: Hype decreases by 0.1 per negative trigger. Note if any floor behaviour is observed.
 
 ---
 
@@ -695,7 +686,7 @@ For each test:
 5. Cross-reference Roll Log entry in the UI.
 
 ### Defect Logging
-All defects discovered during crew testing should be appended to `playtest.md` following the DEF-001/DEF-002 format established in the smoke test.
+All defects discovered during crew testing should be appended to `crew-test-results.md` following the established DEF-NNN format.
 
 ---
 
@@ -714,8 +705,8 @@ All defects discovered during crew testing should be appended to `playtest.md` f
 | The Whale | 3 | 3 | 6 |
 | Nervous Intern | 4 | 2 | 6 |
 | Hype-Train Holly | 3 | 2 | 5 |
-| Drunk Uncle | 4 | 3 | 7 |
+| Drunk Uncle | 4 | 2 | 6 |
 | The Mimic | 2 | 1 | 3 |
 | The Old Pro | 2 | 2 | 4 |
 | Lucky Charm | 3 | 2 | 5 |
-| **TOTAL** | **43** | **47** | **90** |
+| **TOTAL** | **43** | **46** | **89** |

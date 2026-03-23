@@ -41,3 +41,36 @@ export function getMaxBet(currentMarkerIndex: number): number {
   const target = MARKER_TARGETS[currentMarkerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
   return Math.floor(target * 0.10);
 }
+
+// ---------------------------------------------------------------------------
+// Point Streak Hype — base-game escalating hype tick on consecutive point hits
+// ---------------------------------------------------------------------------
+
+/**
+ * Flat hype added on the FIRST point hit of any streak.
+ * Subsequent hits add STREAK_INCREMENT more per step, up to STREAK_CAP.
+ */
+export const STREAK_BASE_TICK  = 0.05;
+export const STREAK_INCREMENT  = 0.05;
+export const STREAK_CAP        = 3;   // tick caps at 4th+ hit: +0.20× per roll
+
+/**
+ * Returns the base-game hype bonus for a point hit given the current
+ * consecutive-point-hit streak count (BEFORE incrementing it).
+ *
+ * Formula: STREAK_BASE_TICK + STREAK_INCREMENT × min(streak, STREAK_CAP)
+ *
+ * Streak entering → tick awarded:
+ *   0 → +0.05   (1st hit)
+ *   1 → +0.10   (2nd consecutive)
+ *   2 → +0.15   (3rd consecutive)
+ *   3 → +0.20   (4th+ consecutive, capped)
+ *
+ * Applied BEFORE the crew cascade so Holly and other HYPE crew layer
+ * their bonuses on top of the already-excited crowd.
+ */
+export function getBaseHypeTick(consecutivePointHits: number): number {
+  return Math.round(
+    (STREAK_BASE_TICK + STREAK_INCREMENT * Math.min(consecutivePointHits, STREAK_CAP)) * 10_000,
+  ) / 10_000;
+}

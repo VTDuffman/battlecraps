@@ -213,9 +213,13 @@ export function resolveCascade(
       continue;
     }
 
-    // ── Lucky Charm solo: inject hype floor before her execute() ─────────
+    // ── Snapshot context BEFORE any modification for this slot ──────────
+    const prevCtx = ctx;
+
+    // ── Lucky Charm solo: inject hype floor ──────────────────────────────
     // Her own execute() is a no-op; the cascade applies the 2.0× floor here
     // so that the contextDelta picks it up and emits a proper WebSocket event.
+    // The snapshot must be taken BEFORE this mutation so the delta is non-empty.
     if (member.id === LUCKY_CHARM_ID && isLuckyCharmSolo) {
       ctx = { ...ctx, hype: Math.max(ctx.hype, 2.0) };
     }
@@ -229,7 +233,6 @@ export function resolveCascade(
     }
 
     // ── Fire the ability ──────────────────────────────────────────────────
-    const prevCtx = ctx;
     const result  = effectiveMember.execute(ctx, rollDice);
     ctx           = result.context;
 

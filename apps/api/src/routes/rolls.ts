@@ -426,6 +426,9 @@ async function rollHandler(
       // The store uses this to immediately sync the table — the server
       // is the single source of truth for what chips are on the felt.
       resolvedBets:  nextState.bets,
+      // Included here so the client can apply the full settlement from the
+      // HTTP response without depending on the WebSocket turn:settled event.
+      payoutBreakdown,
     },
   });
 }

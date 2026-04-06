@@ -20,7 +20,7 @@ const API_URL = import.meta.env['VITE_API_URL'] ?? 'http://localhost:3001';
  */
 export const socket = io(API_URL, {
   autoConnect:  false,
-  transports:   ['websocket', 'polling'],
+  transports:   ['polling', 'websocket'],
   reconnection: true,
   reconnectionDelay:    1_000,
   reconnectionAttempts: 10,

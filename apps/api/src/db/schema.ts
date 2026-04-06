@@ -201,6 +201,19 @@ export const runs = pgTable(
      */
     consecutivePointHits: smallint('consecutive_point_hits').notNull().default(0),
 
+    /**
+     * Point hits scored so far within the current boss fight segment.
+     * 0 when not in a boss fight, or at the start of one before any Point Hit.
+     *
+     * Increments ONLY on POINT_HIT (without clearing the marker) — all other
+     * roll outcomes (NATURAL, CRAPS_OUT, POINT_SET, SEVEN_OUT, NO_RESOLUTION)
+     * leave this counter unchanged. The min-bet therefore holds on Seven Out.
+     * Resets to 0 on any marker clear (TRANSITION) or GAME_OVER.
+     *
+     * Drives getBossMinBet() which enforces the RISING_MIN_BETS rule for Sarge.
+     */
+    bossPointHits: smallint('boss_roll_count').notNull().default(0),
+
     // ── Active bets — JSONB, values in cents ──────────────────────────────
 
     /**
@@ -331,6 +344,4 @@ export type NewRun = typeof runs.$inferInsert;
 /** Shape for inserting a new user. */
 export type NewUser = typeof users.$inferInsert;
 
-// We use a bare `sql` template tag for the partial index WHERE clause above.
-// Import it here to avoid a circular-import issue if schema is barrel-exported.
-import { sql } from 'drizzle-orm';
+

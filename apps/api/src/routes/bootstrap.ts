@@ -117,6 +117,9 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
       });
 
       if (user === undefined) {
+        // Use onConflictDoNothing to handle concurrent bootstrap requests
+        // gracefully — if another request already inserted the user, the
+        // INSERT silently no-ops and we fall through to a re-fetch below.
         const inserted = await db
           .insert(users)
           .values({
@@ -124,13 +127,22 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
             email:        DEV_USER_EMAIL,
             passwordHash: DEV_USER_PASSWORD,
           })
+          .onConflictDoNothing()
           .returning();
 
         user = inserted[0];
+
+        // If INSERT was a no-op (concurrent request won the race), re-fetch.
+        if (user === undefined) {
+          user = await db.query.users.findFirst({
+            where: eq(users.email, DEV_USER_EMAIL),
+          });
+        }
+
         if (user === undefined) {
           return reply.status(500).send({ error: 'Failed to create dev user.' });
         }
-        app.log.info(`[bootstrap] Created dev user ${user.id}`);
+        app.log.info(`[bootstrap] Found/created dev user ${user.id}`);
       }
 
       // ── 2. Build crew slots ───────────────────────────────────────────────

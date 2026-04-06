@@ -19,6 +19,8 @@
 
 import { create } from 'zustand';
 import { socket } from '../lib/socket.js';
+
+const API_BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? '';
 import type {
   Bets,
   RunStatus,
@@ -709,7 +711,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
     set({ isRolling: true });
     try {
-      const res = await fetch(`/api/v1/runs/${runId}/roll`, {
+      const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/roll`, {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -749,7 +751,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ? { crewId, slotIndex }
         : {};
 
-    const res = await fetch(`/api/v1/runs/${runId}/recruit`, {
+    const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/recruit`, {
       method:  'POST',
       headers: {
         'Content-Type': 'application/json',

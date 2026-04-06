@@ -503,12 +503,16 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     //                  bankroll changes, and the phase flips before the
     //                  player has seen the dice result.
     socket.on('turn:settled', (payload: TurnSettledPayload) => {
-      set({
-        lastDice:          payload.dice,
-        lastRollResult:    payload.rollResult,
-        pendingSettlement: payload,
-        // isRolling stays true — cleared in applyPendingSettlement() so
-        // the Roll button stays disabled until the full reveal is done.
+      // HTTP response already applied the settlement — skip to avoid overwriting.
+      // The WS event is kept as a fallback for cases where the HTTP response
+      // parsing fails or is otherwise skipped.
+      set((state) => {
+        if (state.pendingSettlement !== null) return {};
+        return {
+          lastDice:          payload.dice,
+          lastRollResult:    payload.rollResult,
+          pendingSettlement: payload,
+        };
       });
     });
 
@@ -725,17 +729,62 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         throw new Error(body.error ?? `Roll failed: ${res.status}`);
       }
 
-      // Log the QA receipt immediately; everything else (bets, bankroll, …)
-      // is deferred via pendingSettlement and applied after the animation.
+      // Parse the full HTTP response — it contains everything needed to apply
+      // the settlement without depending on the WebSocket turn:settled event.
       const data = await res.json() as {
-        roll: { receipt: RollReceipt; resolvedBets: Bets };
+        run: {
+          bankrollCents:        number;
+          shooters:             number;
+          hype:                 number;
+          phase:                GamePhase;
+          status:               RunStatus;
+          currentPoint:         number | null;
+          currentMarkerIndex:   number;
+          consecutivePointHits: number;
+          bets:                 Bets;
+        };
+        roll: {
+          dice:             [number, number];
+          diceTotal:        number;
+          rollResult:       RollResult;
+          bankrollDelta:    number;
+          receipt:          RollReceipt;
+          resolvedBets:     Bets;
+          payoutBreakdown:  { passLine: number; odds: number; hardways: number };
+        };
       };
-      const { receipt } = data.roll;
+
+      // Build the settlement payload from the HTTP response so the game
+      // always advances even if the WebSocket turn:settled event is missed.
+      const settlement: TurnSettledPayload = {
+        runId:                   runId,
+        dice:                    data.roll.dice,
+        diceTotal:               data.roll.diceTotal,
+        rollResult:              data.roll.rollResult,
+        bankrollDelta:           data.roll.bankrollDelta,
+        newBankroll:             data.run.bankrollCents,
+        newShooters:             data.run.shooters,
+        newHype:                 data.run.hype,
+        newPhase:                data.run.phase,
+        newPoint:                data.run.currentPoint,
+        runStatus:               data.run.status,
+        newMarkerIndex:          data.run.currentMarkerIndex,
+        newBets:                 data.roll.resolvedBets,
+        newConsecutivePointHits: data.run.consecutivePointHits,
+        payoutBreakdown:         data.roll.payoutBreakdown,
+      };
+
       set((state) => ({
-        ...(receipt && { rollHistory: [receipt, ...state.rollHistory].slice(0, 50) }),
+        lastDice:          settlement.dice,
+        lastRollResult:    settlement.rollResult,
+        pendingSettlement: settlement,
+        ...(data.roll.receipt && {
+          rollHistory: [data.roll.receipt, ...state.rollHistory].slice(0, 50),
+        }),
       }));
-      // On success: 'turn:settled' WS event buffers the result; DiceZone
-      // calls applyPendingSettlement() after the animation reveal.
+      // isRolling stays true — cleared in applyPendingSettlement() after the
+      // dice animation completes. If the WS turn:settled also arrives, the
+      // handler below skips it because pendingSettlement is already populated.
     } catch (err) {
       console.error('[rollDice] engine error:', err);
       set({ isRolling: false });

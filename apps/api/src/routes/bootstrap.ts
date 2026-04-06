@@ -106,10 +106,6 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
       },
     },
     async (req, reply): Promise<void> => {
-      if (process.env['NODE_ENV'] === 'production') {
-        return reply.status(403).send({ error: 'Dev bootstrap is disabled in production.' });
-      }
-
       const startingBankroll = req.body?.startingBankroll ?? 250;
       const startingShooters = req.body?.startingShooters ?? 5;
       const startingHype     = req.body?.startingHype     ?? 1.0;

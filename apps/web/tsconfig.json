@@ -11,6 +11,7 @@
     "moduleDetection": "force",
     "allowImportingTsExtensions": true,
     "noEmit": true,
+    "types": ["vite/client"],
     "paths": {
       "@battlecraps/shared": ["../../packages/shared/src/index.ts"]
     }

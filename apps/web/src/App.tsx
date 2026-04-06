@@ -95,6 +95,14 @@ const MarkerCelebration: React.FC<MarkerCelebrationProps> = ({ onEnterPub }) => 
 );
 
 // ---------------------------------------------------------------------------
+// API base URL
+// In production this must point to the Render API (set VITE_API_URL env var).
+// In dev the Vite proxy is not used here — VITE_API_URL should be http://localhost:3001.
+// ---------------------------------------------------------------------------
+
+const API_BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? '';
+
+// ---------------------------------------------------------------------------
 // localStorage keys
 // ---------------------------------------------------------------------------
 
@@ -162,7 +170,7 @@ export const App: React.FC = () => {
       // If we have both IDs cached, try to load the existing run first.
       // Falls through to bootstrap if the run no longer exists (e.g. DB wiped).
       if (userId && runId) {
-        const check = await fetch(`/api/v1/runs/${runId}`, {
+        const check = await fetch(`${API_BASE}/api/v1/runs/${runId}`, {
           headers: { 'x-user-id': userId },
         });
 
@@ -185,7 +193,7 @@ export const App: React.FC = () => {
       }
 
       // No cached run (or stale) — hit the bootstrap endpoint.
-      const res = await fetch('/api/v1/dev/bootstrap', {
+      const res = await fetch(`${API_BASE}/api/v1/dev/bootstrap`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    '{}',

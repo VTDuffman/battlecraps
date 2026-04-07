@@ -159,16 +159,32 @@ const CrewCard: React.FC<CrewCardProps> = ({ crew, isSelected, canAfford, onClic
         <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-2 h-2 bg-amber-400 rotate-45" />
       )}
 
-      {/* Portrait placeholder */}
+      {/* Portrait — layered: letter fallback underneath, sprite frame 1 on top.
+          background-size: 500% 100% maps the full 5-frame strip so that one
+          frame exactly fills the container; background-position: 0 0 = frame 1. */}
       <div
         className={[
-          'w-full aspect-square rounded border-2 flex items-center justify-center',
+          'relative w-full aspect-square rounded border-2 overflow-hidden',
           portrait,
         ].join(' ')}
       >
-        <span className="font-pixel text-[12px] opacity-60">
-          {crew.abilityCategory.charAt(0)}
-        </span>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="font-pixel text-[12px] opacity-60">
+            {crew.abilityCategory.charAt(0)}
+          </span>
+        </div>
+        {crew.visualId && (
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:    `url('/sprites/crew/${crew.visualId}.png')`,
+              backgroundSize:     '500% 100%',
+              backgroundPosition: '0 0',
+              backgroundRepeat:   'no-repeat',
+              imageRendering:     'pixelated',
+            }}
+          />
+        )}
       </div>
 
       {/* Category badge */}
@@ -260,8 +276,15 @@ export const PubScreen: React.FC = () => {
   const crewSlots       = useGameStore((s) => s.crewSlots);
   const recruitCrew     = useGameStore((s) => s.recruitCrew);
 
-  // Three random crew drawn once on mount and held stable
-  const [draft]           = useState<CrewMember[]>(() => pickRandom(ALL_CREW, 3));
+  // Three random crew drawn once on mount and held stable.
+  // Filter out crew already seated in any slot so repeats are never offered.
+  const [draft] = useState<CrewMember[]>(() => {
+    const existingIds = new Set(
+      crewSlots.filter(Boolean).map((s) => s!.crewId),
+    );
+    const available = ALL_CREW.filter((c) => !existingIds.has(c.id));
+    return pickRandom(available, Math.min(3, available.length));
+  });
   const [selectedCrew,  setSelectedCrew]  = useState<CrewMember | null>(null);
   const [selectedSlot,  setSelectedSlot]  = useState<number | null>(null);
   const [isLoading,     setIsLoading]     = useState(false);

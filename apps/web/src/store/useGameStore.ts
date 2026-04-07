@@ -29,7 +29,7 @@ import type {
   RollResult,
   RollReceipt,
 } from '@battlecraps/shared';
-import { validateOddsBet, getMaxBet } from '@battlecraps/shared';
+import { validateOddsBet, getMaxBet, getBossMinBet, isBossMarker } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // Bet field type — identifies a single wager within the Bets structure
@@ -111,6 +111,7 @@ interface TurnSettledPayload {
   newMarkerIndex:   number;
   newBets:                 Bets;
   newConsecutivePointHits: number;
+  newBossPointHits:        number;
   payoutBreakdown:         { passLine: number; odds: number; hardways: number };
 }
 
@@ -168,6 +169,13 @@ export interface GameState {
 
   /** Index into MARKER_TARGETS — how many markers have been cleared so far. */
   currentMarkerIndex: number;
+
+  /**
+   * Point hits scored so far in the current boss fight segment.
+   * 0 outside boss fights. Drives getBossMinBet() for the RISING_MIN_BETS rule.
+   * Synced from the server via turn:settled and recruit responses.
+   */
+  bossPointHits: number;
 
   // ── Crew ──────────────────────────────────────────────────────────────────
   crewSlots: StoredCrewSlots;
@@ -244,11 +252,29 @@ export interface GameState {
 
   // ── Cascade animation queue ───────────────────────────────────────────────
   /**
+   * Holding buffer for cascade events received BEFORE the dice result is
+   * revealed. 'cascade:trigger' WS events are pushed here immediately so we
+   * know which crew fired, but portrait animations must not start until the
+   * player has seen the dice outcome. applyPendingSettlement() flushes this
+   * into cascadeQueue at the reveal moment.
+   */
+  pendingCascadeQueue: QueuedCascadeEvent[];
+
+  /**
    * FIFO queue of cascade events waiting to be animated.
    * The head (index 0) is the currently-animating event.
    * An empty array means no animation is running.
+   * Only populated from pendingCascadeQueue during applyPendingSettlement().
    */
   cascadeQueue: QueuedCascadeEvent[];
+
+  /**
+   * True during the ~1.5 s win-animation window that follows a marker clear
+   * (TRANSITION result). Keeps TableBoard mounted so ChipRain, screen-flash,
+   * and payout pops all play to completion before the celebration screen
+   * appears. Cleared when the delayed status flip to 'TRANSITION' fires.
+   */
+  pendingTransition: boolean;
 
   /** Monotonically increasing counter used to generate `seq` values. */
   _seqCounter: number;
@@ -378,6 +404,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   consecutivePointHits: 0,
   shooters:            5,
   currentMarkerIndex:  0,
+  bossPointHits:       0,
   bets:                DEFAULT_BETS,
   committedBets:       DEFAULT_BETS,
   activeChip:          500,  // $5 default
@@ -397,7 +424,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   _popsKey:           0,
   pointRingType:      null,
   _pointRingKey:      0,
-  cascadeQueue:   [],
+  pendingCascadeQueue: [],
+  cascadeQueue:        [],
+  pendingTransition:   false,
   _seqCounter:    0,
   rollHistory:    [],
   socketStatus:   'disconnected',
@@ -415,8 +444,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({
       runId,
       userId,
-      socketStatus: 'connecting',
-      cascadeQueue: [],
+      socketStatus:        'connecting',
+      pendingCascadeQueue: [],
+      cascadeQueue:        [],
+      pendingTransition:   false,
       // Explicitly clear all last-roll display state so a new run never
       // inherits stale dice, result labels, or delta animations from the
       // previous run. initialState may also set these, but we zero them
@@ -483,9 +514,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       const counter = get()._seqCounter + 1;
       const queued: QueuedCascadeEvent = { ...event, seq: counter };
 
+      // Buffer into pendingCascadeQueue — NOT cascadeQueue.
+      // Portrait animations must not start until applyPendingSettlement()
+      // reveals the dice result. The flush happens there.
       set((state) => ({
-        cascadeQueue: [...state.cascadeQueue, queued],
-        _seqCounter:  counter,
+        pendingCascadeQueue: [...state.pendingCascadeQueue, queued],
+        _seqCounter:         counter,
       }));
     });
 
@@ -550,6 +584,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       consecutivePointHits: 0,
       shooters:            5,
       currentMarkerIndex:  0,
+      bossPointHits:       0,
       bets:                DEFAULT_BETS,
       committedBets:       DEFAULT_BETS,
       crewSlots:           DEFAULT_CREW_SLOTS,
@@ -564,7 +599,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _flashKey:           0,
       payoutPops:          null,
       _popsKey:            0,
+      pendingCascadeQueue: [],
       cascadeQueue:        [],
+      pendingTransition:   false,
       rollHistory:         [],
       socketStatus:        'disconnected',
     });
@@ -576,29 +613,21 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   placeBet(field, amount) {
     set((state) => {
-      if (state.bankroll < amount) return state; // insufficient funds — no-op
+      // ── Compute effective amount — clamped to remaining room under the cap ──
+      // Rather than rejecting a chip click that would exceed a cap, we top the
+      // bet out at the maximum. E.g. $25 chip on a $30 max with $25 already
+      // placed → places $5, not a no-op.
+      let effectiveAmount: number;
 
-      // ── Table max: 10 % of current marker target ─────────────────────────
-      // Applies to pass line and individual hardway bets (not odds, which
-      // have their own 3-4-5x cap relative to the pass line).
       if (field !== 'odds') {
-        const maxBet = getMaxBet(state.currentMarkerIndex);
+        // Table max: 10% of the current marker target (Pass Line & hardways).
+        const maxBet     = getMaxBet(state.currentMarkerIndex);
         const currentBet = getBetField(state.bets, field);
-        if (currentBet + amount > maxBet) {
-          console.warn(
-            `[placeBet] ${field} rejected: $${((currentBet + amount) / 100).toFixed(2)}` +
-            ` exceeds table max $${(maxBet / 100).toFixed(2)}.`,
-          );
-          return state;
-        }
-      }
-
-      // ── 3-4-5x Odds cap (front-door validation) ──────────────────────────
-      // Reject the entire chip placement if it would push the Odds bet past
-      // the allowed multiplier for the current point.  This mirrors the
-      // server-side validateOddsBet() check so the engine never sees an
-      // illegal bet, preventing the silent-crash / locked-UI bug.
-      if (field === 'odds') {
+        const room       = maxBet - currentBet;
+        if (room <= 0) return state; // already at table max — no-op
+        effectiveAmount  = Math.min(amount, room);
+      } else {
+        // Odds: capped by the 3-4-5x rule relative to pass line and point.
         const { point, bets } = state;
         if (point === null) {
           // No Odds allowed during the come-out phase.
@@ -607,22 +636,33 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         }
         const proposedTotal = bets.odds + amount;
         const cappedTotal   = validateOddsBet(bets.passLine, proposedTotal, point);
-        if (cappedTotal < proposedTotal) {
-          console.warn(
-            `[placeBet] Odds bet rejected: $${(proposedTotal / 100).toFixed(2)} exceeds` +
-            ` 3-4-5x limit for point ${point}` +
-            ` (max $${(cappedTotal / 100).toFixed(2)}).`,
+        const room          = cappedTotal - bets.odds;
+        if (room <= 0) return state; // already at odds cap — no-op
+        effectiveAmount     = Math.min(amount, room);
+      }
+
+      // ── Bankroll check uses the clamped amount ───────────────────────────
+      if (state.bankroll < effectiveAmount) return state;
+
+      // ── Boss: Rising Min-Bets soft guard ─────────────────────────────────
+      // Informational only — logs when the total would still fall below the
+      // server-enforced floor so the player knows to keep adding chips.
+      if (field === 'passLine' && isBossMarker(state.currentMarkerIndex)) {
+        const minBet   = getBossMinBet(state.currentMarkerIndex, state.bossPointHits);
+        const newTotal = getBetField(state.bets, 'passLine') + effectiveAmount;
+        if (minBet !== null && newTotal < minBet) {
+          console.info(
+            `[placeBet] Boss min-bet is $${(minBet / 100).toFixed(0)}. Current total after chip: $${(newTotal / 100).toFixed(0)}. Keep adding chips before rolling.`,
           );
-          return state; // REJECT — bankroll and bets unchanged
         }
       }
 
       return {
-        bankroll:     state.bankroll - amount,
-        bets:         withBetField(state.bets, field, getBetField(state.bets, field) + amount),
+        bankroll:     state.bankroll - effectiveAmount,
+        bets:         withBetField(state.bets, field, getBetField(state.bets, field) + effectiveAmount),
         // Drive an immediate chip-placement animation. Negative because money
         // is leaving the bankroll right now, not at roll time.
-        lastBetDelta: -amount,
+        lastBetDelta: -effectiveAmount,
         _betDeltaKey: state._betDeltaKey + 1,
       };
     });
@@ -652,7 +692,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   applyPendingSettlement() {
-    const { pendingSettlement: p, _flashKey, _popsKey } = get();
+    const {
+      pendingSettlement: p,
+      _flashKey,
+      _popsKey,
+      pendingCascadeQueue,
+      status: currentStatus,
+    } = get();
     if (!p) return;
 
     const flashType: 'win' | 'lose' | null =
@@ -677,6 +723,14 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       ? { ...p.payoutBreakdown, hardwayField }
       : null;
 
+    // When a marker is cleared the server sends runStatus: 'TRANSITION'.
+    // We hold that flip for ~1.5 s so TableBoard (ChipRain, screen-flash,
+    // payout pops, crew portrait animations) can play to completion before
+    // App.tsx swaps in the celebration screen.  The visible status stays at
+    // its current value; pendingTransition=true tells App.tsx to keep
+    // TableBoard mounted. A single setTimeout then commits the flip.
+    const isTransition = p.runStatus === 'TRANSITION';
+
     set({
       bankroll:             p.newBankroll,
       bets:                 p.newBets,
@@ -684,19 +738,34 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       shooters:             p.newShooters,
       hype:                 p.newHype,
       consecutivePointHits: p.newConsecutivePointHits,
+      bossPointHits:        p.newBossPointHits,
       phase:                p.newPhase,
       point:                p.newPoint,
-      status:               p.runStatus,
+      // Hold TRANSITION off screen until win animations complete.
+      status:               isTransition ? currentStatus : p.runStatus,
+      pendingTransition:    isTransition,
       currentMarkerIndex:   p.newMarkerIndex,
-      lastDelta:          p.bankrollDelta,
-      lastBetDelta:       null,
-      isRolling:          false,
-      pendingSettlement:  null,
+      lastDelta:            p.bankrollDelta,
+      lastBetDelta:         null,
+      isRolling:            false,
+      pendingSettlement:    null,
       flashType,
-      _flashKey:          flashType !== null ? _flashKey + 1 : _flashKey,
+      _flashKey:            flashType !== null ? _flashKey + 1 : _flashKey,
       payoutPops,
-      _popsKey:           hasPops ? _popsKey + 1 : _popsKey,
+      _popsKey:             hasPops ? _popsKey + 1 : _popsKey,
+      // ── Fix [15]: flush gated cascade events at the reveal moment ─────────
+      // cascade:trigger events were buffered in pendingCascadeQueue so that
+      // portrait animations never fire before the dice result is shown.
+      // Now that the result is revealed, move them into the live queue.
+      cascadeQueue:         pendingCascadeQueue,
+      pendingCascadeQueue:  [],
     });
+
+    if (isTransition) {
+      // ── Fix [16]: commit the TRANSITION status after a short win-animation
+      // window so ChipRain, screen-flash, and payout pops finish on screen.
+      setTimeout(() => set({ status: 'TRANSITION', pendingTransition: false }), 1500);
+    }
   },
 
   triggerWallFlash() {
@@ -815,23 +884,25 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }
 
     const data = (await res.json()) as {
-      bankroll:  number;
-      shooters:  number;
-      hype:      number;
-      phase:     GamePhase;
-      status:    RunStatus;
-      point:     number | null;
-      crewSlots: StoredCrewSlots;
+      bankroll:      number;
+      shooters:      number;
+      hype:          number;
+      phase:         GamePhase;
+      status:        RunStatus;
+      point:         number | null;
+      crewSlots:     StoredCrewSlots;
+      bossPointHits: number;
     };
 
     set({
-      bankroll:  data.bankroll,
-      shooters:  data.shooters,
-      hype:      data.hype,
-      phase:     data.phase,
-      status:    data.status,
-      point:     data.point,
-      crewSlots: data.crewSlots,
+      bankroll:      data.bankroll,
+      shooters:      data.shooters,
+      hype:          data.hype,
+      phase:         data.phase,
+      status:        data.status,
+      point:         data.point,
+      crewSlots:     data.crewSlots,
+      bossPointHits: data.bossPointHits,
       // Clear last-roll display so the table starts fresh
       lastDice:       null,
       lastRollResult: null,

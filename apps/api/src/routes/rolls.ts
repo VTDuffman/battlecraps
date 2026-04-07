@@ -30,6 +30,9 @@ import {
   buildRollReceipt,
   MARKER_TARGETS,
   getMaxBet,
+  getMinBet,
+  getBossMinBet,
+  isBossMarker,
   getBaseHypeTick,
   OLD_PRO_ID,
   LUCKY_CHARM_ID,
@@ -136,8 +139,9 @@ interface WsTurnSettledPayload {
   newPoint:         number | null;
   runStatus:        string;
   newMarkerIndex:   number;  // currentMarkerIndex after this roll (may have advanced)
-  newBets:                Bets;    // bets remaining on the table after this roll
+  newBets:                 Bets;    // bets remaining on the table after this roll
   newConsecutivePointHits: number; // streak counter — drives base hype tick + client UI
+  newBossPointHits:        number; // point hits in this boss segment (0 outside boss fights)
   /**
    * Per-zone win amounts in cents (post-multiplier, pre-additives).
    * Used by the client to render floating payout pops over each bet zone.
@@ -263,6 +267,26 @@ async function rollHandler(
     });
   }
 
+  // ── Regular minimum bet (scales with marker difficulty) ────────────────
+  // Enforced on come-out only — the player cannot change their passLine bet
+  // once the point is set, so there is nothing to enforce during POINT_ACTIVE.
+  const regularMinBet = getMinBet(run.currentMarkerIndex);
+  if (run.phase === 'COME_OUT' && incomingBets.passLine < regularMinBet) {
+    return reply.status(422).send({
+      error: `Minimum Pass Line bet is $${regularMinBet / 100}. Add more chips before rolling.`,
+    });
+  }
+
+  // ── Boss fight: Rising Min-Bets rule ───────────────────────────────────
+  // During a boss marker, the minimum Pass Line bet rises with each roll.
+  // The floor holds (does not reset) on a Seven Out — Sarge doesn't let up.
+  const bossMinBet = getBossMinBet(run.currentMarkerIndex, run.bossPointHits);
+  if (bossMinBet !== null && incomingBets.passLine < bossMinBet) {
+    return reply.status(422).send({
+      error: `Minimum bet is ${bossMinBet}¢ ($${(bossMinBet / 100).toFixed(0)}) — Sarge won't deal for less.`,
+    });
+  }
+
   // ── 5. Hydrate crew slots ─────────────────────────────────────────────────
   //
   // The database stores { crewId, cooldownState } pairs. We reconstruct full
@@ -316,8 +340,8 @@ async function rollHandler(
   const newBankroll = run.bankrollCents - betDelta + payout;
   const bankrollDelta = newBankroll - run.bankrollCents;
 
-  // Build the QA receipt now that we have the final delta.
-  const receipt = buildRollReceipt(finalContext, bankrollDelta);
+  // Build the QA receipt (net delta computed internally from TurnContext).
+  const receipt = buildRollReceipt(finalContext);
 
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const nextState = computeNextState(run, finalContext, newBankroll, incomingBets);
@@ -346,6 +370,7 @@ async function rollHandler(
       currentPoint:       nextState.currentPoint,
       hype:                 nextState.hype,
       consecutivePointHits: nextState.consecutivePointHits,
+      bossPointHits:        nextState.bossPointHits,
       bets:                 nextState.bets,
       crewSlots:          serialiseCrewSlots(
                             updatedCrewSlots,
@@ -408,6 +433,7 @@ async function rollHandler(
     newMarkerIndex:  persistedRun.currentMarkerIndex,
     newBets:                 nextState.bets,
     newConsecutivePointHits: nextState.consecutivePointHits,
+    newBossPointHits:        nextState.bossPointHits,
     payoutBreakdown,
   };
   io.to(runRoom).emit('turn:settled', settledPayload);
@@ -471,6 +497,7 @@ function computeNextState(
   bets:                 Bets;
   currentMarkerIndex:   number;
   consecutivePointHits: number;
+  bossPointHits:        number;
 } {
   const { rollResult, flags } = finalCtx;
   const currentMarkerIndex = run.currentMarkerIndex;
@@ -483,22 +510,37 @@ function computeNextState(
   switch (rollResult) {
     // ── Come-out wins / losses ──────────────────────────────────────────────
 
-    case 'NATURAL':
+    case 'NATURAL': {
+      // A Natural pays out immediately — the bankroll can cross a marker threshold
+      // on a come-out win just as easily as on a POINT_HIT. Check here too.
+      const markerTarget  = MARKER_TARGETS[currentMarkerIndex];
+      const hitMarker     = markerTarget !== undefined && newBankroll >= markerTarget;
+      const naturalStatus = hitMarker
+        ? (currentMarkerIndex >= MARKER_TARGETS.length - 1 ? 'GAME_OVER' : 'TRANSITION')
+        : isBelowMinBet(newBankroll, clearedBets, currentMarkerIndex)
+          ? 'GAME_OVER'
+          : 'IDLE_TABLE';
+
       return {
-        status:               'IDLE_TABLE',
+        status:               naturalStatus,
         phase:                'COME_OUT',
         bankrollCents:        newBankroll,
         shooters:             run.shooters,
         currentPoint:         null,
         hype:                 finalCtx.hype,  // Hype accumulates on a NATURAL
         bets:                 clearedBets,
-        currentMarkerIndex,
+        currentMarkerIndex:   hitMarker ? currentMarkerIndex + 1 : currentMarkerIndex,
         consecutivePointHits: run.consecutivePointHits, // streak unaffected by naturals
+        // Boss: reset on marker clear; hold on natural (only Point Hits escalate).
+        bossPointHits: hitMarker ? 0 : run.bossPointHits,
       };
+    }
 
     case 'CRAPS_OUT':
       return {
-        status:               'IDLE_TABLE',
+        status:               isBelowMinBet(newBankroll, clearedBets, currentMarkerIndex)
+                                ? 'GAME_OVER'
+                                : 'IDLE_TABLE',
         phase:                'COME_OUT',
         bankrollCents:        newBankroll,
         shooters:             run.shooters,
@@ -507,6 +549,8 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex,
         consecutivePointHits: run.consecutivePointHits, // streak unaffected by craps-out
+        // Boss: min-bet holds on craps-out (only Point Hits escalate the ante).
+        bossPointHits: run.bossPointHits,
       };
 
     // ── Point established ───────────────────────────────────────────────────
@@ -524,6 +568,8 @@ function computeNextState(
         bets:                 incomingBets,       // Bets are now locked/frozen
         currentMarkerIndex,
         consecutivePointHits: run.consecutivePointHits, // unchanged until the point resolves
+        // Boss: min-bet holds on point-set (only Point Hits escalate the ante).
+        bossPointHits: run.bossPointHits,
       };
 
     // ── Point hit — check for marker / game completion ─────────────────────
@@ -539,6 +585,8 @@ function computeNextState(
         nextStatus = currentMarkerIndex >= MARKER_TARGETS.length - 1
           ? 'GAME_OVER'
           : 'TRANSITION';  // → "Seven-Proof Pub" recruitment
+      } else if (isBelowMinBet(newBankroll, clearedBets, currentMarkerIndex)) {
+        nextStatus = 'GAME_OVER';
       } else {
         nextStatus = 'IDLE_TABLE';
       }
@@ -554,6 +602,8 @@ function computeNextState(
         currentMarkerIndex:   hitMarker ? currentMarkerIndex + 1 : currentMarkerIndex,
         // Streak resets on marker clear (new chapter); otherwise increments.
         consecutivePointHits: hitMarker ? 0 : run.consecutivePointHits + 1,
+        // Boss: reset on marker clear (boss defeated); increment on mid-fight Point Hit.
+        bossPointHits: hitMarker ? 0 : isBossMarker(currentMarkerIndex) ? run.bossPointHits + 1 : 0,
       };
     }
 
@@ -590,10 +640,10 @@ function computeNextState(
         } else {
           nextStatus = 'GAME_OVER';
         }
-      } else if (newBankroll <= 0) {
-        // Shooter lives remain, but the bankroll is empty — the player cannot
-        // place any more bets and is permanently stuck. Trigger GAME_OVER now
-        // rather than leaving them on a table they can never interact with.
+      } else if (newBankroll <= 0 || isBelowMinBet(newBankroll, clearedBets, currentMarkerIndex)) {
+        // Shooter lives remain, but the bankroll is empty or below the minimum
+        // bet — the player cannot place a valid bet and is permanently stuck.
+        // Trigger GAME_OVER rather than leaving them on a table they can't use.
         nextStatus = 'GAME_OVER';
       } else {
         nextStatus = 'IDLE_TABLE';
@@ -609,6 +659,9 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex:   nextMarkerIndex,
         consecutivePointHits: 0,  // Seven Out kills the streak
+        // Boss: min-bet HOLDS on Seven Out (run.bossPointHits unchanged).
+        // Reset only on TRANSITION or GAME_OVER (when nextMarkerIndex advanced).
+        bossPointHits: nextMarkerIndex !== currentMarkerIndex ? 0 : run.bossPointHits,
       };
     }
 
@@ -630,6 +683,8 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex,
         consecutivePointHits: run.consecutivePointHits, // no change on non-resolving roll
+        // Boss: min-bet holds on no-resolution rolls (only Point Hits escalate).
+        bossPointHits: run.bossPointHits,
       };
   }
 }
@@ -637,6 +692,22 @@ function computeNextState(
 // ---------------------------------------------------------------------------
 // Bet helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the player cannot afford to place another minimum bet
+ * and has no chips remaining on the table that could recover the situation.
+ *
+ * Both conditions must hold simultaneously:
+ *   - bankroll < getMinBet(markerIndex): can't meet the table floor next roll.
+ *   - sumBets(remainingBets) === 0: no active wagers left to potentially win back.
+ *
+ * This is the "soft broke" condition that triggers GAME_OVER independently of
+ * the shooter count — a player with shooters remaining but sub-minimum funds
+ * and a clean table has no path forward.
+ */
+function isBelowMinBet(bankroll: number, remainingBets: Bets, markerIndex: number): boolean {
+  return bankroll < getMinBet(markerIndex) && sumBets(remainingBets) === 0;
+}
 
 /** Total wager for a given Bets object, in cents. */
 function sumBets(bets: Bets): number {

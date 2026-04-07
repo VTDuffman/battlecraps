@@ -23,6 +23,7 @@ interface CrewPortraitProps {
   slotIndex:      number;
   crewId:         number | null;
   crewName:       string | null;
+  visualId:       string | null;
   cooldownState:  number;
   isTriggering:   boolean;
   barkSeq:        number | null;   // changes → re-mounts bark element
@@ -91,6 +92,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   slotIndex,
   crewId,
   crewName,
+  visualId,
   cooldownState,
   isTriggering,
   barkSeq,
@@ -127,10 +129,13 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
     const el = portraitRef.current;
     if (!el || !isTriggering) return;
 
-    const handler = () => {
+    const handler = (e: AnimationEvent) => {
+      // Guard: only respond to the portrait-flash animation on this element.
+      // The sprite child also fires animationend which bubbles — ignore those.
+      if (e.target !== el) return;
       onAnimationEnd();
     };
-    el.addEventListener('animationend', handler, { once: true });
+    el.addEventListener('animationend', handler);
     return () => el.removeEventListener('animationend', handler);
   }, [isTriggering, onAnimationEnd]);
 
@@ -210,11 +215,24 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
             <div className="w-10 h-10 rounded border border-dashed border-felt-light/30" />
           </div>
         ) : (
-          /* Crew sprite placeholder — replace with actual sprite sheet in Phase 5 */
-          <div className="w-full h-full flex items-center justify-center bg-felt-dark">
-            <span className="font-pixel text-[8px] text-gold/80 text-center leading-tight px-1">
-              {crewName?.split(' ').pop() ?? '?'}
-            </span>
+          /* Crew sprite — layered: text fallback underneath, sprite on top.
+             If the image fails to load the background is transparent and the
+             text fallback shows through. No error-state needed. */
+          <div className="relative w-full h-full bg-felt-dark">
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="font-pixel text-[8px] text-gold/80 text-center leading-tight px-1">
+                {crewName?.split(' ').pop() ?? '?'}
+              </span>
+            </div>
+            {visualId && (
+              <div
+                className={[
+                  'absolute inset-0 portrait-sprite',
+                  isTriggering ? 'portrait-sprite--trigger' : '',
+                ].join(' ')}
+                style={{ backgroundImage: `url('/sprites/crew/${visualId}.png')` }}
+              />
+            )}
           </div>
         )}
 

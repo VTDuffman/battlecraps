@@ -21,7 +21,7 @@
 // =============================================================================
 
 import React, { useCallback, useState } from 'react';
-import { MARKER_TARGETS, getMaxBet } from '@battlecraps/shared';
+import { MARKER_TARGETS, getMaxBet, isBossMarker } from '@battlecraps/shared';
 import {
   useGameStore,
   selectActiveSlot,
@@ -30,6 +30,7 @@ import {
   type GameState,
 } from '../store/useGameStore.js';
 import { BettingGrid, ChipSelector } from './BettingGrid.js';
+import { BossRoomHeader }  from './BossRoomHeader.js';
 import { DiceZone }      from './DiceZone.js';
 import { CrewPortrait }  from './CrewPortrait.js';
 import { RollLog }       from './RollLog.js';
@@ -87,6 +88,9 @@ export const TableBoard: React.FC = () => {
       {/* ── Chip Rain particle system ─────────────────────────────────────── */}
       <ChipRain onTorrent={handleTorrent} />
 
+      {/* ── Boss Room Header — self-hides when not in a boss marker ──────── */}
+      <BossRoomHeader />
+
       {/* ── Connection status badge ───────────────────────────────────────── */}
       <StatusBadge status={socketStatus} />
 
@@ -109,12 +113,52 @@ export const TableBoard: React.FC = () => {
           border-b-2 border-gold/20
         "
       >
-        {/* Decorative title */}
+        {/* Vegas-style logo */}
         <div className="text-center mb-3">
-          <h1 className="font-pixel text-[8px] text-gold tracking-widest">
-            BATTLECRAPS
+          {/* Decorative star row */}
+          <div className="flex items-center justify-center gap-2 mb-1.5">
+            <div className="h-px w-10 bg-gradient-to-r from-transparent to-gold/40" />
+            <span className="font-pixel text-[6px] text-gold/50">✦</span>
+            <span className="font-pixel text-[8px] text-gold/70">★</span>
+            <span className="font-pixel text-[6px] text-gold/50">✦</span>
+            <div className="h-px w-10 bg-gradient-to-l from-transparent to-gold/40" />
+          </div>
+
+          {/* "BATTLE" — small muted prefix */}
+          <div
+            className="font-pixel tracking-[0.35em] leading-none"
+            style={{
+              fontSize: '11px',
+              color: '#b8861a',
+              textShadow: '0 0 8px rgba(196,125,10,0.4)',
+            }}
+          >
+            BATTLE
+          </div>
+
+          {/* "CRAPS" — large neon headline */}
+          <h1
+            className="font-pixel tracking-[0.2em] leading-none"
+            style={{
+              fontSize: '34px',
+              background: 'linear-gradient(180deg, #ffffff 0%, #f5c842 40%, #c47d0a 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              filter:
+                'drop-shadow(0 0 6px rgba(245,200,66,0.8)) drop-shadow(0 0 18px rgba(196,125,10,0.6))',
+            }}
+          >
+            CRAPS
           </h1>
-          <div className="mt-1 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+
+          {/* Tagline */}
+          <div className="font-pixel text-[5px] text-gold/40 tracking-[0.45em] mt-1">
+            · CASINO GAUNTLET ·
+          </div>
+
+          {/* Divider hr */}
+          <div className="mt-2 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
         </div>
 
         <GameStatus />
@@ -179,6 +223,7 @@ export const TableBoard: React.FC = () => {
               slotIndex={i}
               crewId={slot?.crewId ?? null}
               crewName={crewNameFromId(slot?.crewId ?? null)}
+              visualId={crewVisualIdFromId(slot?.crewId ?? null)}
               cooldownState={slot?.cooldownState ?? 0}
               isTriggering={activeSlot === i}
               barkSeq={activeSlot === i ? (activeBark?.seq ?? null) : null}
@@ -343,7 +388,7 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number }> = ({
   markerIndex,
 }) => {
   const target   = MARKER_TARGETS[markerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
-  const isBoss   = markerIndex === MARKER_TARGETS.length - 1;
+  const isBoss   = isBossMarker(markerIndex);
   const progress = Math.min(bankroll / target, 1);
   const label    = isBoss ? '★ BOSS' : `MARKER ${markerIndex + 1}`;
   const pct      = Math.round(progress * 100);
@@ -464,7 +509,30 @@ const CREW_NAMES: Record<number, string> = {
   15: 'Lucky Charm',
 };
 
+const CREW_VISUAL_IDS: Record<number, string> = {
+  1:  'lefty',
+  2:  'physics_prof',
+  3:  'mechanic',
+  4:  'mathlete',
+  5:  'floor_walker',
+  6:  'regular',
+  7:  'big_spender',
+  8:  'shark',
+  9:  'whale',
+  10: 'nervous_intern',
+  11: 'hype_train_holly',
+  12: 'drunk_uncle',
+  13: 'mimic',
+  14: 'old_pro',
+  15: 'lucky_charm',
+};
+
 function crewNameFromId(crewId: number | null): string | null {
   if (crewId === null) return null;
   return CREW_NAMES[crewId] ?? `Crew #${crewId}`;
+}
+
+function crewVisualIdFromId(crewId: number | null): string | null {
+  if (crewId === null) return null;
+  return CREW_VISUAL_IDS[crewId] ?? null;
 }

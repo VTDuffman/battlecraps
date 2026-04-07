@@ -110,7 +110,19 @@ Run these after every merge. If any L1 test fails, the build is broken.
 
 ---
 
-## L2 — Sanity Tests (24 tests)
+### SM-06 — Boss entry modal renders at boss marker
+
+**Setup:** `POST /api/v1/dev/bootstrap` with `{ "startingBankroll": 99000, "startingMarkerIndex": 2 }`.
+*(Note: `startingMarkerIndex` is a required bootstrap param for this test — add to the dev endpoint if not yet supported.)*
+**Expected:**
+- `BossEntryModal` renders instead of `TableBoard`
+- Shows "THE HIGH LIMIT ROOM" header and "SARGE" boss name
+- "ENTER THE ROOM" button is present and clickable
+- Clicking the button dismisses the modal and shows `TableBoard` with `BossRoomHeader` pinned at the top
+
+---
+
+## L2 — Sanity Tests (31 tests)
 
 Run these for any feature change or bug fix. Covers all major happy paths.
 
@@ -182,9 +194,9 @@ Run these for any feature change or bug fix. Covers all major happy paths.
 
 ### BETTING VALIDATION
 
-**BV-01 — Table max enforced**
-- Bootstrap $500 starting bankroll. At Marker 1 (table max $40), attempt to place $50 Pass Line.
-- Expected: Error shown. Bet not accepted. Bankroll unchanged.
+**BV-01 — Chip clamped to table max**
+- Bootstrap $500 starting bankroll. At Marker 1 (table max $40), select $50 chip. Click Pass Line.
+- Expected: Bet placed at $40 (clamped to max), not $50. Bankroll decreases by $40. Clicking Pass Line again is a no-op (room = 0, already at max). Bankroll unchanged on 2nd click.
 
 **BV-02 — Insufficient funds**
 - Bootstrap $10 starting bankroll. Attempt to place $25 Pass Line.
@@ -193,6 +205,46 @@ Run these for any feature change or bug fix. Covers all major happy paths.
 **BV-03 — Bets cannot be reduced mid-turn**
 - Place $10 Pass Line (point not yet set). Attempt to place $5 Pass Line (reducing it).
 - Expected: The deduct-on-placement model means the $10 is already deducted. The UI should not allow reducing. Verify the roll endpoint returns 422 if attempted via API.
+
+**BV-04 — Partial chip placed when near table max**
+- At Marker 1 (table max $40). Place $25 Pass Line (bankroll −$25). Select $25 chip. Click Pass Line again.
+- Expected: Second click places $15 (the remaining room to $40), not $25. Pass Line total = $40. Bankroll decreases by $15 on the second click. A third click is a no-op.
+
+**BV-05 — Odds bet clamped to 3-4-5x cap**
+- Establish a point of 6 (5x odds cap). Place $25 Pass Line (max odds = $125). Place $100 Odds. Select $50 chip. Click Odds.
+- Expected: Odds placed at $25 (remaining room to $125 cap), not $50. Odds total = $125. Bankroll decreases by $25. A further click is a no-op.
+
+---
+
+### BOSS FIGHT
+
+**BOS-01 — Boss entry modal appears on entering boss marker**
+- Bootstrap to Marker 3 (boss, `startingMarkerIndex: 2`). Navigate to `http://localhost:5173`.
+- Expected: `BossEntryModal` is shown. `TableBoard` is **not** visible. Normal `MarkerCelebration` is **not** shown.
+
+**BOS-02 — Boss entry modal content is correct**
+- From BOS-01, inspect the modal.
+- Expected: Shows "THE HIGH LIMIT ROOM", "SARGE", Sarge's flavor text in quotes, RISING_MIN_BETS house rules block listing: starting min-bet $50, +2% increment **per Point Hit** (not per roll), holds on Seven Out, cap $200. "ENTER THE ROOM" button present.
+
+**BOS-03 — Acknowledging entry shows table with BossRoomHeader**
+- From BOS-01. Click "ENTER THE ROOM".
+- Expected: Modal dismisses. `TableBoard` renders. `BossRoomHeader` is pinned at the top showing "HIGH LIMIT ROOM", "SARGE", current MIN BET ($50), and "→ $70 next" projection. Rule reminder "⚔ ANTE RISES ON POINT HIT — MIN BET HOLDS ON 7-OUT" visible.
+
+**BOS-04 — Min-bet banner shows red warning and Roll button is disabled when bet is below minimum**
+- From BOS-03. Select $25 chip. Click Pass Line (total $25, below $50 min).
+- Expected: Min-bet banner in `BettingGrid` shows red background, "⚔ MIN BET", "$50", "← ADD MORE". Roll button is **definitively disabled** (greyed out, `disabled` attribute set) — it will not become enabled until the Pass Line meets the minimum. No server call is made.
+
+**BOS-05 — Min-bet banner clears to met state when threshold is reached**
+- From BOS-04. Add another $25 to Pass Line (total $50, meets min-bet).
+- Expected: Banner background shifts to amber/olive, label changes to "✓ MET". Roll proceeds normally.
+
+**BOS-06 — Defeating boss shows BossVictoryModal, not MarkerCelebration**
+- Bootstrap near Sarge's target. Play until bankroll ≥ $1,000 (boss defeated).
+- Expected: `BossVictoryModal` appears — NOT the normal "NICE ROLL!" `MarkerCelebration`. Shows "SARGE" / "DEFEATED", comp reward box reading "MEMBER'S JACKET", subtext "+1 SHOOTER this segment — they know you earned your seat.", "COLLECT & VISIT THE PUB" button.
+
+**BOS-07 — Comp reward (+1 shooter) applied in Pub after boss victory**
+- From BOS-06. Click "COLLECT & VISIT THE PUB".
+- Expected: Pub screen shows **6 shooters** (5 base + 1 Member's Jacket bonus). Table starts the next segment with 6 lives.
 
 ---
 
@@ -213,6 +265,10 @@ Run these for any feature change or bug fix. Covers all major happy paths.
 **PRG-04 — Skip pub (REST & SKIP TO TABLE)**
 - In Pub, click "REST & SKIP TO TABLE".
 - Expected: Game returns to Table Board with no crew hired. Bankroll unchanged. Marker 2 target shown.
+
+**PRG-05 — Marker clear triggered by a Natural (come-out win)**
+- Bootstrap $390. Place $10 Pass Line. Roll until a Natural (7 or 11 on COME_OUT) that pushes bankroll ≥ $400.
+- Expected: `MarkerCelebration` modal appears immediately after the Natural resolves — same as a Point Hit clear. Game does NOT continue rolling. *(Regression: server previously only checked for marker threshold on POINT_HIT, not NATURAL.)*
 
 ---
 
@@ -290,12 +346,12 @@ Run these for major features, engine changes, or pre-release. Includes all L1 + 
 ### TABLE MAX & BET LIMITS
 
 **BL-01 — Table max updates between markers**
-- At Marker 1: Table max = $40 (10% of $400). Advance to Marker 2: Table max = $60 (10% of $600). Advance to Marker 3: Table max = $150 (10% of $1,500).
-- Expected: Max bet display updates correctly after each marker clear. Bets above new max are rejected.
+- At Marker 1: Table max = $40 (10% of $400). Advance to Marker 2: Table max = $60 (10% of $600). Advance to Marker 3 (Sarge): Table max = $100 (10% of $1,000).
+- Expected: Max bet display updates correctly after each marker clear. Chips that would exceed the current max are clamped to the remaining room.
 
 **BL-02 — Table max applies to hardway bets independently**
-- At Marker 1 (max $40). Attempt Hard 8 bet of $50.
-- Expected: Rejected with error. $40 Hard 8 accepted.
+- At Marker 1 (max $40). Select $50 chip. Click Hard 8.
+- Expected: Hard 8 bet placed at $40 (clamped to max). Bankroll decreases by $40. Clicking Hard 8 again is a no-op.
 
 **BL-03 — Odds bet not subject to table max**
 - Verify that the Odds bet zone does not enforce the table max (odds are uncapped by design).
@@ -311,13 +367,13 @@ Run these for major features, engine changes, or pre-release. Includes all L1 + 
 
 **MP-02 — Marker 2 target ($600)**
 - Continue from MP-01 or bootstrap $590. Play to $600+.
-- Expected: TRANSITION. Pub screen. Marker 3 target shows $1,500.
+- Expected: TRANSITION. Pub screen. Marker 3 target shows $1,000 (boss marker — red ★ BOSS label).
 
 **MP-03 — Marker advance increments table max**
 - Verify table max is 10% of the CURRENT marker target:
   - Marker 1 ($400 target) → max $40
   - Marker 2 ($600 target) → max $60
-  - Marker 3 ($1,500 target) → max $150
+  - Marker 3 / Sarge ($1,000 target) → max $100
 
 **MP-04 — Old Pro grants +1 shooter on marker clear**
 - Bootstrap with Old Pro (crewId: 14). Clear Marker 1.
@@ -403,6 +459,55 @@ Run these for major features, engine changes, or pre-release. Includes all L1 + 
 
 ---
 
+### BOSS FIGHT — RISING MIN-BETS
+
+**BF-01 — `bossPointHits` increments ONLY on Point Hit (not on other roll outcomes)**
+- Bootstrap to Sarge (`startingMarkerIndex: 2`). Acknowledge entry. Roll a Natural, then a Craps Out, then a Point Set + No Resolution (4 rolls total, zero Point Hits yet).
+- Expected: Inspect `newBossPointHits` in each WS `turn:settled` payload. Values should remain **0** for all 4 rolls. Then engineer a POINT_HIT (without marker clear). Expected: `newBossPointHits` = 1 in that payload.
+
+**BF-02 — Min-bet escalates only on Point Hit**
+- From BF-01 state (1 Point Hit). Verify `BossRoomHeader` min-bet values against the formula: `$1,000 × (0.05 + 0.02 × pointHits)`, rounded up to nearest dollar.
+  - 0 Point Hits (entry): $50 current, "→ $70 next"
+  - 1 Point Hit: $70 current, "→ $90 next"
+  - Natural / Craps Out / Seven Out between hits: min-bet **does not change**.
+- Expected: Header values advance by $20 only after a confirmed Point Hit. Naturals, Craps Outs, Seven Outs, and Point Sets never move the counter.
+
+**BF-03 — Min-bet holds on Seven Out (does not reset)**
+- Enter Sarge fight. Score 3 Point Hits (bossPointHits = 3, min-bet = $110). Roll a Seven Out.
+- Expected: `newBossPointHits` in the Seven Out WS event is **3** (unchanged — not reset to 0, not incremented). On the next come-out, `BossRoomHeader` still shows $110 minimum.
+
+**BF-04 — Min-bet caps at $200 (20% of $1,000 target)**
+- Enter Sarge fight. Score 8+ Point Hits without clearing or busting (use a high bankroll).
+- Expected: Min-bet never exceeds $200. At `bossPointHits ≥ 8` (where 5% + 2%×8 = 21% > 20% cap), header shows $200 and the "→ $X next" projection **disappears** (already at cap).
+
+**BF-05 — `bossPointHits` resets to 0 on boss victory**
+- Defeat Sarge (bankroll ≥ $1,000). Collect comp and enter Pub. Return to table (Marker 4, non-boss).
+- Expected: No `BossRoomHeader` visible. No min-bet banner in `BettingGrid`. `newBossPointHits` in subsequent rolls is 0.
+
+**BF-06 — Boss entry modal shows only once per boss marker visit**
+- Bootstrap to Sarge. Acknowledge entry ("ENTER THE ROOM"). Play several rolls including a Seven Out. Observe.
+- Expected: Modal does **not** reappear after the Seven Out or any subsequent roll. Once acknowledged per session, it stays dismissed for the entire boss segment.
+- **Sub-case (page refresh):** After acknowledging entry, refresh the page (F5). Expected: `BossEntryModal` reappears — acknowledgement is local state and correctly resets on page load. This is expected behavior.
+
+**BF-07 — BossRoomHeader and min-bet banner absent on non-boss markers**
+- Start a fresh run (Marker 1, non-boss).
+- Expected: No `BossRoomHeader` visible anywhere in the layout. No min-bet warning banner in `BettingGrid`. Verify at Marker 1 and Marker 2.
+
+**BF-08 — MarkerProgress shows `★ BOSS` label at all three boss markers**
+- Advance to each boss marker (indices 2, 5, 8). Observe the progress bar label.
+- Expected: At Marker 3 (index 2), Marker 6 (index 5), and Marker 9 (index 8), the label reads "★ BOSS" in red. All non-boss markers show the normal gold "MARKER N" label.
+
+**BF-09 — Page refresh during boss fight restores correct min-bet state**
+- Bootstrap to Sarge. Score 4 Point Hits (min-bet should now be $130). Refresh the page (F5).
+- Expected (visual): `BossRoomHeader` re-renders showing $130 current minimum, not the $50 starting value.
+- Expected (API): `GET /api/v1/runs/:id` response includes `"bossPointHits": 4`. Verify via browser DevTools Network tab or curl.
+
+**BF-10 — API rejects roll when Pass Line is below boss min-bet**
+- Bootstrap to Sarge. Via curl or DevTools, send `POST /api/v1/runs/:id/roll` with `passLine: 2500` (¢25, below the $50 = 5000¢ minimum).
+- Expected: API returns `422 Unprocessable Entity`. Response body contains an error message referencing the minimum bet amount (e.g. "Minimum bet is 5000¢").
+
+---
+
 ## Defect Logging
 
 All defects found during regression testing should be appended to the relevant results file:
@@ -425,13 +530,14 @@ Follow the established DEF-NNN format.
 
 | Layer | Section | Tests |
 |-------|---------|-------|
-| L1 Smoke | — | 5 |
+| L1 Smoke | — | 6 |
 | L2 Sanity | Come-Out Phase | 6 |
 | L2 Sanity | Point Active Phase | 8 |
 | L2 Sanity | Betting Validation | 3 |
-| L2 Sanity | Progression & Pub | 4 |
+| L2 Sanity | Boss Fight | 7 |
+| L2 Sanity | Progression & Pub | 5 |
 | L2 Sanity | Game Over | 2 |
-| **L2 Total (excluding L1)** | | **23** |
+| **L2 Total (excluding L1)** | | **31** |
 | L3 Full Regression | Hype System | 5 |
 | L3 Full Regression | Crew Cascade | 6 |
 | L3 Full Regression | Table Max & Bet Limits | 3 |
@@ -440,5 +546,6 @@ Follow the established DEF-NNN format.
 | L3 Full Regression | Persistence & Session | 3 |
 | L3 Full Regression | Roll Log | 3 |
 | L3 Full Regression | UI Fidelity | 5 |
-| **L3 Total (excluding L1+L2)** | | **33** |
-| **GRAND TOTAL** | | **61** |
+| L3 Full Regression | Boss Fight — Rising Min-Bets | 10 |
+| **L3 Total (excluding L1+L2)** | | **43** |
+| **GRAND TOTAL** | | **80** |

@@ -3,8 +3,28 @@
 // packages/shared/src/index.ts
 // =============================================================================
 
-// Shared game configuration (marker targets, etc.)
-export { MARKER_TARGETS, getMaxBet, getBaseHypeTick, STREAK_BASE_TICK, STREAK_INCREMENT, STREAK_CAP } from './config.js';
+// Shared game configuration (gauntlet, boss rules, marker targets, etc.)
+export {
+  GAUNTLET,
+  MARKER_TARGETS,
+  COMP_PERK_IDS,
+  getMaxBet,
+  getMinBet,
+  isBossMarker,
+  getBossMinBet,
+  getBaseHypeTick,
+  STREAK_BASE_TICK,
+  STREAK_INCREMENT,
+  STREAK_CAP,
+} from './config.js';
+
+export type {
+  BossRuleType,
+  CompRewardType,
+  RisingMinBetsParams,
+  BossConfig,
+  MarkerConfig,
+} from './config.js';
 
 // All TypeScript interfaces and type aliases
 export type {

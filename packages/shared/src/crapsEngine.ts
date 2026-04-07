@@ -198,7 +198,8 @@ function calcPassLinePayout(result: RollResult, passLineBet: number): number {
  *
  * Returns the profit only on POINT_HIT. Returns 0 on SEVEN_OUT (stake already
  * gone at placement) and all other results (bet unresolved, stays on table).
- * Math.floor ensures we never produce fractional cents (see bet-sizing note above).
+ * Math.floor here prevents sub-cent remainders within this calculation; whole-dollar
+ * rounding of the final payout is applied in settleTurn().
  */
 function calcOddsPayout(
   result: RollResult,
@@ -567,10 +568,17 @@ export function settleTurn(ctx: TurnContext): number {
   // Without this, Math.floor(20000 × 2.1599...) = 43199 instead of 43200.
   const finalMultiplier = Math.round(ctx.hype * crewMultiplier * 10_000) / 10_000;
 
-  // Floor to integer cents. This is safe: we never over-pay.
-  const amplifiedProfit = Math.floor(boostedProfit * finalMultiplier);
+  // Floor to the nearest whole dollar (100 cents).
+  // Payouts are always expressed in whole dollars — odd-denomination bets against
+  // fractional odds (e.g. $11 Odds on point 6 at 6:5) or non-round hype multipliers
+  // (e.g. 1.35×) would otherwise produce cent-level remainders (e.g. $13.20, $19.80).
+  // Flooring to the dollar (rather than rounding) is the casino-standard: the house
+  // does not make change, and the engine never over-pays.
+  const amplifiedProfit = Math.floor((boostedProfit * finalMultiplier) / 100) * 100;
 
-  // Total = stake returned (1:1, not amplified) + amplified profit
+  // Total = stake returned (1:1, not amplified) + amplified profit.
+  // baseStakeReturned is always a whole-dollar amount because all chip denominations
+  // ($1, $5, $10, $25, $50) are multiples of 100 cents.
   return baseStakeReturned + amplifiedProfit;
 }
 
@@ -584,6 +592,50 @@ function fmtCents(cents: number): string {
 }
 
 /**
+ * Computes the total bet stakes lost this roll (bets that were already deducted
+ * from bankroll at placement and are now gone without any return).
+ *
+ * Used by buildRollReceipt to compute a signed Net delta that correctly shows
+ * losses as negative even when crew abilities (e.g. Floor Walker) partially
+ * compensate via additives — those additives are profit, not stake recovery.
+ *
+ * Respects crew protective flags:
+ *   - passLineProtected: pass line is not lost on SEVEN_OUT
+ *   - hardwayProtected:  all hardway stakes are not lost on SEVEN_OUT
+ */
+function calcLostBetsThisRoll(ctx: TurnContext): number {
+  const { rollResult, bets, diceTotal, isHardway, flags } = ctx;
+  let lost = 0;
+
+  switch (rollResult) {
+    case 'SEVEN_OUT':
+      if (!flags.passLineProtected) lost += bets.passLine;
+      lost += bets.odds;
+      if (!flags.hardwayProtected) {
+        lost += bets.hardways.hard4 + bets.hardways.hard6 +
+                bets.hardways.hard8 + bets.hardways.hard10;
+      }
+      break;
+
+    case 'CRAPS_OUT':
+      lost += bets.passLine;
+      break;
+
+    default:
+      // Soft (easy) roll on a hardway number — that specific hardway is lost
+      if (HARDWAY_NUMBERS.has(diceTotal) && !isHardway) {
+        if (diceTotal === 4)  lost += bets.hardways.hard4;
+        if (diceTotal === 6)  lost += bets.hardways.hard6;
+        if (diceTotal === 8)  lost += bets.hardways.hard8;
+        if (diceTotal === 10) lost += bets.hardways.hard10;
+      }
+      break;
+  }
+
+  return lost;
+}
+
+/**
  * Builds an itemized receipt for a single resolved roll.
  *
  * Called by the API route after settleTurn() so that every payout, cleared
@@ -593,10 +645,15 @@ function fmtCents(cents: number): string {
  * A separate 'info' line records the multiplier when it differs from 1.0,
  * allowing QA reviewers to verify: floor(sum(base profits) × mult) = net.
  *
- * @param ctx           The FINAL TurnContext after the full cascade.
- * @param bankrollDelta Signed cents — the net effect on the player's bankroll.
+ * netDelta = amplifiedProfit − lostBets
+ *          = (settleTurn(ctx) − baseStakeReturned) − calcLostBetsThisRoll(ctx)
+ *
+ * This is always negative on a pure loss (even when crew add flat bonuses),
+ * and positive only when winnings exceed losses.
+ *
+ * @param ctx  The FINAL TurnContext after the full cascade.
  */
-export function buildRollReceipt(ctx: TurnContext, bankrollDelta: number): RollReceipt {
+export function buildRollReceipt(ctx: TurnContext): RollReceipt {
   const { dice, diceTotal, isHardway, rollResult, activePoint, bets } = ctx;
   const lines: RollReceiptLine[] = [];
 
@@ -718,9 +775,16 @@ export function buildRollReceipt(ctx: TurnContext, bankrollDelta: number): RollR
     });
   }
 
+  // Net delta: amplified profit minus lost stakes.
+  // settleTurn(ctx) = baseStakeReturned + amplifiedProfit, so subtracting
+  // baseStakeReturned isolates the profit. Then subtract lost stakes to get
+  // the true signed net for this roll.
+  const amplifiedProfit = settleTurn(ctx) - ctx.baseStakeReturned;
+  const netDelta = amplifiedProfit - calcLostBetsThisRoll(ctx);
+
   return {
     timestamp: new Date().toISOString(),
     lines,
-    netDelta: bankrollDelta,
+    netDelta,
   };
 }

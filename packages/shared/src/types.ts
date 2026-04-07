@@ -473,4 +473,17 @@ export interface GameState {
     CrewMember | null,
     CrewMember | null,
   ];
+
+  /**
+   * Point hits scored so far within the current boss fight segment.
+   * 0 when not in a boss fight, or at the start of one before any Point Hit.
+   *
+   * Increments ONLY on POINT_HIT (without clearing the marker).
+   * All other outcomes — NATURAL, CRAPS_OUT, POINT_SET, SEVEN_OUT, NO_RESOLUTION —
+   * leave this counter unchanged (min-bet holds at its current level).
+   * Resets to 0 on any marker clear (TRANSITION or final GAME_OVER).
+   *
+   * Used by getBossMinBet() to compute the current minimum Pass Line bet.
+   */
+  bossPointHits: number;
 }

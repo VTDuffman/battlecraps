@@ -49,50 +49,48 @@
 
    Rotation budget — strictly increasing across all three phases so the
    browser always interpolates forward:
-     throw : Z 0 → 630°,  X/Y oscillate → 0   (travel 0 → -660px)
-     tumble: Z 630 → 690°, X/Y small wobble    (bounce at -660px → -640px)
-     land  : Z 690 → 720°, X/Y damp → 0       (return -640px → 0px)
+     throw : Z 0 → 630°,  X/Y oscillate → 0   (travel 0 → -320px)
+     tumble: Z 630 → 690°, X/Y small wobble    (bounce at -320px → -310px)
+     land  : Z 690 → 720°, X/Y damp → 0       (return -310px → 0px)
    720° = exactly 2 full turns, visually identical to 0° — no snap when the
    animation class is removed at the end.
    ────────────────────────────────────────────────────────────────────────── */
 
 @keyframes dice-throw {
   /* translateY baked to an ease-out curve via keyframe spacing.
-     Apex scaled to -660px so the dice travel past the betting grid and
-     status zone, visually reaching the BATTLECRAPS back-wall title area.
+     Apex scaled to -320px — dice travel through the betting grid and
+     stop near the BATTLECRAPS hr at the top of the visible screen,
+     never going off-screen on a typical mobile viewport.
      All values: translateY  scaleX  scaleY  rotateZ  rotateX  rotateY      */
   0%   { transform: translateY(   0px) scaleX(1.00) scaleY(1.00) rotateZ(  0deg) rotateX(  0deg) rotateY(  0deg); }
-  8%   { transform: translateY( -89px) scaleX(1.14) scaleY(1.14) rotateZ( 50deg) rotateX( 12deg) rotateY(-16deg); }
-  17%  { transform: translateY(-172px) scaleX(1.30) scaleY(1.30) rotateZ(107deg) rotateX(-18deg) rotateY( 14deg); }
-  27%  { transform: translateY(-261px) scaleX(1.44) scaleY(1.44) rotateZ(170deg) rotateX( 20deg) rotateY(-12deg); }
-  38%  { transform: translateY(-333px) scaleX(1.56) scaleY(1.56) rotateZ(239deg) rotateX(-16deg) rotateY( 18deg); } /* apex */
-  50%  { transform: translateY(-416px) scaleX(1.36) scaleY(1.36) rotateZ(315deg) rotateX( 14deg) rotateY(-20deg); }
-  62%  { transform: translateY(-509px) scaleX(1.08) scaleY(1.08) rotateZ(389deg) rotateX(-12deg) rotateY( 14deg); }
-  73%  { transform: translateY(-586px) scaleX(0.82) scaleY(0.82) rotateZ(460deg) rotateX(  8deg) rotateY( -8deg); }
-  84%  { transform: translateY(-632px) scaleX(0.66) scaleY(0.66) rotateZ(526deg) rotateX( -4deg) rotateY(  5deg); }
-  93%  { transform: translateY(-653px) scaleX(0.59) scaleY(0.59) rotateZ(588deg) rotateX(  2deg) rotateY( -2deg); }
-  100% { transform: translateY(-660px) scaleX(0.57) scaleY(0.57) rotateZ(630deg) rotateX(  0deg) rotateY(  0deg); }
+  8%   { transform: translateY( -43px) scaleX(1.14) scaleY(1.14) rotateZ( 50deg) rotateX( 12deg) rotateY(-16deg); }
+  17%  { transform: translateY( -83px) scaleX(1.30) scaleY(1.30) rotateZ(107deg) rotateX(-18deg) rotateY( 14deg); }
+  27%  { transform: translateY(-127px) scaleX(1.44) scaleY(1.44) rotateZ(170deg) rotateX( 20deg) rotateY(-12deg); }
+  38%  { transform: translateY(-161px) scaleX(1.56) scaleY(1.56) rotateZ(239deg) rotateX(-16deg) rotateY( 18deg); } /* apex */
+  50%  { transform: translateY(-202px) scaleX(1.36) scaleY(1.36) rotateZ(315deg) rotateX( 14deg) rotateY(-20deg); }
+  62%  { transform: translateY(-247px) scaleX(1.08) scaleY(1.08) rotateZ(389deg) rotateX(-12deg) rotateY( 14deg); }
+  73%  { transform: translateY(-284px) scaleX(0.82) scaleY(0.82) rotateZ(460deg) rotateX(  8deg) rotateY( -8deg); }
+  84%  { transform: translateY(-306px) scaleX(0.66) scaleY(0.66) rotateZ(526deg) rotateX( -4deg) rotateY(  5deg); }
+  93%  { transform: translateY(-317px) scaleX(0.59) scaleY(0.59) rotateZ(588deg) rotateX(  2deg) rotateY( -2deg); }
+  100% { transform: translateY(-320px) scaleX(0.57) scaleY(0.57) rotateZ(630deg) rotateX(  0deg) rotateY(  0deg); }
 }
 
 @keyframes dice-tumble {
-  /* wall bounce — impact kick then settle; all Y values shifted +200px from
-     old values to match the new -660px back-wall position                   */
-  0%   { transform: translateY(-660px) scaleX(0.57) scaleY(0.57) rotateZ(630deg) rotateX( 0deg) rotateY( 0deg); }
-  22%  { transform: translateY(-624px) scaleX(0.63) scaleY(0.63) rotateZ(649deg) rotateX( 9deg) rotateY(-6deg); }
-  45%  { transform: translateY(-645px) scaleX(0.58) scaleY(0.58) rotateZ(662deg) rotateX(-5deg) rotateY( 4deg); }
-  70%  { transform: translateY(-638px) scaleX(0.57) scaleY(0.57) rotateZ(673deg) rotateX( 2deg) rotateY(-2deg); }
-  100% { transform: translateY(-640px) scaleX(0.57) scaleY(0.57) rotateZ(690deg) rotateX( 0deg) rotateY( 0deg); }
+  /* wall bounce — impact kick then settle at the -320px back-wall position  */
+  0%   { transform: translateY(-320px) scaleX(0.57) scaleY(0.57) rotateZ(630deg) rotateX( 0deg) rotateY( 0deg); }
+  22%  { transform: translateY(-303px) scaleX(0.63) scaleY(0.63) rotateZ(649deg) rotateX( 9deg) rotateY(-6deg); }
+  45%  { transform: translateY(-313px) scaleX(0.58) scaleY(0.58) rotateZ(662deg) rotateX(-5deg) rotateY( 4deg); }
+  70%  { transform: translateY(-309px) scaleX(0.57) scaleY(0.57) rotateZ(673deg) rotateX( 2deg) rotateY(-2deg); }
+  100% { transform: translateY(-310px) scaleX(0.57) scaleY(0.57) rotateZ(690deg) rotateX( 0deg) rotateY( 0deg); }
 }
 
 @keyframes dice-land {
-  /* return flight — starting from -640px (new tumble end); long-distance
-     return keyframes scaled ×1.455; squash/stretch kept at original pixel
-     values since landing impact is independent of throw distance           */
-  0%   { transform: translateY(-640px) scaleX(0.57) scaleY(0.57) rotateZ(690deg) rotateX( 0deg) rotateY( 0deg); }
-  12%  { transform: translateY(-549px) scaleX(0.67) scaleY(0.67) rotateZ(696deg) rotateX( 6deg) rotateY(-4deg); }
-  25%  { transform: translateY(-404px) scaleX(0.86) scaleY(0.86) rotateZ(702deg) rotateX(-4deg) rotateY( 3deg); }
-  39%  { transform: translateY(-221px) scaleX(1.08) scaleY(1.08) rotateZ(708deg) rotateX( 2deg) rotateY(-2deg); }
-  50%  { transform: translateY( -58px) scaleX(1.20) scaleY(1.20) rotateZ(713deg) rotateX( 0deg) rotateY( 0deg); }
+  /* return flight — starting from -310px (tumble end)                       */
+  0%   { transform: translateY(-310px) scaleX(0.57) scaleY(0.57) rotateZ(690deg) rotateX( 0deg) rotateY( 0deg); }
+  12%  { transform: translateY(-266px) scaleX(0.67) scaleY(0.67) rotateZ(696deg) rotateX( 6deg) rotateY(-4deg); }
+  25%  { transform: translateY(-196px) scaleX(0.86) scaleY(0.86) rotateZ(702deg) rotateX(-4deg) rotateY( 3deg); }
+  39%  { transform: translateY(-107px) scaleX(1.08) scaleY(1.08) rotateZ(708deg) rotateX( 2deg) rotateY(-2deg); }
+  50%  { transform: translateY( -28px) scaleX(1.20) scaleY(1.20) rotateZ(713deg) rotateX( 0deg) rotateY( 0deg); }
   /* squash — wide and flat on first contact */
   58%  { transform: translateY(  14px) scaleX(1.24) scaleY(0.68) rotateZ(716deg) rotateX( 0deg) rotateY( 0deg); }
   /* stretch — tall rebound */
@@ -273,6 +271,46 @@
 }
 
 .animate-portrait-ready { animation: portrait-ready 2s ease-in-out infinite; }
+
+/* ── Crew portrait sprite sheet animation ─────────────────────────────────────
+   Horizontal 5-frame strip at 128×128px per frame (640×128px total).
+   Displayed at 64×64 in the rail via background-size: 320px 64px (0.5× scale).
+   Frame offsets at display scale: 0, -64px, -128px, -192px, -256px.
+
+   portrait-idle    — 2-frame breathing loop (frames 1–2), infinite.
+   portrait-trigger — 3-frame reaction (frames 3–5), forwards.
+                      Duration matches portrait-flash (600ms) so both sync.
+   portrait-sprite--trigger overrides the idle animation on the same element.
+
+   animationend from the sprite child WILL bubble to the portrait frame div.
+   The animationend listener in CrewPortrait.tsx guards with e.target !== el
+   so only the portrait-flash event (fired on the frame div itself) dequeues.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@keyframes portrait-idle {
+  0%   { background-position:    0 0; }
+  50%  { background-position: -64px 0; }
+  100% { background-position:    0 0; }
+}
+
+@keyframes portrait-trigger {
+  0%   { background-position: -128px 0; }
+  33%  { background-position: -192px 0; }
+  67%  { background-position: -256px 0; }
+  100% { background-position:    0 0;   }
+}
+
+.portrait-sprite {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges; /* Firefox */
+  background-size: 320px 64px;  /* 5 frames × 64px wide; 64px tall */
+  background-repeat: no-repeat;
+  animation: portrait-idle 1.6s steps(1) infinite;
+}
+
+.portrait-sprite--trigger {
+  animation: portrait-trigger 600ms steps(1) forwards;
+}
 
 /* ── Felt table breathing — ambient atmosphere overlay ────────────────────────
    Three tiers of radial shimmer that pulse over the table felt.

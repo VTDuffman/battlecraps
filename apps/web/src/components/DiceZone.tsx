@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useGameStore } from '../store/useGameStore.js';
+import { isBossMarker, getBossMinBet } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // Roll result metadata
@@ -96,13 +97,15 @@ export const DiceZone: React.FC = () => {
   const applyPendingSettlement = useGameStore((s) => s.applyPendingSettlement);
   const triggerWallFlash       = useGameStore((s) => s.triggerWallFlash);
   const triggerPointRing       = useGameStore((s) => s.triggerPointRing);
-  const bets          = useGameStore((s) => s.bets);
-  const lastDice      = useGameStore((s) => s.lastDice);
-  const lastResult    = useGameStore((s) => s.lastRollResult);
-  const lastDelta     = useGameStore((s) => s.lastDelta);
-  const lastBetDelta  = useGameStore((s) => s.lastBetDelta);
-  const _betDeltaKey  = useGameStore((s) => s._betDeltaKey);
-  const status        = useGameStore((s) => s.status);
+  const bets                = useGameStore((s) => s.bets);
+  const lastDice            = useGameStore((s) => s.lastDice);
+  const lastResult          = useGameStore((s) => s.lastRollResult);
+  const lastDelta           = useGameStore((s) => s.lastDelta);
+  const lastBetDelta        = useGameStore((s) => s.lastBetDelta);
+  const _betDeltaKey        = useGameStore((s) => s._betDeltaKey);
+  const status              = useGameStore((s) => s.status);
+  const currentMarkerIndex  = useGameStore((s) => s.currentMarkerIndex);
+  const bossPointHits       = useGameStore((s) => s.bossPointHits);
 
   // ── Throw animation state ─────────────────────────────────────────────────
   const [throwPhase, setThrowPhase]   = useState<ThrowPhase>('idle');
@@ -240,11 +243,18 @@ export const DiceZone: React.FC = () => {
 
   // ── Roll handler ──────────────────────────────────────────────────────────
 
+  // Boss fight: block roll if Pass Line is below the rising minimum bet.
+  const bossMinBet = isBossMarker(currentMarkerIndex)
+    ? getBossMinBet(currentMarkerIndex, bossPointHits)
+    : null;
+  const belowBossMinBet = bossMinBet !== null && bets.passLine < bossMinBet;
+
   const canRoll =
     !isRolling &&
     throwPhase === 'idle' &&
     runId !== null &&
     bets.passLine > 0 &&
+    !belowBossMinBet &&
     (status === 'IDLE_TABLE' || status === 'POINT_ACTIVE');
 
   const handleRoll = useCallback(async () => {

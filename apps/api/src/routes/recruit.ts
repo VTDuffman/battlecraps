@@ -20,9 +20,10 @@
 // =============================================================================
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { runs, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
+import { runs, users, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
+import { isBossMarker, GAUNTLET } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // JSON Schema (Fastify validates the body before the handler runs)
@@ -88,7 +89,34 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         });
       }
 
-      // ── 4. Apply purchase (if not skipping) ───────────────────────────────
+      // ── 4. Determine boss comp reward (if returning from a boss victory) ──
+      // currentMarkerIndex was already incremented by rolls.ts when the TRANSITION
+      // status was set. So the marker that was just cleared is at index - 1.
+      const prevMarkerIndex = run.currentMarkerIndex - 1;
+      const wasBossVictory  = prevMarkerIndex >= 0 && isBossMarker(prevMarkerIndex);
+      const bossConfig      = wasBossVictory ? GAUNTLET[prevMarkerIndex]?.boss : undefined;
+
+      // Comp reward: +1 Shooter (Member's Jacket) for defeating Sarge.
+      let compShooterBonus = 0;
+      if (bossConfig?.compReward === 'EXTRA_SHOOTER') {
+        compShooterBonus = 1;
+
+        // Stub: write the comp perk ID to the user's permanent record so the
+        // meta-progression system can read it once it's wired up.
+        // Non-fatal — a failure here should never block game progression.
+        try {
+          await db
+            .update(users)
+            .set({
+              compPerkIds: sql`array_append(comp_perk_ids, ${bossConfig.compPerkId}::integer)`,
+            })
+            .where(eq(users.id, userId));
+        } catch {
+          // Intentionally swallowed — perk tracking is a stub.
+        }
+      }
+
+      // ── 5. Apply purchase (if not skipping) ───────────────────────────────
       // Reset all cooldowns to 0 — the pub starts a fresh segment with new
       // shooters, so per_shooter and per_roll cooldowns should all be fresh.
       const newCrewSlots: StoredCrewSlots = run.crewSlots.map(
@@ -112,15 +140,18 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         newCrewSlots[slotIndex!] = { crewId: crewId!, cooldownState: 0 };
       }
 
-      // ── 5. Persist — reset shooters, return to table (with optimistic lock) ─
+      // ── 6. Persist — reset shooters, return to table (with optimistic lock) ─
       const updated = await db
         .update(runs)
         .set({
           status:        'IDLE_TABLE',
           phase:         'COME_OUT',
           bankrollCents: newBankroll,
-          shooters:      5,            // fresh shooter allotment for next segment
+          // Fresh shooter allotment for next segment, plus any boss comp bonus.
+          // Member's Jacket: +1 Shooter on top of the standard 5.
+          shooters:      5 + compShooterBonus,
           crewSlots:     newCrewSlots,
+          bossPointHits: 0,  // always reset on segment start
           updatedAt:     new Date(),
         })
         .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
@@ -134,13 +165,14 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
       }
 
       return reply.send({
-        bankroll:  persistedRun.bankrollCents,
-        shooters:  persistedRun.shooters,
-        hype:      persistedRun.hype,
-        phase:     persistedRun.phase,
-        status:    persistedRun.status,
-        point:     persistedRun.currentPoint ?? null,
-        crewSlots: persistedRun.crewSlots,
+        bankroll:      persistedRun.bankrollCents,
+        shooters:      persistedRun.shooters,
+        hype:          persistedRun.hype,
+        phase:         persistedRun.phase,
+        status:        persistedRun.status,
+        point:         persistedRun.currentPoint ?? null,
+        crewSlots:     persistedRun.crewSlots,
+        bossPointHits: persistedRun.bossPointHits,
       });
     },
   );

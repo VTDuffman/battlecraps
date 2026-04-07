@@ -9,11 +9,14 @@
 // =============================================================================
 
 import React, { useEffect, useRef, useState } from 'react';
-import { TableBoard }      from './components/TableBoard.js';
-import { PubScreen }       from './components/PubScreen.js';
-import { GameOverScreen }  from './components/GameOverScreen.js';
-import { useGameStore }    from './store/useGameStore.js';
+import { TableBoard }        from './components/TableBoard.js';
+import { PubScreen }         from './components/PubScreen.js';
+import { GameOverScreen }    from './components/GameOverScreen.js';
+import { BossEntryModal }    from './components/BossEntryModal.js';
+import { BossVictoryModal }  from './components/BossVictoryModal.js';
+import { useGameStore }      from './store/useGameStore.js';
 import type { StoredCrewSlots } from './store/useGameStore.js';
+import { isBossMarker, GAUNTLET } from '@battlecraps/shared';
 import type { Bets } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
@@ -134,17 +137,19 @@ interface BootstrapResponse {
 // ---------------------------------------------------------------------------
 
 export const App: React.FC = () => {
-  const connectToRun = useGameStore((s) => s.connectToRun);
-  const disconnect   = useGameStore((s) => s.disconnect);
-  const runStatus    = useGameStore((s) => s.status);
+  const connectToRun       = useGameStore((s) => s.connectToRun);
+  const disconnect         = useGameStore((s) => s.disconnect);
+  const runStatus          = useGameStore((s) => s.status);
+  const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
+  const pendingTransition  = useGameStore((s) => s.pendingTransition);
 
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
 
   // Gate the pub transition behind a celebration modal.
   // `pubReady` starts false each time the status becomes TRANSITION.
-  // The player must click through MarkerCelebration to set it true,
-  // which then unmounts the celebration and mounts PubScreen.
+  // The player must click through MarkerCelebration (or BossVictoryModal) to
+  // set it true, which then unmounts the celebration and mounts PubScreen.
   const [pubReady, setPubReady] = useState(false);
   const prevStatus = useRef(runStatus);
   useEffect(() => {
@@ -153,6 +158,17 @@ export const App: React.FC = () => {
     }
     prevStatus.current = runStatus;
   }, [runStatus]);
+
+  // Gate the boss entry behind a one-time acknowledgement modal.
+  // Resets to false whenever the player moves to a new boss marker.
+  const [bossEntryAcknowledged, setBossEntryAcknowledged] = useState(false);
+  const prevMarkerIndex = useRef(currentMarkerIndex);
+  useEffect(() => {
+    if (prevMarkerIndex.current !== currentMarkerIndex && isBossMarker(currentMarkerIndex)) {
+      setBossEntryAcknowledged(false);
+    }
+    prevMarkerIndex.current = currentMarkerIndex;
+  }, [currentMarkerIndex]);
 
   const bootstrap = React.useCallback(async (forceNew = false) => {
     setLoading(true);
@@ -280,6 +296,14 @@ export const App: React.FC = () => {
     );
   }
 
+  // ── Derived boss config — used by both entry and victory routing ──────────
+  // Victory: boss that was just defeated (index is already incremented in TRANSITION)
+  const bossVictoryConfig = runStatus === 'TRANSITION'
+    ? GAUNTLET[currentMarkerIndex - 1]?.boss
+    : undefined;
+  // Entry: boss the player is about to face
+  const bossEntryConfig = GAUNTLET[currentMarkerIndex]?.boss;
+
   // ── Game screens ──────────────────────────────────────────────────────────
   return (
     <main className="min-h-screen flex items-start justify-center bg-black">
@@ -302,11 +326,25 @@ export const App: React.FC = () => {
 
       {runStatus === 'GAME_OVER'
         ? <GameOverScreen onPlayAgain={() => void bootstrap(true)} />
-        : runStatus === 'TRANSITION' && !pubReady
-          ? <MarkerCelebration onEnterPub={() => setPubReady(true)} />
-          : runStatus === 'TRANSITION'
-            ? <PubScreen />
-            : <TableBoard />
+        // pendingTransition: keep TableBoard mounted so win animations
+        // (ChipRain, screen-flash, payout pops, crew portraits) complete
+        // before the celebration screen appears.  The Roll button is already
+        // disabled via isRolling=false but status still shows as table state.
+        : pendingTransition
+          ? <TableBoard />
+          : runStatus === 'TRANSITION' && !pubReady && bossVictoryConfig
+            ? <BossVictoryModal boss={bossVictoryConfig} onVisitPub={() => setPubReady(true)} />
+            : runStatus === 'TRANSITION' && !pubReady
+              ? <MarkerCelebration onEnterPub={() => setPubReady(true)} />
+              : runStatus === 'TRANSITION'
+                ? <PubScreen />
+                : isBossMarker(currentMarkerIndex) && !bossEntryAcknowledged && bossEntryConfig
+                  ? <BossEntryModal
+                      boss={bossEntryConfig}
+                      markerIndex={currentMarkerIndex}
+                    onEnter={() => setBossEntryAcknowledged(true)}
+                  />
+                : <TableBoard />
       }
     </main>
   );

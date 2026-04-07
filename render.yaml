@@ -2,7 +2,7 @@ services:
   - type: web
     name: battlecraps-api
     env: node
-    buildCommand: npm install && npm run build -w @battlecraps/shared && npm run build -w @battlecraps/api
+    buildCommand: npm install && npm run build -w @battlecraps/shared && npm run build -w @battlecraps/api && node apps/api/dist/db/seed.js
     startCommand: node apps/api/dist/server.js
     envVars:
       - key: NODE_ENV

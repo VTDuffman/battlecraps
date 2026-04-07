@@ -18,7 +18,15 @@ import { bootstrapPlugin } from './routes/bootstrap.js';
 import { recruitPlugin }   from './routes/recruit.js';
 
 const PORT = Number(process.env['PORT'] ?? 3001);
-const CLIENT_ORIGIN = process.env['CLIENT_ORIGIN'] ?? 'http://localhost:5173';
+
+// Support multiple allowed origins as a comma-separated list, e.g.:
+//   CLIENT_ORIGIN=https://battlecraps.com,https://battlecraps-web.vercel.app
+const CLIENT_ORIGINS: string[] = (process.env['CLIENT_ORIGIN'] ?? 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const originList = CLIENT_ORIGINS.length === 1 ? CLIENT_ORIGINS[0]! : CLIENT_ORIGINS;
 
 // ---------------------------------------------------------------------------
 // Fastify instance
@@ -38,7 +46,7 @@ const app = Fastify({
 // ---------------------------------------------------------------------------
 
 await app.register(cors, {
-  origin: CLIENT_ORIGIN,
+  origin: originList,
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
 });
 
@@ -69,7 +77,7 @@ await app.listen({ port: PORT, host: '0.0.0.0' });
 
 const io = new SocketIO(app.server as HttpServer, {
   cors: {
-    origin: CLIENT_ORIGIN,
+    origin: originList,
     methods: ['GET', 'POST'],
   },
   // Prefer WebSocket transport; fall back to long-polling on restricted networks.
@@ -146,4 +154,4 @@ io.on('connection', (socket) => {
 });
 
 app.log.info(`BattleCraps API listening on port ${PORT}`);
-app.log.info(`Socket.IO attached — client origin: ${CLIENT_ORIGIN}`);
+app.log.info(`Socket.IO attached — client origins: ${CLIENT_ORIGINS.join(', ')}`);

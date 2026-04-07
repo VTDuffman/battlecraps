@@ -810,6 +810,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           currentPoint:         number | null;
           currentMarkerIndex:   number;
           consecutivePointHits: number;
+          bossPointHits:        number;
           bets:                 Bets;
         };
         roll: {
@@ -840,6 +841,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         newMarkerIndex:          data.run.currentMarkerIndex,
         newBets:                 data.roll.resolvedBets,
         newConsecutivePointHits: data.run.consecutivePointHits,
+        newBossPointHits:        data.run.bossPointHits,
         payoutBreakdown:         data.roll.payoutBreakdown,
       };
 

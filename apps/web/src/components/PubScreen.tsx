@@ -16,7 +16,7 @@
 //   6. SKIP button calls           → store.recruitCrew(null) — no purchase.
 // =============================================================================
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   lefty,
   physicsProfessor,
@@ -267,6 +267,86 @@ const SlotButton: React.FC<SlotButtonProps> = ({ index, occupantId, isSelected, 
 };
 
 // ---------------------------------------------------------------------------
+// PubFireSlot — compact crew slot with hold-to-fire for the pub screen
+// ---------------------------------------------------------------------------
+
+interface PubFireSlotProps {
+  crewId:   number | null;
+  onFire:   (() => void) | undefined;
+}
+
+const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, onFire }) => {
+  const [holding, setHolding] = useState(false);
+  const holdTimer             = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const name = crewId ? (CREW_NAMES[crewId] ?? `#${crewId}`) : null;
+
+  function startHold() {
+    if (!onFire) return;
+    setHolding(true);
+    holdTimer.current = setTimeout(() => {
+      setHolding(false);
+      onFire();
+    }, 1000);
+  }
+
+  function cancelHold() {
+    if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null; }
+    setHolding(false);
+  }
+
+  if (!crewId) {
+    // Empty slot — dim placeholder, no fire button
+    return (
+      <div className="flex flex-col items-center gap-1 px-2 py-1.5 rounded border border-stone-700/20 bg-stone-900/20 min-w-0">
+        <div className="w-5 h-5 rounded border border-dashed border-stone-700/40" />
+        <div className="font-pixel text-[5px] text-stone-700">EMPTY</div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="group relative flex flex-col items-center gap-1 px-2 py-1.5 rounded border border-amber-800/40 bg-stone-900/40 outline-none min-w-0"
+      tabIndex={onFire ? 0 : -1}
+    >
+      {/* Name */}
+      <div className="font-pixel text-[5px] text-amber-300/80 text-center w-12 truncate leading-tight">
+        {name}
+      </div>
+
+      {/* Fire button — revealed on hover/focus */}
+      {onFire && (
+        <button
+          type="button"
+          aria-label={`Fire ${name ?? 'crew member'}`}
+          onPointerDown={startHold}
+          onPointerUp={cancelHold}
+          onPointerLeave={cancelHold}
+          className={[
+            'w-5 h-5 rounded-sm flex items-center justify-center',
+            'font-pixel text-[7px] leading-none',
+            'bg-red-900/70 text-red-300 border border-red-700/60',
+            'transition-opacity duration-150',
+            'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+            holding ? 'opacity-100 bg-red-700/90' : '',
+          ].join(' ')}
+        >
+          ✕
+        </button>
+      )}
+
+      {/* Hold-to-fire countdown bar */}
+      {holding && (
+        <div
+          key="holding"
+          className="absolute bottom-0 left-0 h-[3px] bg-red-500 rounded-b animate-fire-countdown"
+        />
+      )}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // Main PubScreen
 // ---------------------------------------------------------------------------
 
@@ -275,6 +355,7 @@ export const PubScreen: React.FC = () => {
   const bankroll        = useGameStore((s) => s.bankroll);
   const crewSlots       = useGameStore((s) => s.crewSlots);
   const recruitCrew     = useGameStore((s) => s.recruitCrew);
+  const fireCrew        = useGameStore((s) => s.fireCrew);
 
   // Three random crew drawn once on mount and held stable.
   // Filter out crew already seated in any slot so repeats are never offered.
@@ -406,6 +487,22 @@ export const PubScreen: React.FC = () => {
               isSelected={selectedCrew?.id === crew.id}
               canAfford={bankroll >= crew.baseCost}
               onClick={() => handleCrewClick(crew)}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* ── Your Crew — fire slots ───────────────────────────────────────────── */}
+      <section className="relative flex-none px-3 pb-3">
+        <div className="font-pixel text-[6px] text-amber-600/60 text-center mb-2 tracking-widest">
+          — YOUR CREW —
+        </div>
+        <div className="flex justify-around gap-1">
+          {crewSlots.map((slot, i) => (
+            <PubFireSlot
+              key={i}
+              crewId={slot?.crewId ?? null}
+              onFire={slot !== null ? () => { void fireCrew(i); } : undefined}
             />
           ))}
         </div>

@@ -17,7 +17,7 @@
 //                    can dequeue and advance to the next portrait.
 // =============================================================================
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 
 interface CrewPortraitProps {
   slotIndex:      number;
@@ -28,6 +28,8 @@ interface CrewPortraitProps {
   isTriggering:   boolean;
   barkSeq:        number | null;   // changes → re-mounts bark element
   onAnimationEnd: () => void;
+  /** Called after the 1-second hold-to-fire completes. Undefined = no fire button shown. */
+  onFire?:        () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -97,8 +99,33 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   isTriggering,
   barkSeq,
   onAnimationEnd,
+  onFire,
 }) => {
   const portraitRef = useRef<HTMLDivElement>(null);
+
+  // ── Hold-to-fire state ────────────────────────────────────────────────────
+  const [holding, setHolding]   = useState(false);
+  const holdTimer               = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const startHold = useCallback(() => {
+    if (!onFire) return;
+    setHolding(true);
+    holdTimer.current = setTimeout(() => {
+      setHolding(false);
+      onFire();
+    }, 1000);
+  }, [onFire]);
+
+  const cancelHold = useCallback(() => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+    setHolding(false);
+  }, []);
+
+  // Cancel on unmount
+  useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
 
   // ── Cooldown fill tracking ─────────────────────────────────────────────────
   // We need the maximum cooldown value (= value right after firing) to compute
@@ -143,7 +170,10 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   const onCooldown = cooldownState > 0;
 
   return (
-    <div className="group relative flex flex-col items-center gap-1 select-none">
+    <div
+      className="group relative flex flex-col items-center gap-1 select-none outline-none"
+      tabIndex={onFire ? 0 : -1}
+    >
       {/* ── Bark bubble (floats above the portrait while animating) ───────── */}
       {isTriggering && barkSeq !== null && (
         <div
@@ -252,6 +282,44 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
               }}
             />
           </div>
+        )}
+
+        {/* ── Fire button — top-right corner, revealed on hover/focus ─────
+            Hold for 1 second to fire. A red countdown bar fills along the
+            bottom of the portrait during the hold.                          */}
+        {onFire && (
+          <button
+            type="button"
+            aria-label={`Fire ${crewName ?? 'crew member'}`}
+            onPointerDown={startHold}
+            onPointerUp={cancelHold}
+            onPointerLeave={cancelHold}
+            className={[
+              'absolute top-0.5 right-0.5 z-20',
+              'w-4 h-4 rounded-sm',
+              'flex items-center justify-center',
+              'font-pixel text-[7px] leading-none',
+              'bg-red-900/70 text-red-300',
+              'border border-red-700/60',
+              'transition-opacity duration-150',
+              // Revealed on hover (desktop) or focus-within (mobile tap)
+              'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+              holding ? 'opacity-100 bg-red-700/90' : '',
+            ].join(' ')}
+          >
+            ✕
+          </button>
+        )}
+
+        {/* ── Hold-to-fire countdown bar ───────────────────────────────────
+            Fills left-to-right across the bottom of the portrait.
+            Re-mounts (key trick) each time a hold starts so the animation
+            always plays from 0%.                                             */}
+        {holding && (
+          <div
+            key={String(holding)}
+            className="absolute bottom-0 left-0 h-[3px] bg-red-500 z-20 animate-fire-countdown"
+          />
         )}
       </div>
 

@@ -318,6 +318,21 @@
   animation: portrait-trigger 600ms steps(1) forwards;
 }
 
+/* ── Fire crew countdown ──────────────────────────────────────────────────────
+   Thin bar that fills left-to-right across the bottom of a portrait while the
+   player holds the fire button. Duration is set on the element so one keyframe
+   serves all hold durations (currently 1000ms).
+   ────────────────────────────────────────────────────────────────────────────── */
+
+@keyframes fire-countdown {
+  from { width: 0%;   }
+  to   { width: 100%; }
+}
+
+.animate-fire-countdown {
+  animation: fire-countdown 1000ms linear forwards;
+}
+
 /* ── Felt table breathing — ambient atmosphere overlay ────────────────────────
    Three tiers of radial shimmer that pulse over the table felt.
    The overlay div is absolute/inset-0/pointer-events-none so it never

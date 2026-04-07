@@ -46,6 +46,8 @@ export const TableBoard: React.FC = () => {
   const activeSlot   = useGameStore(selectActiveSlot);
   const activeBark   = useGameStore(selectActiveBark);
   const dequeueEvent = useGameStore((s) => s.dequeueEvent);
+  const isRolling    = useGameStore((s) => s.isRolling);
+  const fireCrew     = useGameStore((s) => s.fireCrew);
   const socketStatus = useGameStore((s) => s.socketStatus);
   const { flashType, _flashKey }           = useGameStore(selectFlash);
   const { wallFlash, _wallFlashKey }       = useGameStore(selectWallFlash);
@@ -228,6 +230,7 @@ export const TableBoard: React.FC = () => {
               isTriggering={activeSlot === i}
               barkSeq={activeSlot === i ? (activeBark?.seq ?? null) : null}
               onAnimationEnd={handleAnimationEnd}
+              onFire={!isRolling && slot !== null ? () => { void fireCrew(i); } : undefined}
             />
           ))}
         </div>

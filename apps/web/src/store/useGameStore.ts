@@ -374,6 +374,15 @@ export interface GameActions {
    * store on success. Throws on network or server error.
    */
   recruitCrew(crewId: number | null, slotIndex?: number): Promise<void>;
+
+  /**
+   * Fire (remove) a crew member from the given slot index (0–4).
+   *
+   * Allowed in any status except GAME_OVER, including at the pub (TRANSITION).
+   * No bankroll refund. Updates crewSlots in the store on success.
+   * Throws on network or server error so the caller can surface it.
+   */
+  fireCrew(slotIndex: number): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -911,6 +920,24 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastDelta:      null,
       cascadeQueue:   [],
     });
+  },
+
+  async fireCrew(slotIndex) {
+    const { runId, userId } = get();
+    if (!runId || !userId) throw new Error('No active run.');
+
+    const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/crew/${slotIndex}`, {
+      method:  'DELETE',
+      headers: { 'x-user-id': userId },
+    });
+
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(err.error ?? `Fire failed: ${res.status}`);
+    }
+
+    const data = (await res.json()) as { crewSlots: StoredCrewSlots };
+    set({ crewSlots: data.crewSlots });
   },
 }));
 

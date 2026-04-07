@@ -118,7 +118,7 @@ export const RollLog: React.FC = () => {
 
       {/* ── Scrollable receipt list ──────────────────────────────────────── */}
       {!collapsed && (
-        <div className="max-h-72 overflow-y-auto overscroll-contain px-2">
+        <div className="max-h-[30dvh] overflow-y-auto overscroll-contain px-2">
           {rollHistory.length === 0 ? (
             <div className="py-3 text-center text-white/30 italic">
               No rolls yet.

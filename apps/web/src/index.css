@@ -49,48 +49,54 @@
 
    Rotation budget — strictly increasing across all three phases so the
    browser always interpolates forward:
-     throw : Z 0 → 630°,  X/Y oscillate → 0   (travel 0 → -320px)
-     tumble: Z 630 → 690°, X/Y small wobble    (bounce at -320px → -310px)
-     land  : Z 690 → 720°, X/Y damp → 0       (return -310px → 0px)
+     throw : Z 0 → 630°,  X/Y oscillate → 0   (travel 0 → -1.0 × --dice-travel)
+     tumble: Z 630 → 690°, X/Y small wobble    (bounce at wall → -0.969 × --dice-travel)
+     land  : Z 690 → 720°, X/Y damp → 0       (return to 0px; squash/stretch fixed px)
    720° = exactly 2 full turns, visually identical to 0° — no snap when the
    animation class is removed at the end.
    ────────────────────────────────────────────────────────────────────────── */
 
 @keyframes dice-throw {
-  /* translateY baked to an ease-out curve via keyframe spacing.
-     Apex scaled to -320px — dice travel through the betting grid and
-     stop near the BATTLECRAPS hr at the top of the visible screen,
-     never going off-screen on a typical mobile viewport.
-     All values: translateY  scaleX  scaleY  rotateZ  rotateX  rotateY      */
-  0%   { transform: translateY(   0px) scaleX(1.00) scaleY(1.00) rotateZ(  0deg) rotateX(  0deg) rotateY(  0deg); }
-  8%   { transform: translateY( -43px) scaleX(1.14) scaleY(1.14) rotateZ( 50deg) rotateX( 12deg) rotateY(-16deg); }
-  17%  { transform: translateY( -83px) scaleX(1.30) scaleY(1.30) rotateZ(107deg) rotateX(-18deg) rotateY( 14deg); }
-  27%  { transform: translateY(-127px) scaleX(1.44) scaleY(1.44) rotateZ(170deg) rotateX( 20deg) rotateY(-12deg); }
-  38%  { transform: translateY(-161px) scaleX(1.56) scaleY(1.56) rotateZ(239deg) rotateX(-16deg) rotateY( 18deg); } /* apex */
-  50%  { transform: translateY(-202px) scaleX(1.36) scaleY(1.36) rotateZ(315deg) rotateX( 14deg) rotateY(-20deg); }
-  62%  { transform: translateY(-247px) scaleX(1.08) scaleY(1.08) rotateZ(389deg) rotateX(-12deg) rotateY( 14deg); }
-  73%  { transform: translateY(-284px) scaleX(0.82) scaleY(0.82) rotateZ(460deg) rotateX(  8deg) rotateY( -8deg); }
-  84%  { transform: translateY(-306px) scaleX(0.66) scaleY(0.66) rotateZ(526deg) rotateX( -4deg) rotateY(  5deg); }
-  93%  { transform: translateY(-317px) scaleX(0.59) scaleY(0.59) rotateZ(588deg) rotateX(  2deg) rotateY( -2deg); }
-  100% { transform: translateY(-320px) scaleX(0.57) scaleY(0.57) rotateZ(630deg) rotateX(  0deg) rotateY(  0deg); }
+  /* translateY expressed as fractions of --dice-travel, which is set on the
+     dice pair element at roll time by measuring the actual pixel distance
+     from the dice to the wall-divider hr below the BATTLECRAPS logo.
+     Fallback 320px matches the previous hardcoded value for the first render.
+     Each multiplier = original_px / 320. Scale arc unchanged — it represents
+     3-D perspective and is independent of travel distance.
+     All values: translateY                          scaleX  scaleY  rotateZ  rotateX  rotateY      */
+  0%   { transform: translateY(0px)                                     scaleX(1.00) scaleY(1.00) rotateZ(  0deg) rotateX(  0deg) rotateY(  0deg); }
+  8%   { transform: translateY(calc(-0.134 * var(--dice-travel, 320px))) scaleX(1.14) scaleY(1.14) rotateZ( 50deg) rotateX( 12deg) rotateY(-16deg); }
+  17%  { transform: translateY(calc(-0.259 * var(--dice-travel, 320px))) scaleX(1.30) scaleY(1.30) rotateZ(107deg) rotateX(-18deg) rotateY( 14deg); }
+  27%  { transform: translateY(calc(-0.397 * var(--dice-travel, 320px))) scaleX(1.44) scaleY(1.44) rotateZ(170deg) rotateX( 20deg) rotateY(-12deg); }
+  38%  { transform: translateY(calc(-0.503 * var(--dice-travel, 320px))) scaleX(1.56) scaleY(1.56) rotateZ(239deg) rotateX(-16deg) rotateY( 18deg); } /* apex */
+  50%  { transform: translateY(calc(-0.631 * var(--dice-travel, 320px))) scaleX(1.36) scaleY(1.36) rotateZ(315deg) rotateX( 14deg) rotateY(-20deg); }
+  62%  { transform: translateY(calc(-0.772 * var(--dice-travel, 320px))) scaleX(1.08) scaleY(1.08) rotateZ(389deg) rotateX(-12deg) rotateY( 14deg); }
+  73%  { transform: translateY(calc(-0.888 * var(--dice-travel, 320px))) scaleX(0.82) scaleY(0.82) rotateZ(460deg) rotateX(  8deg) rotateY( -8deg); }
+  84%  { transform: translateY(calc(-0.956 * var(--dice-travel, 320px))) scaleX(0.66) scaleY(0.66) rotateZ(526deg) rotateX( -4deg) rotateY(  5deg); }
+  93%  { transform: translateY(calc(-0.991 * var(--dice-travel, 320px))) scaleX(0.59) scaleY(0.59) rotateZ(588deg) rotateX(  2deg) rotateY( -2deg); }
+  100% { transform: translateY(calc(-1.000 * var(--dice-travel, 320px))) scaleX(0.57) scaleY(0.57) rotateZ(630deg) rotateX(  0deg) rotateY(  0deg); }
 }
 
 @keyframes dice-tumble {
-  /* wall bounce — impact kick then settle at the -320px back-wall position  */
-  0%   { transform: translateY(-320px) scaleX(0.57) scaleY(0.57) rotateZ(630deg) rotateX( 0deg) rotateY( 0deg); }
-  22%  { transform: translateY(-303px) scaleX(0.63) scaleY(0.63) rotateZ(649deg) rotateX( 9deg) rotateY(-6deg); }
-  45%  { transform: translateY(-313px) scaleX(0.58) scaleY(0.58) rotateZ(662deg) rotateX(-5deg) rotateY( 4deg); }
-  70%  { transform: translateY(-309px) scaleX(0.57) scaleY(0.57) rotateZ(673deg) rotateX( 2deg) rotateY(-2deg); }
-  100% { transform: translateY(-310px) scaleX(0.57) scaleY(0.57) rotateZ(690deg) rotateX( 0deg) rotateY( 0deg); }
+  /* Wall bounce at the back-wall position.
+     0.947 = -303/320 (bounce toward player), then settle at 0.969 = -310/320. */
+  0%   { transform: translateY(calc(-1.000 * var(--dice-travel, 320px))) scaleX(0.57) scaleY(0.57) rotateZ(630deg) rotateX( 0deg) rotateY( 0deg); }
+  22%  { transform: translateY(calc(-0.947 * var(--dice-travel, 320px))) scaleX(0.63) scaleY(0.63) rotateZ(649deg) rotateX( 9deg) rotateY(-6deg); }
+  45%  { transform: translateY(calc(-0.978 * var(--dice-travel, 320px))) scaleX(0.58) scaleY(0.58) rotateZ(662deg) rotateX(-5deg) rotateY( 4deg); }
+  70%  { transform: translateY(calc(-0.966 * var(--dice-travel, 320px))) scaleX(0.57) scaleY(0.57) rotateZ(673deg) rotateX( 2deg) rotateY(-2deg); }
+  100% { transform: translateY(calc(-0.969 * var(--dice-travel, 320px))) scaleX(0.57) scaleY(0.57) rotateZ(690deg) rotateX( 0deg) rotateY( 0deg); }
 }
 
 @keyframes dice-land {
-  /* return flight — starting from -310px (tumble end)                       */
-  0%   { transform: translateY(-310px) scaleX(0.57) scaleY(0.57) rotateZ(690deg) rotateX( 0deg) rotateY( 0deg); }
-  12%  { transform: translateY(-266px) scaleX(0.67) scaleY(0.67) rotateZ(696deg) rotateX( 6deg) rotateY(-4deg); }
-  25%  { transform: translateY(-196px) scaleX(0.86) scaleY(0.86) rotateZ(702deg) rotateX(-4deg) rotateY( 3deg); }
-  39%  { transform: translateY(-107px) scaleX(1.08) scaleY(1.08) rotateZ(708deg) rotateX( 2deg) rotateY(-2deg); }
-  50%  { transform: translateY( -28px) scaleX(1.20) scaleY(1.20) rotateZ(713deg) rotateX( 0deg) rotateY( 0deg); }
+  /* Return flight from tumble end (0.969×) back to origin.
+     Intermediate positions: 0.831 / 0.613 / 0.334 / 0.088.
+     Squash/stretch frames (58-100%) are fixed-px ground-contact physics —
+     independent of throw height, so they stay as literal pixel values.     */
+  0%   { transform: translateY(calc(-0.969 * var(--dice-travel, 320px))) scaleX(0.57) scaleY(0.57) rotateZ(690deg) rotateX( 0deg) rotateY( 0deg); }
+  12%  { transform: translateY(calc(-0.831 * var(--dice-travel, 320px))) scaleX(0.67) scaleY(0.67) rotateZ(696deg) rotateX( 6deg) rotateY(-4deg); }
+  25%  { transform: translateY(calc(-0.613 * var(--dice-travel, 320px))) scaleX(0.86) scaleY(0.86) rotateZ(702deg) rotateX(-4deg) rotateY( 3deg); }
+  39%  { transform: translateY(calc(-0.334 * var(--dice-travel, 320px))) scaleX(1.08) scaleY(1.08) rotateZ(708deg) rotateX( 2deg) rotateY(-2deg); }
+  50%  { transform: translateY(calc(-0.088 * var(--dice-travel, 320px))) scaleX(1.20) scaleY(1.20) rotateZ(713deg) rotateX( 0deg) rotateY( 0deg); }
   /* squash — wide and flat on first contact */
   58%  { transform: translateY(  14px) scaleX(1.24) scaleY(0.68) rotateZ(716deg) rotateX( 0deg) rotateY( 0deg); }
   /* stretch — tall rebound */

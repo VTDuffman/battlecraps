@@ -32,7 +32,7 @@ interface MarkerCelebrationProps {
 const MarkerCelebration: React.FC<MarkerCelebrationProps> = ({ onEnterPub }) => (
   <div
     className="
-      relative w-full max-w-lg mx-auto min-h-screen
+      relative w-full max-w-lg mx-auto min-h-screen h-[100dvh]
       flex flex-col items-center justify-center gap-8
       bg-black border-x-4 border-amber-800/60
     "
@@ -253,7 +253,7 @@ export const App: React.FC = () => {
   // ── Loading screen ────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center bg-black gap-4">
+      <main className="min-h-screen h-[100dvh] flex flex-col items-center justify-center bg-black gap-4">
         <div className="font-pixel text-[10px] text-gold animate-pulse">
           LOADING TABLE…
         </div>
@@ -267,7 +267,7 @@ export const App: React.FC = () => {
   // ── Error screen ──────────────────────────────────────────────────────────
   if (error) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center bg-black gap-6 px-8">
+      <main className="min-h-screen h-[100dvh] flex flex-col items-center justify-center bg-black gap-6 px-8">
         <div className="font-pixel text-[9px] text-red-400 text-center leading-6">
           FAILED TO CONNECT
         </div>
@@ -306,7 +306,7 @@ export const App: React.FC = () => {
 
   // ── Game screens ──────────────────────────────────────────────────────────
   return (
-    <main className="min-h-screen flex items-start justify-center bg-black">
+    <main className="min-h-screen h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
       {/* New Run button — top-left corner, always accessible */}
       <button
         type="button"

@@ -75,7 +75,7 @@ export const TableBoard: React.FC = () => {
     <div
       className={[
         'relative w-full max-w-lg mx-auto',
-        'min-h-screen flex flex-col',
+        'min-h-screen h-[100dvh] flex flex-col overflow-hidden',
         'bg-felt-texture',
         'border-x-4 border-gold/30',
         'overflow-x-hidden',
@@ -128,7 +128,7 @@ export const TableBoard: React.FC = () => {
           <div
             className="font-pixel tracking-[0.35em] leading-none"
             style={{
-              fontSize: '11px',
+              fontSize: 'clamp(8px, 1.6dvh, 11px)',
               color: '#b8861a',
               textShadow: '0 0 8px rgba(196,125,10,0.4)',
             }}
@@ -140,7 +140,7 @@ export const TableBoard: React.FC = () => {
           <h1
             className="font-pixel tracking-[0.2em] leading-none"
             style={{
-              fontSize: '34px',
+              fontSize: 'clamp(24px, 5dvh, 34px)',
               background: 'linear-gradient(180deg, #ffffff 0%, #f5c842 40%, #c47d0a 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -157,8 +157,8 @@ export const TableBoard: React.FC = () => {
             · CASINO GAUNTLET ·
           </div>
 
-          {/* Divider hr */}
-          <div className="mt-2 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+          {/* Divider — also serves as the dice throw "back wall" target */}
+          <div id="wall-divider" className="mt-2 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
         </div>
 
         <GameStatus />

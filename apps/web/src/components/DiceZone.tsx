@@ -115,6 +115,7 @@ export const DiceZone: React.FC = () => {
   const pendingResult = useRef<string | null>(null);
   const flipInterval  = useRef<ReturnType<typeof setInterval> | null>(null);
   const phaseRef      = useRef<ThrowPhase>('idle'); // always mirrors throwPhase for use in closures
+  const dicePairRef   = useRef<HTMLDivElement>(null);
 
   function setPhase(p: ThrowPhase) {
     phaseRef.current = p;
@@ -261,6 +262,21 @@ export const DiceZone: React.FC = () => {
     if (!canRoll) return;
     pendingDice.current   = null;
     pendingResult.current = null;
+
+    // Measure the pixel distance from the dice pair to the wall divider so the
+    // throw animation travels exactly to the hr line below the BATTLECRAPS logo,
+    // regardless of viewport height. The CSS custom property is read by the
+    // dice-throw / dice-tumble / dice-land keyframes via calc().
+    const wallEl = document.getElementById('wall-divider');
+    const diceEl = dicePairRef.current;
+    if (wallEl && diceEl) {
+      const wallBottom = wallEl.getBoundingClientRect().bottom;
+      const diceTop    = diceEl.getBoundingClientRect().top;
+      // Subtract 8px so the dice visually kiss the wall rather than stopping dead on it.
+      const travel = Math.max(diceTop - wallBottom - 8, 80);
+      diceEl.style.setProperty('--dice-travel', `${travel}px`);
+    }
+
     setPhase('throwing');
     startFlip();
     await rollDice();
@@ -313,6 +329,7 @@ export const DiceZone: React.FC = () => {
 
         {/* Animated dice pair */}
         <div
+          ref={dicePairRef}
           className={['flex gap-4 items-center', diceAnimClass(), diceExtraClass, throwPhase !== 'idle' ? 'relative z-10' : ''].join(' ')}
           onAnimationEnd={(e) => {
             if (e.currentTarget !== e.target) return;

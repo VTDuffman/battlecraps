@@ -665,7 +665,19 @@ function computeNextState(
         // Trigger GAME_OVER rather than leaving them on a table they can't use.
         nextStatus = 'GAME_OVER';
       } else {
-        nextStatus = 'IDLE_TABLE';
+        // Shooters remain and bankroll is healthy — but the marker may have
+        // already been crossed by a hardway win on a prior NO_RESOLUTION roll.
+        // The seven-out resolves the point phase, so check now.
+        const markerTarget = MARKER_TARGETS[currentMarkerIndex];
+        const meetsTarget  = markerTarget !== undefined && newBankroll >= markerTarget;
+
+        if (meetsTarget) {
+          const isLastMarker = currentMarkerIndex >= MARKER_TARGETS.length - 1;
+          nextStatus      = isLastMarker ? 'GAME_OVER' : 'TRANSITION';
+          nextMarkerIndex = isLastMarker ? currentMarkerIndex : currentMarkerIndex + 1;
+        } else {
+          nextStatus = 'IDLE_TABLE';
+        }
       }
 
       return {

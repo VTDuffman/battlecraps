@@ -298,10 +298,11 @@ async function rollHandler(
 
   // ── 7. Resolve roll — classify outcome and compute base payouts ────────────
   const initialCtx = resolveRoll(dice, {
-    phase:        run.phase as 'COME_OUT' | 'POINT_ACTIVE',
-    currentPoint: run.currentPoint ?? null,
-    bets:         incomingBets,
-    hype:         run.hype,
+    phase:          run.phase as 'COME_OUT' | 'POINT_ACTIVE',
+    currentPoint:   run.currentPoint ?? null,
+    bets:           incomingBets,
+    hype:           run.hype,
+    mechanicFreeze: (run.mechanicFreeze as { lockedValue: number; rollsRemaining: number } | null | undefined) ?? null,
   });
 
   // ── 7b. Base-game Point Streak Hype tick ───────────────────────────────────
@@ -356,6 +357,21 @@ async function rollHandler(
     }
   }
 
+  // ── 11c. Mechanic freeze lifecycle ────────────────────────────────────────
+  // If a freeze was applied this roll, decrement rollsRemaining.
+  // Clear on seven-out (shooter ends) or when the count reaches 0.
+  const currentFreeze = (run.mechanicFreeze as { lockedValue: number; rollsRemaining: number } | null | undefined) ?? null;
+  let nextMechanicFreeze: { lockedValue: number; rollsRemaining: number } | null = currentFreeze;
+
+  if (finalContext.rollResult === 'SEVEN_OUT') {
+    // Shooter ends — freeze always clears regardless of remaining count.
+    nextMechanicFreeze = null;
+  } else if (currentFreeze !== null && finalContext.mechanicLockedValue !== null) {
+    // A locked roll just happened — tick down.
+    const remaining = currentFreeze.rollsRemaining - 1;
+    nextMechanicFreeze = remaining > 0 ? { ...currentFreeze, rollsRemaining: remaining } : null;
+  }
+
   // ── 12. Persist (with optimistic locking) ─────────────────────────────────
   // Include updatedAt in the WHERE clause so that a concurrent request that
   // modified the run between our read and this write will cause 0 rows to be
@@ -376,6 +392,7 @@ async function rollHandler(
                             updatedCrewSlots,
                             nextState.shooters < run.shooters, // new shooter → reset per_shooter cooldowns
                           ),
+      mechanicFreeze:     nextMechanicFreeze,
       currentMarkerIndex: nextState.currentMarkerIndex,
       updatedAt:          new Date(),
     })
@@ -451,10 +468,12 @@ async function rollHandler(
       // The fully resolved bet state after all wipes and clears.
       // The store uses this to immediately sync the table — the server
       // is the single source of truth for what chips are on the felt.
-      resolvedBets:  nextState.bets,
+      resolvedBets:    nextState.bets,
       // Included here so the client can apply the full settlement from the
       // HTTP response without depending on the WebSocket turn:settled event.
       payoutBreakdown,
+      // Updated freeze state so the client knows how many rolls remain.
+      mechanicFreeze:  nextMechanicFreeze,
     },
   });
 }

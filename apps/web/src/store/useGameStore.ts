@@ -180,6 +180,12 @@ export interface GameState {
   // ── Crew ──────────────────────────────────────────────────────────────────
   crewSlots: StoredCrewSlots;
 
+  /**
+   * Active Mechanic freeze. null when no freeze is in effect.
+   * Set by setMechanicFreeze(); updated from roll responses.
+   */
+  mechanicFreeze: { lockedValue: number; rollsRemaining: number } | null;
+
   // ── Last roll result ──────────────────────────────────────────────────────
   lastDice:       [number, number] | null;
   lastRollResult: RollResult | null;
@@ -383,6 +389,13 @@ export interface GameActions {
    * Throws on network or server error so the caller can surface it.
    */
   fireCrew(slotIndex: number): Promise<void>;
+
+  /**
+   * Activate The Mechanic's freeze: lock a die face (1–6) for the next 4 rolls.
+   * Once per shooter. Takes effect starting from the next roll.
+   * Throws on network or server error so the caller can surface it.
+   */
+  setMechanicFreeze(lockedValue: number): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -418,6 +431,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   committedBets:       DEFAULT_BETS,
   activeChip:          500,  // $5 default
   crewSlots:           DEFAULT_CREW_SLOTS,
+  mechanicFreeze:      null,
   lastDice:       null,
   lastRollResult: null,
   lastDelta:      null,
@@ -597,6 +611,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bets:                DEFAULT_BETS,
       committedBets:       DEFAULT_BETS,
       crewSlots:           DEFAULT_CREW_SLOTS,
+      mechanicFreeze:      null,
       lastDice:            null,
       lastRollResult:      null,
       lastDelta:           null,
@@ -828,8 +843,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           rollResult:       RollResult;
           bankrollDelta:    number;
           receipt:          RollReceipt;
-          resolvedBets:     Bets;
-          payoutBreakdown:  { passLine: number; odds: number; hardways: number };
+          resolvedBets:    Bets;
+          payoutBreakdown: { passLine: number; odds: number; hardways: number };
+          mechanicFreeze:  { lockedValue: number; rollsRemaining: number } | null;
         };
       };
 
@@ -858,6 +874,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         lastDice:          settlement.dice,
         lastRollResult:    settlement.rollResult,
         pendingSettlement: settlement,
+        mechanicFreeze:    data.roll.mechanicFreeze ?? null,
         ...(data.roll.receipt && {
           rollHistory: [data.roll.receipt, ...state.rollHistory].slice(0, 50),
         }),
@@ -937,7 +954,42 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }
 
     const data = (await res.json()) as { crewSlots: StoredCrewSlots };
-    set({ crewSlots: data.crewSlots });
+    // If The Mechanic was fired while a freeze was active, the server clears it.
+    // We don't know which crew was fired here, so always sync from the server state.
+    // Check if The Mechanic (crewId 3) is still in any slot.
+    const mechanicStillPresent = data.crewSlots.some((s) => s?.crewId === 3);
+    set({
+      crewSlots: data.crewSlots,
+      ...(mechanicStillPresent ? {} : { mechanicFreeze: null }),
+    });
+  },
+
+  async setMechanicFreeze(lockedValue) {
+    const { runId, userId } = get();
+    if (!runId || !userId) throw new Error('No active run.');
+
+    const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/mechanic-freeze`, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-id':    userId,
+      },
+      body: JSON.stringify({ lockedValue }),
+    });
+
+    if (!res.ok) {
+      const err = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(err.error ?? `Freeze failed: ${res.status}`);
+    }
+
+    const data = (await res.json()) as {
+      mechanicFreeze: { lockedValue: number; rollsRemaining: number } | null;
+      crewSlots:      StoredCrewSlots;
+    };
+    set({
+      mechanicFreeze: data.mechanicFreeze,
+      crewSlots:      data.crewSlots,
+    });
   },
 }));
 

@@ -30,6 +30,10 @@ interface CrewPortraitProps {
   onAnimationEnd: () => void;
   /** Called after the 1-second hold-to-fire completes. Undefined = no fire button shown. */
   onFire?:        () => void;
+  /** Called when the player commits a die-value lock (1–6). Only shown for The Mechanic. */
+  onSetFreeze?:   (value: number) => void;
+  /** Current freeze state — non-null while The Mechanic's lock is active. */
+  freezeState?:   { lockedValue: number; rollsRemaining: number } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -39,7 +43,7 @@ interface CrewPortraitProps {
 const ABILITY_DESCRIPTIONS: Record<number, string> = {
   1:  'Re-rolls a Seven Out once per shooter.',
   2:  'Occasionally swaps a 7 for the active Point number.',
-  3:  'Locks a chosen die value for up to 4 rolls.',
+  3:  'Once per shooter: lock a die face (1–6). That die is held for up to 4 rolls, or until a Seven Out.',
   4:  'Active Hardway bets survive a soft-number hit.',
   5:  'The first Seven Out of a shooter refunds your Pass Line bet.',
   6:  'Grants a free Odds bet equal to your Pass Line on a Natural.',
@@ -90,6 +94,9 @@ function getBark(crewId: number | null, crewName: string | null): string {
 // Component
 // ---------------------------------------------------------------------------
 
+// Die face Unicode characters — index 0 unused; indices 1–6 map to ⚀–⚅
+const DIE_FACES = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+
 export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   slotIndex,
   crewId,
@@ -100,8 +107,13 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   barkSeq,
   onAnimationEnd,
   onFire,
+  onSetFreeze,
+  freezeState,
 }) => {
   const portraitRef = useRef<HTMLDivElement>(null);
+
+  // ── Die picker state (The Mechanic only) ──────────────────────────────────
+  const [pendingDieValue, setPendingDieValue] = useState<number | null>(null);
 
   // ── Hold-to-fire state ────────────────────────────────────────────────────
   const [holding, setHolding]   = useState(false);
@@ -323,10 +335,70 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
         )}
       </div>
 
-      {/* ── Slot index label ─────────────────────────────────────────────── */}
-      <span className="font-pixel text-[6px] text-felt-light/60">
-        {slotIndex + 1}
-      </span>
+      {/* ── Slot index / freeze status label ─────────────────────────────── */}
+      {freezeState ? (
+        <span className="font-pixel text-[6px] text-slate-300 leading-none">
+          {DIE_FACES[freezeState.lockedValue]} ×{freezeState.rollsRemaining}
+        </span>
+      ) : (
+        <span className="font-pixel text-[6px] text-felt-light/60">
+          {slotIndex + 1}
+        </span>
+      )}
+
+      {/* ── Die value picker (The Mechanic only, hover/tap to reveal) ───────
+          Two-step: click a die face to highlight → LOCK button confirms.    */}
+      {onSetFreeze && !freezeState && (
+        <div
+          className="
+            absolute bottom-full mb-1 left-1/2 -translate-x-1/2
+            opacity-0 group-hover:opacity-100 group-focus-within:opacity-100
+            transition-opacity duration-150
+            pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto
+            z-30
+          "
+        >
+          <div
+            className="
+              bg-black/90 border border-white/20 rounded
+              px-1.5 py-1 flex flex-col items-center gap-1
+            "
+          >
+            <div className="font-pixel text-[5px] text-slate-400 tracking-widest">LOCK DIE</div>
+            <div className="flex gap-0.5">
+              {[1,2,3,4,5,6].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setPendingDieValue(prev => prev === v ? null : v)}
+                  className={[
+                    'w-5 h-5 rounded text-[10px] leading-none border transition-colors',
+                    pendingDieValue === v
+                      ? 'bg-amber-500 border-amber-300 text-black'
+                      : 'bg-stone-800 border-stone-600 text-white/80 hover:border-amber-500/60',
+                  ].join(' ')}
+                >
+                  {DIE_FACES[v]}
+                </button>
+              ))}
+            </div>
+            {pendingDieValue !== null && (
+              <button
+                type="button"
+                onClick={() => { onSetFreeze(pendingDieValue); setPendingDieValue(null); }}
+                className="
+                  w-full py-0.5 rounded
+                  font-pixel text-[5px] tracking-wider
+                  bg-amber-700 border border-amber-500 text-amber-100
+                  hover:bg-amber-600 active:scale-95
+                "
+              >
+                LOCK
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

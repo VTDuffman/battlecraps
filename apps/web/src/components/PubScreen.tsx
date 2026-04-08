@@ -56,7 +56,7 @@ const ALL_CREW: CrewMember[] = [
 const DESCRIPTIONS: Record<number, string> = {
   1:  'Re-rolls a Seven Out once per shooter.',
   2:  'On any paired roll, nudges both dice ±1 to land on the active point.',
-  3:  'Locks a chosen die value for up to 4 rolls.',
+  3:  'Once per shooter: lock a die face (1–6). That die is held for up to 4 rolls, or until a Seven Out.',
   4:  'Active Hardway bets survive a soft-number hit.',
   5:  'The first Seven Out of a shooter refunds your Pass Line bet.',
   6:  'Grants a free Odds bet equal to your Pass Line on a Natural.',

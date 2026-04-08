@@ -46,8 +46,10 @@ export const TableBoard: React.FC = () => {
   const activeSlot   = useGameStore(selectActiveSlot);
   const activeBark   = useGameStore(selectActiveBark);
   const dequeueEvent = useGameStore((s) => s.dequeueEvent);
-  const isRolling    = useGameStore((s) => s.isRolling);
-  const fireCrew     = useGameStore((s) => s.fireCrew);
+  const isRolling        = useGameStore((s) => s.isRolling);
+  const fireCrew         = useGameStore((s) => s.fireCrew);
+  const mechanicFreeze   = useGameStore((s) => s.mechanicFreeze);
+  const setMechanicFreeze = useGameStore((s) => s.setMechanicFreeze);
   const socketStatus = useGameStore((s) => s.socketStatus);
   const { flashType, _flashKey }           = useGameStore(selectFlash);
   const { wallFlash, _wallFlashKey }       = useGameStore(selectWallFlash);
@@ -231,6 +233,12 @@ export const TableBoard: React.FC = () => {
               barkSeq={activeSlot === i ? (activeBark?.seq ?? null) : null}
               onAnimationEnd={handleAnimationEnd}
               onFire={!isRolling && slot !== null ? () => { void fireCrew(i); } : undefined}
+              onSetFreeze={
+                slot?.crewId === 3 && !isRolling && slot.cooldownState === 0 && !mechanicFreeze
+                  ? (v) => { void setMechanicFreeze(v); }
+                  : undefined
+              }
+              freezeState={slot?.crewId === 3 ? mechanicFreeze : null}
             />
           ))}
         </div>

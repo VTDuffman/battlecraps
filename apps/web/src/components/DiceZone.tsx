@@ -92,6 +92,7 @@ const ResultPopup: React.FC<ResultPopupProps> = ({ result, total, phase }) => {
 
 export const DiceZone: React.FC = () => {
   const runId                  = useGameStore((s) => s.runId);
+  const mechanicFreeze         = useGameStore((s) => s.mechanicFreeze);
   const isRolling              = useGameStore((s) => s.isRolling);
   const rollDice               = useGameStore((s) => s.rollDice);
   const applyPendingSettlement = useGameStore((s) => s.applyPendingSettlement);
@@ -340,7 +341,7 @@ export const DiceZone: React.FC = () => {
         >
           {showingDice ? (
             <>
-              <Die value={showingDice[0]} />
+              <Die value={showingDice[0]} locked={mechanicFreeze !== null} />
               <Die value={showingDice[1]} />
             </>
           ) : (
@@ -433,17 +434,29 @@ const DOT_POSITIONS: Record<number, [number, number][]> = {
   6: [[25, 20], [75, 20], [25, 50], [75, 50], [25, 80], [75, 80]],
 };
 
-const Die: React.FC<{ value: number }> = ({ value }) => {
+const Die: React.FC<{ value: number; locked?: boolean }> = ({ value, locked = false }) => {
   const dots = DOT_POSITIONS[value] ?? [];
   return (
-    <div className="relative w-12 h-12 bg-[#e8dcc8] rounded-lg border-2 border-[#2a1a0a] shadow-[3px_3px_0px_#2a1a0a]">
+    <div
+      className={[
+        'relative w-12 h-12 rounded-lg border-2 shadow-[3px_3px_0px_#2a1a0a]',
+        locked
+          ? 'bg-[#b0b0b0] border-[#666] shadow-[3px_3px_0px_#555]'
+          : 'bg-[#e8dcc8] border-[#2a1a0a]',
+      ].join(' ')}
+    >
       {dots.map(([x, y], i) => (
         <div
           key={i}
-          className="absolute w-2.5 h-2.5 rounded-full bg-[#1a0a00]"
+          className={['absolute w-2.5 h-2.5 rounded-full', locked ? 'bg-[#444]' : 'bg-[#1a0a00]'].join(' ')}
           style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }}
         />
       ))}
+      {locked && (
+        <div className="absolute inset-0 flex items-end justify-end pr-0.5 pb-0.5 pointer-events-none">
+          <span className="font-pixel text-[5px] text-[#444] leading-none">⛓</span>
+        </div>
+      )}
     </div>
   );
 };

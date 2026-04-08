@@ -247,6 +247,16 @@ export const runs = pgTable(
       .notNull()
       .default([null, null, null, null, null]),
 
+    // ── Mechanic freeze — persisted across rolls ───────────────────────────
+
+    /**
+     * Active freeze set by The Mechanic ability. null when no freeze is in effect.
+     * Set by POST /runs/:id/mechanic-freeze; decremented by the roll handler;
+     * cleared on SEVEN_OUT or when rollsRemaining reaches 0.
+     */
+    mechanicFreeze: jsonb('mechanic_freeze')
+      .$type<{ lockedValue: number; rollsRemaining: number } | null>(),
+
     // ── Meta ───────────────────────────────────────────────────────────────
 
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

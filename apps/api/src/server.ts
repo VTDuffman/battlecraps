@@ -17,6 +17,7 @@ import { rollsPlugin }     from './routes/rolls.js';
 import { bootstrapPlugin } from './routes/bootstrap.js';
 import { recruitPlugin }   from './routes/recruit.js';
 import { crewPlugin }      from './routes/crew.js';
+import { mechanicPlugin }  from './routes/mechanic.js';
 
 const PORT = Number(process.env['PORT'] ?? 3001);
 
@@ -59,6 +60,7 @@ await app.register(rollsPlugin,     { prefix: '/api/v1' });
 await app.register(bootstrapPlugin, { prefix: '/api/v1' });
 await app.register(recruitPlugin,   { prefix: '/api/v1' });
 await app.register(crewPlugin,      { prefix: '/api/v1' });
+await app.register(mechanicPlugin,  { prefix: '/api/v1' });
 
 // Health check — used by container orchestration and CI smoke tests
 app.get('/health', async () => ({ status: 'ok', ts: Date.now() }));

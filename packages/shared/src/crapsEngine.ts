@@ -439,6 +439,7 @@ export function resolveRoll(
     currentPoint: number | null;
     bets: Bets;
     hype: number;
+    mechanicFreeze?: { lockedValue: number; rollsRemaining: number } | null;
   },
 ): TurnContext {
   const { phase, currentPoint, bets, hype } = state;
@@ -451,9 +452,21 @@ export function resolveRoll(
     throw new Error(`resolveRoll: invalid dice values [${dice[0]}, ${dice[1]}]. Each must be 1–6.`);
   }
 
-  const diceTotal  = dice[0] + dice[1];
-  const isHardway  = dice[0] === dice[1] && HARDWAY_NUMBERS.has(diceTotal);
-  const rollResult = classifyDiceOutcome(dice, phase, currentPoint);
+  // ── Apply Mechanic freeze ───────────────────────────────────────────────────
+  // If a freeze is active, replace dice[0] with the locked value. dice[1] rolls
+  // freely as normal. The locked value was validated as 1–6 at the freeze endpoint
+  // so it is always a legal die face. We compute mechanicLockedValue for the
+  // receipt log; it is null when no freeze is in effect.
+  const freeze = state.mechanicFreeze;
+  const mechanicLockedValue: number | null =
+    freeze && freeze.rollsRemaining > 0 ? freeze.lockedValue : null;
+  const effectiveDice: [number, number] = mechanicLockedValue !== null
+    ? [mechanicLockedValue, dice[1]]
+    : dice;
+
+  const diceTotal  = effectiveDice[0] + effectiveDice[1];
+  const isHardway  = effectiveDice[0] === effectiveDice[1] && HARDWAY_NUMBERS.has(diceTotal);
+  const rollResult = classifyDiceOutcome(effectiveDice, phase, currentPoint);
 
   // In POINT_ACTIVE, the active point is the current point; in COME_OUT it's null.
   // This distinction matters for Odds payout calculation.
@@ -467,11 +480,11 @@ export function resolveRoll(
       ? { ...bets, odds: validateOddsBet(bets.passLine, bets.odds, currentPoint) }
       : bets;
 
-  const payouts = calculateBasePayouts(dice, rollResult, activePoint, effectiveBets);
+  const payouts = calculateBasePayouts(effectiveDice, rollResult, activePoint, effectiveBets);
 
   return {
     // ── Dice state ──────────────────────────────────────────────────────
-    dice,
+    dice:       effectiveDice,
     diceTotal,
     isHardway,
 
@@ -491,8 +504,8 @@ export function resolveRoll(
     baseStakeReturned: payouts.stakeReturned,
 
     // ── Cascade modifiers — identity values (crew will mutate these) ────
-    additives:  0,         // No flat bonuses yet
-    multipliers: [],       // No multipliers yet (product of [] = 1.0)
+    additives:   0,   // No flat bonuses yet
+    multipliers: [],  // No multipliers yet (product of [] = 1.0)
 
     // ── Hype — carried in from GameState, crew may boost it ─────────────
     hype,
@@ -506,6 +519,9 @@ export function resolveRoll(
 
     // ── Resolved bets — zeroed for any bet that won or lost this roll ────
     resolvedBets: payouts.resolvedBets,
+
+    // ── Mechanic freeze — non-null when die 0 was locked this roll ───────
+    mechanicLockedValue,
   };
 }
 
@@ -764,6 +780,14 @@ export function buildRollReceipt(ctx: TurnContext): RollReceipt {
     lines.push({
       kind: 'win',
       text: `Crew Bonus: +${fmtCents(ctx.additives)}`,
+    });
+  }
+
+  // ── Mechanic freeze note ──────────────────────────────────────────────────
+  if (ctx.mechanicLockedValue !== null) {
+    lines.push({
+      kind: 'info',
+      text: `Mechanic: die locked at ${ctx.mechanicLockedValue}`,
     });
   }
 

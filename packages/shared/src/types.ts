@@ -272,6 +272,14 @@ export interface TurnContext {
    * The server applies this to GameState.bets after settlement.
    */
   resolvedBets: Bets;
+
+  /**
+   * The die face value (1–6) locked by The Mechanic for this roll.
+   * null when no Mechanic freeze is active. Set by resolveRoll() from
+   * GameState.mechanicFreeze before the cascade runs. Used by
+   * buildRollReceipt() to note the lock in the transaction log.
+   */
+  mechanicLockedValue: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -486,4 +494,14 @@ export interface GameState {
    * Used by getBossMinBet() to compute the current minimum Pass Line bet.
    */
   bossPointHits: number;
+
+  /**
+   * Active Mechanic freeze: the die face locked by the player and the number
+   * of rolls remaining in the freeze window. null when no freeze is in effect.
+   *
+   * Set by the POST /runs/:id/mechanic-freeze endpoint.
+   * Decremented after each roll by the roll handler.
+   * Cleared on SEVEN_OUT (shooter ends) or when rollsRemaining reaches 0.
+   */
+  mechanicFreeze: { lockedValue: number; rollsRemaining: number } | null;
 }

@@ -63,10 +63,18 @@ export async function crewPlugin(app: FastifyInstance): Promise<void> {
       const newCrewSlots: StoredCrewSlots = [...run.crewSlots] as StoredCrewSlots;
       newCrewSlots[slotIndex] = null;
 
+      // If The Mechanic is being fired while a freeze is active, clear it.
+      const firedCrewId = run.crewSlots[slotIndex]?.crewId;
+      const clearFreeze = firedCrewId === 3 && run.mechanicFreeze != null;
+
       // ── 6. Persist (optimistic lock via updatedAt) ────────────────────────────
       const updated = await db
         .update(runs)
-        .set({ crewSlots: newCrewSlots, updatedAt: new Date() })
+        .set({
+          crewSlots:      newCrewSlots,
+          ...(clearFreeze ? { mechanicFreeze: null } : {}),
+          updatedAt:      new Date(),
+        })
         .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
         .returning();
 

@@ -13,6 +13,7 @@ import React from 'react';
 import type { BossConfig } from '@battlecraps/shared';
 import { getBossMinBet, GAUNTLET } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
+import { getFloorTheme } from '../lib/floorThemes.js';
 
 interface BossEntryModalProps {
   boss:        BossConfig;
@@ -27,64 +28,63 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
 }) => {
   const bossPointHits  = useGameStore((s) => s.bossPointHits);
   const startingMinBet = getBossMinBet(markerIndex, bossPointHits);
+  const theme          = getFloorTheme(markerIndex);
 
   return (
     <div
       className="
         relative w-full max-w-lg mx-auto min-h-screen
         flex flex-col items-center justify-center gap-6
-        border-x-4 border-red-900/60
+        border-x-4
         overflow-hidden
       "
       style={{
-        background: 'radial-gradient(ellipse at 50% 30%, #1a0800 0%, #0d0400 55%, #050201 100%)',
+        background:  theme.bossBg,
+        borderColor: theme.bossBorderColor,
       }}
     >
-      {/* Ominous red top bar */}
+      {/* Top accent bar */}
       <div
         className="absolute top-0 left-0 right-0 h-1"
-        style={{
-          background: 'linear-gradient(90deg, transparent, #7f1d1d 30%, #dc2626 50%, #7f1d1d 70%, transparent)',
-        }}
+        style={{ background: theme.bossAccentBar }}
       />
 
-      {/* Flickering red glow behind content */}
+      {/* Ambient glow behind content */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at 50% 40%, rgba(180,20,20,0.08) 0%, transparent 65%)',
-        }}
+        style={{ background: theme.bossGlow }}
       />
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex flex-col items-center gap-3 px-8 text-center">
         {/* Star badge */}
         <div
-          className="w-12 h-12 rounded flex items-center justify-center font-pixel text-[18px] text-red-400"
+          className="w-12 h-12 rounded flex items-center justify-center font-pixel text-[18px]"
           style={{
-            background: 'rgba(127,29,29,0.4)',
-            border: '2px solid rgba(220,38,38,0.5)',
-            boxShadow: '0 0 20px 4px rgba(220,38,38,0.2)',
+            color:      theme.bossStarColor,
+            background: theme.bossStarBg,
+            border:     theme.bossStarBorder,
+            boxShadow:  theme.bossStarGlow,
           }}
         >
           ★
         </div>
 
-        <div className="font-pixel text-[6px] text-red-500/70 tracking-[0.3em]">
+        <div className="font-pixel text-[6px] tracking-[0.3em]" style={{ color: `${theme.bossTextColor}b3` }}>
           YOU HAVE BEEN SUMMONED TO
         </div>
 
         <h1
           className="font-pixel text-[16px] tracking-wide"
           style={{
-            color: '#dc2626',
-            textShadow: '0 0 30px rgba(220,38,38,0.6), 0 0 80px rgba(127,29,29,0.4)',
+            color:      theme.bossTextColor,
+            textShadow: theme.bossTitleShadow,
           }}
         >
           THE HIGH LIMIT ROOM
         </h1>
 
-        <div className="font-pixel text-[9px] text-red-300/80 tracking-widest">
+        <div className="font-pixel text-[9px] tracking-widest" style={{ color: `${theme.bossTextColor}cc` }}>
           {boss.name.toUpperCase()}
         </div>
       </div>
@@ -93,25 +93,25 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
       <div
         className="px-8 py-4 mx-6 rounded"
         style={{
-          background: 'rgba(30,10,0,0.7)',
-          border: '1px solid rgba(127,29,29,0.4)',
+          background: 'rgba(0,0,0,0.55)',
+          border:     `1px solid ${theme.bossBorderColor}`,
         }}
       >
-        <p className="font-mono text-[9px] text-red-200/60 text-center leading-relaxed italic">
+        <p className="font-mono text-[9px] text-center leading-relaxed italic" style={{ color: `${theme.bossTextColor}99` }}>
           &ldquo;{boss.flavorText}&rdquo;
         </p>
         <div
           className="mt-1 h-px"
-          style={{ background: 'linear-gradient(90deg, transparent, rgba(127,29,29,0.5), transparent)' }}
+          style={{ background: `linear-gradient(90deg, transparent, ${theme.bossBorderColor}, transparent)` }}
         />
-        <p className="mt-2 font-pixel text-[5px] text-red-400/40 text-center tracking-wide">
+        <p className="mt-2 font-pixel text-[5px] text-center tracking-wide" style={{ color: `${theme.bossTextColor}66` }}>
           — {boss.name}
         </p>
       </div>
 
       {/* ── Rule briefing ───────────────────────────────────────────────────── */}
       <div className="px-8 w-full max-w-xs">
-        <div className="font-pixel text-[5px] text-red-500/60 tracking-widest mb-2 text-center">
+        <div className="font-pixel text-[5px] tracking-widest mb-2 text-center" style={{ color: `${theme.bossTextColor}99` }}>
           ── HOUSE RULES ──
         </div>
 
@@ -132,19 +132,20 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
         className="
           px-10 py-3 rounded
           font-pixel text-[8px] tracking-widest
-          border-2 border-red-700
-          text-red-200
+          border-2
           transition-all duration-150 active:scale-95
         "
         style={{
-          background: 'linear-gradient(180deg, #7f1d1d 0%, #450a0a 100%)',
-          boxShadow: '0 0 20px 4px rgba(185,28,28,0.3)',
+          color:      theme.bossStarColor,
+          borderColor: theme.bossTextColor,
+          background: `linear-gradient(180deg, ${theme.bossStarBg} 0%, rgba(0,0,0,0.8) 100%)`,
+          boxShadow:  theme.bossStarGlow,
         }}
       >
         ▶ ENTER THE ROOM
       </button>
 
-      <p className="font-pixel text-[5px] text-red-900/60 tracking-wide text-center px-8">
+      <p className="font-pixel text-[5px] tracking-wide text-center px-8" style={{ color: `${theme.bossTextColor}4d` }}>
         There is no shame in surviving this far.<br />
         There will be, if you leave early.
       </p>
@@ -152,9 +153,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
       {/* Bottom bar */}
       <div
         className="absolute bottom-0 left-0 right-0 h-1"
-        style={{
-          background: 'linear-gradient(90deg, transparent, #7f1d1d 30%, #dc2626 50%, #7f1d1d 70%, transparent)',
-        }}
+        style={{ background: theme.bossAccentBar }}
       />
     </div>
   );

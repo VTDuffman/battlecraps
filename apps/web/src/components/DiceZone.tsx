@@ -326,7 +326,7 @@ export const DiceZone: React.FC = () => {
     <div className="relative flex flex-row items-center gap-4 px-4 py-3 [perspective:500px]">
 
       {/* ── LEFT: dice display + overlays ───────────────────────────────── */}
-      <div className="relative flex-1 flex items-center justify-center min-h-[64px]">
+      <div className="relative flex-1 flex items-center justify-center" style={{ minHeight: 'clamp(44px,6dvh,64px)' }}>
 
         {/* Animated dice pair */}
         <div

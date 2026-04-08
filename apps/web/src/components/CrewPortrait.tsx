@@ -227,7 +227,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
         ref={portraitRef}
         className={[
           // Base: 16-bit square portrait
-          'relative w-16 h-16 rounded-sm overflow-hidden',
+          'relative rounded-sm overflow-hidden',
           'border-2 transition-colors duration-150',
 
           // Empty slot styling
@@ -250,6 +250,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
             ? 'opacity-50 grayscale'
             : '',
         ].join(' ')}
+        style={{ width: 'clamp(46px,6dvh,64px)', height: 'clamp(46px,6dvh,64px)' }}
       >
         {isEmpty ? (
           /* Empty slot — just a dashed inner ring */

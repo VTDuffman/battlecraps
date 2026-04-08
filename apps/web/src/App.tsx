@@ -306,7 +306,7 @@ export const App: React.FC = () => {
 
   // ── Game screens ──────────────────────────────────────────────────────────
   return (
-    <main className="min-h-screen h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
+    <main className="h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
       {/* New Run button — top-left corner, always accessible */}
       <button
         type="button"

@@ -79,7 +79,7 @@ export const TableBoard: React.FC = () => {
     <div
       className={[
         'relative w-full max-w-lg mx-auto',
-        'min-h-screen h-[100dvh] flex flex-col overflow-hidden',
+        'h-[100dvh] flex flex-col overflow-hidden',
         'bg-felt-texture',
         'border-x-4 border-gold/30',
         'overflow-x-hidden',
@@ -113,12 +113,13 @@ export const TableBoard: React.FC = () => {
         aria-label="Game Status"
         className="
           flex-none
-          px-4 pt-4 pb-3
+          px-4
           border-b-2 border-gold/20
         "
+        style={{ paddingTop: 'clamp(8px,1.4dvh,16px)', paddingBottom: 'clamp(6px,1dvh,12px)' }}
       >
         {/* Vegas-style logo */}
-        <div className="text-center mb-3">
+        <div className="text-center" style={{ marginBottom: 'clamp(4px,0.6dvh,12px)' }}>
           {/* Decorative star row */}
           <div className="flex items-center justify-center gap-2 mb-1.5">
             <div className="h-px w-10 bg-gradient-to-r from-transparent to-gold/40" />
@@ -176,9 +177,10 @@ export const TableBoard: React.FC = () => {
         aria-label="Betting Grid"
         className="
           flex-none
-          px-4 pt-3 pb-3
+          px-4
           border-b-2 border-gold/20
         "
+        style={{ paddingTop: 'clamp(6px,0.8dvh,12px)', paddingBottom: 'clamp(6px,0.8dvh,12px)' }}
       >
         <BettingGrid />
       </section>
@@ -205,13 +207,14 @@ export const TableBoard: React.FC = () => {
         aria-label="Crew Rail"
         className="
           flex-none
-          px-4 py-3
+          px-4
           bg-felt-rail
           border-t-4 border-gold/30
         "
+        style={{ paddingTop: 'clamp(6px,0.8dvh,12px)', paddingBottom: 'clamp(6px,0.8dvh,12px)' }}
       >
         {/* Rail header */}
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-2" style={{ marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
           <div className="h-px flex-1 bg-gold/20" />
           <span className="font-pixel text-[6px] text-gold/50 tracking-widest">
             CREW
@@ -308,7 +311,7 @@ const GameStatus: React.FC = () => {
     '';
 
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.5dvh,8px)' }}>
       {/* HUD row: bankroll | shooters | hype */}
       <div className="w-full flex justify-between items-center px-2">
         <div className="text-left">
@@ -358,7 +361,7 @@ const GameStatus: React.FC = () => {
       <MarkerProgress bankroll={bankroll} markerIndex={currentMarkerIndex} />
 
       {/* Point puck + phase label */}
-      <div className="flex items-center gap-2 justify-center pt-1">
+      <div className="flex items-center gap-2 justify-center">
         <div className="relative">
           {/* Ring animation overlay — re-mounts on _pointRingKey to re-fire */}
           <div
@@ -450,12 +453,13 @@ const ChipRail: React.FC = () => {
       aria-label="Chip Rail"
       className="
         flex-none
-        px-4 pt-3 pb-2
+        px-4
         border-t-2 border-gold/20
         bg-felt-dark/30
       "
+      style={{ paddingTop: 'clamp(6px,0.8dvh,12px)', paddingBottom: 'clamp(4px,0.6dvh,8px)' }}
     >
-      <div className="text-center font-pixel text-[7px] text-white/30 mb-2">
+      <div className="text-center font-pixel text-[7px] text-white/30" style={{ marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
         TABLE MAX: ${maxBet / 100}
       </div>
       <ChipSelector activeChip={activeChip} disabled={isRolling} />

@@ -47,7 +47,7 @@ export const ChipSelector: React.FC<{ activeChip: number; disabled: boolean }> =
   const setActiveChip = useGameStore((s) => s.setActiveChip);
 
   return (
-    <div className="flex justify-center gap-2 mb-3">
+    <div className="flex justify-center gap-2" style={{ marginBottom: 'clamp(4px,0.8dvh,12px)' }}>
       {CHIPS.map(({ cents, label, color }) => {
         const isActive = activeChip === cents;
         return (
@@ -57,7 +57,7 @@ export const ChipSelector: React.FC<{ activeChip: number; disabled: boolean }> =
             disabled={disabled}
             onClick={() => setActiveChip(cents)}
             className={[
-              'w-9 h-9 rounded-full border-2 flex items-center justify-center',
+              'rounded-full border-2 flex items-center justify-center',
               'font-pixel text-[6px] transition-all duration-100',
               disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer active:scale-95',
               isActive
@@ -68,6 +68,8 @@ export const ChipSelector: React.FC<{ activeChip: number; disabled: boolean }> =
               background: isActive ? color : 'transparent',
               borderColor: color,
               color: isActive ? '#fff' : color,
+              width: 'clamp(28px,3.5dvh,36px)',
+              height: 'clamp(28px,3.5dvh,36px)',
             }}
           >
             {label}
@@ -142,7 +144,7 @@ const BetZone: React.FC<BetZoneProps> = ({
         'relative flex flex-col items-center justify-center',
         'border-2 rounded transition-all duration-150',
         'font-pixel text-center',
-        wide ? 'col-span-2 h-16' : 'h-16',
+        wide ? 'col-span-2' : '',
 
         highlight
           ? 'border-gold bg-gold/20 shadow-[0_0_12px_2px_rgba(212,160,23,0.4)]'
@@ -154,6 +156,7 @@ const BetZone: React.FC<BetZoneProps> = ({
           ? 'opacity-30 cursor-not-allowed'
           : 'cursor-pointer hover:border-gold/80 hover:bg-felt-light/20 active:scale-95',
       ].join(' ')}
+      style={{ height: 'clamp(46px,6.8dvh,64px)' }}
     >
       <span className="text-[7px] text-white/80 leading-tight">{label}</span>
       {sublabel && (
@@ -249,7 +252,7 @@ export const BettingGrid: React.FC = () => {
   const belowRegularMin = showRegularMin && bets.passLine > 0 && bets.passLine < regularMinBet;
 
   return (
-    <div className="w-full space-y-2">
+    <div className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.5dvh,8px)' }}>
       {/* ── Regular min-bet indicator (non-boss come-out only) ───────────── */}
       {showRegularMin && (
         <div

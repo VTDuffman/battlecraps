@@ -37,6 +37,7 @@ import { RollLog }       from './RollLog.js';
 import { useCrowdAudio }       from '../hooks/useCrowdAudio.js';
 import { useAnimatedCounter }  from '../hooks/useAnimatedCounter.js';
 import { ChipRain }            from './ChipRain.js';
+import { CompCardFan }         from './CompCardFan.js';
 
 const selectFlash    = (s: GameState) => ({ flashType: s.flashType, _flashKey: s._flashKey });
 const selectWallFlash = (s: GameState) => ({ wallFlash: s.wallFlash, _wallFlashKey: s._wallFlashKey });
@@ -107,6 +108,9 @@ export const TableBoard: React.FC = () => {
       >
         {muted ? '🔇' : '🔊'}
       </button>
+
+      {/* ── Comp Card Fan — boss-defeat rewards, top-left corner ─────────── */}
+      <CompCardFan />
 
       {/* ── GAME STATUS (back wall / far end) ────────────────────────────── */}
       <section

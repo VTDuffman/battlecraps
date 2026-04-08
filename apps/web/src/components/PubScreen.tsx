@@ -33,6 +33,8 @@ import {
   mimic,
   oldPro,
   luckyCharm,
+  isBossMarker,
+  GAUNTLET,
 } from '@battlecraps/shared';
 import type { CrewMember } from '@battlecraps/shared';
 import { useGameStore, selectBankrollDisplay } from '../store/useGameStore.js';
@@ -351,11 +353,21 @@ const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, onFire }) => {
 // ---------------------------------------------------------------------------
 
 export const PubScreen: React.FC = () => {
-  const bankrollDisplay = useGameStore(selectBankrollDisplay);
-  const bankroll        = useGameStore((s) => s.bankroll);
-  const crewSlots       = useGameStore((s) => s.crewSlots);
-  const recruitCrew     = useGameStore((s) => s.recruitCrew);
-  const fireCrew        = useGameStore((s) => s.fireCrew);
+  const bankrollDisplay    = useGameStore(selectBankrollDisplay);
+  const bankroll           = useGameStore((s) => s.bankroll);
+  const crewSlots          = useGameStore((s) => s.crewSlots);
+  const recruitCrew        = useGameStore((s) => s.recruitCrew);
+  const fireCrew           = useGameStore((s) => s.fireCrew);
+  const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
+
+  // Determine if this pub visit follows a boss victory with an EXTRA_SHOOTER comp.
+  // currentMarkerIndex was already incremented by rolls.ts on transition, so the
+  // marker just cleared is at index - 1.
+  const prevMarkerIndex  = currentMarkerIndex - 1;
+  const isComped         = prevMarkerIndex >= 0
+    && isBossMarker(prevMarkerIndex)
+    && GAUNTLET[prevMarkerIndex]?.boss?.compReward === 'EXTRA_SHOOTER';
+  const upcomingShooters = isComped ? 6 : 5;
 
   // Three random crew drawn once on mount and held stable.
   // Filter out crew already seated in any slot so repeats are never offered.
@@ -468,7 +480,15 @@ export const PubScreen: React.FC = () => {
           </div>
           <div className="text-center">
             <div className="font-pixel text-[6px] text-amber-500/50 mb-0.5">SHOOTERS</div>
-            <div className="font-pixel text-[8px] text-amber-200">5 ✦✦✦✦✦</div>
+            <div className="font-pixel text-[8px] text-amber-200">
+              {upcomingShooters} {'✦'.repeat(5)}
+              {isComped && <span className="text-gold ml-px">✦</span>}
+            </div>
+            {isComped && (
+              <div className="font-pixel text-[5px] text-gold/80 tracking-widest mt-0.5">
+                +1 COMP
+              </div>
+            )}
           </div>
         </div>
       </header>

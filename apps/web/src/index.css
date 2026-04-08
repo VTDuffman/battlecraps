@@ -373,3 +373,20 @@
   background: radial-gradient(ellipse 85% 55% at 50% 22%, rgba(220,80,30,0.28) 0%, transparent 70%);
   animation: felt-breathe-hot  1.5s ease-in-out infinite;
 }
+
+/* ── Comp Card deal-in ────────────────────────────────────────────────────────
+   New comp card slides in from the top-left corner with a slight counter-
+   clockwise rotation and a springy overshoot settle. `forwards` keeps the card
+   in its resting position after the animation completes.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@keyframes comp-deal-in {
+  0%   { transform: translateX(-80px) translateY(-60px) rotate(-22deg) scale(0.55); opacity: 0; }
+  55%  { transform: translateX(  4px) translateY(  4px) rotate(  2deg) scale(1.06); opacity: 1; }
+  75%  { transform: translateX( -2px) translateY( -2px) rotate( -1deg) scale(0.98); opacity: 1; }
+  100% { transform: translateX(  0px) translateY(  0px) rotate(  0deg) scale(1.00); opacity: 1; }
+}
+
+.animate-comp-deal-in {
+  animation: comp-deal-in 700ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}

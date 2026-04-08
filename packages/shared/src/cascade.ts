@@ -220,8 +220,13 @@ export function resolveCascade(
     // Her own execute() is a no-op; the cascade applies the 2.0× floor here
     // so that the contextDelta picks it up and emits a proper WebSocket event.
     // The snapshot must be taken BEFORE this mutation so the delta is non-empty.
+    //
+    // Formula: shift hype by +1.0 when below the 2.0× floor.
+    // This preserves any bonuses already accumulated above the 1.0× baseline
+    // rather than discarding them. E.g. 1.3× → 2.3× (not 2.0×).
+    // When hype is already ≥ 2.0× the floor is a no-op.
     if (member.id === LUCKY_CHARM_ID && isLuckyCharmSolo) {
-      ctx = { ...ctx, hype: Math.max(ctx.hype, 2.0) };
+      ctx = { ...ctx, hype: ctx.hype < 2.0 ? ctx.hype + 1.0 : ctx.hype };
     }
 
     // ── Mimic: substitute the last-fired crew's execute() ────────────────

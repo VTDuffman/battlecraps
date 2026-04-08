@@ -236,16 +236,35 @@ describe('cascade: The Mimic', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The Lucky Charm: locks Hype at 2.0× when solo
+// The Lucky Charm: additive hype floor (+1.0) when solo, hype < 2.0×
 // ---------------------------------------------------------------------------
 
 describe('cascade: The Lucky Charm', () => {
-  it('locks hype at 2.0× when solo crew, below floor', () => {
+  it('raises hype to 2.0× when solo and hype is at baseline (1.0×)', () => {
     const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 1.0 });
     const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
 
+    expect(finalContext.hype).toBe(2.0); // 1.0 + 1.0 = 2.0
+  });
+
+  it('preserves accumulated bonuses: hype between 1.0× and 2.0× gets +1.0 not clamped to 2.0×', () => {
+    // Player carried 0.3× of bonus into this roll — Lucky Charm should add +1.0,
+    // giving 2.3× rather than discarding the bonus and clamping to 2.0×.
+    const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 1.3 });
+    const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
+    const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
+
+    expect(finalContext.hype).toBeCloseTo(2.3, 5);
+  });
+
+  it('does NOT change hype when it is exactly 2.0×', () => {
+    const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 2.0 });
+    const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
+    const { finalContext, events } = resolveCascade(crew, ctx, neverCalledRng);
+
     expect(finalContext.hype).toBe(2.0);
+    expect(events).toHaveLength(0); // no-op, hype already at floor
   });
 
   it('does NOT reduce hype if it is already above 2.0×', () => {
@@ -253,10 +272,10 @@ describe('cascade: The Lucky Charm', () => {
     const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
 
-    expect(finalContext.hype).toBe(3.5); // max(3.5, 2.0) = 3.5
+    expect(finalContext.hype).toBe(3.5); // above floor — no-op
   });
 
-  it('emits a cascadeEvent when hype is floored from below 2.0×', () => {
+  it('emits a cascadeEvent when hype is raised from below 2.0×', () => {
     const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 1.0 });
     const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
     const { events } = resolveCascade(crew, ctx, neverCalledRng);
@@ -264,6 +283,15 @@ describe('cascade: The Lucky Charm', () => {
     expect(events).toHaveLength(1);
     expect(events[0]?.crewId).toBe(15);
     expect(events[0]?.contextDelta.hype).toBe(2.0);
+  });
+
+  it('emits a cascadeEvent with the full additive hype when carrying a bonus', () => {
+    const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 1.3 });
+    const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
+    const { events } = resolveCascade(crew, ctx, neverCalledRng);
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.contextDelta.hype).toBeCloseTo(2.3, 5);
   });
 
   it('does NOT emit a cascadeEvent when hype is already at or above 2.0×', () => {
@@ -280,7 +308,7 @@ describe('cascade: The Lucky Charm', () => {
     const crew: (CrewMember | null)[] = [fresh(luckyCharm), fresh(whale), null, null, null];
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
 
-    // Hype should still be 1.0 (Lucky Charm didn't lock it; only Whale's 1.2× applied)
+    // Hype should still be 1.0 (Lucky Charm didn't fire; only Whale's 1.2× applied)
     expect(finalContext.hype).toBe(1.0);
     expect(finalContext.multipliers).toEqual([1.2]); // Only Whale fired
   });

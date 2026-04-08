@@ -23,7 +23,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, users, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
-import { isBossMarker, GAUNTLET } from '@battlecraps/shared';
+import { isBossMarker, GAUNTLET, LUCKY_CHARM_ID } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // JSON Schema (Fastify validates the body before the handler runs)
@@ -140,6 +140,18 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         newCrewSlots[slotIndex!] = { crewId: crewId!, cooldownState: 0 };
       }
 
+      // ── 5b. Lucky Charm immediate hype floor ───────────────────────────────
+      // If the resulting crew is Lucky Charm as the sole member, apply the 2.0×
+      // hype floor right now so the recruit response (and UI) reflects it before
+      // the first roll. Mirrors the cascade formula: +1.0 when below floor,
+      // preserving any accumulated bonuses above the 1.0× baseline.
+      const activeFinalCrew = newCrewSlots.filter(Boolean);
+      const isLuckyCharmSolo =
+        activeFinalCrew.length === 1 && activeFinalCrew[0]?.crewId === LUCKY_CHARM_ID;
+      const newHype = isLuckyCharmSolo && run.hype < 2.0
+        ? run.hype + 1.0
+        : run.hype;
+
       // ── 6. Persist — reset shooters, return to table (with optimistic lock) ─
       const updated = await db
         .update(runs)
@@ -151,6 +163,7 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
           // Member's Jacket: +1 Shooter on top of the standard 5.
           shooters:      5 + compShooterBonus,
           crewSlots:     newCrewSlots,
+          hype:          newHype,
           bossPointHits: 0,  // always reset on segment start
           updatedAt:     new Date(),
         })

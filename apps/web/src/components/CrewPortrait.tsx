@@ -235,13 +235,18 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
             ? 'border-felt-light/40 bg-felt-dark/60'
             : 'border-gold/60 bg-felt-dark',
 
+          // Holding: red border + soft glow overrides gold
+          holding
+            ? 'border-red-500 shadow-[0_0_8px_2px_rgba(239,68,68,0.45)]'
+            : '',
+
           // Triggering: flash animation takes full visual control
           isTriggering
             ? 'animate-portrait-flash border-white'
             : '',
 
-          // Ready: slow gold border pulse
-          !isEmpty && !onCooldown && !isTriggering
+          // Ready: slow gold border pulse (suppressed while holding)
+          !isEmpty && !onCooldown && !isTriggering && !holding
             ? 'animate-portrait-ready'
             : '',
 
@@ -297,9 +302,11 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
           </div>
         )}
 
-        {/* ── Fire button — top-right corner, revealed on hover/focus ─────
-            Hold for 1 second to fire. A red countdown bar fills along the
-            bottom of the portrait during the hold.                          */}
+        {/* ── FIRE tab — persistent strip at bottom of portrait ────────────
+            Always visible on occupied slots. At rest: dim red label.
+            On hover: brightens. During hold: fill sweeps left-to-right
+            and label reads "FIRING…". Re-mounts the fill div each hold
+            so the animation always plays from 0%.                           */}
         {onFire && (
           <button
             type="button"
@@ -308,31 +315,26 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
             onPointerUp={cancelHold}
             onPointerLeave={cancelHold}
             className={[
-              'absolute top-0.5 right-0.5 z-20',
-              'w-4 h-4 rounded-sm',
+              'absolute bottom-0 left-0 right-0 z-20',
+              'h-[14px] overflow-hidden',
               'flex items-center justify-center',
-              'font-pixel text-[7px] leading-none',
-              'bg-red-900/70 text-red-300',
-              'border border-red-700/60',
-              'transition-opacity duration-150',
-              // Revealed on hover (desktop) or focus-within (mobile tap)
-              'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
-              holding ? 'opacity-100 bg-red-700/90' : '',
+              'font-pixel text-[6px] tracking-widest leading-none select-none',
+              'border-t transition-colors duration-150',
+              holding
+                ? 'bg-red-800/90 text-red-100 border-red-600'
+                : 'bg-red-950/70 text-red-500/60 border-red-800/40 group-hover:bg-red-900/75 group-hover:text-red-400 group-hover:border-red-700/60',
             ].join(' ')}
           >
-            ✕
+            {holding && (
+              <div
+                key={String(holding)}
+                className="absolute inset-0 bg-red-500/35 animate-fire-countdown"
+              />
+            )}
+            <span className="relative z-10">
+              {holding ? 'FIRING…' : 'FIRE'}
+            </span>
           </button>
-        )}
-
-        {/* ── Hold-to-fire countdown bar ───────────────────────────────────
-            Fills left-to-right across the bottom of the portrait.
-            Re-mounts (key trick) each time a hold starts so the animation
-            always plays from 0%.                                             */}
-        {holding && (
-          <div
-            key={String(holding)}
-            className="absolute bottom-0 left-0 h-[3px] bg-red-500 z-20 animate-fire-countdown"
-          />
         )}
       </div>
 

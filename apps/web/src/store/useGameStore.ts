@@ -464,10 +464,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     socket.off('connect_error');
     socket.off('disconnect');
 
+    const isNewRun = runId !== get().runId;
+
     set({
       runId,
       userId,
       socketStatus:        'connecting',
+      ...(isNewRun && { rollHistory: [] }),
       pendingCascadeQueue: [],
       cascadeQueue:        [],
       pendingTransition:   false,

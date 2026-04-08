@@ -122,54 +122,6 @@ export const TableBoard: React.FC = () => {
         "
         style={{ paddingTop: 'clamp(8px,1.4dvh,16px)', paddingBottom: 'clamp(6px,1dvh,12px)' }}
       >
-        {/* Vegas-style logo */}
-        <div className="text-center" style={{ marginBottom: 'clamp(4px,0.6dvh,12px)' }}>
-          {/* Decorative star row */}
-          <div className="flex items-center justify-center gap-2 mb-1.5">
-            <div className="h-px w-10 bg-gradient-to-r from-transparent to-gold/40" />
-            <span className="font-pixel text-[6px] text-gold/50">✦</span>
-            <span className="font-pixel text-[8px] text-gold/70">★</span>
-            <span className="font-pixel text-[6px] text-gold/50">✦</span>
-            <div className="h-px w-10 bg-gradient-to-l from-transparent to-gold/40" />
-          </div>
-
-          {/* "BATTLE" — small muted prefix */}
-          <div
-            className="font-pixel tracking-[0.35em] leading-none"
-            style={{
-              fontSize: 'clamp(8px, 1.6dvh, 11px)',
-              color: '#b8861a',
-              textShadow: '0 0 8px rgba(196,125,10,0.4)',
-            }}
-          >
-            BATTLE
-          </div>
-
-          {/* "CRAPS" — large neon headline */}
-          <h1
-            className="font-pixel tracking-[0.2em] leading-none"
-            style={{
-              fontSize: 'clamp(24px, 5dvh, 34px)',
-              background: 'linear-gradient(180deg, #ffffff 0%, #f5c842 40%, #c47d0a 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              filter:
-                'drop-shadow(0 0 6px rgba(245,200,66,0.8)) drop-shadow(0 0 18px rgba(196,125,10,0.6))',
-            }}
-          >
-            CRAPS
-          </h1>
-
-          {/* Tagline */}
-          <div className="font-pixel text-[5px] text-gold/40 tracking-[0.45em] mt-1">
-            · CASINO GAUNTLET ·
-          </div>
-
-          {/* Divider — also serves as the dice throw "back wall" target */}
-          <div id="wall-divider" className="mt-2 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
-        </div>
-
         <GameStatus />
       </section>
 
@@ -316,50 +268,107 @@ const GameStatus: React.FC = () => {
 
   return (
     <div className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.5dvh,8px)' }}>
-      {/* HUD row: bankroll | shooters | hype */}
-      <div className="w-full flex justify-between items-center px-2">
-        <div className="text-left">
-          <div className="font-pixel text-[7px] text-white/40 mb-0.5">BANKROLL</div>
-          <div className={`font-pixel text-sm transition-colors duration-150 ${bankrollColor}`}>{bankrollStr}</div>
-        </div>
 
-        <div className="text-center">
-          <div className="font-pixel text-[7px] text-white/40 mb-0.5">SHOOTERS</div>
-          <div className="flex gap-1 justify-center">
-            {Array.from({ length: 5 }, (_, i) => (
-              <div
-                key={i}
-                className={[
-                  'w-2.5 h-2.5 rounded-full border',
-                  i < shooters
-                    ? 'bg-gold border-gold/80'
-                    : 'bg-transparent border-white/20',
-                ].join(' ')}
-              />
-            ))}
-          </div>
-        </div>
+      {/* ── 2-column header: logo + bankroll (left) | hype + shooters (right) ── */}
+      <div className="flex items-center gap-3 px-1">
 
-        <div className="text-right">
-          <div className="font-pixel text-[7px] text-white/40 mb-0.5">
-            HYPE{streak >= 2 ? ` ${'🔥'.repeat(Math.min(streak, 4))}` : ''}
+        {/* LEFT column — Vegas logo stack + bankroll beneath */}
+        <div className="flex-1 flex flex-col items-center">
+          {/* Decorative star row */}
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <div className="h-px w-6 bg-gradient-to-r from-transparent to-gold/40" />
+            <span className="font-pixel text-[5px] text-gold/50">✦</span>
+            <span className="font-pixel text-[7px] text-gold/70">★</span>
+            <span className="font-pixel text-[5px] text-gold/50">✦</span>
+            <div className="h-px w-6 bg-gradient-to-l from-transparent to-gold/40" />
           </div>
-          {/* Glow shell — intensity scales with streak */}
+
+          {/* "BATTLE" prefix */}
           <div
-            className={[
-              'relative inline-block rounded px-1',
-              hypeHeat === 'blazing' ? 'shadow-[0_0_18px_4px_rgba(248,113,113,0.7)]' :
-              hypeHeat === 'hot'     ? 'shadow-[0_0_14px_3px_rgba(251,146,60,0.55)]' :
-              hypeHeat === 'warm'    ? 'shadow-[0_0_8px_2px_rgba(245,200,66,0.35)]' :
-              '',
-            ].join(' ')}
+            className="font-pixel tracking-[0.35em] leading-none"
+            style={{
+              fontSize: 'clamp(7px, 1.4dvh, 10px)',
+              color: '#b8861a',
+              textShadow: '0 0 8px rgba(196,125,10,0.4)',
+            }}
           >
-            <div className={`font-pixel text-sm ${hypeColour} ${hypeAnim}`}>
-              {hypeStr}
+            BATTLE
+          </div>
+
+          {/* "CRAPS" headline */}
+          <h1
+            className="font-pixel tracking-[0.2em] leading-none"
+            style={{
+              fontSize: 'clamp(20px, 4dvh, 28px)',
+              background: 'linear-gradient(180deg, #ffffff 0%, #f5c842 40%, #c47d0a 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              filter:
+                'drop-shadow(0 0 6px rgba(245,200,66,0.8)) drop-shadow(0 0 18px rgba(196,125,10,0.6))',
+            }}
+          >
+            CRAPS
+          </h1>
+
+          {/* Tagline */}
+          <div className="font-pixel text-[5px] text-gold/40 tracking-[0.4em] mt-0.5">
+            · CASINO GAUNTLET ·
+          </div>
+
+          {/* Bankroll — directly beneath logo */}
+          <div className="mt-1.5 text-center">
+            <div className="font-pixel text-[6px] text-white/40 mb-0.5">BANKROLL</div>
+            <div className={`font-pixel text-sm transition-colors duration-150 ${bankrollColor}`}>
+              {bankrollStr}
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT column — hype on top, shooters below */}
+        <div className="flex flex-col items-center gap-2">
+          {/* Hype */}
+          <div className="text-center">
+            <div className="font-pixel text-[6px] text-white/40 mb-0.5">
+              HYPE{streak >= 2 ? ` ${'🔥'.repeat(Math.min(streak, 4))}` : ''}
+            </div>
+            <div
+              className={[
+                'relative inline-block rounded px-1',
+                hypeHeat === 'blazing' ? 'shadow-[0_0_18px_4px_rgba(248,113,113,0.7)]' :
+                hypeHeat === 'hot'     ? 'shadow-[0_0_14px_3px_rgba(251,146,60,0.55)]' :
+                hypeHeat === 'warm'    ? 'shadow-[0_0_8px_2px_rgba(245,200,66,0.35)]' :
+                '',
+              ].join(' ')}
+            >
+              <div className={`font-pixel text-sm ${hypeColour} ${hypeAnim}`}>
+                {hypeStr}
+              </div>
+            </div>
+          </div>
+
+          {/* Shooters */}
+          <div className="text-center">
+            <div className="font-pixel text-[6px] text-white/40 mb-0.5">SHOOTERS</div>
+            <div className="flex gap-1 justify-center">
+              {Array.from({ length: 5 }, (_, i) => (
+                <div
+                  key={i}
+                  className={[
+                    'w-2 h-2 rounded-full border',
+                    i < shooters
+                      ? 'bg-gold border-gold/80'
+                      : 'bg-transparent border-white/20',
+                  ].join(' ')}
+                />
+              ))}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Divider — also serves as the dice throw "back wall" target */}
+      <div id="wall-divider" className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
 
       {/* Marker progress bar */}
       <MarkerProgress bankroll={bankroll} markerIndex={currentMarkerIndex} />

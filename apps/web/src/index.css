@@ -108,17 +108,17 @@
 }
 
 @keyframes screen-flash-win {
-  /* Gold/white burst on NATURAL or POINT HIT */
-  0%   { background: rgba(245, 200, 66, 0);    }
-  18%  { background: rgba(245, 200, 66, 0.32); }
-  100% { background: rgba(245, 200, 66, 0);    }
+  /* Color driven by --flash-win-color CSS var set per-floor on the table container */
+  0%   { background: transparent;              }
+  18%  { background: var(--flash-win-color);   }
+  100% { background: transparent;              }
 }
 
 @keyframes screen-flash-lose {
-  /* Deep red pulse on SEVEN OUT or CRAPS OUT */
-  0%   { background: rgba(160, 20, 20, 0);    }
-  22%  { background: rgba(160, 20, 20, 0.42); }
-  100% { background: rgba(160, 20, 20, 0);    }
+  /* Color driven by --flash-lose-color CSS var set per-floor on the table container */
+  0%   { background: transparent;              }
+  22%  { background: var(--flash-lose-color);  }
+  100% { background: transparent;              }
 }
 
 .animate-screen-flash-win  { animation: screen-flash-win  450ms ease-out; }
@@ -360,17 +360,20 @@
 }
 
 .animate-felt-cold {
-  background: radial-gradient(ellipse 85% 55% at 50% 22%, rgba(37,96,64,0.28) 0%, transparent 70%);
+  /* Color driven by --breathe-cold-color CSS var set per-floor on the table container */
+  background: radial-gradient(ellipse 85% 55% at 50% 22%, var(--breathe-cold-color) 0%, transparent 70%);
   animation: felt-breathe-cold 5.0s ease-in-out infinite;
 }
 
 .animate-felt-warm {
-  background: radial-gradient(ellipse 85% 55% at 50% 22%, rgba(212,160,23,0.22) 0%, transparent 70%);
+  /* Color driven by --breathe-warm-color CSS var set per-floor on the table container */
+  background: radial-gradient(ellipse 85% 55% at 50% 22%, var(--breathe-warm-color) 0%, transparent 70%);
   animation: felt-breathe-warm 3.0s ease-in-out infinite;
 }
 
 .animate-felt-hot {
-  background: radial-gradient(ellipse 85% 55% at 50% 22%, rgba(220,80,30,0.28) 0%, transparent 70%);
+  /* Color driven by --breathe-hot-color CSS var set per-floor on the table container */
+  background: radial-gradient(ellipse 85% 55% at 50% 22%, var(--breathe-hot-color) 0%, transparent 70%);
   animation: felt-breathe-hot  1.5s ease-in-out infinite;
 }
 

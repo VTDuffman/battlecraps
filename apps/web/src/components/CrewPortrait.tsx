@@ -319,10 +319,12 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
               'h-[14px] overflow-hidden',
               'flex items-center justify-center',
               'font-pixel text-[6px] tracking-widest leading-none select-none',
-              'border-t transition-colors duration-150',
+              'border-t transition-all duration-150',
+              // Hidden below the portrait edge at rest; slides up on hover/tap/hold.
+              // overflow-hidden on the portrait frame clips it when translated out.
               holding
-                ? 'bg-red-800/90 text-red-100 border-red-600'
-                : 'bg-red-950/70 text-red-500/60 border-red-800/40 group-hover:bg-red-900/75 group-hover:text-red-400 group-hover:border-red-700/60',
+                ? 'translate-y-0 bg-red-800/90 text-red-100 border-red-600'
+                : 'translate-y-full group-hover:translate-y-0 group-focus-within:translate-y-0 bg-red-950/85 text-red-400 border-red-800/50',
             ].join(' ')}
           >
             {holding && (

@@ -355,8 +355,8 @@ function calcResolvedBets(
   // Hardways: start from current values and zero out what resolves
   let { hard4, hard6, hard8, hard10 } = bets.hardways;
 
-  if (rollResult === 'SEVEN_OUT') {
-    // Seven-out wipes all hardway bets simultaneously
+  if (rollResult === 'SEVEN_OUT' || (rollResult === 'NATURAL' && total === 7)) {
+    // Seven-out and a come-out 7 (Natural) both wipe all hardway bets simultaneously
     hard4 = hard6 = hard8 = hard10 = 0;
   } else if (HARDWAY_NUMBERS.has(total)) {
     // The bet for this specific number resolves (win or soft loss)
@@ -633,6 +633,14 @@ function calcLostBetsThisRoll(ctx: TurnContext): number {
       }
       break;
 
+    case 'NATURAL':
+      // A come-out 7 clears all hardway bets; a come-out 11 does not
+      if (diceTotal === 7) {
+        lost += bets.hardways.hard4 + bets.hardways.hard6 +
+                bets.hardways.hard8 + bets.hardways.hard10;
+      }
+      break;
+
     case 'CRAPS_OUT':
       lost += bets.passLine;
       break;
@@ -740,14 +748,15 @@ export function buildRollReceipt(ctx: TurnContext): RollReceipt {
     ['hard4', 4], ['hard6', 6], ['hard8', 8], ['hard10', 10],
   ];
 
-  if (rollResult === 'SEVEN_OUT') {
-    // All active hardway bets are wiped simultaneously on a seven-out.
+  if (rollResult === 'SEVEN_OUT' || (rollResult === 'NATURAL' && diceTotal === 7)) {
+    // All active hardway bets are wiped simultaneously on a seven-out or come-out 7.
+    const clearReason = rollResult === 'SEVEN_OUT' ? 'Seven Out' : 'Natural 7';
     for (const [key, num] of hardwayEntries) {
       const bet = bets.hardways[key];
       if (bet > 0) {
         lines.push({
           kind: 'loss',
-          text: `Hard ${num} Lost: ${fmtCents(bet)} cleared by Seven Out`,
+          text: `Hard ${num} Lost: ${fmtCents(bet)} cleared by ${clearReason}`,
         });
       }
     }

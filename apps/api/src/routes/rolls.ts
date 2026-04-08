@@ -575,8 +575,10 @@ function computeNextState(
     // ── Point established ───────────────────────────────────────────────────
 
     case 'POINT_SET':
-      // No payout. Bets freeze — passLine stays, odds can now be added.
-      // Bankroll reflects the deduction of bets placed this come-out roll.
+      // No payout. PassLine/odds bets freeze — hardways that won or soft-lost on
+      // this same roll are already zeroed in clearedBets (resolvedBets). Using
+      // clearedBets here ensures a hardway that hit its number on the point-setting
+      // roll is properly cleared rather than silently carried over.
       return {
         status:               'POINT_ACTIVE',
         phase:                'POINT_ACTIVE',
@@ -584,7 +586,7 @@ function computeNextState(
         shooters:             run.shooters,
         currentPoint:         finalCtx.diceTotal,
         hype:                 finalCtx.hype,
-        bets:                 incomingBets,       // Bets are now locked/frozen
+        bets:                 clearedBets,
         currentMarkerIndex,
         consecutivePointHits: run.consecutivePointHits, // unchanged until the point resolves
         // Boss: min-bet holds on point-set (only Point Hits escalate the ante).

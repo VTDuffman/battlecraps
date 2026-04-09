@@ -209,7 +209,7 @@ The 15 starter crew members required for the MVP logic engine:
 
 The Physics Prof (Dice): Shifts both dice ±1 toward the active Point value. No effect during Come Out.
 
-The Mechanic (Dice): Sets the lower die to 6 (4-roll cooldown). Note: if the other die shows 1, this will produce a Seven Out.
+The Mechanic (Dice): Once per Shooter, locks a chosen die face (1–6) for up to 4 rolls or until Seven Out. The player selects the value via the UI; the lock is applied before the cascade fires each roll.
 
 The Mathlete (Table): Hardways stay up on "Soft" rolls (non-paired matching totals).
 

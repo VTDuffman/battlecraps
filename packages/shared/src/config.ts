@@ -237,16 +237,29 @@ export function getBossMinBet(markerIndex: number, bossPointHits: number): numbe
 /**
  * Maximum single bet (pass line or individual hardway) for a given marker.
  *
- * Set at 10 % of the current marker target so the player must sustain a
- * winning streak rather than YOLO-ing once.  Scales naturally as the
- * gauntlet difficulty rises.
+ * Normally set at 10 % of the current marker target. In boss rooms that use
+ * RISING_MIN_BETS (e.g. Sarge), the table max is dynamically floored at
+ * 5 × the current boss minimum so the player always has room to place the
+ * minimum pass-line bet and back it with full 5× odds on a 6 or 8.
  *
  * @param currentMarkerIndex  The marker the player is currently chasing (0-based).
+ * @param bossPointHits       Point hits scored so far this boss segment (required
+ *                            for boss markers to compute the dynamic floor; pass 0
+ *                            when unknown — safe default, never over-restricts).
  * @returns Maximum bet in cents.
  */
-export function getMaxBet(currentMarkerIndex: number): number {
-  const target = GAUNTLET[currentMarkerIndex]?.targetCents ?? GAUNTLET[GAUNTLET.length - 1]!.targetCents;
-  return Math.floor(target * 0.10);
+export function getMaxBet(currentMarkerIndex: number, bossPointHits = 0): number {
+  const target    = GAUNTLET[currentMarkerIndex]?.targetCents ?? GAUNTLET[GAUNTLET.length - 1]!.targetCents;
+  const normalMax = Math.floor(target * 0.10);
+
+  // Boss floor: table max must be at least 5× the current minimum demand so
+  // the player can place the minimum and cover full 5× odds on 6/8.
+  const bossMin = getBossMinBet(currentMarkerIndex, bossPointHits);
+  if (bossMin !== null) {
+    return Math.max(normalMax, bossMin * 5);
+  }
+
+  return normalMax;
 }
 
 /**

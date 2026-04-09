@@ -476,7 +476,8 @@ const ChipRail: React.FC = () => {
   const activeChip         = useGameStore((s) => s.activeChip);
   const isRolling          = useGameStore((s) => s.isRolling);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
-  const maxBet             = getMaxBet(currentMarkerIndex);
+  const bossPointHits      = useGameStore((s) => s.bossPointHits);
+  const maxBet             = getMaxBet(currentMarkerIndex, bossPointHits);
   const theme              = useFloorTheme();
 
   return (

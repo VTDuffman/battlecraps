@@ -647,8 +647,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       let effectiveAmount: number;
 
       if (field !== 'odds') {
-        // Table max: 10% of the current marker target (Pass Line & hardways).
-        const maxBet     = getMaxBet(state.currentMarkerIndex);
+        // Table max: scales with boss minimum in boss rooms, 10% of target otherwise.
+        const maxBet     = getMaxBet(state.currentMarkerIndex, state.bossPointHits);
         const currentBet = getBetField(state.bets, field);
         const room       = maxBet - currentBet;
         if (room <= 0) return state; // already at table max — no-op

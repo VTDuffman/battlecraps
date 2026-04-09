@@ -224,8 +224,8 @@ async function rollHandler(
     });
   }
 
-  // ── Table max: 10 % of the current marker target ───────────────────────
-  const maxBet = getMaxBet(run.currentMarkerIndex);
+  // ── Table max: 10 % of marker target, floored at 5× boss min in boss rooms ─
+  const maxBet = getMaxBet(run.currentMarkerIndex, run.bossPointHits);
 
   if (incomingBets.passLine > maxBet) {
     return reply.status(422).send({

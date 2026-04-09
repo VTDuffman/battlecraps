@@ -12,7 +12,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useGameStore } from '../store/useGameStore.js';
-import { isBossMarker, getBossMinBet } from '@battlecraps/shared';
+import { isBossMarker, getBossMinBet, getMinBet } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // Roll result metadata
@@ -245,18 +245,26 @@ export const DiceZone: React.FC = () => {
 
   // ── Roll handler ──────────────────────────────────────────────────────────
 
-  // Boss fight: block roll if Pass Line is below the rising minimum bet.
-  const bossMinBet = isBossMarker(currentMarkerIndex)
+  // Minimum bet enforcement — the button is disabled and labelled with the
+  // requirement until the player's Pass Line meets the floor.
+  //
+  // Boss rooms: rising minimum from getBossMinBet() (Sarge's RISING_MIN_BETS rule).
+  // Normal markers: flat minimum from getMinBet() (server enforces the same value).
+  const bossMinBet      = isBossMarker(currentMarkerIndex)
     ? getBossMinBet(currentMarkerIndex, bossPointHits)
     : null;
-  const belowBossMinBet = bossMinBet !== null && bets.passLine < bossMinBet;
+  const regularMinBet   = getMinBet(currentMarkerIndex);
+  // The effective minimum for the Roll button (boss takes precedence when active).
+  const effectiveMinBet = bossMinBet ?? regularMinBet;
+  // True when a Pass Line bet exists but hasn't hit the floor yet.
+  const belowMinBet     = bets.passLine > 0 && bets.passLine < effectiveMinBet;
 
   const canRoll =
     !isRolling &&
     throwPhase === 'idle' &&
     runId !== null &&
     bets.passLine > 0 &&
-    !belowBossMinBet &&
+    !belowMinBet &&
     (status === 'IDLE_TABLE' || status === 'POINT_ACTIVE');
 
   const handleRoll = useCallback(async () => {
@@ -406,16 +414,31 @@ export const DiceZone: React.FC = () => {
           'flex-none px-6 py-4 rounded',
           'font-pixel text-[10px]',
           'border-2 transition-all duration-150',
+          'flex flex-col items-center justify-center gap-0.5',
           canRoll
             ? [
                 'bg-gold border-gold-bright text-black',
                 'hover:bg-gold-bright hover:shadow-[0_0_14px_3px_rgba(245,200,66,0.5)]',
                 'active:scale-95',
               ].join(' ')
-            : 'bg-felt-dark border-white/10 text-white/20 cursor-not-allowed',
+            : belowMinBet
+              ? 'bg-felt-dark border-amber-700/50 text-amber-600/80 cursor-not-allowed'
+              : 'bg-felt-dark border-white/10 text-white/20 cursor-not-allowed',
         ].join(' ')}
       >
-        {isRolling || throwPhase !== 'idle' ? 'ROLLING…' : 'ROLL'}
+        {isRolling || throwPhase !== 'idle'
+          ? 'ROLLING…'
+          : belowMinBet
+            ? (
+              <>
+                <span>ROLL</span>
+                <span className="text-[6px] text-amber-400/90 tracking-wide leading-none">
+                  {bossMinBet !== null ? '⚔' : ''} MIN ${effectiveMinBet / 100}
+                </span>
+              </>
+            )
+            : 'ROLL'
+        }
       </button>
     </div>
   );

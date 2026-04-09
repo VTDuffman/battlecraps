@@ -84,7 +84,7 @@ const ReceiptEntry: React.FC<{ receipt: RollReceipt }> = ({ receipt }) => {
 
 export const RollLog: React.FC = () => {
   const rollHistory = useGameStore((s) => s.rollHistory);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   return (
     <div

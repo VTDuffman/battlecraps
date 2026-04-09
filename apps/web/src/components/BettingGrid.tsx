@@ -16,7 +16,6 @@
 import React, { useCallback } from 'react';
 import { useGameStore } from '../store/useGameStore.js';
 import type { BetField } from '../store/useGameStore.js';
-import { isBossMarker, getBossMinBet, getMinBet } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // Chip denominations available for selection
@@ -233,65 +232,11 @@ export const BettingGrid: React.FC = () => {
   const payoutPops           = useGameStore((s) => s.payoutPops);
   const _popsKey             = useGameStore((s) => s._popsKey);
   const consecutivePointHits = useGameStore((s) => s.consecutivePointHits);
-  const currentMarkerIndex   = useGameStore((s) => s.currentMarkerIndex);
-  const bossPointHits        = useGameStore((s) => s.bossPointHits);
-
   const isComeOut     = phase === 'COME_OUT' || phase === null;
   const isPointActive = phase === 'POINT_ACTIVE';
 
-  // Boss fight: derive current minimum Pass Line bet.
-  const bossMinBet = isBossMarker(currentMarkerIndex)
-    ? getBossMinBet(currentMarkerIndex, bossPointHits)
-    : null;
-  const passLineBelowMin = bossMinBet !== null && bets.passLine < bossMinBet;
-
-  // Regular (non-boss) minimum bet — shown only during come-out when no boss
-  // banner is active, so the two indicators never compete for space.
-  const regularMinBet   = getMinBet(currentMarkerIndex);
-  const showRegularMin  = !isBossMarker(currentMarkerIndex) && isComeOut;
-  const belowRegularMin = showRegularMin && bets.passLine > 0 && bets.passLine < regularMinBet;
-
   return (
     <div className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.5dvh,8px)' }}>
-      {/* ── Regular min-bet indicator (non-boss come-out only) ───────────── */}
-      {showRegularMin && (
-        <div
-          className={[
-            'flex items-center justify-between px-2 py-1 rounded',
-            'font-pixel text-[6px] tracking-wide',
-            belowRegularMin
-              ? 'bg-red-900/40 border border-red-700/50 text-red-300'
-              : 'bg-felt-dark/60 border border-felt-light/20 text-white/30',
-          ].join(' ')}
-        >
-          <span>MIN BET</span>
-          <span className={belowRegularMin ? 'text-red-200 animate-pulse' : 'text-white/40'}>
-            ${regularMinBet / 100}
-          </span>
-          <span>{belowRegularMin ? '← TOO LOW' : '✓'}</span>
-        </div>
-      )}
-
-      {/* ── Boss min-bet warning banner ──────────────────────────────────── */}
-      {bossMinBet !== null && (
-        <div
-          className={[
-            'flex items-center justify-between px-2 py-1 rounded',
-            'font-pixel text-[6px] tracking-wide',
-            passLineBelowMin
-              ? 'bg-red-900/60 border border-red-600/60 text-red-300'
-              : 'bg-olive-900/40 border border-yellow-800/40 text-yellow-600/80',
-          ].join(' ')}
-          style={{ background: passLineBelowMin ? 'rgba(127,29,29,0.5)' : 'rgba(50,40,0,0.5)' }}
-        >
-          <span>⚔ MIN BET</span>
-          <span className={passLineBelowMin ? 'text-red-200 animate-pulse' : 'text-yellow-400'}>
-            ${(bossMinBet / 100).toFixed(0)}
-          </span>
-          <span>{passLineBelowMin ? '← ADD MORE' : '✓ MET'}</span>
-        </div>
-      )}
-
       {/* ── Row 1: Pass Line + Odds ──────────────────────────────────────── */}
       <div className="grid grid-cols-4 gap-2">
         <BetZone

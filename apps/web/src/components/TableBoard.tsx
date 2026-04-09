@@ -244,6 +244,7 @@ export const TableBoard: React.FC = () => {
 
 const GameStatus: React.FC = () => {
   const hypeStr             = useGameStore(selectHypeDisplay);
+  const hype                = useGameStore((s) => s.hype);
   const shooters            = useGameStore((s) => s.shooters);
   const bankroll            = useGameStore((s) => s.bankroll);
   const currentMarkerIndex  = useGameStore((s) => s.currentMarkerIndex);
@@ -278,6 +279,26 @@ const GameStatus: React.FC = () => {
     hypeHeat === 'blazing' ? 'animate-hype-blaze' :
     hypeHeat === 'hot'     ? 'animate-hype-hot' :
     Number(hypeStr) > 1.0  ? 'animate-hype-pulse' :
+    '';
+
+  // ── Thermometer bar ─────────────────────────────────────────────────────
+  // Bar fills from 1.0× (empty) to 4.0× (full); clamped to [0, 1].
+  const fillPct = Math.min(Math.max((hype - 1.0) / 3.0, 0), 1);
+
+  const fillGradient =
+    fillPct > 0.66 ? 'linear-gradient(to top, #dc2626, #f97316)' :
+    fillPct > 0.33 ? 'linear-gradient(to top, #f97316, #fbbf24)' :
+                     'linear-gradient(to top, #16a34a, #fbbf24)';
+
+  const barGlow =
+    hypeHeat === 'blazing' ? '0 0 12px 3px rgba(248,113,113,0.7)' :
+    hypeHeat === 'hot'     ? '0 0  8px 2px rgba(251,146, 60,0.55)':
+    hypeHeat === 'warm'    ? '0 0  5px 2px rgba(245,200, 66,0.35)':
+    'none';
+
+  const boilClass =
+    hypeHeat === 'blazing' ? 'animate-thermo-blazing' :
+    hypeHeat === 'hot'     ? 'animate-thermo-hot'     :
     '';
 
   return (
@@ -346,15 +367,18 @@ const GameStatus: React.FC = () => {
             <div className="font-pixel text-[6px] text-white/40 mb-0.5">
               HYPE{streak >= 2 ? ` ${'🔥'.repeat(Math.min(streak, 4))}` : ''}
             </div>
-            <div
-              className={[
-                'relative inline-block rounded px-1',
-                hypeHeat === 'blazing' ? 'shadow-[0_0_18px_4px_rgba(248,113,113,0.7)]' :
-                hypeHeat === 'hot'     ? 'shadow-[0_0_14px_3px_rgba(251,146,60,0.55)]' :
-                hypeHeat === 'warm'    ? 'shadow-[0_0_8px_2px_rgba(245,200,66,0.35)]' :
-                '',
-              ].join(' ')}
-            >
+            <div className="flex items-center justify-center gap-1.5">
+              {/* Thermometer bar */}
+              <div
+                className="relative w-[7px] rounded-full overflow-hidden bg-black/50 border border-white/10 flex-none"
+                style={{ height: 'clamp(34px, 4dvh, 46px)', boxShadow: barGlow }}
+              >
+                <div
+                  className={`absolute bottom-0 left-0 right-0 rounded-full transition-all duration-500 ${boilClass}`}
+                  style={{ height: `${fillPct * 100}%`, background: fillGradient }}
+                />
+              </div>
+              {/* Numeric readout */}
               <div className={`font-pixel text-sm ${hypeColour} ${hypeAnim}`}>
                 {hypeStr}
               </div>

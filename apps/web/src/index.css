@@ -377,6 +377,25 @@
   animation: felt-breathe-hot  1.5s ease-in-out infinite;
 }
 
+/* ── Hype thermometer boil ────────────────────────────────────────────────────
+   Applied to the fill div inside the thermometer track. Pulses the top-edge
+   box-shadow to simulate the liquid surface boiling as heat increases.
+   Two tiers: hot (orange, 1.2 s) and blazing (red, 0.55 s).
+   ────────────────────────────────────────────────────────────────────────── */
+
+@keyframes thermo-boil-hot {
+  0%, 100% { box-shadow: 0 -2px  6px 1px rgba(251, 146,  60, 0.5); }
+  50%       { box-shadow: 0 -5px 12px 3px rgba(251, 146,  60, 0.9); }
+}
+
+@keyframes thermo-boil-blazing {
+  0%, 100% { box-shadow: 0 -2px  8px 2px rgba(248, 113, 113, 0.6); }
+  50%       { box-shadow: 0 -7px 16px 4px rgba(248, 113, 113, 1.0); }
+}
+
+.animate-thermo-hot     { animation: thermo-boil-hot     1.2s  ease-in-out infinite; }
+.animate-thermo-blazing { animation: thermo-boil-blazing 0.55s ease-in-out infinite; }
+
 /* ── Crew emoji hype pulse ────────────────────────────────────────────────────
    Single keyframe; duration is varied per tier via utility class.
    animation-delay is set inline per-slot (negative = fast-forward into cycle)

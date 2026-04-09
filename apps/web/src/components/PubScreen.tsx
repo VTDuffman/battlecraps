@@ -38,6 +38,7 @@ import {
 } from '@battlecraps/shared';
 import type { CrewMember } from '@battlecraps/shared';
 import { useGameStore, selectBankrollDisplay } from '../store/useGameStore.js';
+import { useFloorTheme } from '../hooks/useFloorTheme.js';
 
 // ---------------------------------------------------------------------------
 // Crew pool — all 15 MVP starter crew, imported from shared
@@ -359,6 +360,9 @@ export const PubScreen: React.FC = () => {
   const recruitCrew        = useGameStore((s) => s.recruitCrew);
   const fireCrew           = useGameStore((s) => s.fireCrew);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
+  // currentMarkerIndex is already incremented on transition, so this correctly
+  // returns the theme for the floor the player is about to enter.
+  const theme              = useFloorTheme();
 
   // Determine if this pub visit follows a boss victory with an EXTRA_SHOOTER comp.
   // currentMarkerIndex was already incremented by rolls.ts on transition, so the
@@ -428,64 +432,59 @@ export const PubScreen: React.FC = () => {
 
   return (
     <div
-      className="
-        relative w-full max-w-lg mx-auto min-h-screen
-        flex flex-col overflow-hidden
-        border-x-4 border-amber-900/50
-      "
+      className="relative w-full max-w-lg mx-auto min-h-screen flex flex-col overflow-hidden border-x-4"
       style={{
-        background: 'radial-gradient(ellipse at 50% 20%, #3a1800 0%, #180c00 45%, #0d0704 100%)',
+        background:  theme.pubBg,
+        borderColor: theme.borderHigh,
       }}
     >
-      {/* ── Smoke gradient overlay ──────────────────────────────────────────── */}
+      {/* ── Atmosphere overlay ──────────────────────────────────────────────── */}
       <div
         className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(ellipse at 50% 0%, rgba(180,90,0,0.08) 0%, transparent 70%)',
-        }}
+        style={{ background: theme.pubOverlayBg }}
       />
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="relative flex-none px-4 pt-8 pb-6 text-center">
-        {/* Amber glow bar */}
+        {/* Top accent bar */}
         <div
           className="absolute top-0 left-0 right-0 h-1"
-          style={{
-            background: 'linear-gradient(90deg, transparent, #c47d0a 30%, #f5c842 50%, #c47d0a 70%, transparent)',
-          }}
+          style={{ background: theme.pubAccentBar }}
         />
 
-        <div className="font-pixel text-[7px] text-amber-400/60 tracking-widest mb-1">
+        <div className="font-pixel text-[7px] tracking-widest mb-1" style={{ color: theme.pubSubtextColor }}>
           ✦ MARKER CLEARED ✦
         </div>
         <h1
           className="font-pixel text-[10px] tracking-wide"
-          style={{ color: '#f5c842', textShadow: '0 0 20px #c47d0a, 0 0 40px #7a4500' }}
+          style={{ color: theme.pubTitleColor, textShadow: theme.pubTitleShadow }}
         >
-          THE SEVEN-PROOF PUB
+          {theme.pubName}
         </h1>
-        <div className="mt-2 font-mono text-[9px] text-amber-300/50">
+        <div className="mt-2 font-mono text-[9px]" style={{ color: theme.pubSubtextColor }}>
           Hire a hand before the next marker…
         </div>
 
         {/* Divider */}
-        <div className="mt-4 h-px bg-gradient-to-r from-transparent via-amber-700/50 to-transparent" />
+        <div
+          className="mt-4 h-px"
+          style={{ background: `linear-gradient(to right, transparent, ${theme.accentDim}80, transparent)` }}
+        />
 
         {/* Stats row */}
         <div className="mt-3 flex justify-center gap-6">
           <div className="text-center">
-            <div className="font-pixel text-[6px] text-amber-500/50 mb-0.5">BANKROLL</div>
-            <div className="font-pixel text-[8px] text-amber-200">{bankrollDisplay}</div>
+            <div className="font-pixel text-[6px] mb-0.5" style={{ color: theme.pubSubtextColor }}>BANKROLL</div>
+            <div className="font-pixel text-[8px]" style={{ color: theme.accentBright }}>{bankrollDisplay}</div>
           </div>
           <div className="text-center">
-            <div className="font-pixel text-[6px] text-amber-500/50 mb-0.5">SHOOTERS</div>
-            <div className="font-pixel text-[8px] text-amber-200">
+            <div className="font-pixel text-[6px] mb-0.5" style={{ color: theme.pubSubtextColor }}>SHOOTERS</div>
+            <div className="font-pixel text-[8px]" style={{ color: theme.accentBright }}>
               {upcomingShooters} {'✦'.repeat(5)}
-              {isComped && <span className="text-gold ml-px">✦</span>}
+              {isComped && <span className="ml-px" style={{ color: theme.accentBright }}>✦</span>}
             </div>
             {isComped && (
-              <div className="font-pixel text-[5px] text-gold/80 tracking-widest mt-0.5">
+              <div className="font-pixel text-[5px] tracking-widest mt-0.5" style={{ color: theme.accentBright }}>
                 +1 COMP
               </div>
             )}
@@ -495,7 +494,7 @@ export const PubScreen: React.FC = () => {
 
       {/* ── Draft cards ──────────────────────────────────────────────────────── */}
       <section className="relative flex-none px-3 pb-4">
-        <div className="font-pixel text-[6px] text-amber-600/60 text-center mb-3 tracking-widest">
+        <div className="font-pixel text-[6px] text-center mb-3 tracking-widest" style={{ color: theme.pubSubtextColor }}>
           — AVAILABLE FOR HIRE —
         </div>
 
@@ -514,7 +513,7 @@ export const PubScreen: React.FC = () => {
 
       {/* ── Your Crew — fire slots ───────────────────────────────────────────── */}
       <section className="relative flex-none px-3 pb-3">
-        <div className="font-pixel text-[6px] text-amber-600/60 text-center mb-2 tracking-widest">
+        <div className="font-pixel text-[6px] text-center mb-2 tracking-widest" style={{ color: theme.pubSubtextColor }}>
           — YOUR CREW —
         </div>
         <div className="flex justify-around gap-1">
@@ -605,7 +604,10 @@ export const PubScreen: React.FC = () => {
 
       {/* ── Skip / Rest button ───────────────────────────────────────────────── */}
       <footer className="flex-none px-4 pb-8">
-        <div className="h-px mb-4 bg-gradient-to-r from-transparent via-amber-900/60 to-transparent" />
+        <div
+          className="h-px mb-4"
+          style={{ background: `linear-gradient(to right, transparent, ${theme.accentDim}99, transparent)` }}
+        />
         <button
           type="button"
           disabled={isLoading}
@@ -613,13 +615,15 @@ export const PubScreen: React.FC = () => {
           className="
             w-full py-2.5 rounded
             font-pixel text-[7px] tracking-widest
-            border border-stone-700/50
-            text-stone-500
-            hover:text-amber-400/60 hover:border-amber-800/50
+            border
             active:scale-95 transition-all duration-150
             disabled:opacity-40 disabled:cursor-not-allowed
           "
-          style={{ background: 'rgba(15, 8, 0, 0.6)' }}
+          style={{
+            background:  'rgba(0, 0, 0, 0.60)',
+            color:       theme.accentDim,
+            borderColor: theme.borderLow,
+          }}
         >
           {isLoading ? 'RESTING…' : '— REST & SKIP TO TABLE —'}
         </button>

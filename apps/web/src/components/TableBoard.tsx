@@ -36,6 +36,7 @@ import { CrewPortrait }  from './CrewPortrait.js';
 import { RollLog }       from './RollLog.js';
 import { useCrowdAudio }       from '../hooks/useCrowdAudio.js';
 import { useAnimatedCounter }  from '../hooks/useAnimatedCounter.js';
+import { useFloorTheme }       from '../hooks/useFloorTheme.js';
 import { ChipRain }            from './ChipRain.js';
 import { CompCardFan }         from './CompCardFan.js';
 import { FloorEmblem }         from './FloorEmblem.js';
@@ -58,6 +59,7 @@ export const TableBoard: React.FC = () => {
   const streak       = useGameStore((s) => s.consecutivePointHits);
   const hype         = useGameStore((s) => s.hype);
   const { muted, toggleMute } = useCrowdAudio();
+  const theme = useFloorTheme();
 
   // Table shake — triggered by ChipRain when a TORRENT payout lands
   const [isShaking, setIsShaking] = useState(false);
@@ -82,11 +84,21 @@ export const TableBoard: React.FC = () => {
       className={[
         'relative w-full max-w-lg mx-auto',
         'h-[100dvh] flex flex-col overflow-hidden',
-        'bg-felt-texture',
-        'border-x-4 border-gold/30',
+        'border-x-4',
         'overflow-x-hidden',
         isShaking ? 'animate-table-shake' : '',
       ].join(' ')}
+      style={{
+        backgroundColor:   theme.feltPrimary,
+        backgroundImage:   theme.feltTexture,
+        borderColor:       theme.borderHigh,
+        // Per-floor CSS custom properties consumed by breathing + flash keyframes
+        '--breathe-cold-color': theme.breatheCold,
+        '--breathe-warm-color': theme.breatheWarm,
+        '--breathe-hot-color':  theme.breatheHot,
+        '--flash-win-color':    theme.flashWin,
+        '--flash-lose-color':   theme.flashLose,
+      } as React.CSSProperties}
     >
       {/* ── Felt breathing overlay (behind all content) ──────────────────── */}
       <div className={`absolute inset-0 pointer-events-none z-[1] ${feltClass}`} />
@@ -116,12 +128,12 @@ export const TableBoard: React.FC = () => {
       {/* ── GAME STATUS (back wall / far end) ────────────────────────────── */}
       <section
         aria-label="Game Status"
-        className="
-          flex-none
-          px-4
-          border-b-2 border-gold/20
-        "
-        style={{ paddingTop: 'clamp(8px,1.4dvh,16px)', paddingBottom: 'clamp(6px,1dvh,12px)' }}
+        className="flex-none px-4 border-b-2"
+        style={{
+          borderColor: theme.borderLow,
+          paddingTop: 'clamp(8px,1.4dvh,16px)',
+          paddingBottom: 'clamp(6px,1dvh,12px)',
+        }}
       >
         <GameStatus />
       </section>
@@ -134,12 +146,12 @@ export const TableBoard: React.FC = () => {
       {/* ── BETTING GRID ─────────────────────────────────────────────────── */}
       <section
         aria-label="Betting Grid"
-        className="
-          flex-none
-          px-4
-          border-b-2 border-gold/20
-        "
-        style={{ paddingTop: 'clamp(6px,0.8dvh,12px)', paddingBottom: 'clamp(6px,0.8dvh,12px)' }}
+        className="flex-none px-4 border-b-2"
+        style={{
+          borderColor: theme.borderLow,
+          paddingTop: 'clamp(6px,0.8dvh,12px)',
+          paddingBottom: 'clamp(6px,0.8dvh,12px)',
+        }}
       >
         <BettingGrid />
       </section>
@@ -147,10 +159,8 @@ export const TableBoard: React.FC = () => {
       {/* ── DICE ZONE ────────────────────────────────────────────────────── */}
       <section
         aria-label="Dice Zone"
-        className="
-          flex-none
-          border-b-2 border-gold/20
-        "
+        className="flex-none border-b-2"
+        style={{ borderColor: theme.borderLow }}
       >
         <DiceZone />
       </section>
@@ -164,21 +174,21 @@ export const TableBoard: React.FC = () => {
       {/* ── CREW RAIL ────────────────────────────────────────────────────── */}
       <section
         aria-label="Crew Rail"
-        className="
-          flex-none
-          px-4
-          bg-felt-rail
-          border-t-4 border-gold/30
-        "
-        style={{ paddingTop: 'clamp(6px,0.8dvh,12px)', paddingBottom: 'clamp(6px,0.8dvh,12px)' }}
+        className="flex-none px-4 border-t-4"
+        style={{
+          backgroundColor: theme.feltRail,
+          borderColor:     theme.borderHigh,
+          paddingTop:    'clamp(6px,0.8dvh,12px)',
+          paddingBottom: 'clamp(6px,0.8dvh,12px)',
+        }}
       >
         {/* Rail header */}
         <div className="flex items-center gap-2" style={{ marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
-          <div className="h-px flex-1 bg-gold/20" />
-          <span className="font-pixel text-[6px] text-gold/50 tracking-widest">
+          <div className="h-px flex-1" style={{ backgroundColor: theme.borderLow }} />
+          <span className="font-pixel text-[6px] tracking-widest" style={{ color: theme.accentPrimary }}>
             CREW
           </span>
-          <div className="h-px flex-1 bg-gold/20" />
+          <div className="h-px flex-1" style={{ backgroundColor: theme.borderLow }} />
         </div>
 
         {/* Five portrait slots */}
@@ -237,6 +247,7 @@ const GameStatus: React.FC = () => {
   const shooters            = useGameStore((s) => s.shooters);
   const bankroll            = useGameStore((s) => s.bankroll);
   const currentMarkerIndex  = useGameStore((s) => s.currentMarkerIndex);
+  const theme               = useFloorTheme();
 
   const { display: bankrollDisplay, direction: bankrollDir } = useAnimatedCounter(bankroll);
   const bankrollStr = `$${(bankrollDisplay / 100).toFixed(2)}`;
@@ -371,7 +382,11 @@ const GameStatus: React.FC = () => {
       </div>
 
       {/* Divider — also serves as the dice throw "back wall" target */}
-      <div id="wall-divider" className="h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
+      <div
+        id="wall-divider"
+        className="h-px"
+        style={{ background: `linear-gradient(to right, transparent, ${theme.accentPrimary}66, transparent)` }}
+      />
 
       {/* Marker progress bar */}
       <MarkerProgress bankroll={bankroll} markerIndex={currentMarkerIndex} />
@@ -422,15 +437,14 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number }> = ({
   const progress = Math.min(bankroll / target, 1);
   const label    = isBoss ? '★ BOSS' : `MARKER ${markerIndex + 1}`;
   const pct      = Math.round(progress * 100);
+  const theme    = useFloorTheme();
 
   return (
     <div className="w-full px-2 space-y-1">
       <div className="flex justify-between items-baseline">
         <span
-          className={[
-            'font-pixel text-[6px]',
-            isBoss ? 'text-red-400' : 'text-gold/60',
-          ].join(' ')}
+          className="font-pixel text-[6px]"
+          style={{ color: isBoss ? '#f87171' : theme.accentPrimary }}
         >
           {label}
         </span>
@@ -439,14 +453,14 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number }> = ({
         </span>
       </div>
 
-      <div className="h-1.5 w-full rounded-full bg-felt-dark border border-white/10 overflow-hidden">
+      <div className="h-1.5 w-full rounded-full border border-white/10 overflow-hidden" style={{ backgroundColor: theme.feltRail }}>
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{
             width: `${pct}%`,
             background: isBoss
               ? 'linear-gradient(90deg, #7f1d1d, #ef4444)'
-              : 'linear-gradient(90deg, #8a6810, #f5c842)',
+              : `linear-gradient(90deg, ${theme.accentDim}, ${theme.accentBright})`,
           }}
         />
       </div>
@@ -463,17 +477,17 @@ const ChipRail: React.FC = () => {
   const isRolling          = useGameStore((s) => s.isRolling);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
   const maxBet             = getMaxBet(currentMarkerIndex);
+  const theme              = useFloorTheme();
 
   return (
     <section
       aria-label="Chip Rail"
-      className="
-        flex-none
-        px-4
-        border-t-2 border-gold/20
-        bg-felt-dark/30
-      "
-      style={{ paddingTop: 'clamp(6px,0.8dvh,12px)', paddingBottom: 'clamp(4px,0.6dvh,8px)' }}
+      className="flex-none px-4 border-t-2 bg-black/20"
+      style={{
+        borderColor:   theme.borderLow,
+        paddingTop:    'clamp(6px,0.8dvh,12px)',
+        paddingBottom: 'clamp(4px,0.6dvh,8px)',
+      }}
     >
       <div className="text-center font-pixel text-[7px] text-white/30" style={{ marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
         TABLE MAX: ${maxBet / 100}

@@ -38,6 +38,7 @@ import { useCrowdAudio }       from '../hooks/useCrowdAudio.js';
 import { useAnimatedCounter }  from '../hooks/useAnimatedCounter.js';
 import { ChipRain }            from './ChipRain.js';
 import { CompCardFan }         from './CompCardFan.js';
+import { FloorEmblem }         from './FloorEmblem.js';
 
 const selectFlash    = (s: GameState) => ({ flashType: s.flashType, _flashKey: s._flashKey });
 const selectWallFlash = (s: GameState) => ({ wallFlash: s.wallFlash, _wallFlashKey: s._wallFlashKey });
@@ -126,7 +127,9 @@ export const TableBoard: React.FC = () => {
       </section>
 
       {/* ── GREEN SPACE — dice animation travel zone ─────────────────────── */}
-      <div className="flex-1" />
+      <div className="relative flex-1">
+        <FloorEmblem />
+      </div>
 
       {/* ── BETTING GRID ─────────────────────────────────────────────────── */}
       <section

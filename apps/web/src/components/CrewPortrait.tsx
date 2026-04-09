@@ -94,6 +94,28 @@ function getBark(crewId: number | null, crewName: string | null): string {
 // Component
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Crew emoji — one icon per crew ID, displayed in the portrait frame.
+// ---------------------------------------------------------------------------
+
+const CREW_EMOJI: Record<number, string> = {
+  1:  '🎰', // Lefty
+  2:  '🧪', // Physics Professor
+  3:  '🔧', // The Mechanic
+  4:  '🧮', // The Mathlete
+  5:  '🪬', // The Floor Walker
+  6:  '🪑', // The Regular
+  7:  '💸', // Big Spender
+  8:  '🦈', // The Shark
+  9:  '🐋', // The Whale
+  10: '🫣', // Nervous Intern
+  11: '📣', // Hype Train Holly
+  12: '🍺', // Drunk Uncle
+  13: '👥', // The Mimic
+  14: '🦯', // Old Pro
+  15: '🍀', // Lucky Charm
+};
+
 // Die face Unicode characters — index 0 unused; indices 1–6 map to ⚀–⚅
 const DIE_FACES = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
@@ -263,24 +285,14 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
             <div className="w-10 h-10 rounded border border-dashed border-felt-light/30" />
           </div>
         ) : (
-          /* Crew sprite — layered: text fallback underneath, sprite on top.
-             If the image fails to load the background is transparent and the
-             text fallback shows through. No error-state needed. */
-          <div className="relative w-full h-full bg-felt-dark">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="font-pixel text-[8px] text-gold/80 text-center leading-tight px-1">
-                {crewName?.split(' ').pop() ?? '?'}
-              </span>
-            </div>
-            {visualId && (
-              <div
-                className={[
-                  'absolute inset-0 portrait-sprite',
-                  isTriggering ? 'portrait-sprite--trigger' : '',
-                ].join(' ')}
-                style={{ backgroundImage: `url('/sprites/crew/${visualId}.png')` }}
-              />
-            )}
+          /* Crew icon — large emoji centered in the portrait frame. */
+          <div className="w-full h-full bg-felt-dark flex items-center justify-center">
+            <span
+              className="leading-none select-none"
+              style={{ fontSize: 'clamp(22px, 3.2dvh, 30px)' }}
+            >
+              {crewId !== null ? (CREW_EMOJI[crewId] ?? '?') : '?'}
+            </span>
           </div>
         )}
 

@@ -16,18 +16,39 @@
 import React, { useCallback } from 'react';
 import { useGameStore } from '../store/useGameStore.js';
 import type { BetField } from '../store/useGameStore.js';
+import { GAUNTLET } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
-// Chip denominations available for selection
+// Chip denominations — floor-gated
+//
+// Floor 1 (markers 0-2): standard 5-chip rack
+// Floor 2 (markers 3-5): adds the $100 black chip
+// Floor 3 (markers 6-8): adds the $500 purple chip on top of floor 2
 // ---------------------------------------------------------------------------
 
-const CHIPS: { cents: number; label: string; color: string }[] = [
-  { cents: 100,   label: '$1',  color: '#c0c0c0' },
-  { cents: 500,   label: '$5',  color: '#c0392b' },
-  { cents: 1_000, label: '$10', color: '#2980b9' },
-  { cents: 2_500, label: '$25', color: '#27ae60' },
-  { cents: 5_000, label: '$50', color: '#8e44ad' },
+type Chip = { cents: number; label: string; color: string };
+
+const BASE_CHIPS: Chip[] = [
+  { cents:   100, label: '$1',   color: '#c0c0c0' },
+  { cents:   500, label: '$5',   color: '#c0392b' },
+  { cents: 1_000, label: '$10',  color: '#2980b9' },
+  { cents: 2_500, label: '$25',  color: '#27ae60' },
+  { cents: 5_000, label: '$50',  color: '#8e44ad' },
 ];
+
+const FLOOR_CHIPS: Record<number, Chip[]> = {
+  2: [{ cents: 10_000, label: '$100', color: '#0d9488' }],  // teal — Riverboat
+  3: [{ cents: 50_000, label: '$500', color: '#a855f7' }],  // vivid purple — The Strip
+};
+
+function chipsForFloor(floor: number): Chip[] {
+  const extras: Chip[] = [];
+  // Accumulate: floor 2 adds its chip; floor 3 adds floor 2's chip AND its own.
+  for (let f = 2; f <= floor; f++) {
+    if (FLOOR_CHIPS[f]) extras.push(...FLOOR_CHIPS[f]!);
+  }
+  return [...BASE_CHIPS, ...extras];
+}
 
 function formatCents(cents: number): string {
   if (cents === 0) return '';
@@ -43,11 +64,14 @@ export const ChipSelector: React.FC<{ activeChip: number; disabled: boolean }> =
   activeChip,
   disabled,
 }) => {
-  const setActiveChip = useGameStore((s) => s.setActiveChip);
+  const setActiveChip      = useGameStore((s) => s.setActiveChip);
+  const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
+  const floor              = GAUNTLET[currentMarkerIndex]?.floor ?? 1;
+  const chips              = chipsForFloor(floor);
 
   return (
     <div className="flex justify-center gap-2" style={{ marginBottom: 'clamp(4px,0.8dvh,12px)' }}>
-      {CHIPS.map(({ cents, label, color }) => {
+      {chips.map(({ cents, label, color }) => {
         const isActive = activeChip === cents;
         return (
           <button

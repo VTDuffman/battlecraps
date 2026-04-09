@@ -414,7 +414,8 @@ export const DiceZone: React.FC = () => {
           'flex-none px-6 py-4 rounded',
           'font-pixel text-[10px]',
           'border-2 transition-all duration-150',
-          'flex flex-col items-center justify-center gap-0.5',
+          // relative + fixed height so the min-bet sub-label never shifts layout
+          'relative flex items-center justify-center',
           canRoll
             ? [
                 'bg-gold border-gold-bright text-black',
@@ -426,19 +427,14 @@ export const DiceZone: React.FC = () => {
               : 'bg-felt-dark border-white/10 text-white/20 cursor-not-allowed',
         ].join(' ')}
       >
-        {isRolling || throwPhase !== 'idle'
-          ? 'ROLLING…'
-          : belowMinBet
-            ? (
-              <>
-                <span>ROLL</span>
-                <span className="text-[6px] text-amber-400/90 tracking-wide leading-none">
-                  {bossMinBet !== null ? '⚔' : ''} MIN ${effectiveMinBet / 100}
-                </span>
-              </>
-            )
-            : 'ROLL'
-        }
+        {isRolling || throwPhase !== 'idle' ? 'ROLLING…' : 'ROLL'}
+        {/* Min-bet label floats below the button text — absolutely positioned
+            so it doesn't contribute to the button's height or shift siblings. */}
+        {belowMinBet && throwPhase === 'idle' && (
+          <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap font-pixel text-[6px] text-amber-400/90 tracking-wide leading-none pointer-events-none">
+            {bossMinBet !== null ? '⚔ ' : ''}MIN ${effectiveMinBet / 100}
+          </span>
+        )}
       </button>
     </div>
   );

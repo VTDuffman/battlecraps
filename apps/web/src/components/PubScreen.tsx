@@ -39,6 +39,7 @@ import {
 import type { CrewMember } from '@battlecraps/shared';
 import { useGameStore, selectBankrollDisplay } from '../store/useGameStore.js';
 import { useFloorTheme } from '../hooks/useFloorTheme.js';
+import { CREW_EMOJI } from './CrewPortrait.js';
 
 // ---------------------------------------------------------------------------
 // Crew pool — all 15 MVP starter crew, imported from shared
@@ -162,32 +163,17 @@ const CrewCard: React.FC<CrewCardProps> = ({ crew, isSelected, canAfford, onClic
         <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-2 h-2 bg-amber-400 rotate-45" />
       )}
 
-      {/* Portrait — layered: letter fallback underneath, sprite frame 1 on top.
-          background-size: 500% 100% maps the full 5-frame strip so that one
-          frame exactly fills the container; background-position: 0 0 = frame 1. */}
+      {/* Portrait — emoji centered in a category-themed frame. */}
       <div
         className={[
-          'relative w-full aspect-square rounded border-2 overflow-hidden',
+          'w-full aspect-square rounded border-2 overflow-hidden',
+          'flex items-center justify-center',
           portrait,
         ].join(' ')}
       >
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="font-pixel text-[12px] opacity-60">
-            {crew.abilityCategory.charAt(0)}
-          </span>
-        </div>
-        {crew.visualId && (
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage:    `url('/sprites/crew/${crew.visualId}.png')`,
-              backgroundSize:     '500% 100%',
-              backgroundPosition: '0 0',
-              backgroundRepeat:   'no-repeat',
-              imageRendering:     'pixelated',
-            }}
-          />
-        )}
+        <span className="leading-none select-none" style={{ fontSize: 'clamp(28px, 5dvh, 40px)' }}>
+          {CREW_EMOJI[crew.id] ?? '?'}
+        </span>
       </div>
 
       {/* Category badge */}

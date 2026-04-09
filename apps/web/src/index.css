@@ -377,6 +377,22 @@
   animation: felt-breathe-hot  1.5s ease-in-out infinite;
 }
 
+/* ── Crew emoji hype pulse ────────────────────────────────────────────────────
+   Single keyframe; duration is varied per tier via utility class.
+   animation-delay is set inline per-slot (negative = fast-forward into cycle)
+   so the five portraits never pulse in unison.
+   Suppressed by the caller when isTriggering or on cooldown.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@keyframes emoji-pulse {
+  0%, 100% { transform: scale(1.00); }
+  50%       { transform: scale(1.18); }
+}
+
+.animate-emoji-warm    { animation: emoji-pulse 2.4s  ease-in-out infinite; }
+.animate-emoji-hot     { animation: emoji-pulse 1.2s  ease-in-out infinite; }
+.animate-emoji-blazing { animation: emoji-pulse 0.55s ease-in-out infinite; }
+
 /* ── Comp Card deal-in ────────────────────────────────────────────────────────
    New comp card slides in from the top-left corner with a slight counter-
    clockwise rotation and a springy overshoot settle. `forwards` keeps the card

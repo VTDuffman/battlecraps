@@ -18,6 +18,7 @@
 // =============================================================================
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useGameStore } from '../store/useGameStore.js';
 
 interface CrewPortraitProps {
   slotIndex:      number;
@@ -98,7 +99,7 @@ function getBark(crewId: number | null, crewName: string | null): string {
 // Crew emoji — one icon per crew ID, displayed in the portrait frame.
 // ---------------------------------------------------------------------------
 
-const CREW_EMOJI: Record<number, string> = {
+export const CREW_EMOJI: Record<number, string> = {
   1:  '🎰', // Lefty
   2:  '🧪', // Physics Professor
   3:  '🔧', // The Mechanic
@@ -133,6 +134,19 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   freezeState,
 }) => {
   const portraitRef = useRef<HTMLDivElement>(null);
+  const hype        = useGameStore((s) => s.hype);
+
+  // ── Emoji pulse tier — scales with hype, suppressed while triggering/cooldown
+  const onCooldownNow = cooldownState > 0;
+  const emojiPulseClass =
+    isTriggering || onCooldownNow ? '' :
+    hype >= 3.0 ? 'animate-emoji-blazing' :
+    hype >= 2.0 ? 'animate-emoji-hot'     :
+    hype >= 1.2 ? 'animate-emoji-warm'    :
+    '';
+  // Negative delay fast-forwards each slot into a different phase of the cycle
+  // so the five portraits never pulse in unison.
+  const emojiDelay = `${slotIndex * -0.37}s`;
 
   // ── Die picker state (The Mechanic only) ──────────────────────────────────
   const [pendingDieValue, setPendingDieValue] = useState<number | null>(null);
@@ -288,8 +302,11 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
           /* Crew icon — large emoji centered in the portrait frame. */
           <div className="w-full h-full bg-felt-dark flex items-center justify-center">
             <span
-              className="leading-none select-none"
-              style={{ fontSize: 'clamp(22px, 3.2dvh, 30px)' }}
+              className={`leading-none select-none ${emojiPulseClass}`}
+              style={{
+                fontSize:        'clamp(22px, 3.2dvh, 30px)',
+                animationDelay:  emojiPulseClass ? emojiDelay : undefined,
+              }}
             >
               {crewId !== null ? (CREW_EMOJI[crewId] ?? '?') : '?'}
             </span>

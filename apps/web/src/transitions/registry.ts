@@ -31,6 +31,7 @@ import { BossEntryPhase }           from './phases/BossEntryPhase.js';
 import { BossEntryDreadPhase }      from './phases/BossEntryDreadPhase.js';
 import { FloorRevealPhase }         from './phases/FloorRevealPhase.js';
 import { FloorRevealConfirmPhase }  from './phases/FloorRevealConfirmPhase.js';
+import { TitleScreenPhase }         from './phases/TitleScreenPhase.js';
 
 // ---------------------------------------------------------------------------
 // Phase component registry
@@ -58,6 +59,9 @@ export const PHASE_COMPONENT_MAP: Record<string, React.ComponentType<PhaseCompon
   // Phase 5 — active
   BossEntryDreadPhase,
   BossVictoryCompPhase,
+
+  // Phase 6 — active
+  TitleScreenPhase,
 
   // Phase 6
   // TitleScreenPhase,
@@ -139,7 +143,16 @@ export const TRANSITION_REGISTRY: Record<TransitionType, TransitionPhase[]> = {
 
   // ── Future phase stubs ────────────────────────────────────────────────────
 
-  TITLE: [],         // Phase 6 — first-load cinematic
+  // ── TITLE — first-load cinematic ─────────────────────────────────────────
+  // Shown exactly once per browser (localStorage 'bc_title_shown' flag).
+  // Quick restarts and page refreshes after first-play skip this entirely.
+  TITLE: [
+    {
+      id:          'splash',
+      advanceMode: 'gated',
+      component:   'TitleScreenPhase',
+    },
+  ],
 
   // ── MARKER_INTRO — post-pub orientation card ─────────────────────────────
   // Auto-advances after 2500ms. Player can also tap to skip.

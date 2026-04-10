@@ -337,6 +337,14 @@ export interface GameState {
    */
   floorRevealShownForFloor: number | null;
 
+  /**
+   * True once the TITLE transition has been shown and dismissed.
+   * Initialized from localStorage ('bc_title_shown') so it persists across
+   * page refreshes and new runs. Never reset by connectToRun — this is a
+   * player-level flag, not a run-level flag. Once seen, never seen again.
+   */
+  titleShown: boolean;
+
   /** Monotonically increasing counter used to generate `seq` values. */
   _seqCounter: number;
 
@@ -564,6 +572,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   bossEntryShownForMarker:  null,
   markerIntroShownForMarker: null,
   floorRevealShownForFloor:  null,
+  // titleShown persists across runs — read from localStorage once at init.
+  titleShown: localStorage.getItem('bc_title_shown') === '1',
   _seqCounter:    0,
   rollHistory:    [],
   socketStatus:   'disconnected',
@@ -990,12 +1000,15 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         celebrationSnapshot:  null,
       });
     } else {
-      // BOSS_ENTRY, TITLE, and future types — just clear the transition and
-      // return the player to normal gameplay (TableBoard).
-      set({
-        activeTransition:     null,
-        transitionPhaseIndex: 0,
-      });
+      // BOSS_ENTRY, FLOOR_REVEAL, and future types — just clear the
+      // transition and return the player to normal gameplay (TableBoard).
+      if (type === 'TITLE') {
+        // Persist the flag so it survives page refreshes and new runs.
+        localStorage.setItem('bc_title_shown', '1');
+        set({ activeTransition: null, transitionPhaseIndex: 0, titleShown: true });
+      } else {
+        set({ activeTransition: null, transitionPhaseIndex: 0 });
+      }
     }
   },
 

@@ -47,12 +47,39 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
   const bossEntryShownFor  = useGameStore((s) => s.bossEntryShownForMarker);
   const markerIntroShownFor      = useGameStore((s) => s.markerIntroShownForMarker);
   const floorRevealShownFor      = useGameStore((s) => s.floorRevealShownForFloor);
+  const titleShown               = useGameStore((s) => s.titleShown);
   const setActiveTransition      = useGameStore((s) => s.setActiveTransition);
   const setBossEntryShownFor     = useGameStore((s) => s.setBossEntryShownForMarker);
   const setMarkerIntroShownFor   = useGameStore((s) => s.setMarkerIntroShownForMarker);
   const setFloorRevealShownFor   = useGameStore((s) => s.setFloorRevealShownForFloor);
   const advanceTransitionPhase   = useGameStore((s) => s.advanceTransitionPhase);
   const clearTransition          = useGameStore((s) => s.clearTransition);
+
+  // ── Title screen detection ──────────────────────────────────────────────
+  // Fires exactly once, on the player's very first page load (before their
+  // first roll on marker 0). Guarded by the persistent titleShown flag which
+  // is backed by localStorage — survives refreshes and is never reset by
+  // connectToRun so Play Again skips this automatically.
+  // Also marks markerIntroShownFor(0) so MARKER_INTRO doesn't fire right
+  // after the title dismisses on the same marker.
+  useEffect(() => {
+    if (
+      status === 'IDLE_TABLE' &&
+      currentMarkerIndex === 0 &&
+      activeTransition === null &&
+      !titleShown
+    ) {
+      setMarkerIntroShownFor(0);
+      setActiveTransition('TITLE');
+    }
+  }, [
+    status,
+    currentMarkerIndex,
+    activeTransition,
+    titleShown,
+    setActiveTransition,
+    setMarkerIntroShownFor,
+  ]);
 
   // ── Boss entry detection ────────────────────────────────────────────────
   // When the player arrives at a boss marker (status flips to IDLE_TABLE and

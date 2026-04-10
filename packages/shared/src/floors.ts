@@ -2,13 +2,32 @@
 // BATTLECRAPS — FLOOR & TRANSITION DEFINITIONS
 // packages/shared/src/floors.ts
 //
-// Phase 1: TransitionType and CelebrationSnapshot — the foundation of the
-//          unified transition framework.
-// Phase 2+: FloorConfig, FloorTheme, and the full floor configuration schema
-//           will be added here as the framework expands.
+// Phase 1: TransitionType, CelebrationSnapshot
+// Phase 2: FloorConfig, FLOORS registry, floor helper functions
 //
-// This file is the shared contract between the API and the web client for
-// anything related to floor progression and game transition orchestration.
+// ARCHITECTURE NOTE — two parallel systems, one conceptual unit:
+//
+//   packages/shared/src/config.ts   — MECHANICAL data
+//     GAUNTLET, MarkerConfig, BossConfig, boss rules, marker targets,
+//     min/max bet helpers. Source of truth for game engine logic.
+//
+//   packages/shared/src/floors.ts   — NARRATIVE & DISPLAY data
+//     FloorConfig, FLOORS, floor names, atmosphere, intro text, boss teasers.
+//     Source of truth for transition components and floor reveal content.
+//
+//   apps/web/src/lib/floorThemes.ts — VISUAL data
+//     FloorTheme, CSS tokens, gradients, colors per floor.
+//     Source of truth for all styling decisions.
+//
+//   docs/floors.md                  — HUMAN CONTRACT
+//     The normative document that defines what a floor IS. A designer adds a
+//     floor here first; developers translate it into config.ts + floors.ts +
+//     floorThemes.ts. floors.md is the handoff document.
+//
+// All three systems are linked by floorId (1-indexed). To look up narrative
+// content for a marker at index 4: getFloorByMarkerIndex(4) → Floor 2.
+// To look up the theme: getFloorTheme(4) → FLOOR_2_THEME.
+// To look up mechanical data: GAUNTLET[4] → MarkerConfig.
 // =============================================================================
 
 // ---------------------------------------------------------------------------
@@ -86,4 +105,203 @@ export interface CelebrationSnapshot {
   bankrollAfter: number;
   /** True when the cleared marker was a boss fight. Drives BOSS_VICTORY vs MARKER_CLEAR routing. */
   isBossVictory: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// FLOOR CONFIG
+// ---------------------------------------------------------------------------
+
+/**
+ * The thematic atmosphere of a floor.
+ * Drives ambient animation intensity, breathing overlay palette, and
+ * (in future phases) sound design cues.
+ *
+ * 'gritty'   — Floor 1 (VFW Hall): worn, blue-collar, fluorescent grime
+ * 'elegant'  — Floor 2 (The Riverboat): candlelit, mahogany, quiet danger
+ * 'electric' — Floor 3 (The Strip): neon, obsidian, pure machine
+ */
+export type FloorAtmosphere = 'gritty' | 'elegant' | 'electric';
+
+/**
+ * The complete narrative and display configuration for a single floor.
+ *
+ * This is the DISPLAY layer — it contains everything transition components
+ * need to present a floor to the player (names, text, atmosphere).
+ * It does NOT contain mechanical data (bet limits, boss rules, marker targets);
+ * those live in config.ts / GAUNTLET.
+ *
+ * Link to mechanical data: GAUNTLET[markerIndex] where
+ *   markerIndex ∈ [(id-1)*3, (id-1)*3 + 2]
+ *
+ * Link to visual data: getFloorTheme(markerIndex) in floorThemes.ts
+ *
+ * See docs/floors.md for the full design specification and field-by-field
+ * guidance for adding new floors.
+ */
+export interface FloorConfig {
+  /**
+   * 1-indexed floor number. Matches MarkerConfig.floor in config.ts.
+   * Floor 1 covers marker indices 0–2, Floor 2 covers 3–5, Floor 3 covers 6–8.
+   */
+  readonly id: number;
+
+  /**
+   * Short venue name. Displayed in progress UI, floor reveal headline,
+   * and any screen that references the current location.
+   * Example: 'VFW Hall', 'The Riverboat', 'The Strip'
+   */
+  readonly name: string;
+
+  /**
+   * One-line atmospheric tagline. Shown beneath the floor name on the
+   * floor reveal screen. Should capture the essence of the venue in
+   * under 8 words.
+   * Example: 'Where dice meet duty.'
+   */
+  readonly tagline: string;
+
+  /**
+   * 2–3 sentences of flavor text shown during the floor reveal cinematic
+   * (Phase 4). Each string is displayed as a separate paragraph.
+   * Should paint a sensory picture: sights, sounds, the vibe of the room.
+   * Should hint at the boss without naming their rule.
+   */
+  readonly introLines: readonly string[];
+
+  /**
+   * Display name of this floor's final boss.
+   * Must match BossConfig.name on the floor's third marker in config.ts.
+   * Used in floor reveal teasers and boss entry/victory headers.
+   */
+  readonly bossName: string;
+
+  /**
+   * Short title describing the boss's role in the venue.
+   * Shown beneath the boss name on the floor reveal screen.
+   * Example: 'Floor Commander', 'Proprietress of the Salon Privé'
+   */
+  readonly bossTitle: string;
+
+  /**
+   * Name of the boss's High Limit Room. Should match the venue string
+   * on the boss marker in config.ts for consistency.
+   * Example: 'VFW Hall — High Limit Room'
+   */
+  readonly bossVenue: string;
+
+  /**
+   * One sentence shown at the bottom of the floor reveal that hints at
+   * the boss's mechanic without fully revealing it. Builds anticipation.
+   * Should be ominous but not technically specific.
+   * Example: 'Sarge sets the floor. And the floor keeps rising.'
+   */
+  readonly bossTeaser: string;
+
+  /**
+   * Thematic atmosphere of this floor.
+   * Drives ambient animation palette and future sound design cues.
+   * See FloorAtmosphere for full documentation.
+   */
+  readonly atmosphere: FloorAtmosphere;
+}
+
+// ---------------------------------------------------------------------------
+// FLOORS REGISTRY
+// ---------------------------------------------------------------------------
+
+/**
+ * The complete ordered list of floors in the Gauntlet.
+ *
+ * FLOORS is indexed by (floorId - 1): FLOORS[0] = Floor 1, etc.
+ * Always use getFloorById() or getFloorByMarkerIndex() for lookups —
+ * do not rely on array index directly, as future floors may not be contiguous.
+ *
+ * To add a new floor: see docs/floors.md § "Adding a New Floor".
+ */
+export const FLOORS: readonly FloorConfig[] = [
+
+  // ── Floor 1: VFW Hall ─────────────────────────────────────────────────────
+  // Gritty blue-collar gambling den. Worn green felt, tarnished gold,
+  // fluorescent grime. The entry point — familiar but not forgiving.
+  {
+    id:        1,
+    name:      'VFW Hall',
+    tagline:   'Where dice meet duty.',
+    introLines: [
+      'Cigarette smoke and fluorescent hum. Folding tables, chipped chips, honest action.',
+      'The regulars know your face. The Sarge runs a tight room.',
+      'This is where runs are born — or buried.',
+    ],
+    bossName:   'Sarge',
+    bossTitle:  'Floor Commander',
+    bossVenue:  'VFW Hall — High Limit Room',
+    bossTeaser: 'Sarge sets the floor. And the floor keeps rising.',
+    atmosphere: 'gritty',
+  },
+
+  // ── Floor 2: The Riverboat ────────────────────────────────────────────────
+  // Mississippi paddlewheel casino salon. Deep navy felt, aged champagne
+  // brass, mahogany panels. Candlelit, quiet danger dressed as elegance.
+  {
+    id:        2,
+    name:      'The Riverboat',
+    tagline:   'Fortune flows with the current.',
+    introLines: [
+      'Mahogany panels. Candlelight. The paddle wheel churns the dark water below.',
+      "Mme. Le Prix does not raise her voice. She doesn't need to.",
+      'Your crew works differently here. Adapt, or sink.',
+    ],
+    bossName:   'Mme. Le Prix',
+    bossTitle:  'Proprietress of the Salon Privé',
+    bossVenue:  'The Riverboat — Salon Privé',
+    bossTeaser: 'Mme. Le Prix reverses the order of things. Everything costs more than you think.',
+    atmosphere: 'elegant',
+  },
+
+  // ── Floor 3: The Strip ────────────────────────────────────────────────────
+  // Vegas tower penthouse, sixty floors up. Obsidian felt, electric gold,
+  // neon magenta. No warmth, no texture, no mercy. Pure money, pure machine.
+  {
+    id:        3,
+    name:      'The Strip',
+    tagline:   'Sixty floors up. No safety net.',
+    introLines: [
+      'Obsidian felt. Floor-to-ceiling glass. The city grid glitters sixty stories below.',
+      "The Executive doesn't cheat. He doesn't need to.",
+      "One number ends it all. Don't roll it.",
+    ],
+    bossName:   'The Executive',
+    bossTitle:  'Penthouse Host',
+    bossVenue:  'The Strip — Penthouse',
+    bossTeaser: "The Executive has one rule. It's the only one that matters.",
+    atmosphere: 'electric',
+  },
+
+];
+
+// ---------------------------------------------------------------------------
+// FLOOR HELPERS
+// ---------------------------------------------------------------------------
+
+/**
+ * Look up a floor by its 1-indexed id.
+ * Returns undefined if no floor with that id exists.
+ */
+export function getFloorById(id: number): FloorConfig | undefined {
+  return FLOORS.find((f) => f.id === id);
+}
+
+/**
+ * Look up the floor for a given 0-based marker index.
+ * Floor is derived as Math.floor(markerIndex / 3) + 1.
+ * Clamps to the last floor if markerIndex exceeds the gauntlet length.
+ *
+ * Examples:
+ *   getFloorByMarkerIndex(0) → Floor 1 (VFW Hall)
+ *   getFloorByMarkerIndex(4) → Floor 2 (The Riverboat)
+ *   getFloorByMarkerIndex(8) → Floor 3 (The Strip)
+ */
+export function getFloorByMarkerIndex(markerIndex: number): FloorConfig {
+  const id = Math.floor(markerIndex / 3) + 1;
+  return FLOORS.find((f) => f.id === id) ?? FLOORS[FLOORS.length - 1]!;
 }

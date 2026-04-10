@@ -23,9 +23,15 @@ import type { TransitionType } from '@battlecraps/shared';
 import type { TransitionPhase, PhaseComponentProps } from './types.js';
 import type React from 'react';
 
-import { MarkerCelebrationPhase } from './phases/MarkerCelebrationPhase.js';
-import { BossVictoryPhase }       from './phases/BossVictoryPhase.js';
-import { BossEntryPhase }         from './phases/BossEntryPhase.js';
+import { MarkerCelebrationPhase }   from './phases/MarkerCelebrationPhase.js';
+import { MarkerIntroPhase }         from './phases/MarkerIntroPhase.js';
+import { BossVictoryPhase }         from './phases/BossVictoryPhase.js';
+import { BossVictoryCompPhase }     from './phases/BossVictoryCompPhase.js';
+import { BossEntryPhase }           from './phases/BossEntryPhase.js';
+import { BossEntryDreadPhase }      from './phases/BossEntryDreadPhase.js';
+import { FloorRevealPhase }         from './phases/FloorRevealPhase.js';
+import { FloorRevealConfirmPhase }  from './phases/FloorRevealConfirmPhase.js';
+import { TitleScreenPhase }         from './phases/TitleScreenPhase.js';
 
 // ---------------------------------------------------------------------------
 // Phase component registry
@@ -43,17 +49,19 @@ export const PHASE_COMPONENT_MAP: Record<string, React.ComponentType<PhaseCompon
   BossVictoryPhase,
   BossEntryPhase,
 
-  // Phase 3 — placeholders (components not yet built)
-  // MarkerIntroPhase,
+  // Phase 3 — active
+  MarkerIntroPhase,
 
-  // Phase 4
-  // FloorRevealPhase,
-  // FloorRevealConfirmPhase,
+  // Phase 4 — active
+  FloorRevealPhase,
+  FloorRevealConfirmPhase,
 
-  // Phase 5
-  // BossEntryDreadPhase,
-  // BossEntryRevealPhase,
-  // BossVictoryCompPhase,
+  // Phase 5 — active
+  BossEntryDreadPhase,
+  BossVictoryCompPhase,
+
+  // Phase 6 — active
+  TitleScreenPhase,
 
   // Phase 6
   // TitleScreenPhase,
@@ -99,20 +107,33 @@ export const TRANSITION_REGISTRY: Record<TransitionType, TransitionPhase[]> = {
   ],
 
   // ── BOSS_VICTORY — celebration after defeating a boss ────────────────────
-  // Phase 5 will split this into a triumph auto-phase and a comp-reveal
-  // gated phase with animated badge award.
+  // Phase 1 (auto 2s): pure defeat announcement — boss name, DEFEATED.
+  // Phase 2 (gated):   comp award reveal + CTA to visit the pub.
   BOSS_VICTORY: [
     {
-      id:          'modal',
-      advanceMode: 'gated',
+      id:          'triumph',
+      advanceMode: 'auto',
+      duration:    2000,
       component:   'BossVictoryPhase',
+    },
+    {
+      id:          'comp',
+      advanceMode: 'gated',
+      component:   'BossVictoryCompPhase',
     },
   ],
 
   // ── BOSS_ENTRY — shown once when entering a boss marker ──────────────────
-  // Phase 5 will prepend an auto 'dread' phase (1.8s) that delays the CTA
-  // so the player can't button-mash through the boss introduction.
+  // Phase 1 (auto 1.8s): dread — boss identity only, no interaction.
+  //                      Prevents button-mashing through the intro.
+  // Phase 2 (gated):     rule briefing + "ENTER THE ROOM" CTA.
   BOSS_ENTRY: [
+    {
+      id:          'dread',
+      advanceMode: 'auto',
+      duration:    1800,
+      component:   'BossEntryDreadPhase',
+    },
     {
       id:          'reveal',
       advanceMode: 'gated',
@@ -122,11 +143,44 @@ export const TRANSITION_REGISTRY: Record<TransitionType, TransitionPhase[]> = {
 
   // ── Future phase stubs ────────────────────────────────────────────────────
 
-  TITLE: [],         // Phase 6 — first-load cinematic
+  // ── TITLE — first-load cinematic ─────────────────────────────────────────
+  // Shown exactly once per browser (localStorage 'bc_title_shown' flag).
+  // Quick restarts and page refreshes after first-play skip this entirely.
+  TITLE: [
+    {
+      id:          'splash',
+      advanceMode: 'gated',
+      component:   'TitleScreenPhase',
+    },
+  ],
 
-  MARKER_INTRO: [],  // Phase 3 — post-pub orientation card
+  // ── MARKER_INTRO — post-pub orientation card ─────────────────────────────
+  // Auto-advances after 2500ms. Player can also tap to skip.
+  MARKER_INTRO: [
+    {
+      id:          'intro',
+      advanceMode: 'auto',
+      duration:    2500,
+      component:   'MarkerIntroPhase',
+    },
+  ],
 
-  FLOOR_REVEAL: [],  // Phase 4 — full-screen floor announcement
+  // ── FLOOR_REVEAL — new floor cinematic (two phases) ──────────────────────
+  // Phase 1: chapter-card auto-reveal (3 s + tap-to-skip)
+  // Phase 2: flavor text + boss teaser + gated CTA
+  FLOOR_REVEAL: [
+    {
+      id:          'reveal',
+      advanceMode: 'auto',
+      duration:    3000,
+      component:   'FloorRevealPhase',
+    },
+    {
+      id:          'confirm',
+      advanceMode: 'gated',
+      component:   'FloorRevealConfirmPhase',
+    },
+  ],
 
   VICTORY: [],       // Phase 8 — epic win cinematic (3 phases)
 

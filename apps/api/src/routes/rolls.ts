@@ -207,17 +207,22 @@ async function rollHandler(
   // Deduct-on-placement model: the DB bankroll already reflects bets placed in
   // prior rolls this turn (e.g., passLine deducted at POINT_SET). Only the
   // DELTA (newly added bets this roll) is validated against the current bankroll.
+  //
+  // Working bets (odds, hardways) are "off" by default and the player may take
+  // them down at any time — betDelta can be negative when they do. Only the
+  // Pass Line is locked once set; it cannot be reduced mid-roll.
   const incomingBets = request.body.bets;
   const betDelta = sumBets(incomingBets) - sumBets(run.bets);
 
-  // Bets can only be increased, never reduced once on the table.
-  if (betDelta < 0) {
+  // Pass Line is locked once placed — it may not be reduced.
+  if (incomingBets.passLine < run.bets.passLine) {
     return reply.status(422).send({
-      error: 'Existing bets cannot be reduced.',
+      error: 'Pass Line bets cannot be reduced.',
     });
   }
 
-  // Must be able to afford the newly placed bets from the current bankroll.
+  // Newly added bets (positive delta) must be affordable. A negative delta
+  // means working bets were taken down — the refund is always affordable.
   if (betDelta > run.bankrollCents) {
     return reply.status(422).send({
       error: `Insufficient funds: need ${betDelta}¢, have ${run.bankrollCents}¢.`,

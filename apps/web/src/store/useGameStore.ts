@@ -354,6 +354,22 @@ export interface GameState {
    */
   maxBankrollCents: number;
 
+  /**
+   * True once the VICTORY transition has been triggered for the current run.
+   * Prevents the 3-phase cinematic from re-triggering on re-renders while it
+   * is playing. Resets to false on connectToRun (new run).
+   */
+  victoryShown: boolean;
+
+  /**
+   * Set to true by clearTransition('VICTORY') when all victory phases complete.
+   * The TransitionOrchestrator watches this flag in a useEffect and calls
+   * onPlayAgain() to bootstrap a fresh run. Routing returns null while this
+   * is true so there is no flash of GameOverScreen between cinematic and new game.
+   * Resets to false on connectToRun.
+   */
+  victoryComplete: boolean;
+
   /** Monotonically increasing counter used to generate `seq` values. */
   _seqCounter: number;
 
@@ -476,6 +492,12 @@ export interface GameActions {
   setFloorRevealShownForFloor(floorId: number): void;
 
   /**
+   * Record that the VICTORY transition has been triggered for this run.
+   * Prevents the 3-phase cinematic from re-triggering on re-renders.
+   */
+  setVictoryShown(): void;
+
+  /**
    * Called by ChipRain's onComplete callback when all chip animations finish.
    * Replaces the previous hardcoded 1500ms setTimeout in applyPendingSettlement
    * with animation-precise timing. No-ops if pendingTransition is false
@@ -584,6 +606,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   // titleShown persists across runs — read from localStorage once at init.
   titleShown: localStorage.getItem('bc_title_shown') === '1',
   maxBankrollCents: 0,
+  victoryShown:     false,
+  victoryComplete:  false,
   _seqCounter:    0,
   rollHistory:    [],
   socketStatus:   'disconnected',
@@ -614,6 +638,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bossEntryShownForMarker:   null,
       markerIntroShownForMarker: null,
       floorRevealShownForFloor:  null,
+      victoryShown:              false,
+      victoryComplete:           false,
       // Explicitly clear all last-roll display state so a new run never
       // inherits stale dice, result labels, or delta animations from the
       // previous run. initialState may also set these, but we zero them
@@ -775,6 +801,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bossEntryShownForMarker:   null,
       markerIntroShownForMarker: null,
       floorRevealShownForFloor:  null,
+      victoryShown:              false,
+      victoryComplete:           false,
       rollHistory:               [],
       socketStatus:              'disconnected',
     });
@@ -1013,9 +1041,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         transitionPhaseIndex: 0,
         celebrationSnapshot:  null,
       });
+    } else if (type === 'VICTORY') {
+      // All 3 victory phases complete. Signal the TransitionOrchestrator to
+      // call onPlayAgain() via its victoryComplete useEffect.
+      set({ victoryComplete: true, activeTransition: null, transitionPhaseIndex: 0 });
     } else {
-      // BOSS_ENTRY, FLOOR_REVEAL, and future types — just clear the
-      // transition and return the player to normal gameplay (TableBoard).
+      // BOSS_ENTRY, FLOOR_REVEAL, MARKER_INTRO, and future types — just clear
+      // the transition and return the player to normal gameplay (TableBoard).
       if (type === 'TITLE') {
         // Persist the flag so it survives page refreshes and new runs.
         localStorage.setItem('bc_title_shown', '1');
@@ -1040,6 +1072,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   setFloorRevealShownForFloor(floorId) {
     set({ floorRevealShownForFloor: floorId });
+  },
+
+  setVictoryShown() {
+    set({ victoryShown: true });
   },
 
   triggerChipRainComplete() {

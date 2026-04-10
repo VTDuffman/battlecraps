@@ -32,6 +32,9 @@ import { BossEntryDreadPhase }      from './phases/BossEntryDreadPhase.js';
 import { FloorRevealPhase }         from './phases/FloorRevealPhase.js';
 import { FloorRevealConfirmPhase }  from './phases/FloorRevealConfirmPhase.js';
 import { TitleScreenPhase }         from './phases/TitleScreenPhase.js';
+import { VictoryExplosionPhase }    from './phases/VictoryExplosionPhase.js';
+import { VictoryRecapPhase }        from './phases/VictoryRecapPhase.js';
+import { VictorySendoffPhase }      from './phases/VictorySendoffPhase.js';
 
 // ---------------------------------------------------------------------------
 // Phase component registry
@@ -63,13 +66,10 @@ export const PHASE_COMPONENT_MAP: Record<string, React.ComponentType<PhaseCompon
   // Phase 6 — active
   TitleScreenPhase,
 
-  // Phase 6
-  // TitleScreenPhase,
-
-  // Phase 8
-  // VictoryExplosionPhase,
-  // VictoryRecapPhase,
-  // VictorySendoffPhase,
+  // Phase 8 — active
+  VictoryExplosionPhase,
+  VictoryRecapPhase,
+  VictorySendoffPhase,
 
   // Phase 9
   // GameOverPhase,
@@ -182,7 +182,28 @@ export const TRANSITION_REGISTRY: Record<TransitionType, TransitionPhase[]> = {
     },
   ],
 
-  VICTORY: [],       // Phase 8 — epic win cinematic (3 phases)
+  // ── VICTORY — all 9 markers cleared ─────────────────────────────────────
+  // Phase 1 (auto 3s + tap): "YOU WIN" explosion with floor badges
+  // Phase 2 (gated):         final stats recap — markers, bankroll, personal best
+  // Phase 3 (gated):         emotional send-off → triggers new run via onPlayAgain
+  VICTORY: [
+    {
+      id:          'explosion',
+      advanceMode: 'auto',
+      duration:    3000,
+      component:   'VictoryExplosionPhase',
+    },
+    {
+      id:          'recap',
+      advanceMode: 'gated',
+      component:   'VictoryRecapPhase',
+    },
+    {
+      id:          'sendoff',
+      advanceMode: 'gated',
+      component:   'VictorySendoffPhase',
+    },
+  ],
 
   GAME_OVER: [],     // Phase 9 — progress recap + tone-calibrated message
 };

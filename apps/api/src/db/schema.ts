@@ -124,6 +124,17 @@ export const users = pgTable(
       .notNull()
       .default(0),
 
+    /**
+     * The highest bankroll this player has ever achieved, in cents, across
+     * all runs. Updated after every roll when the new bankroll exceeds this
+     * value. bigint to match lifetimeEarningsCents. Default 0 = never played.
+     *
+     * Migration: migrate-add-max-bankroll.ts
+     */
+    maxBankrollCents: bigint('max_bankroll_cents', { mode: 'number' })
+      .notNull()
+      .default(0),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

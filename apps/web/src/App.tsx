@@ -47,6 +47,7 @@ interface BootstrapResponse {
     crewSlots:          StoredCrewSlots;
     currentMarkerIndex: number;
     bets?:              Bets;
+    maxBankrollCents?:  number;
   };
 }
 
@@ -93,6 +94,7 @@ export const App: React.FC = () => {
             crewSlots:          data.crewSlots,
             currentMarkerIndex: data.currentMarkerIndex,
             ...(data.bets && { bets: data.bets }),
+            ...(data.maxBankrollCents !== undefined && { maxBankrollCents: data.maxBankrollCents }),
           });
           setLoading(false);
           return;
@@ -123,6 +125,7 @@ export const App: React.FC = () => {
         crewSlots:          data.run.crewSlots,
         currentMarkerIndex: data.run.currentMarkerIndex,
         ...(data.run.bets && { bets: data.run.bets }),
+        ...(data.run.maxBankrollCents !== undefined && { maxBankrollCents: data.run.maxBankrollCents }),
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

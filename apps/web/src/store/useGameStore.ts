@@ -345,6 +345,15 @@ export interface GameState {
    */
   titleShown: boolean;
 
+  /**
+   * The highest bankroll the player has ever achieved, in cents, across all runs.
+   * Loaded from the server on connect (users.max_bankroll_cents).
+   * Updated client-side in applyPendingSettlement() when newBankroll exceeds
+   * the stored value, giving immediate feedback before the next page load.
+   * Server is the source of truth; client tracks optimistically for display.
+   */
+  maxBankrollCents: number;
+
   /** Monotonically increasing counter used to generate `seq` values. */
   _seqCounter: number;
 
@@ -574,6 +583,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   floorRevealShownForFloor:  null,
   // titleShown persists across runs — read from localStorage once at init.
   titleShown: localStorage.getItem('bc_title_shown') === '1',
+  maxBankrollCents: 0,
   _seqCounter:    0,
   rollHistory:    [],
   socketStatus:   'disconnected',
@@ -903,6 +913,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const {
       currentMarkerIndex: oldMarkerIndex,
       bankroll:           oldBankroll,
+      maxBankrollCents:   oldMaxBankrollCents,
     } = get();
 
     const celebrationSnapshot: CelebrationSnapshot | null = isTransition
@@ -952,6 +963,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // animations must not fire before the player has seen the dice result.
       cascadeQueue:         pendingCascadeQueue,
       pendingCascadeQueue:  [],
+      // Track personal best optimistically so the GameOverScreen can show it
+      // immediately without waiting for the next page load.
+      maxBankrollCents:     Math.max(oldMaxBankrollCents, p.newBankroll),
     });
 
     if (isTransition) {

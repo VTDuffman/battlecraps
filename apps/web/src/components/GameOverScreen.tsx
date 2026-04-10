@@ -61,6 +61,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
   const bankroll           = useGameStore((s) => s.bankroll);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
   const crewSlots          = useGameStore((s) => s.crewSlots);
+  const maxBankrollCents   = useGameStore((s) => s.maxBankrollCents);
 
   const markersCleared   = currentMarkerIndex;
   const totalMarkers     = MARKER_TARGETS.length;
@@ -136,6 +137,14 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
             highlight={markersCleared > 0}
           />
           <StatRow label="CREW ON RAIL" value={`${seatedCrewCount} / 5`} />
+          {maxBankrollCents > 0 && (
+            <StatRow
+              label="PERSONAL BEST"
+              value={`$${(maxBankrollCents / 100).toLocaleString()}`}
+              highlight={bankroll >= maxBankrollCents && bankroll > 25_000}
+              isPersonalBest={bankroll >= maxBankrollCents && bankroll > 25_000}
+            />
+          )}
         </div>
       </section>
 
@@ -198,13 +207,19 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
 // Sub-components
 // ---------------------------------------------------------------------------
 
-const StatRow: React.FC<{ label: string; value: string; highlight?: boolean }> = ({
-  label,
-  value,
-  highlight = false,
-}) => (
+const StatRow: React.FC<{
+  label: string;
+  value: string;
+  highlight?: boolean;
+  isPersonalBest?: boolean;
+}> = ({ label, value, highlight = false, isPersonalBest = false }) => (
   <div className="flex items-center justify-between px-4 py-3 border-b border-red-900/30 last:border-b-0">
-    <span className="font-pixel text-[6px] text-red-700/70 tracking-wider">{label}</span>
+    <span className="font-pixel text-[6px] text-red-700/70 tracking-wider">
+      {label}
+      {isPersonalBest && (
+        <span className="ml-1.5 text-yellow-500/80">★ NEW</span>
+      )}
+    </span>
     <span
       className={[
         'font-mono text-[11px]',

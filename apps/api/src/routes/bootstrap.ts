@@ -16,7 +16,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { users, runs } from '../db/schema.js';
-import type { StoredCrewSlots } from '../db/schema.js';
+import type { StoredCrewSlots, UserRow } from '../db/schema.js';
 
 // ---------------------------------------------------------------------------
 // Starter crew slots — all empty so the player recruits their own crew
@@ -41,6 +41,8 @@ interface BootstrapResponse {
     point:              number | null;
     crewSlots:          StoredCrewSlots;
     currentMarkerIndex: number;
+    /** Highest bankroll the player has ever reached, in cents (across all runs). */
+    maxBankrollCents:   number;
   };
 }
 
@@ -52,7 +54,10 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
       const userId = req.headers['x-user-id'];
       if (typeof userId !== 'string') return reply.status(401).send({ error: 'Unauthorized' });
 
-      const run = await db.query.runs.findFirst({ where: eq(runs.id, req.params.id) });
+      const run = await db.query.runs.findFirst({
+        where: eq(runs.id, req.params.id),
+        with: { user: true },
+      });
       if (!run) return reply.status(404).send({ error: 'Not found' });
       if (run.userId !== userId) return reply.status(403).send({ error: 'Forbidden' });
 
@@ -66,6 +71,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
         crewSlots:          run.crewSlots,
         currentMarkerIndex: run.currentMarkerIndex,
         bets:               run.bets,
+        maxBankrollCents:   (run.user as UserRow).maxBankrollCents,
       });
     },
   );
@@ -192,6 +198,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
           point:              run.currentPoint ?? null,
           crewSlots:          run.crewSlots as StoredCrewSlots,
           currentMarkerIndex: run.currentMarkerIndex,
+          maxBankrollCents:   user.maxBankrollCents,
         },
       };
 

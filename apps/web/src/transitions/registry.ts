@@ -26,7 +26,9 @@ import type React from 'react';
 import { MarkerCelebrationPhase }   from './phases/MarkerCelebrationPhase.js';
 import { MarkerIntroPhase }         from './phases/MarkerIntroPhase.js';
 import { BossVictoryPhase }         from './phases/BossVictoryPhase.js';
+import { BossVictoryCompPhase }     from './phases/BossVictoryCompPhase.js';
 import { BossEntryPhase }           from './phases/BossEntryPhase.js';
+import { BossEntryDreadPhase }      from './phases/BossEntryDreadPhase.js';
 import { FloorRevealPhase }         from './phases/FloorRevealPhase.js';
 import { FloorRevealConfirmPhase }  from './phases/FloorRevealConfirmPhase.js';
 
@@ -53,10 +55,9 @@ export const PHASE_COMPONENT_MAP: Record<string, React.ComponentType<PhaseCompon
   FloorRevealPhase,
   FloorRevealConfirmPhase,
 
-  // Phase 5
-  // BossEntryDreadPhase,
-  // BossEntryRevealPhase,
-  // BossVictoryCompPhase,
+  // Phase 5 — active
+  BossEntryDreadPhase,
+  BossVictoryCompPhase,
 
   // Phase 6
   // TitleScreenPhase,
@@ -102,20 +103,33 @@ export const TRANSITION_REGISTRY: Record<TransitionType, TransitionPhase[]> = {
   ],
 
   // ── BOSS_VICTORY — celebration after defeating a boss ────────────────────
-  // Phase 5 will split this into a triumph auto-phase and a comp-reveal
-  // gated phase with animated badge award.
+  // Phase 1 (auto 2s): pure defeat announcement — boss name, DEFEATED.
+  // Phase 2 (gated):   comp award reveal + CTA to visit the pub.
   BOSS_VICTORY: [
     {
-      id:          'modal',
-      advanceMode: 'gated',
+      id:          'triumph',
+      advanceMode: 'auto',
+      duration:    2000,
       component:   'BossVictoryPhase',
+    },
+    {
+      id:          'comp',
+      advanceMode: 'gated',
+      component:   'BossVictoryCompPhase',
     },
   ],
 
   // ── BOSS_ENTRY — shown once when entering a boss marker ──────────────────
-  // Phase 5 will prepend an auto 'dread' phase (1.8s) that delays the CTA
-  // so the player can't button-mash through the boss introduction.
+  // Phase 1 (auto 1.8s): dread — boss identity only, no interaction.
+  //                      Prevents button-mashing through the intro.
+  // Phase 2 (gated):     rule briefing + "ENTER THE ROOM" CTA.
   BOSS_ENTRY: [
+    {
+      id:          'dread',
+      advanceMode: 'auto',
+      duration:    1800,
+      component:   'BossEntryDreadPhase',
+    },
     {
       id:          'reveal',
       advanceMode: 'gated',

@@ -9,7 +9,8 @@
 // the warm amber Pub and the green casino felt of the table.
 //
 // Displays:
-//   - "GAME OVER" header with neon bleed
+//   - "GAME OVER" header with neon bleed + tone-calibrated tagline
+//   - Gauntlet pip strip — 9 pips (3 per floor) showing exactly how far they got
 //   - Run stats: markers cleared, final bankroll
 //   - The crew that was on the rail when the run ended
 //   - A prominent PLAY AGAIN button (calls onPlayAgain → bootstrap)
@@ -18,6 +19,7 @@
 import React from 'react';
 import { MARKER_TARGETS } from '@battlecraps/shared';
 import { useGameStore, selectBankrollDisplay } from '../store/useGameStore.js';
+import { getFloorTheme }  from '../lib/floorThemes.js';
 import { CREW_EMOJI } from './CrewPortrait.js';
 
 // ---------------------------------------------------------------------------
@@ -34,6 +36,30 @@ const CREW_NAMES: Record<number, string> = {
   13: 'Mimic',    14: 'Old Pro',
   15: 'Lucky',
 };
+
+// ---------------------------------------------------------------------------
+// Floor themes for pip strip — indexed by floorIdx (0 = Floor 1, etc.)
+// ---------------------------------------------------------------------------
+
+const FLOOR_PIP_THEMES = [
+  getFloorTheme(0),  // Floor 1 — VFW Hall
+  getFloorTheme(3),  // Floor 2 — Riverboat
+  getFloorTheme(6),  // Floor 3 — The Strip
+] as const;
+
+// ---------------------------------------------------------------------------
+// Tone-calibrated tagline — shifts based on how far the player got.
+// Only shown on GAME OVER (not victory).
+// ---------------------------------------------------------------------------
+
+function getToneTagline(cleared: number): string {
+  if (cleared === 0) return "The house didn't even break a sweat.";
+  if (cleared <= 2)  return "Floor 1 had your number.";
+  if (cleared === 3) return "You cleared the VFW. The Riverboat cut you short.";
+  if (cleared <= 5)  return "The Riverboat cut the run short.";
+  if (cleared === 6) return "Two floors down. The Strip finished it.";
+  return "You made it to The Strip. So close."; // 7–8
+}
 
 // Category colors for the crew badge in the end screen
 const CATEGORY_BG: Record<string, string> = {
@@ -61,6 +87,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
   const bankroll           = useGameStore((s) => s.bankroll);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
   const crewSlots          = useGameStore((s) => s.crewSlots);
+  const maxBankrollCents   = useGameStore((s) => s.maxBankrollCents);
 
   const markersCleared   = currentMarkerIndex;
   const totalMarkers     = MARKER_TARGETS.length;
@@ -116,12 +143,25 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
             >
               GAME OVER
             </h1>
+            <p className="mt-3 font-pixel text-[6px] text-red-500/50 tracking-wider text-center">
+              {getToneTagline(markersCleared)}
+            </p>
           </>
         )}
 
         {/* Harsh divider */}
         <div className="mt-6 w-full h-px bg-red-900/60" />
       </header>
+
+      {/* ── Gauntlet pip strip ──────────────────────────────────────────────── */}
+      {!isVictory && (
+        <section className="flex-none px-4 pb-5">
+          <div className="font-pixel text-[5px] text-red-800/50 tracking-widest text-center mb-3">
+            — GAUNTLET PROGRESS —
+          </div>
+          <GauntletPips cleared={markersCleared} />
+        </section>
+      )}
 
       {/* ── Stats block ─────────────────────────────────────────────────────── */}
       <section className="flex-none px-4 pb-6">
@@ -136,6 +176,14 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
             highlight={markersCleared > 0}
           />
           <StatRow label="CREW ON RAIL" value={`${seatedCrewCount} / 5`} />
+          {maxBankrollCents > 0 && (
+            <StatRow
+              label="PERSONAL BEST"
+              value={`$${(maxBankrollCents / 100).toLocaleString()}`}
+              highlight={bankroll >= maxBankrollCents && bankroll > 25_000}
+              isPersonalBest={bankroll >= maxBankrollCents && bankroll > 25_000}
+            />
+          )}
         </div>
       </section>
 
@@ -198,13 +246,19 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
 // Sub-components
 // ---------------------------------------------------------------------------
 
-const StatRow: React.FC<{ label: string; value: string; highlight?: boolean }> = ({
-  label,
-  value,
-  highlight = false,
-}) => (
+const StatRow: React.FC<{
+  label: string;
+  value: string;
+  highlight?: boolean;
+  isPersonalBest?: boolean;
+}> = ({ label, value, highlight = false, isPersonalBest = false }) => (
   <div className="flex items-center justify-between px-4 py-3 border-b border-red-900/30 last:border-b-0">
-    <span className="font-pixel text-[6px] text-red-700/70 tracking-wider">{label}</span>
+    <span className="font-pixel text-[6px] text-red-700/70 tracking-wider">
+      {label}
+      {isPersonalBest && (
+        <span className="ml-1.5 text-yellow-500/80">★ NEW</span>
+      )}
+    </span>
     <span
       className={[
         'font-mono text-[11px]',
@@ -215,6 +269,79 @@ const StatRow: React.FC<{ label: string; value: string; highlight?: boolean }> =
     </span>
   </div>
 );
+
+// ---------------------------------------------------------------------------
+// Gauntlet pip strip
+//
+// 9 pips grouped 3-3-3 by floor, separated by thin vertical rules.
+// Cleared pips use the floor's felt/accent palette; boss pips (★) use the
+// bright accent so they stand out. Uncleared pips are near-invisible.
+// ---------------------------------------------------------------------------
+
+const GauntletPips: React.FC<{ cleared: number }> = ({ cleared }) => (
+  <div className="flex items-center justify-center gap-3">
+    {FLOOR_PIP_THEMES.map((ft, floorIdx) => (
+      <React.Fragment key={floorIdx}>
+        {/* Floor separator — thin vertical rule between floors */}
+        {floorIdx > 0 && (
+          <div
+            className="h-5 w-px flex-none"
+            style={{ background: 'rgba(255,255,255,0.08)' }}
+          />
+        )}
+
+        {/* 3 pips for this floor */}
+        <div className="flex items-center gap-1.5">
+          {[0, 1, 2].map((markerInFloor) => {
+            const markerIdx = floorIdx * 3 + markerInFloor;
+            const isBoss    = markerInFloor === 2;   // boss = 3rd of each floor (indices 2, 5, 8)
+            const isCleared = markerIdx < cleared;
+
+            return (
+              <div
+                key={markerInFloor}
+                className="flex items-center justify-center rounded-sm flex-none"
+                style={{
+                  width:      22,
+                  height:     22,
+                  background: isCleared
+                    ? isBoss
+                      ? `${ft.accentBright}cc`
+                      : `${ft.feltPrimary}dd`
+                    : 'rgba(0,0,0,0.45)',
+                  border: `1px solid ${
+                    isCleared
+                      ? isBoss ? ft.accentBright : `${ft.accentPrimary}aa`
+                      : 'rgba(255,255,255,0.06)'
+                  }`,
+                  boxShadow: isCleared
+                    ? `0 0 8px 1px ${ft.accentPrimary}35`
+                    : 'none',
+                }}
+              >
+                <span
+                  className="font-pixel leading-none select-none"
+                  style={{
+                    fontSize: isBoss ? '8px' : '7px',
+                    color: isCleared
+                      ? isBoss
+                        ? ft.feltPrimary           // ★ on bright boss pip — use felt for contrast
+                        : ft.accentBright          // ● on normal pip
+                      : 'rgba(255,255,255,0.10)',  // dim for uncleared
+                  }}
+                >
+                  {isBoss ? '★' : '●'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </React.Fragment>
+    ))}
+  </div>
+);
+
+// ---------------------------------------------------------------------------
 
 const EndCrewSlot: React.FC<{ index: number; crewId: number | null }> = ({ index, crewId }) => {
   const name = crewId ? (CREW_NAMES[crewId] ?? `#${crewId}`) : null;

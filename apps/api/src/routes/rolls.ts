@@ -20,7 +20,7 @@
 // =============================================================================
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, lt } from 'drizzle-orm';
 
 import {
   resolveRoll,
@@ -43,7 +43,7 @@ import {
 } from '@battlecraps/shared';
 
 import { db } from '../db/client.js';
-import { runs, type RunRow, type StoredCrewSlots, type StoredCrewSlot } from '../db/schema.js';
+import { runs, users, type RunRow, type StoredCrewSlots, type StoredCrewSlot } from '../db/schema.js';
 import { rollDice } from '../lib/rng.js';
 import { getIO } from '../lib/io.js';
 import { hydrateCrewMember } from '../lib/crewRegistry.js';
@@ -405,6 +405,19 @@ async function rollHandler(
       error: 'Conflict: run was modified by another request. Please retry.',
     });
   }
+
+  // ── 12b. Update personal-best bankroll (fire-and-forget) ──────────────────
+  // Conditional update: the WHERE clause ensures this only writes to the DB
+  // when newBankroll actually exceeds the stored max. On most rolls this is a
+  // no-op (0 rows matched). Fire-and-forget so it doesn't add latency to the
+  // hot path; the client also tracks this locally for immediate display.
+  void db
+    .update(users)
+    .set({ maxBankrollCents: newBankroll })
+    .where(and(eq(users.id, userId), lt(users.maxBankrollCents, newBankroll)))
+    .catch((err: unknown) => {
+      request.log.error({ err }, '[roll] Failed to update maxBankrollCents');
+    });
 
   // ── 13. WebSocket — emit cascade events + settlement summary ────────────────
   //

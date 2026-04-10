@@ -25,7 +25,7 @@ import { PubScreen }            from '../components/PubScreen.js';
 import { GameOverScreen }       from '../components/GameOverScreen.js';
 import { PhasePlayer }          from './PhasePlayer.js';
 import { TRANSITION_REGISTRY }  from './registry.js';
-import { isBossMarker, getFloorByMarkerIndex } from '@battlecraps/shared';
+import { isBossMarker, getFloorByMarkerIndex, GAUNTLET } from '@battlecraps/shared';
 import type { TransitionType }                from '@battlecraps/shared';
 
 interface TransitionOrchestratorProps {
@@ -48,10 +48,13 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
   const markerIntroShownFor      = useGameStore((s) => s.markerIntroShownForMarker);
   const floorRevealShownFor      = useGameStore((s) => s.floorRevealShownForFloor);
   const titleShown               = useGameStore((s) => s.titleShown);
+  const victoryShown             = useGameStore((s) => s.victoryShown);
+  const victoryComplete          = useGameStore((s) => s.victoryComplete);
   const setActiveTransition      = useGameStore((s) => s.setActiveTransition);
   const setBossEntryShownFor     = useGameStore((s) => s.setBossEntryShownForMarker);
   const setMarkerIntroShownFor   = useGameStore((s) => s.setMarkerIntroShownForMarker);
   const setFloorRevealShownFor   = useGameStore((s) => s.setFloorRevealShownForFloor);
+  const setVictoryShown          = useGameStore((s) => s.setVictoryShown);
   const advanceTransitionPhase   = useGameStore((s) => s.advanceTransitionPhase);
   const clearTransition          = useGameStore((s) => s.clearTransition);
 
@@ -134,6 +137,37 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
     setMarkerIntroShownFor,
   ]);
 
+  // ── Victory detection ───────────────────────────────────────────────────
+  // When all 9 gauntlet markers are cleared (status === 'GAME_OVER' with a
+  // full currentMarkerIndex), inject the 3-phase VICTORY cinematic instead of
+  // showing the GameOverScreen. Guarded by victoryShown so it only fires once.
+  useEffect(() => {
+    if (
+      status === 'GAME_OVER' &&
+      currentMarkerIndex >= GAUNTLET.length &&
+      activeTransition === null &&
+      !victoryShown
+    ) {
+      setVictoryShown();
+      setActiveTransition('VICTORY');
+    }
+  }, [
+    status,
+    currentMarkerIndex,
+    activeTransition,
+    victoryShown,
+    setVictoryShown,
+    setActiveTransition,
+  ]);
+
+  // ── Victory complete → new run ──────────────────────────────────────────
+  // After the VICTORY sendoff phase calls clearTransition('VICTORY'),
+  // victoryComplete flips to true. This effect calls onPlayAgain() which
+  // bootstraps a fresh run. connectToRun resets victoryComplete to false.
+  useEffect(() => {
+    if (victoryComplete) onPlayAgain();
+  }, [victoryComplete, onPlayAgain]);
+
   // ── Marker intro detection ──────────────────────────────────────────────
   // After the pub, when the player lands on a non-boss marker, show the
   // orientation card once. Boss markers skip this — BossEntryPhase covers
@@ -196,8 +230,13 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
     return <PhasePlayer phase={phase} onAdvance={handleAdvance} />;
   }
 
-  // 3. Game over or victory — render end screen.
+  // 3. Game over or victory.
   if (status === 'GAME_OVER') {
+    // Victory path: suppress GameOverScreen while the VICTORY cinematic fires
+    // (victoryShown not yet set) or while the new run is bootstrapping
+    // (victoryComplete = true, onPlayAgain() called, waiting for connectToRun).
+    if (victoryComplete) return null;
+    if (currentMarkerIndex >= GAUNTLET.length && !victoryShown) return null;
     return <GameOverScreen onPlayAgain={onPlayAgain} />;
   }
 

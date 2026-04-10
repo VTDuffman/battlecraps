@@ -25,8 +25,8 @@ import { PubScreen }            from '../components/PubScreen.js';
 import { GameOverScreen }       from '../components/GameOverScreen.js';
 import { PhasePlayer }          from './PhasePlayer.js';
 import { TRANSITION_REGISTRY }  from './registry.js';
-import { isBossMarker }         from '@battlecraps/shared';
-import type { TransitionType }  from '@battlecraps/shared';
+import { isBossMarker, getFloorByMarkerIndex } from '@battlecraps/shared';
+import type { TransitionType }                from '@battlecraps/shared';
 
 interface TransitionOrchestratorProps {
   /** Normal gameplay component (TableBoard). Rendered when no transition is active. */
@@ -46,9 +46,11 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
   const bossEntryShownFor  = useGameStore((s) => s.bossEntryShownForMarker);
   const markerIntroShownFor      = useGameStore((s) => s.markerIntroShownForMarker);
+  const floorRevealShownFor      = useGameStore((s) => s.floorRevealShownForFloor);
   const setActiveTransition      = useGameStore((s) => s.setActiveTransition);
   const setBossEntryShownFor     = useGameStore((s) => s.setBossEntryShownForMarker);
   const setMarkerIntroShownFor   = useGameStore((s) => s.setMarkerIntroShownForMarker);
+  const setFloorRevealShownFor   = useGameStore((s) => s.setFloorRevealShownForFloor);
   const advanceTransitionPhase   = useGameStore((s) => s.advanceTransitionPhase);
   const clearTransition          = useGameStore((s) => s.clearTransition);
 
@@ -75,11 +77,43 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
     setBossEntryShownFor,
   ]);
 
+  // ── Floor reveal detection ──────────────────────────────────────────────
+  // When the player arrives at the first marker of a new floor (indices 3
+  // and 6), inject a two-phase FLOOR_REVEAL cinematic before they roll.
+  // Skipped for floor 1 (index 0) — that's the title screen's job (Phase 6).
+  // Also marks markerIntroShownFor so MARKER_INTRO doesn't double-trigger
+  // on the same marker immediately after.
+  useEffect(() => {
+    const currentFloor = getFloorByMarkerIndex(currentMarkerIndex);
+    if (
+      status === 'IDLE_TABLE' &&
+      currentMarkerIndex > 0 &&
+      currentMarkerIndex % 3 === 0 &&
+      !isBossMarker(currentMarkerIndex) &&
+      activeTransition === null &&
+      floorRevealShownFor !== currentFloor.id
+    ) {
+      setFloorRevealShownFor(currentFloor.id);
+      setMarkerIntroShownFor(currentMarkerIndex); // prevent MARKER_INTRO double-trigger
+      setActiveTransition('FLOOR_REVEAL');
+    }
+  }, [
+    status,
+    currentMarkerIndex,
+    activeTransition,
+    floorRevealShownFor,
+    setActiveTransition,
+    setFloorRevealShownFor,
+    setMarkerIntroShownFor,
+  ]);
+
   // ── Marker intro detection ──────────────────────────────────────────────
   // After the pub, when the player lands on a non-boss marker, show the
   // orientation card once. Boss markers skip this — BossEntryPhase covers
   // orientation for those. Fires on the very first marker too, giving the
   // player their target before their first ever roll.
+  // Floor-entry markers skip this — FloorRevealPhase covers them and pre-sets
+  // markerIntroShownFor to prevent a double-trigger here.
   useEffect(() => {
     if (
       status === 'IDLE_TABLE' &&

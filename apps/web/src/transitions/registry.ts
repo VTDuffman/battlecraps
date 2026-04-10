@@ -23,10 +23,12 @@ import type { TransitionType } from '@battlecraps/shared';
 import type { TransitionPhase, PhaseComponentProps } from './types.js';
 import type React from 'react';
 
-import { MarkerCelebrationPhase } from './phases/MarkerCelebrationPhase.js';
-import { MarkerIntroPhase }       from './phases/MarkerIntroPhase.js';
-import { BossVictoryPhase }       from './phases/BossVictoryPhase.js';
-import { BossEntryPhase }         from './phases/BossEntryPhase.js';
+import { MarkerCelebrationPhase }   from './phases/MarkerCelebrationPhase.js';
+import { MarkerIntroPhase }         from './phases/MarkerIntroPhase.js';
+import { BossVictoryPhase }         from './phases/BossVictoryPhase.js';
+import { BossEntryPhase }           from './phases/BossEntryPhase.js';
+import { FloorRevealPhase }         from './phases/FloorRevealPhase.js';
+import { FloorRevealConfirmPhase }  from './phases/FloorRevealConfirmPhase.js';
 
 // ---------------------------------------------------------------------------
 // Phase component registry
@@ -47,9 +49,9 @@ export const PHASE_COMPONENT_MAP: Record<string, React.ComponentType<PhaseCompon
   // Phase 3 — active
   MarkerIntroPhase,
 
-  // Phase 4
-  // FloorRevealPhase,
-  // FloorRevealConfirmPhase,
+  // Phase 4 — active
+  FloorRevealPhase,
+  FloorRevealConfirmPhase,
 
   // Phase 5
   // BossEntryDreadPhase,
@@ -136,7 +138,22 @@ export const TRANSITION_REGISTRY: Record<TransitionType, TransitionPhase[]> = {
     },
   ],
 
-  FLOOR_REVEAL: [],  // Phase 4 — full-screen floor announcement
+  // ── FLOOR_REVEAL — new floor cinematic (two phases) ──────────────────────
+  // Phase 1: chapter-card auto-reveal (3 s + tap-to-skip)
+  // Phase 2: flavor text + boss teaser + gated CTA
+  FLOOR_REVEAL: [
+    {
+      id:          'reveal',
+      advanceMode: 'auto',
+      duration:    3000,
+      component:   'FloorRevealPhase',
+    },
+    {
+      id:          'confirm',
+      advanceMode: 'gated',
+      component:   'FloorRevealConfirmPhase',
+    },
+  ],
 
   VICTORY: [],       // Phase 8 — epic win cinematic (3 phases)
 

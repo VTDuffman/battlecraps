@@ -329,6 +329,14 @@ export interface GameState {
    */
   markerIntroShownForMarker: number | null;
 
+  /**
+   * The floor id (1-indexed) for which a FLOOR_REVEAL transition has already
+   * been shown. The TransitionOrchestrator checks this to prevent re-triggering
+   * the cinematic on every render after the player enters a new floor.
+   * null = never shown. Resets on connectToRun (fresh or reconnect).
+   */
+  floorRevealShownForFloor: number | null;
+
   /** Monotonically increasing counter used to generate `seq` values. */
   _seqCounter: number;
 
@@ -445,6 +453,12 @@ export interface GameActions {
   setMarkerIntroShownForMarker(markerIndex: number): void;
 
   /**
+   * Record that the FLOOR_REVEAL transition has been shown for the given floor.
+   * Prevents the floor reveal cinematic from re-triggering on every render.
+   */
+  setFloorRevealShownForFloor(floorId: number): void;
+
+  /**
    * Called by ChipRain's onComplete callback when all chip animations finish.
    * Replaces the previous hardcoded 1500ms setTimeout in applyPendingSettlement
    * with animation-precise timing. No-ops if pendingTransition is false
@@ -549,6 +563,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   transitionPhaseIndex:     0,
   bossEntryShownForMarker:  null,
   markerIntroShownForMarker: null,
+  floorRevealShownForFloor:  null,
   _seqCounter:    0,
   rollHistory:    [],
   socketStatus:   'disconnected',
@@ -578,6 +593,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       transitionPhaseIndex:      0,
       bossEntryShownForMarker:   null,
       markerIntroShownForMarker: null,
+      floorRevealShownForFloor:  null,
       // Explicitly clear all last-roll display state so a new run never
       // inherits stale dice, result labels, or delta animations from the
       // previous run. initialState may also set these, but we zero them
@@ -738,6 +754,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       transitionPhaseIndex:      0,
       bossEntryShownForMarker:   null,
       markerIntroShownForMarker: null,
+      floorRevealShownForFloor:  null,
       rollHistory:               [],
       socketStatus:              'disconnected',
     });
@@ -992,6 +1009,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   setMarkerIntroShownForMarker(markerIndex) {
     set({ markerIntroShownForMarker: markerIndex });
+  },
+
+  setFloorRevealShownForFloor(floorId) {
+    set({ floorRevealShownForFloor: floorId });
   },
 
   triggerChipRainComplete() {

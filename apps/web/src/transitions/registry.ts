@@ -24,6 +24,7 @@ import type { TransitionPhase, PhaseComponentProps } from './types.js';
 import type React from 'react';
 
 import { MarkerCelebrationPhase } from './phases/MarkerCelebrationPhase.js';
+import { MarkerIntroPhase }       from './phases/MarkerIntroPhase.js';
 import { BossVictoryPhase }       from './phases/BossVictoryPhase.js';
 import { BossEntryPhase }         from './phases/BossEntryPhase.js';
 
@@ -43,8 +44,8 @@ export const PHASE_COMPONENT_MAP: Record<string, React.ComponentType<PhaseCompon
   BossVictoryPhase,
   BossEntryPhase,
 
-  // Phase 3 — placeholders (components not yet built)
-  // MarkerIntroPhase,
+  // Phase 3 — active
+  MarkerIntroPhase,
 
   // Phase 4
   // FloorRevealPhase,
@@ -124,7 +125,16 @@ export const TRANSITION_REGISTRY: Record<TransitionType, TransitionPhase[]> = {
 
   TITLE: [],         // Phase 6 — first-load cinematic
 
-  MARKER_INTRO: [],  // Phase 3 — post-pub orientation card
+  // ── MARKER_INTRO — post-pub orientation card ─────────────────────────────
+  // Auto-advances after 2500ms. Player can also tap to skip.
+  MARKER_INTRO: [
+    {
+      id:          'intro',
+      advanceMode: 'auto',
+      duration:    2500,
+      component:   'MarkerIntroPhase',
+    },
+  ],
 
   FLOOR_REVEAL: [],  // Phase 4 — full-screen floor announcement
 

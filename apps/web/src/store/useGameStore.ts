@@ -321,6 +321,14 @@ export interface GameState {
    */
   bossEntryShownForMarker: number | null;
 
+  /**
+   * The marker index for which a MARKER_INTRO transition has already been shown.
+   * Prevents the orientation card from re-triggering on every render while
+   * the player is at the table on that marker.
+   * null = never shown. Resets on connectToRun (fresh or reconnect).
+   */
+  markerIntroShownForMarker: number | null;
+
   /** Monotonically increasing counter used to generate `seq` values. */
   _seqCounter: number;
 
@@ -431,6 +439,20 @@ export interface GameActions {
   setBossEntryShownForMarker(markerIndex: number): void;
 
   /**
+   * Record that the MARKER_INTRO transition has been shown for the given marker.
+   * Prevents the orientation card from re-triggering on every render.
+   */
+  setMarkerIntroShownForMarker(markerIndex: number): void;
+
+  /**
+   * Called by ChipRain's onComplete callback when all chip animations finish.
+   * Replaces the previous hardcoded 1500ms setTimeout in applyPendingSettlement
+   * with animation-precise timing. No-ops if pendingTransition is false
+   * (i.e. this is a regular win roll, not a marker clear).
+   */
+  triggerChipRainComplete(): void;
+
+  /**
    * Fires the back-wall flash for ~300ms. Called by DiceZone when the throw
    * animation ends and the dice "hit" the far wall of the table.
    */
@@ -522,10 +544,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   pendingCascadeQueue: [],
   cascadeQueue:        [],
   pendingTransition:   false,
-  celebrationSnapshot:   null,
-  activeTransition:      null,
-  transitionPhaseIndex:  0,
-  bossEntryShownForMarker: null,
+  celebrationSnapshot:      null,
+  activeTransition:         null,
+  transitionPhaseIndex:     0,
+  bossEntryShownForMarker:  null,
+  markerIntroShownForMarker: null,
   _seqCounter:    0,
   rollHistory:    [],
   socketStatus:   'disconnected',
@@ -547,13 +570,14 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       userId,
       socketStatus:        'connecting',
       ...(isNewRun && { rollHistory: [] }),
-      pendingCascadeQueue:     [],
-      cascadeQueue:            [],
-      pendingTransition:       false,
-      celebrationSnapshot:     null,
-      activeTransition:        null,
-      transitionPhaseIndex:    0,
-      bossEntryShownForMarker: null,
+      pendingCascadeQueue:       [],
+      cascadeQueue:              [],
+      pendingTransition:         false,
+      celebrationSnapshot:       null,
+      activeTransition:          null,
+      transitionPhaseIndex:      0,
+      bossEntryShownForMarker:   null,
+      markerIntroShownForMarker: null,
       // Explicitly clear all last-roll display state so a new run never
       // inherits stale dice, result labels, or delta animations from the
       // previous run. initialState may also set these, but we zero them
@@ -706,15 +730,16 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _flashKey:           0,
       payoutPops:          null,
       _popsKey:            0,
-      pendingCascadeQueue:     [],
-      cascadeQueue:            [],
-      pendingTransition:       false,
-      celebrationSnapshot:     null,
-      activeTransition:        null,
-      transitionPhaseIndex:    0,
-      bossEntryShownForMarker: null,
-      rollHistory:             [],
-      socketStatus:            'disconnected',
+      pendingCascadeQueue:       [],
+      cascadeQueue:              [],
+      pendingTransition:         false,
+      celebrationSnapshot:       null,
+      activeTransition:          null,
+      transitionPhaseIndex:      0,
+      bossEntryShownForMarker:   null,
+      markerIntroShownForMarker: null,
+      rollHistory:               [],
+      socketStatus:              'disconnected',
     });
   },
 
@@ -903,19 +928,21 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     });
 
     if (isTransition) {
-      // After the win-animation window, hand off to the orchestrator by setting
-      // activeTransition. The orchestrator renders the celebration phase component;
-      // status stays held until clearTransition() is called after player click-through.
-      // Phase 3 will replace this timer with a ChipRain onComplete callback
-      // for animation-precise timing rather than a fixed duration.
+      // Primary handoff: ChipRain.onComplete → triggerChipRainComplete() (below).
+      // Safety fallback: fires at 3 s if ChipRain never calls back (e.g. the
+      // component unmounted, or the payout was somehow zero cents).
+      // 3 s safely covers the longest torrent animation (~2.6 s max).
+      // If triggerChipRainComplete() already fired, pendingTransition will be
+      // false and this becomes a no-op.
       setTimeout(() => {
+        if (!get().pendingTransition) return;
         const { celebrationSnapshot: snap } = get();
         set({
           pendingTransition:    false,
           activeTransition:     snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR',
           transitionPhaseIndex: 0,
         });
-      }, 1500);
+      }, 3000);
     }
   },
 
@@ -961,6 +988,21 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   setBossEntryShownForMarker(markerIndex) {
     set({ bossEntryShownForMarker: markerIndex });
+  },
+
+  setMarkerIntroShownForMarker(markerIndex) {
+    set({ markerIntroShownForMarker: markerIndex });
+  },
+
+  triggerChipRainComplete() {
+    // No-op if this isn't a marker-clear win-animation window.
+    if (!get().pendingTransition) return;
+    const { celebrationSnapshot: snap } = get();
+    set({
+      pendingTransition:    false,
+      activeTransition:     snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR',
+      transitionPhaseIndex: 0,
+    });
   },
 
   async rollDice() {

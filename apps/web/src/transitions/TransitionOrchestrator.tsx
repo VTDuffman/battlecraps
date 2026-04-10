@@ -45,8 +45,10 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
   const transitionPhaseIdx = useGameStore((s) => s.transitionPhaseIndex);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
   const bossEntryShownFor  = useGameStore((s) => s.bossEntryShownForMarker);
+  const markerIntroShownFor      = useGameStore((s) => s.markerIntroShownForMarker);
   const setActiveTransition      = useGameStore((s) => s.setActiveTransition);
   const setBossEntryShownFor     = useGameStore((s) => s.setBossEntryShownForMarker);
+  const setMarkerIntroShownFor   = useGameStore((s) => s.setMarkerIntroShownForMarker);
   const advanceTransitionPhase   = useGameStore((s) => s.advanceTransitionPhase);
   const clearTransition          = useGameStore((s) => s.clearTransition);
 
@@ -71,6 +73,30 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
     bossEntryShownFor,
     setActiveTransition,
     setBossEntryShownFor,
+  ]);
+
+  // ── Marker intro detection ──────────────────────────────────────────────
+  // After the pub, when the player lands on a non-boss marker, show the
+  // orientation card once. Boss markers skip this — BossEntryPhase covers
+  // orientation for those. Fires on the very first marker too, giving the
+  // player their target before their first ever roll.
+  useEffect(() => {
+    if (
+      status === 'IDLE_TABLE' &&
+      !isBossMarker(currentMarkerIndex) &&
+      activeTransition === null &&
+      markerIntroShownFor !== currentMarkerIndex
+    ) {
+      setMarkerIntroShownFor(currentMarkerIndex);
+      setActiveTransition('MARKER_INTRO');
+    }
+  }, [
+    status,
+    currentMarkerIndex,
+    activeTransition,
+    markerIntroShownFor,
+    setActiveTransition,
+    setMarkerIntroShownFor,
   ]);
 
   // ── Phase advance handler ───────────────────────────────────────────────

@@ -182,9 +182,17 @@ function generateParticles(
 export interface ChipRainProps {
   /** Called when a TORRENT-tier payout is detected — lets TableBoard shake. */
   onTorrent?: () => void;
+  /**
+   * Called when all chip animations have fully completed and particles are
+   * cleared. Used by the transition system to hand off from the win-animation
+   * window (pendingTransition) to the celebration phase — replacing the
+   * previous hardcoded 1500ms timer with animation-precise timing.
+   * Only fires when a chip rain actually runs (i.e. hasPops was true).
+   */
+  onComplete?: () => void;
 }
 
-export const ChipRain: React.FC<ChipRainProps> = ({ onTorrent }) => {
+export const ChipRain: React.FC<ChipRainProps> = ({ onTorrent, onComplete }) => {
   const payoutPops = useGameStore((s) => s.payoutPops);
   const _popsKey   = useGameStore((s) => s._popsKey);
 
@@ -227,12 +235,15 @@ export const ChipRain: React.FC<ChipRainProps> = ({ onTorrent }) => {
       setShowKaching(true);
     }
 
-    // Clear after all chip animations complete
+    // Clear after all chip animations complete, then notify the transition
+    // system so it can hand off from the win-animation window to the
+    // celebration phase with animation-precise timing.
     if (clearTimer.current) clearTimeout(clearTimer.current);
     const maxDur = Math.max(...newParticles.map((p) => p.duration + p.delay));
     clearTimer.current = setTimeout(() => {
       setParticles([]);
       setShowKaching(false);
+      onComplete?.();
     }, maxDur + 400);
   }, [_popsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 

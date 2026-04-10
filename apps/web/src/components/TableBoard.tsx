@@ -68,6 +68,8 @@ export const TableBoard: React.FC = () => {
     setTimeout(() => setIsShaking(false), 420);
   }, []);
 
+  const triggerChipRainComplete = useGameStore((s) => s.triggerChipRainComplete);
+
   const feltClass =
     streak >= 3 || hype >= 2.0 ? 'animate-felt-hot'  :
     streak >= 1 || hype >= 1.2 ? 'animate-felt-warm' :
@@ -104,7 +106,7 @@ export const TableBoard: React.FC = () => {
       <div className={`absolute inset-0 pointer-events-none z-[1] ${feltClass}`} />
 
       {/* ── Chip Rain particle system ─────────────────────────────────────── */}
-      <ChipRain onTorrent={handleTorrent} />
+      <ChipRain onTorrent={handleTorrent} onComplete={triggerChipRainComplete} />
 
       {/* ── Boss Room Header — self-hides when not in a boss marker ──────── */}
       <BossRoomHeader />

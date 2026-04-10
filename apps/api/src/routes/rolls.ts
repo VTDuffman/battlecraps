@@ -700,12 +700,40 @@ function computeNextState(
 
     // ── No resolution — bets stay, bankroll unchanged ──────────────────────
 
-    case 'NO_RESOLUTION':
+    case 'NO_RESOLUTION': {
       // No payout. Pass line and odds stay locked on the table.
       // However, if the dice showed a hardway number (4/6/8/10), that specific
       // hardway bet resolves independently — a soft loss clears it even though
       // the main point is unresolved. clearedBets handles this correctly while
       // leaving passLine and odds untouched.
+
+      // ── Marker check: hardway wins (or crew bonuses) may have pushed the
+      // bankroll over the marker threshold mid-point. If so, treat this as a
+      // marker clear: refund all remaining table bets and advance. ───────────
+      const markerTarget = MARKER_TARGETS[currentMarkerIndex];
+      const hitMarker    = markerTarget !== undefined && newBankroll >= markerTarget;
+
+      if (hitMarker) {
+        const refund = sumBets(clearedBets);
+        const zeroBets: Bets = {
+          passLine: 0,
+          odds:     0,
+          hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 },
+        };
+        return {
+          status:               currentMarkerIndex >= MARKER_TARGETS.length - 1 ? 'GAME_OVER' : 'TRANSITION',
+          phase:                'COME_OUT',
+          bankrollCents:        newBankroll + refund,
+          shooters:             run.shooters,
+          currentPoint:         null,
+          hype:                 finalCtx.hype,
+          bets:                 zeroBets,
+          currentMarkerIndex:   currentMarkerIndex + 1,
+          consecutivePointHits: 0,
+          bossPointHits:        0,
+        };
+      }
+
       return {
         status:               'POINT_ACTIVE',
         phase:                'POINT_ACTIVE',
@@ -719,6 +747,7 @@ function computeNextState(
         // Boss: min-bet holds on no-resolution rolls (only Point Hits escalate).
         bossPointHits: run.bossPointHits,
       };
+    }
   }
 }
 

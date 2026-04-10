@@ -298,6 +298,9 @@ const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, onFire }) => {
       className="group relative flex flex-col items-center gap-1 px-2 py-1.5 rounded border border-amber-800/40 bg-stone-900/40 outline-none min-w-0"
       tabIndex={onFire ? 0 : -1}
     >
+      {/* Emoji portrait */}
+      <div className="text-base leading-none">{CREW_EMOJI[crewId]}</div>
+
       {/* Name */}
       <div className="font-pixel text-[5px] text-amber-300/80 text-center w-12 truncate leading-tight">
         {name}

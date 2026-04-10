@@ -18,6 +18,7 @@
 import React from 'react';
 import { MARKER_TARGETS } from '@battlecraps/shared';
 import { useGameStore, selectBankrollDisplay } from '../store/useGameStore.js';
+import { CREW_EMOJI } from './CrewPortrait.js';
 
 // ---------------------------------------------------------------------------
 // Crew name lookup (mirrors TableBoard.tsx)
@@ -240,8 +241,8 @@ const EndCrewSlot: React.FC<{ index: number; crewId: number | null }> = ({ index
         style={{ background: crewId ? 'rgba(80,10,10,0.6)' : 'rgba(20,0,0,0.4)' }}
       >
         {crewId ? (
-          <span className="font-pixel text-[7px] text-red-400/80">
-            {(name ?? '?').charAt(0)}
+          <span className="text-base leading-none">
+            {CREW_EMOJI[crewId] ?? (name ?? '?').charAt(0)}
           </span>
         ) : (
           <span className="font-pixel text-[7px] text-red-900/40">—</span>

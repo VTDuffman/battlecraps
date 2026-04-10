@@ -669,7 +669,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       }
 
       // ── Bankroll check uses the clamped amount ───────────────────────────
-      if (state.bankroll < effectiveAmount) return state;
+      // If the chip is larger than remaining bankroll, go all-in rather than
+      // blocking. The effectiveAmount is already capped to the table/odds max
+      // above, so this final clamp just handles the bankroll edge case.
+      if (state.bankroll <= 0) return state;
+      effectiveAmount = Math.min(effectiveAmount, state.bankroll);
 
       // ── Boss: Rising Min-Bets soft guard ─────────────────────────────────
       // Informational only — logs when the total would still fall below the
@@ -761,7 +765,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({
       bankroll:             p.newBankroll,
       bets:                 p.newBets,
-      committedBets:        p.newBets,
+      // Only the Pass Line is locked between rolls. Odds and hardway bets are
+      // "working" proposition bets that the player may take down at any time.
+      committedBets:        {
+        passLine: p.newBets.passLine,
+        odds:     0,
+        hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 },
+      },
       shooters:             p.newShooters,
       hype:                 p.newHype,
       consecutivePointHits: p.newConsecutivePointHits,

@@ -60,8 +60,9 @@ export {
 export type { CascadeEvent, CascadeResult } from './cascade.js';
 export { resolveCascade } from './cascade.js';
 
-// Floor progression and transition framework types
-export type { TransitionType, CelebrationSnapshot } from './floors.js';
+// Floor progression, narrative config, and transition framework
+export type { TransitionType, CelebrationSnapshot, FloorConfig, FloorAtmosphere } from './floors.js';
+export { FLOORS, getFloorById, getFloorByMarkerIndex } from './floors.js';
 
 // All 15 MVP starter crew + server-side sentinel IDs
 export {

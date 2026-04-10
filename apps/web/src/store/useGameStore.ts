@@ -28,8 +28,10 @@ import type {
   CascadeEvent,
   RollResult,
   RollReceipt,
+  CelebrationSnapshot,
+  TransitionType,
 } from '@battlecraps/shared';
-import { validateOddsBet, getMaxBet, getBossMinBet, isBossMarker } from '@battlecraps/shared';
+import { validateOddsBet, getMaxBet, getBossMinBet, isBossMarker, GAUNTLET } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // Bet field type — identifies a single wager within the Bets structure
@@ -278,9 +280,46 @@ export interface GameState {
    * True during the ~1.5 s win-animation window that follows a marker clear
    * (TRANSITION result). Keeps TableBoard mounted so ChipRain, screen-flash,
    * and payout pops all play to completion before the celebration screen
-   * appears. Cleared when the delayed status flip to 'TRANSITION' fires.
+   * appears. Cleared when the orchestrator transitions to the celebration phase.
    */
   pendingTransition: boolean;
+
+  // ── Transition orchestrator state ─────────────────────────────────────────
+
+  /**
+   * Frozen snapshot of the marker state at the moment it was cleared.
+   * Non-null during MARKER_CLEAR and BOSS_VICTORY celebration phases.
+   *
+   * Phase components read from this instead of currentMarkerIndex so they
+   * display the marker that was just BEATEN, not the next target. This is
+   * the core fix for the chip-rain race condition.
+   *
+   * Cleared by clearTransition() when the player clicks through to the pub.
+   */
+  celebrationSnapshot: CelebrationSnapshot | null;
+
+  /**
+   * The transition type currently being orchestrated, or null when no
+   * transition is in progress (normal gameplay).
+   *
+   * Set by applyPendingSettlement() (for MARKER_CLEAR / BOSS_VICTORY) or
+   * by the TransitionOrchestrator's boss-entry detection effect (BOSS_ENTRY).
+   */
+  activeTransition: TransitionType | null;
+
+  /**
+   * 0-based index into the current transition's phase sequence array.
+   * Incremented by advanceTransitionPhase(). Reset to 0 by clearTransition().
+   */
+  transitionPhaseIndex: number;
+
+  /**
+   * The marker index for which a BOSS_ENTRY transition has already been shown.
+   * The TransitionOrchestrator checks this to prevent re-triggering the boss
+   * introduction modal on every render while the player is mid-boss-fight.
+   * null = never shown. Resets on connectToRun (fresh or reconnect).
+   */
+  bossEntryShownForMarker: number | null;
 
   /** Monotonically increasing counter used to generate `seq` values. */
   _seqCounter: number;
@@ -357,6 +396,39 @@ export interface GameActions {
    * so the Roll button re-enables only after the full sequence is done.
    */
   applyPendingSettlement(): void;
+
+  // ── Transition orchestrator actions ───────────────────────────────────────
+
+  /**
+   * Advance the active transition to the next phase by incrementing
+   * transitionPhaseIndex. The TransitionOrchestrator calls this after
+   * confirming there is a next phase; for the last phase it calls
+   * clearTransition() instead.
+   */
+  advanceTransitionPhase(): void;
+
+  /**
+   * Complete the active transition sequence. Executes type-specific teardown:
+   *
+   * MARKER_CLEAR / BOSS_VICTORY → sets status='TRANSITION' (shows pub screen),
+   *   clears celebrationSnapshot and activeTransition.
+   * BOSS_ENTRY and all others   → clears activeTransition only (returns to table).
+   *
+   * @param type  The TransitionType that just completed all its phases.
+   */
+  clearTransition(type: TransitionType): void;
+
+  /**
+   * Directly set the active transition type. Used by the TransitionOrchestrator
+   * to inject the BOSS_ENTRY transition when a boss marker is detected.
+   */
+  setActiveTransition(type: TransitionType | null): void;
+
+  /**
+   * Record that the BOSS_ENTRY transition has been shown for the given marker.
+   * Prevents the modal from re-triggering on every render while in a boss fight.
+   */
+  setBossEntryShownForMarker(markerIndex: number): void;
 
   /**
    * Fires the back-wall flash for ~300ms. Called by DiceZone when the throw
@@ -450,6 +522,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   pendingCascadeQueue: [],
   cascadeQueue:        [],
   pendingTransition:   false,
+  celebrationSnapshot:   null,
+  activeTransition:      null,
+  transitionPhaseIndex:  0,
+  bossEntryShownForMarker: null,
   _seqCounter:    0,
   rollHistory:    [],
   socketStatus:   'disconnected',
@@ -471,9 +547,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       userId,
       socketStatus:        'connecting',
       ...(isNewRun && { rollHistory: [] }),
-      pendingCascadeQueue: [],
-      cascadeQueue:        [],
-      pendingTransition:   false,
+      pendingCascadeQueue:     [],
+      cascadeQueue:            [],
+      pendingTransition:       false,
+      celebrationSnapshot:     null,
+      activeTransition:        null,
+      transitionPhaseIndex:    0,
+      bossEntryShownForMarker: null,
       // Explicitly clear all last-roll display state so a new run never
       // inherits stale dice, result labels, or delta animations from the
       // previous run. initialState may also set these, but we zero them
@@ -626,11 +706,15 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _flashKey:           0,
       payoutPops:          null,
       _popsKey:            0,
-      pendingCascadeQueue: [],
-      cascadeQueue:        [],
-      pendingTransition:   false,
-      rollHistory:         [],
-      socketStatus:        'disconnected',
+      pendingCascadeQueue:     [],
+      cascadeQueue:            [],
+      pendingTransition:       false,
+      celebrationSnapshot:     null,
+      activeTransition:        null,
+      transitionPhaseIndex:    0,
+      bossEntryShownForMarker: null,
+      rollHistory:             [],
+      socketStatus:            'disconnected',
     });
   },
 
@@ -757,10 +841,28 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     // When a marker is cleared the server sends runStatus: 'TRANSITION'.
     // We hold that flip for ~1.5 s so TableBoard (ChipRain, screen-flash,
     // payout pops, crew portrait animations) can play to completion before
-    // App.tsx swaps in the celebration screen.  The visible status stays at
-    // its current value; pendingTransition=true tells App.tsx to keep
-    // TableBoard mounted. A single setTimeout then commits the flip.
+    // the celebration phase appears.
     const isTransition = p.runStatus === 'TRANSITION';
+
+    // Build a frozen snapshot of the marker being cleared BEFORE the state
+    // update advances currentMarkerIndex. This prevents the race condition
+    // where UI components read the already-incremented new target during
+    // the chip-rain / celebration window.
+    const {
+      currentMarkerIndex: oldMarkerIndex,
+      bankroll:           oldBankroll,
+    } = get();
+
+    const celebrationSnapshot: CelebrationSnapshot | null = isTransition
+      ? {
+          markerIndex:   oldMarkerIndex,
+          targetCents:   GAUNTLET[oldMarkerIndex]?.targetCents ?? 0,
+          floorId:       Math.floor(oldMarkerIndex / 3) + 1,
+          bankrollBefore: oldBankroll,
+          bankrollAfter:  p.newBankroll,
+          isBossVictory:  GAUNTLET[oldMarkerIndex]?.isBoss === true,
+        }
+      : null;
 
     set({
       bankroll:             p.newBankroll,
@@ -778,10 +880,14 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bossPointHits:        p.newBossPointHits,
       phase:                p.newPhase,
       point:                p.newPoint,
-      // Hold TRANSITION off screen until win animations complete.
+      // Hold the old status during celebration — the orchestrator uses
+      // activeTransition (not status) to route to celebration phases.
+      // Status becomes 'TRANSITION' only when clearTransition() fires,
+      // after the player has clicked through all celebration phases.
       status:               isTransition ? currentStatus : p.runStatus,
       pendingTransition:    isTransition,
       currentMarkerIndex:   p.newMarkerIndex,
+      celebrationSnapshot,
       lastDelta:            p.bankrollDelta,
       lastBetDelta:         null,
       isRolling:            false,
@@ -790,18 +896,26 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _flashKey:            flashType !== null ? _flashKey + 1 : _flashKey,
       payoutPops,
       _popsKey:             hasPops ? _popsKey + 1 : _popsKey,
-      // ── Fix [15]: flush gated cascade events at the reveal moment ─────────
-      // cascade:trigger events were buffered in pendingCascadeQueue so that
-      // portrait animations never fire before the dice result is shown.
-      // Now that the result is revealed, move them into the live queue.
+      // Flush buffered cascade events at the reveal moment — portrait
+      // animations must not fire before the player has seen the dice result.
       cascadeQueue:         pendingCascadeQueue,
       pendingCascadeQueue:  [],
     });
 
     if (isTransition) {
-      // ── Fix [16]: commit the TRANSITION status after a short win-animation
-      // window so ChipRain, screen-flash, and payout pops finish on screen.
-      setTimeout(() => set({ status: 'TRANSITION', pendingTransition: false }), 1500);
+      // After the win-animation window, hand off to the orchestrator by setting
+      // activeTransition. The orchestrator renders the celebration phase component;
+      // status stays held until clearTransition() is called after player click-through.
+      // Phase 3 will replace this timer with a ChipRain onComplete callback
+      // for animation-precise timing rather than a fixed duration.
+      setTimeout(() => {
+        const { celebrationSnapshot: snap } = get();
+        set({
+          pendingTransition:    false,
+          activeTransition:     snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR',
+          transitionPhaseIndex: 0,
+        });
+      }, 1500);
     }
   },
 
@@ -813,6 +927,40 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   triggerPointRing(type) {
     set((s) => ({ pointRingType: type, _pointRingKey: s._pointRingKey + 1 }));
     setTimeout(() => set({ pointRingType: null }), 750);
+  },
+
+  // ── Transition orchestrator actions ───────────────────────────────────────
+
+  advanceTransitionPhase() {
+    set((s) => ({ transitionPhaseIndex: s.transitionPhaseIndex + 1 }));
+  },
+
+  clearTransition(type) {
+    if (type === 'MARKER_CLEAR' || type === 'BOSS_VICTORY') {
+      // Celebration complete — hand off to the pub screen.
+      // Now safe to expose the new marker state: celebrationSnapshot is cleared.
+      set({
+        status:               'TRANSITION',
+        activeTransition:     null,
+        transitionPhaseIndex: 0,
+        celebrationSnapshot:  null,
+      });
+    } else {
+      // BOSS_ENTRY, TITLE, and future types — just clear the transition and
+      // return the player to normal gameplay (TableBoard).
+      set({
+        activeTransition:     null,
+        transitionPhaseIndex: 0,
+      });
+    }
+  },
+
+  setActiveTransition(type) {
+    set({ activeTransition: type, transitionPhaseIndex: 0 });
+  },
+
+  setBossEntryShownForMarker(markerIndex) {
+    set({ bossEntryShownForMarker: markerIndex });
   },
 
   async rollDice() {

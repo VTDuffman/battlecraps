@@ -434,8 +434,11 @@ export interface GameActions {
    * 'turn:settled' WS event to clear it. On any error (network or engine
    * validation), logs to the console and clears isRolling so the UI never
    * locks up.
+   *
+   * Returns true on success, false on any server/network error so the caller
+   * (DiceZone) can abort the throw animation before it gets stuck.
    */
-  rollDice(): Promise<void>;
+  rollDice(): Promise<boolean>;
 
   /**
    * Apply the buffered turn:settled payload to visible game state.
@@ -1091,7 +1094,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   async rollDice() {
     const { runId, userId, bets, isRolling } = get();
-    if (isRolling || !runId || !userId) return;
+    if (isRolling || !runId || !userId) return false;
 
     set({ isRolling: true });
     try {
@@ -1169,9 +1172,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // isRolling stays true — cleared in applyPendingSettlement() after the
       // dice animation completes. If the WS turn:settled also arrives, the
       // handler below skips it because pendingSettlement is already populated.
+      return true;
     } catch (err) {
       console.error('[rollDice] engine error:', err);
       set({ isRolling: false });
+      return false;
     }
   },
 

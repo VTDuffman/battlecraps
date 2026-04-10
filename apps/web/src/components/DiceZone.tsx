@@ -288,7 +288,13 @@ export const DiceZone: React.FC = () => {
 
     setPhase('throwing');
     startFlip();
-    await rollDice();
+    const ok = await rollDice();
+    if (!ok) {
+      // Server rejected the roll — abort the animation before it gets stuck
+      // in 'tumbling' waiting for a result that will never arrive.
+      clearFlip();
+      setPhase('idle');
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canRoll, rollDice]);
 

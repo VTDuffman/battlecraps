@@ -8,7 +8,7 @@ import cors from '@fastify/cors';
 import { Server as SocketIO } from 'socket.io';
 import type { Server as HttpServer } from 'node:http';
 
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 import { initIO } from './lib/io.js';
 import { db }     from './db/client.js';
@@ -64,6 +64,18 @@ await app.register(mechanicPlugin,  { prefix: '/api/v1' });
 
 // Health check — used by container orchestration and CI smoke tests
 app.get('/health', async () => ({ status: 'ok', ts: Date.now() }));
+
+// ---------------------------------------------------------------------------
+// Startup migrations — idempotent DDL, safe to run on every boot.
+// ADD COLUMN IF NOT EXISTS is a no-op when the column already exists, so
+// this never breaks a healthy DB. Add new migrations here as columns are added;
+// the server won't start listening until they complete.
+// ---------------------------------------------------------------------------
+
+await db.execute(sql`
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS max_bankroll_cents bigint NOT NULL DEFAULT 0
+`);
+app.log.info('[migrate] max_bankroll_cents ensured');
 
 // ---------------------------------------------------------------------------
 // Start listening

@@ -17,6 +17,9 @@ import { db }                   from '../db/client.js';
 import { users }                from '../db/schema.js';
 import { requireClerkAuth }     from '../lib/clerkAuth.js';
 
+// Postgres error code for unique constraint violations (23505).
+const PG_UNIQUE_VIOLATION = '23505';
+
 interface ProvisionBody {
   email:       string;
   displayName: string;
@@ -58,25 +61,52 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
         return reply.send(body);
       }
 
-      // ── 2. Insert new user, handling race via ON CONFLICT DO NOTHING ─────
-      const inserted = await db
-        .insert(users)
-        .values({
-          clerkId,
-          email,
-          username:     displayName,
-          passwordHash: null, // unused — auth is via Clerk
-        })
-        .onConflictDoNothing({ target: users.clerkId })
-        .returning();
+      // ── 2. Insert new user ───────────────────────────────────────────────
+      // Uses ON CONFLICT DO NOTHING targeted to clerk_id so that concurrent
+      // race conditions on the same Clerk user are handled silently.
+      // Non-clerk_id constraint violations (e.g. email) are surfaced and
+      // handled explicitly below.
+      let user: typeof users.$inferSelect | undefined;
 
-      let user = inserted[0];
+      try {
+        const inserted = await db
+          .insert(users)
+          .values({
+            clerkId,
+            email,
+            username:     displayName,
+            passwordHash: null, // unused — auth is via Clerk
+          })
+          .onConflictDoNothing({ target: users.clerkId })
+          .returning();
 
-      // If INSERT was a no-op (concurrent request won the race), re-fetch.
-      if (user === undefined) {
-        user = await db.query.users.findFirst({
-          where: eq(users.clerkId, clerkId),
-        });
+        user = inserted[0];
+
+        // If INSERT was a no-op (concurrent request won the race on clerkId),
+        // re-fetch the row the other request inserted.
+        if (user === undefined) {
+          user = await db.query.users.findFirst({
+            where: eq(users.clerkId, clerkId),
+          });
+        }
+      } catch (err) {
+        // ── 3. Email conflict — re-associate the legacy record ──────────────
+        // A user row already exists with this email but a different (legacy)
+        // clerk_id, created before Clerk auth was introduced. Update the
+        // clerk_id in place so the account is claimed by the real Clerk identity.
+        if (isEmailConflict(err)) {
+          app.log.info(`[auth] Re-associating legacy account for ${email} with clerk_id ${clerkId}`);
+          await db
+            .update(users)
+            .set({ clerkId })
+            .where(eq(users.email, email));
+
+          user = await db.query.users.findFirst({
+            where: eq(users.clerkId, clerkId),
+          });
+        } else {
+          throw err;
+        }
       }
 
       if (user === undefined) {
@@ -87,5 +117,28 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
       const body: ProvisionResponse = { userId: user.id };
       return reply.status(201).send(body);
     },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when the thrown DB error is a Postgres unique-constraint
+ * violation (code 23505) specifically on the users.email column.
+ *
+ * A username conflict is intentionally NOT matched here — that would indicate
+ * two genuinely different users chose the same display name, which is a
+ * different problem from a legacy-account re-association.
+ */
+function isEmailConflict(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as { code: unknown }).code === PG_UNIQUE_VIOLATION &&
+    'constraint_name' in err &&
+    (err as { constraint_name: unknown }).constraint_name === 'users_email_idx'
   );
 }

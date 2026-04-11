@@ -99,8 +99,19 @@ export const users = pgTable(
     /** Used for auth. Never returned to the client. */
     email: text('email').notNull(),
 
-    /** bcrypt hash. Never returned to the client. */
-    passwordHash: text('password_hash').notNull(),
+    /**
+     * bcrypt hash. Nullable — Clerk-auth users have no password.
+     * Never returned to the client.
+     */
+    passwordHash: text('password_hash'),
+
+    /**
+     * Clerk's stable user ID (e.g. "user_2abc123...").
+     * NOT NULL — all users are created via Clerk OAuth.
+     * Legacy rows were back-filled with a 'legacy:<uuid>' placeholder
+     * during the Phase 4 startup migration.
+     */
+    clerkId: text('clerk_id').notNull().unique(),
 
     /**
      * IDs of crew members this account has permanently unlocked.

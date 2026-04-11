@@ -15,6 +15,8 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, type StoredCrewSlots } from '../db/schema.js';
+import { requireClerkAuth } from '../lib/clerkAuth.js';
+import { resolveUserByClerkId } from '../lib/resolveUser.js';
 
 interface FireParams {
   id:        string;  // run UUID
@@ -24,15 +26,17 @@ interface FireParams {
 export async function crewPlugin(app: FastifyInstance): Promise<void> {
   app.delete<{ Params: FireParams }>(
     '/runs/:id/crew/:slotIndex',
+    { preHandler: [requireClerkAuth] },
     async (
       request: FastifyRequest<{ Params: FireParams }>,
       reply: FastifyReply,
     ): Promise<void> => {
       // ── 0. Auth guard ────────────────────────────────────────────────────────
-      const userId = request.headers['x-user-id'];
-      if (typeof userId !== 'string' || userId.length === 0) {
-        return reply.status(401).send({ error: 'Unauthorized' });
+      const user = await resolveUserByClerkId(request.clerkId);
+      if (!user) {
+        return reply.status(401).send({ error: 'User not found — please re-sign in.' });
       }
+      const userId = user.id;
 
       const runId    = request.params.id;
       const slotIndex = parseInt(request.params.slotIndex, 10);

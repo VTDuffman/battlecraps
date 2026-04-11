@@ -24,6 +24,8 @@ import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, users, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
 import { isBossMarker, GAUNTLET, LUCKY_CHARM_ID } from '@battlecraps/shared';
+import { requireClerkAuth } from '../lib/clerkAuth.js';
+import { resolveUserByClerkId } from '../lib/resolveUser.js';
 
 // ---------------------------------------------------------------------------
 // JSON Schema (Fastify validates the body before the handler runs)
@@ -54,16 +56,17 @@ interface RecruitParams {
 export async function recruitPlugin(app: FastifyInstance): Promise<void> {
   app.post<{ Params: RecruitParams; Body: RecruitBody }>(
     '/runs/:id/recruit',
-    { schema: { body: recruitBodySchema } },
+    { schema: { body: recruitBodySchema }, preHandler: [requireClerkAuth] },
     async (
       request: FastifyRequest<{ Params: RecruitParams; Body: RecruitBody }>,
       reply: FastifyReply,
     ): Promise<void> => {
       // ── 0. Auth guard ──────────────────────────────────────────────────────
-      const userId = request.headers['x-user-id'];
-      if (typeof userId !== 'string' || userId.length === 0) {
-        return reply.status(401).send({ error: 'Unauthorized' });
+      const user = await resolveUserByClerkId(request.clerkId);
+      if (!user) {
+        return reply.status(401).send({ error: 'User not found — please re-sign in.' });
       }
+      const userId = user.id;
 
       const runId = request.params.id;
       const { crewId, slotIndex } = request.body;

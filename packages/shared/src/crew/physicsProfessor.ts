@@ -24,6 +24,11 @@ export const physicsProfessor: CrewMember = {
   visualId:         'physics_prof',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
+    // No effect during come-out — no active point to nudge toward.
+    if (ctx.activePoint === null) {
+      return { context: ctx, newCooldown: 0 };
+    }
+
     // Only activates on paired dice (both dice showing the same face).
     // isHardway covers 4/6/8/10 pairs; we also handle [1,1] and [6,6].
     if (ctx.dice[0] !== ctx.dice[1]) {
@@ -62,9 +67,7 @@ export const physicsProfessor: CrewMember = {
     const newTotal    = newValue * 2;
     const newIsHardway = [4, 6, 8, 10].includes(newTotal); // Both dice are equal, so it's always a pair
 
-    // Determine phase for re-classification: Prof can fire in COME_OUT or POINT_ACTIVE.
-    const phase = ctx.activePoint !== null ? 'POINT_ACTIVE' : 'COME_OUT';
-    const newRollResult = classifyDiceOutcome(newDice, phase, ctx.activePoint);
+    const newRollResult = classifyDiceOutcome(newDice, 'POINT_ACTIVE', ctx.activePoint);
     const newPayouts    = calculateBasePayouts(newDice, newRollResult, ctx.activePoint, ctx.bets);
 
     return {

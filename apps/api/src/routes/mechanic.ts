@@ -22,6 +22,8 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, type StoredCrewSlots } from '../db/schema.js';
+import { requireClerkAuth } from '../lib/clerkAuth.js';
+import { resolveUserByClerkId } from '../lib/resolveUser.js';
 
 const MECHANIC_CREW_ID = 3;
 
@@ -40,16 +42,17 @@ const freezeBodySchema = {
 export async function mechanicPlugin(app: FastifyInstance): Promise<void> {
   app.post<{ Params: FreezeParams; Body: FreezeBody }>(
     '/runs/:id/mechanic-freeze',
-    { schema: { body: freezeBodySchema } },
+    { schema: { body: freezeBodySchema }, preHandler: [requireClerkAuth] },
     async (
       request: FastifyRequest<{ Params: FreezeParams; Body: FreezeBody }>,
       reply: FastifyReply,
     ): Promise<void> => {
       // ── 0. Auth guard ────────────────────────────────────────────────────────
-      const userId = request.headers['x-user-id'];
-      if (typeof userId !== 'string' || userId.length === 0) {
-        return reply.status(401).send({ error: 'Unauthorized' });
+      const user = await resolveUserByClerkId(request.clerkId);
+      if (!user) {
+        return reply.status(401).send({ error: 'User not found — please re-sign in.' });
       }
+      const userId = user.id;
 
       const runId      = request.params.id;
       const { lockedValue } = request.body;

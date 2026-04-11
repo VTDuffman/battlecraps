@@ -13,11 +13,14 @@ import { eq, sql } from 'drizzle-orm';
 import { initIO } from './lib/io.js';
 import { db }     from './db/client.js';
 import { runs }   from './db/schema.js';
+import { verifyToken } from '@clerk/backend';
+import { resolveUserByClerkId } from './lib/resolveUser.js';
 import { rollsPlugin }     from './routes/rolls.js';
-import { bootstrapPlugin } from './routes/bootstrap.js';
+import { bootstrapPlugin } from './routes/runs.js';
 import { recruitPlugin }   from './routes/recruit.js';
 import { crewPlugin }      from './routes/crew.js';
 import { mechanicPlugin }  from './routes/mechanic.js';
+import { authPlugin }      from './routes/auth.js';
 
 const PORT = Number(process.env['PORT'] ?? 3001);
 
@@ -61,6 +64,7 @@ await app.register(bootstrapPlugin, { prefix: '/api/v1' });
 await app.register(recruitPlugin,   { prefix: '/api/v1' });
 await app.register(crewPlugin,      { prefix: '/api/v1' });
 await app.register(mechanicPlugin,  { prefix: '/api/v1' });
+await app.register(authPlugin,      { prefix: '/api/v1' });
 
 // Health check — used by container orchestration and CI smoke tests
 app.get('/health', async () => ({ status: 'ok', ts: Date.now() }));
@@ -76,6 +80,39 @@ await db.execute(sql`
   ALTER TABLE users ADD COLUMN IF NOT EXISTS max_bankroll_cents bigint NOT NULL DEFAULT 0
 `);
 app.log.info('[migrate] max_bankroll_cents ensured');
+
+await db.execute(sql`
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS clerk_id text
+`);
+await db.execute(sql`
+  DO $$
+  BEGIN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conname = 'users_clerk_id_unique'
+    ) THEN
+      ALTER TABLE users ADD CONSTRAINT users_clerk_id_unique UNIQUE (clerk_id);
+    END IF;
+  END
+  $$
+`);
+app.log.info('[migrate] clerk_id column ensured');
+
+// Phase 4: make password_hash nullable (Clerk users have no password).
+await db.execute(sql`
+  ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL
+`);
+app.log.info('[migrate] password_hash nullable ensured');
+
+// Phase 4: back-fill any legacy users that pre-date Clerk, then enforce NOT NULL.
+// The UPDATE is a no-op if no NULLs exist; the ALTER succeeds once there are none.
+await db.execute(sql`
+  UPDATE users SET clerk_id = 'legacy:' || id::text WHERE clerk_id IS NULL
+`);
+await db.execute(sql`
+  ALTER TABLE users ALTER COLUMN clerk_id SET NOT NULL
+`);
+app.log.info('[migrate] clerk_id NOT NULL ensured');
 
 // ---------------------------------------------------------------------------
 // Start listening
@@ -106,17 +143,27 @@ initIO(io);
 // ---------------------------------------------------------------------------
 // Socket.IO auth middleware
 // ---------------------------------------------------------------------------
-// Require a userId in the handshake auth payload. In production this would be
-// a JWT verified here; for now we mirror the x-user-id header convention.
+// Require a Clerk JWT in the handshake auth payload. The token is verified and
+// resolved to an internal userId before the connection is accepted.
 
-io.use((socket, next) => {
-  const userId = socket.handshake.auth?.['userId'];
-  if (typeof userId !== 'string' || userId.length === 0) {
-    return next(new Error('Unauthorized — userId required in auth payload'));
+io.use(async (socket, next) => {
+  const token = socket.handshake.auth?.['token'];
+  if (typeof token !== 'string' || token.length === 0) {
+    return next(new Error('Unauthorized — token required in auth payload'));
   }
-  // Stash on socket.data so downstream handlers can reference it.
-  socket.data['userId'] = userId;
-  next();
+
+  try {
+    const payload = await verifyToken(token, {
+      secretKey: process.env['CLERK_SECRET_KEY'],
+    });
+    const user = await resolveUserByClerkId(payload.sub);
+    if (!user) return next(new Error('User not found — please re-sign in'));
+    // Stash internal UUID on socket.data — downstream ownership checks unchanged.
+    socket.data['userId'] = user.id;
+    next();
+  } catch {
+    next(new Error('Invalid or expired token'));
+  }
 });
 
 // ---------------------------------------------------------------------------

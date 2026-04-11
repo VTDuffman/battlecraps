@@ -135,7 +135,6 @@ export type SocketStatus =
 export interface GameState {
   // ── Run identity ──────────────────────────────────────────────────────────
   runId:    string | null;
-  userId:   string | null;
   status:   RunStatus | null;
   phase:    GamePhase | null;
 
@@ -373,6 +372,14 @@ export interface GameState {
   /** Monotonically increasing counter used to generate `seq` values. */
   _seqCounter: number;
 
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  /**
+   * Function that returns a fresh Clerk JWT. Injected by App.tsx after sign-in.
+   * Not stored as a token value — the function is called fresh on every request
+   * so Clerk's auto-refresh is always used.
+   */
+  getToken: (() => Promise<string | null>) | null;
+
   // ── QA Transaction Log ────────────────────────────────────────────────────
   /**
    * Ordered history of the last 50 roll receipts, newest first (index 0).
@@ -394,7 +401,7 @@ export interface GameActions {
    * to the run room, and registers all WS event listeners.
    * Safe to call multiple times — existing listeners are removed first.
    */
-  connectToRun(runId: string, userId: string, initialState: Partial<GameState>): void;
+  connectToRun(runId: string, initialState: Partial<GameState>): void;
 
   /** Gracefully disconnect the socket and clear the run state. */
   disconnect(): void;
@@ -475,6 +482,12 @@ export interface GameActions {
    * to inject the BOSS_ENTRY transition when a boss marker is detected.
    */
   setActiveTransition(type: TransitionType | null): void;
+
+  /**
+   * Inject the Clerk getToken function from the React auth context.
+   * Called by App.tsx after the user signs in. Pass null on sign-out.
+   */
+  setGetToken(fn: (() => Promise<string | null>) | null): void;
 
   /**
    * Record that the BOSS_ENTRY transition has been shown for the given marker.
@@ -567,7 +580,6 @@ const DEFAULT_CREW_SLOTS: StoredCrewSlots = [null, null, null, null, null];
 export const useGameStore = create<GameState & GameActions>((set, get) => ({
   // ── Initial state ─────────────────────────────────────────────────────────
   runId:          null,
-  userId:         null,
   status:         null,
   phase:          null,
   bankroll:            0,
@@ -614,10 +626,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   _seqCounter:    0,
   rollHistory:    [],
   socketStatus:   'disconnected',
+  getToken:       null,
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
-  connectToRun(runId, userId, initialState) {
+  connectToRun(runId, initialState) {
     // Remove any stale listeners before re-registering (handles hot reconnects).
     socket.off('cascade:trigger');
     socket.off('turn:settled');
@@ -629,7 +642,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
     set({
       runId,
-      userId,
       socketStatus:        'connecting',
       ...(isNewRun && { rollHistory: [] }),
       pendingCascadeQueue:       [],
@@ -746,9 +758,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     });
 
     // ── Connect ───────────────────────────────────────────────────────────
-    // Pass userId in the auth payload so the server can verify ownership
-    // on both connection and room subscription.
-    socket.auth = { userId };
+    // Use function form so Socket.IO calls getToken() fresh on every
+    // connect/reconnect attempt — Clerk auto-refresh keeps it valid.
+    socket.auth = (cb: (data: { token: string }) => void) => {
+      void (get().getToken?.() ?? Promise.resolve(null)).then((token) => {
+        cb({ token: token ?? '' });
+      });
+    };
 
     if (!socket.connected) {
       socket.connect();
@@ -770,7 +786,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
     set({
       runId:               null,
-      userId:              null,
       status:              null,
       phase:               null,
       bankroll:            0,
@@ -1093,16 +1108,17 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   async rollDice() {
-    const { runId, userId, bets, isRolling } = get();
-    if (isRolling || !runId || !userId) return false;
+    const { runId, bets, isRolling } = get();
+    if (isRolling || !runId) return false;
 
     set({ isRolling: true });
     try {
+      const token = await get().getToken?.();
       const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/roll`, {
         method:  'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-user-id':    userId,
+          'Authorization': `Bearer ${token ?? ''}`,
         },
         body: JSON.stringify({ bets }),
       });
@@ -1181,19 +1197,20 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   async recruitCrew(crewId, slotIndex) {
-    const { runId, userId } = get();
-    if (!runId || !userId) throw new Error('No active run to recruit into.');
+    const { runId } = get();
+    if (!runId) throw new Error('No active run to recruit into.');
 
     const body =
       crewId !== null && slotIndex !== undefined
         ? { crewId, slotIndex }
         : {};
 
+    const token = await get().getToken?.();
     const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/recruit`, {
       method:  'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-user-id':    userId,
+        'Authorization': `Bearer ${token ?? ''}`,
       },
       body: JSON.stringify(body),
     });
@@ -1232,12 +1249,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   async fireCrew(slotIndex) {
-    const { runId, userId } = get();
-    if (!runId || !userId) throw new Error('No active run.');
+    const { runId } = get();
+    if (!runId) throw new Error('No active run.');
 
+    const token = await get().getToken?.();
     const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/crew/${slotIndex}`, {
       method:  'DELETE',
-      headers: { 'x-user-id': userId },
+      headers: { 'Authorization': `Bearer ${token ?? ''}` },
     });
 
     if (!res.ok) {
@@ -1257,14 +1275,15 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   async setMechanicFreeze(lockedValue) {
-    const { runId, userId } = get();
-    if (!runId || !userId) throw new Error('No active run.');
+    const { runId } = get();
+    if (!runId) throw new Error('No active run.');
 
+    const token = await get().getToken?.();
     const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/mechanic-freeze`, {
       method:  'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-user-id':    userId,
+        'Authorization': `Bearer ${token ?? ''}`,
       },
       body: JSON.stringify({ lockedValue }),
     });
@@ -1282,6 +1301,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       mechanicFreeze: data.mechanicFreeze,
       crewSlots:      data.crewSlots,
     });
+  },
+
+  setGetToken(fn) {
+    set({ getToken: fn });
   },
 }));
 

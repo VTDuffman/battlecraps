@@ -2,23 +2,26 @@
 // BATTLECRAPS — ROOT APP
 // apps/web/src/App.tsx
 //
-// Dev Bootstrapper: on first load, calls POST /api/v1/dev/bootstrap to create
-// a fresh run with 3 seated crew members. Persists the userId and runId in
-// localStorage so a page refresh reconnects to the same run rather than
-// creating a new one. A "New Run" button clears localStorage and resets.
+// Auth flow:
+//   1. Clerk manages the Google OAuth session via <ClerkProvider> in main.tsx.
+//   2. Unauthenticated visitors see a <SignIn /> screen.
+//   3. Authenticated users call POST /auth/provision to ensure a DB user record
+//      exists; the returned userId is discarded (JWT carries identity hereafter).
+//   4. Run state is loaded from localStorage (bc_run_id) or a fresh run is
+//      created via POST /api/v1/runs.
+//   5. connectToRun() initialises the game.
 // =============================================================================
 
 import React, { useEffect, useState } from 'react';
-import { TableBoard }               from './components/TableBoard.js';
-import { useGameStore }             from './store/useGameStore.js';
-import { TransitionOrchestrator }   from './transitions/TransitionOrchestrator.js';
-import type { StoredCrewSlots }     from './store/useGameStore.js';
-import type { Bets }                from '@battlecraps/shared';
+import { SignIn, useUser, useAuth }    from '@clerk/react';
+import { TableBoard }                  from './components/TableBoard.js';
+import { useGameStore }                from './store/useGameStore.js';
+import { TransitionOrchestrator }      from './transitions/TransitionOrchestrator.js';
+import type { StoredCrewSlots }        from './store/useGameStore.js';
+import type { Bets }                   from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // API base URL
-// In production this must point to the Render API (set VITE_API_URL env var).
-// In dev the Vite proxy is not used here — VITE_API_URL should be http://localhost:3001.
 // ---------------------------------------------------------------------------
 
 const API_BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? '';
@@ -27,64 +30,98 @@ const API_BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? '';
 // localStorage keys
 // ---------------------------------------------------------------------------
 
-const LS_USER_ID = 'bc_dev_user_id';
-const LS_RUN_ID  = 'bc_dev_run_id';
+const LS_RUN_ID = 'bc_run_id';
 
 // ---------------------------------------------------------------------------
-// Bootstrap API shape (mirrors apps/api/src/routes/bootstrap.ts)
+// API response shapes
 // ---------------------------------------------------------------------------
 
-interface BootstrapResponse {
-  userId: string;
-  runId:  string;
-  run: {
-    bankroll:           number;
-    shooters:           number;
-    hype:               number;
-    phase:              'COME_OUT' | 'POINT_ACTIVE';
-    status:             string;
-    point:              number | null;
-    crewSlots:          StoredCrewSlots;
-    currentMarkerIndex: number;
-    bets?:              Bets;
-    maxBankrollCents?:  number;
-  };
+interface RunStateData {
+  bankroll:           number;
+  shooters:           number;
+  hype:               number;
+  phase:              'COME_OUT' | 'POINT_ACTIVE';
+  status:             string;
+  point:              number | null;
+  crewSlots:          StoredCrewSlots;
+  currentMarkerIndex: number;
+  bets?:              Bets;
+  maxBankrollCents?:  number;
+}
+
+interface CreateRunResponse {
+  runId: string;
+  run:   RunStateData;
 }
 
 // ---------------------------------------------------------------------------
-// Component
+// Inner component — only rendered when Clerk confirms the user is signed in
 // ---------------------------------------------------------------------------
 
-export const App: React.FC = () => {
+const AuthenticatedApp: React.FC = () => {
+  const { user }     = useUser();
+  const { getToken } = useAuth();
   const connectToRun = useGameStore((s) => s.connectToRun);
   const disconnect   = useGameStore((s) => s.disconnect);
+  const setGetToken  = useGameStore((s) => s.setGetToken);
+
+  // Inject the Clerk getToken function into the store on mount so all fetch
+  // actions can get fresh JWTs without depending on React context.
+  useEffect(() => {
+    setGetToken(getToken);
+    return () => setGetToken(null);
+  }, [getToken, setGetToken]);
 
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
 
   const bootstrap = React.useCallback(async (forceNew = false) => {
+    if (!user) return;
+
     setLoading(true);
     setError(null);
 
     if (forceNew) {
-      localStorage.removeItem(LS_USER_ID);
       localStorage.removeItem(LS_RUN_ID);
     }
 
     try {
-      let userId = localStorage.getItem(LS_USER_ID);
-      let runId  = localStorage.getItem(LS_RUN_ID);
+      // ── 1. Ensure our DB has a user record for this Clerk identity ────────
+      const displayName =
+        [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+        user.username ||
+        user.primaryEmailAddress?.emailAddress?.split('@')[0] ||
+        'Player';
 
-      // If we have both IDs cached, try to load the existing run first.
-      // Falls through to bootstrap if the run no longer exists (e.g. DB wiped).
-      if (userId && runId) {
+      const token = await getToken();
+      const provRes = await fetch(`${API_BASE}/api/v1/auth/provision`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token ?? ''}`,
+        },
+        body: JSON.stringify({
+          email:       user.primaryEmailAddress?.emailAddress ?? '',
+          displayName,
+        }),
+      });
+
+      if (!provRes.ok) {
+        throw new Error(`Provision failed: ${provRes.status} ${provRes.statusText}`);
+      }
+
+      // ── 2. Try to restore cached run ─────────────────────────────────────
+      const runId = localStorage.getItem(LS_RUN_ID);
+
+      if (runId) {
+        const freshToken = await getToken();
         const check = await fetch(`${API_BASE}/api/v1/runs/${runId}`, {
-          headers: { 'x-user-id': userId },
+          headers: { 'Authorization': `Bearer ${freshToken ?? ''}` },
         });
 
         if (check.ok) {
-          const data = (await check.json()) as BootstrapResponse['run'];
-          connectToRun(runId, userId, {
+          const data = (await check.json()) as RunStateData;
+          connectToRun(runId, {
             bankroll:           data.bankroll,
             shooters:           data.shooters,
             hype:               data.hype,
@@ -101,21 +138,24 @@ export const App: React.FC = () => {
         }
       }
 
-      // No cached run (or stale) — hit the bootstrap endpoint.
-      const res = await fetch(`${API_BASE}/api/v1/dev/bootstrap`, {
+      // ── 3. No cached run — create a new one ──────────────────────────────
+      const freshToken = await getToken();
+      const res = await fetch(`${API_BASE}/api/v1/runs`, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    '{}',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${freshToken ?? ''}`,
+        },
+        body: '{}',
       });
       if (!res.ok) {
-        throw new Error(`Bootstrap failed: ${res.status} ${res.statusText}`);
+        throw new Error(`Create run failed: ${res.status} ${res.statusText}`);
       }
 
-      const data = (await res.json()) as BootstrapResponse;
-      localStorage.setItem(LS_USER_ID, data.userId);
-      localStorage.setItem(LS_RUN_ID,  data.runId);
+      const data = (await res.json()) as CreateRunResponse;
+      localStorage.setItem(LS_RUN_ID, data.runId);
 
-      connectToRun(data.runId, data.userId, {
+      connectToRun(data.runId, {
         bankroll:           data.run.bankroll,
         shooters:           data.run.shooters,
         hype:               data.run.hype,
@@ -134,17 +174,19 @@ export const App: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [connectToRun]);
+  }, [user, connectToRun, getToken]);
 
-  // Bootstrap on mount; tear down socket on unmount.
   useEffect(() => {
+    // Clean up legacy localStorage key from Phase 2/3.
+    localStorage.removeItem('bc_run_user_id');
+
     void bootstrap();
     return () => disconnect();
   // bootstrap and disconnect are stable — safe to omit from deps.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Loading screen ────────────────────────────────────────────────────────
+  // ── Loading screen ──────────────────────────────────────────────────────
   if (loading) {
     return (
       <main className="min-h-screen h-[100dvh] flex flex-col items-center justify-center bg-black gap-4">
@@ -158,7 +200,7 @@ export const App: React.FC = () => {
     );
   }
 
-  // ── Error screen ──────────────────────────────────────────────────────────
+  // ── Error screen ────────────────────────────────────────────────────────
   if (error) {
     return (
       <main className="min-h-screen h-[100dvh] flex flex-col items-center justify-center bg-black gap-6 px-8">
@@ -190,7 +232,7 @@ export const App: React.FC = () => {
     );
   }
 
-  // ── Game screens ──────────────────────────────────────────────────────────
+  // ── Game screens ────────────────────────────────────────────────────────
   return (
     <main className="h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
       {/* New Run button — top-left corner, always accessible */}
@@ -215,4 +257,37 @@ export const App: React.FC = () => {
       </TransitionOrchestrator>
     </main>
   );
+};
+
+// ---------------------------------------------------------------------------
+// Root component — shows sign-in screen for unauthenticated visitors
+// ---------------------------------------------------------------------------
+
+export const App: React.FC = () => {
+  const { isSignedIn, isLoaded } = useUser();
+
+  // Clerk is still loading its session state — show nothing briefly.
+  if (!isLoaded) {
+    return (
+      <main className="min-h-screen h-[100dvh] flex items-center justify-center bg-black">
+        <div className="font-pixel text-[10px] text-gold animate-pulse">
+          LOADING…
+        </div>
+      </main>
+    );
+  }
+
+  // Not signed in — render Clerk's pre-built sign-in UI.
+  if (!isSignedIn) {
+    return (
+      <main className="min-h-screen h-[100dvh] flex flex-col items-center justify-center bg-black gap-6">
+        <div className="font-pixel text-[12px] text-gold tracking-widest">
+          BATTLE CRAPS
+        </div>
+        <SignIn />
+      </main>
+    );
+  }
+
+  return <AuthenticatedApp />;
 };

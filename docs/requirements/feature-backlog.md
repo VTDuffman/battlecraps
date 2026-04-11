@@ -10,7 +10,7 @@ when the item is picked up.
 
 **Type:** Quality of Life
 **Area:** Betting / `useGameStore.ts`
-**Status:** Ready to implement
+**Status:** Implemented
 
 ### Problem
 
@@ -68,7 +68,7 @@ No server changes, no UI component changes.
 
 **Type:** Quality of Life
 **Area:** Payout engine / `packages/shared/src/crapsEngine.ts`
-**Status:** Ready to implement
+**Status:** Implemented
 
 ### Problem
 
@@ -124,7 +124,7 @@ player always gets the better side of any fractional amount.
 
 **Type:** Bug / Quality of Life
 **Area:** Dice animation / `apps/web/src/components/DiceZone.tsx`
-**Status:** Ready to implement
+**Status:** Implemented
 
 ### Problem
 
@@ -159,7 +159,7 @@ padding, and `"ROLL"` centers naturally within the fixed box.
 
 **Type:** Bug / Quality of Life
 **Area:** Cascade animation timing / `apps/web/src/store/useGameStore.ts`
-**Status:** Ready to implement
+**Status:** Implemented
 
 ### Problem
 
@@ -209,7 +209,7 @@ Portrait animations now play as the result is being revealed, not before it.
 
 **Type:** Quality of Life
 **Area:** Screen routing / `apps/web/src/App.tsx`
-**Status:** Ready to implement
+**Status:** Implemented
 
 ### Problem
 
@@ -275,6 +275,89 @@ Covers both normal marker clears and boss victories — both go through TRANSITI
 benefit from the soak window automatically.
 
 **Scope: `App.tsx` only. No store changes, no component changes.**
+
+---
+
+## FB-006 — Session Management & Authentication
+
+**Type:** Infrastructure / Security
+**Area:** Auth / `apps/api/src/` + `apps/web/src/App.tsx`
+**Status:** Planned
+
+### Problem
+
+The current identity system is a dev-only stub, not production auth. Every player is
+identified by a UUID stored in `localStorage` and sent as a raw `x-user-id` header —
+no cryptographic verification occurs. A single shared user (`dev@battlecraps.local`)
+serves all players via the `/api/v1/dev/bootstrap` endpoint.
+
+**Consequences:**
+- No persistent identity: clearing localStorage = new identity, lost run
+- No cross-device continuity: a player can't resume their run on another device
+- No security: any UUID in the header is accepted; the bootstrap endpoint is public
+  and allows unlimited run creation
+- All players share the same DB user record (single `dev@battlecraps.local`)
+
+### Current Implementation (to be replaced)
+
+- `apps/web/src/App.tsx`: On load, checks `localStorage` for `bc_dev_user_id` /
+  `bc_dev_run_id`. If absent, calls `POST /api/v1/dev/bootstrap` to create both.
+- `apps/api/src/routes/bootstrap.ts`: Creates/upserts `dev@battlecraps.local`, creates
+  a new run, returns `{ userId, runId }`.
+- All API routes: Extract `x-user-id` header, load the run, verify `run.userId ===
+  header userId` (ownership check is correct — just not cryptographically sound).
+- Socket.IO: `userId` passed in `socket.handshake.auth`, validated in middleware.
+
+### Proposed Solution
+
+Use an auth service (recommended: **Clerk** or **Supabase Auth**) to handle OAuth
+flows, token issuance, and session management rather than rolling custom auth.
+
+**Auth flow (Google OAuth via Clerk/Supabase):**
+1. User clicks "Sign in with Google" on the frontend
+2. Redirected to Google consent screen
+3. Google redirects back; auth service exchanges code for tokens server-side
+4. Auth service creates/upserts a unique user record per Google account
+5. Server issues a short-lived JWT (15 min) + long-lived refresh token in an
+   `httpOnly; Secure; SameSite=Strict` cookie
+6. All game API routes verify the JWT via `@fastify/jwt` middleware
+7. `req.user.id` replaces the `x-user-id` header throughout
+
+**Token storage:**
+- Access token: in-memory JS variable (XSS-safe, lost on refresh → re-issue via cookie)
+- Refresh token: `httpOnly; Secure; SameSite=Strict` cookie (JS-inaccessible)
+- `localStorage` retains only `bc_dev_run_id` for run recovery on page refresh
+
+### Files Affected
+
+| File | Change |
+|---|---|
+| `apps/api/src/routes/bootstrap.ts` | Remove `POST /dev/bootstrap` entirely; keep `GET /runs/:id` |
+| `apps/api/src/server.ts` | Add `@fastify/jwt` middleware; add auth routes (callback, refresh, logout) |
+| `apps/api/src/routes/rolls.ts` | Replace `x-user-id` header extraction with `req.user.id` from JWT |
+| `apps/api/src/routes/recruit.ts` | Same JWT swap |
+| `apps/api/src/routes/mechanic.ts` | Same JWT swap |
+| `apps/api/src/routes/crew.ts` | Same JWT swap |
+| `apps/api/src/db/schema.ts` | Add `googleId` (and/or `githubId`) columns to `users` table |
+| `apps/web/src/App.tsx` | Replace bootstrap flow with auth check; redirect unauthenticated users to login |
+| `apps/web/src/store/useGameStore.ts` | Remove `x-user-id` header from fetch calls; pass JWT Bearer token |
+
+### What Stays the Same
+
+- All `run.userId === req.user.id` ownership checks — logic is correct, just the
+  identity source changes
+- Optimistic locking (`updatedAt` WHERE clause) — unchanged
+- WebSocket room-based ownership validation — unchanged (userId comes from JWT instead)
+- `users` table schema columns (bankroll, unlocks, etc.) — add OAuth columns, keep rest
+
+### Open Decisions
+
+1. **Auth service vs. self-hosted**: Clerk or Supabase Auth recommended over
+   `@fastify/passport` — reduces maintenance surface and handles edge cases
+2. **OAuth providers**: Google OAuth as primary; GitHub and/or Discord as secondary
+3. **Guest play**: Allow anonymous runs that can be claimed after sign-in, or require
+   sign-in before starting? (UX tradeoff)
+4. **Existing dev data**: Migration path for any beta-tester data tied to dev@battlecraps.local
 
 ---
 

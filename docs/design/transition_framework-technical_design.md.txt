@@ -1,0 +1,446 @@
+---
+
+# Battlecraps Transition Framework — Technical Design
+
+---
+
+## Guiding Principles
+
+1. **One owner per concern.** The `TransitionOrchestrator` owns all transition logic. `App.tsx` routing defers to it entirely.
+2. **Configuration over code for floors.** Adding a new floor means editing config, not touching component logic.
+3. **Display state vs. logical state.** The store carries two layers: what the server knows, and what the player sees. The orchestrator controls when they sync.
+4. **Phases are atomic and sequential.** No transition phase starts until the previous one formally completes.
+5. **floors.md is the contract.** It defines the schema, documents all existing floors, and is the handoff document for developers building new ones.
+
+---
+
+## System Architecture
+
+```
+TransitionOrchestrator (React Context)
+  │
+  ├── TransitionRegistry         maps event type → ordered phase sequence
+  ├── PhasePlayer                renders current phase, owns timers & gates
+  ├── GameStateSnapshot          frozen pre-transition state (fixes race condition)
+  └── phases/
+        ├── TitleScreenPhase
+        ├── MarkerCelebrationPhase
+        ├── MarkerIntroPhase
+        ├── FloorRevealPhase       ← new, floor-config-driven
+        ├── BossEntryPhase         ← refactored
+        ├── BossVictoryPhase       ← refactored
+        ├── VictoryCinematicPhase  ← new, replaces win path
+        └── GameOverPhase          ← refactored
+```
+
+The `App.tsx` routing collapses from ~60 lines of interlocked boolean gates to a single render:
+
+```tsx
+<TransitionOrchestrator>
+  <GameCanvas />   {/* TableBoard — only mounts when orchestrator is IDLE */}
+</TransitionOrchestrator>
+```
+
+---
+
+## Floor Configuration System
+
+### The Schema (`packages/shared/src/floors.ts`)
+
+```typescript
+export interface FloorConfig {
+  id: number;                    // 1-indexed, sequential
+  name: string;                  // e.g. "The Riverboat"
+  tagline: string;               // One atmospheric line for the reveal screen
+  introLines: string[];          // 2-3 lines shown during floor reveal
+  bossTeaser: string;            // Shown at bottom of reveal: "Mme. Le Prix awaits…"
+  atmosphere: 'gritty' | 'elegant' | 'electric' | string;  // extensible
+  theme: FloorTheme;             // Visual tokens (existing system, extended)
+  markers: MarkerConfig[];       // Exactly 3 per floor
+}
+
+export interface MarkerConfig {
+  targetCents: number;
+  venue: string;
+  isBoss: boolean;
+  boss?: BossConfig;
+}
+
+export interface BossConfig {
+  name: string;
+  title: string;
+  rule: BossRule;
+  ruleIcon: string;              // emoji or icon key for visual display
+  flavorText: string;            // Shown in BossEntryPhase
+  dreadLine: string;             // Short ominous line before CTA appears
+  comp: CompConfig;
+}
+
+export interface CompConfig {
+  id: string;
+  name: string;                  // "The Member's Jacket"
+  description: string;           // What it does
+  icon: string;                  // emoji or icon key
+}
+```
+
+### floors.md — Structure
+
+The document has two purposes: **developer reference** and **designer handoff**. Its sections:
+
+```
+1. Overview — what floors are, how they map to the gauntlet
+2. Floor Configuration Schema — the TypeScript interface, field-by-field explanation
+3. How to Add a New Floor — step-by-step checklist (5 steps, no code surgery)
+4. How to Add a New Boss Rule — step-by-step checklist
+5. Floor Definitions
+   └── Floor 1: VFW Hall
+   └── Floor 2: The Riverboat
+   └── Floor 3: The Strip
+6. Visual Theming Guide — how to design FloorTheme tokens for a new floor
+7. Boss Rule Catalogue — all existing rules, their icons, their mechanical description
+```
+
+The document is **normative** — it is the definition of what the game contains. Code reads from `floors.ts` which is populated from this document. A designer proposes in `floors.md`, a developer translates to `floors.ts`. No other files need touching for new floor content.
+
+---
+
+## The TransitionOrchestrator
+
+### Core Types
+
+```typescript
+type TransitionType =
+  | 'TITLE'
+  | 'MARKER_CLEAR'
+  | 'MARKER_INTRO'
+  | 'FLOOR_REVEAL'
+  | 'BOSS_ENTRY'
+  | 'BOSS_VICTORY'
+  | 'VICTORY'
+  | 'GAME_OVER';
+
+type PhaseAdvanceMode = 'auto' | 'gated' | 'animation';
+// auto      — advances after `duration` ms
+// gated     — waits for player tap (shows CTA)
+// animation — waits for a named animation to fire onComplete()
+
+interface TransitionPhase {
+  id: string;
+  advanceMode: PhaseAdvanceMode;
+  duration?: number;             // only for 'auto'
+  animationKey?: string;         // only for 'animation'
+  component: string;             // key into PhaseComponentRegistry
+}
+
+interface TransitionData {
+  // Populated per-transition, only the fields each phase needs
+  markerIndex?: number;
+  markerTarget?: number;
+  floorId?: number;
+  isFloorBoundary?: boolean;
+  bossName?: string;
+  compEarned?: CompConfig;
+  finalBankroll?: number;
+  maxSingleRollWin?: number;
+  markersCleared?: number;
+  // … extensible without schema changes
+}
+```
+
+### The Registry
+
+```typescript
+const TRANSITION_REGISTRY: Record<TransitionType, TransitionPhase[]> = {
+
+  MARKER_CLEAR: [
+    { id: 'celebrate',   advanceMode: 'animation', animationKey: 'chipRainComplete', component: 'MarkerCelebrationPhase' },
+    { id: 'modal',       advanceMode: 'gated',                                       component: 'MarkerCelebrationModal' },
+  ],
+
+  FLOOR_REVEAL: [
+    { id: 'reveal',      advanceMode: 'auto',  duration: 2500, component: 'FloorRevealPhase' },
+    { id: 'confirm',     advanceMode: 'gated',                 component: 'FloorRevealConfirmPhase' },
+  ],
+
+  BOSS_ENTRY: [
+    { id: 'dread',       advanceMode: 'auto',  duration: 1800, component: 'BossEntryDreadPhase' },
+    { id: 'reveal',      advanceMode: 'gated',                 component: 'BossEntryRevealPhase' },
+  ],
+
+  BOSS_VICTORY: [
+    { id: 'triumph',     advanceMode: 'auto',  duration: 2000, component: 'BossVictoryPhase' },
+    { id: 'comp',        advanceMode: 'gated',                 component: 'BossVictoryCompPhase' },
+  ],
+
+  MARKER_INTRO: [
+    { id: 'intro',       advanceMode: 'auto',  duration: 2500, component: 'MarkerIntroPhase' },
+  ],
+
+  TITLE: [
+    { id: 'cinematic',   advanceMode: 'gated',                 component: 'TitleScreenPhase' },
+  ],
+
+  VICTORY: [
+    { id: 'explosion',   advanceMode: 'auto',  duration: 2500, component: 'VictoryExplosionPhase' },
+    { id: 'recap',       advanceMode: 'gated',                 component: 'VictoryRecapPhase' },
+    { id: 'sendoff',     advanceMode: 'gated',                 component: 'VictorySendoffPhase' },
+  ],
+
+  GAME_OVER: [
+    { id: 'over',        advanceMode: 'gated',                 component: 'GameOverPhase' },
+  ],
+};
+```
+
+Adding a new transition type: add one entry here, one component file, zero changes elsewhere.
+
+---
+
+## State Snapshot System (Race Condition Fix)
+
+New fields in the Zustand store:
+
+```typescript
+// In useGameStore.ts
+celebrationSnapshot: {
+  markerIndex: number;      // The marker being celebrated (OLD value)
+  targetCents: number;      // Its target
+  floorId: number;          // Its floor
+  bankrollBefore: number;   // Bankroll at moment of hit
+  bankrollAfter: number;    // New bankroll (for the delta display)
+} | null;
+
+activeTransition: TransitionType | null;
+transitionData: TransitionData;
+transitionPhaseIndex: number;
+```
+
+**How it works:**
+
+When `applyPendingSettlement()` detects a TRANSITION result:
+1. Snapshot the **current** (old) marker state into `celebrationSnapshot`
+2. Set `activeTransition: 'MARKER_CLEAR'`
+3. Do **not** update `currentMarkerIndex` in the display layer — the logical store has it, but `celebrationSnapshot.markerIndex` is what every UI component reads during celebration
+4. The `ChipRain` component fires its existing `onComplete` callback → orchestrator advances to the `modal` phase
+5. Modal cleared → `celebrationSnapshot` cleared → `currentMarkerIndex` is now visible in UI
+
+The player never sees the new state until the orchestrator hands it to them.
+
+---
+
+## Maximum Win Tracking
+
+**Server side** (`apps/api/src/routes/rolls.ts`):
+- Track `maxSingleRollWinCents` on the run record
+- After every roll, if `bankrollDelta > maxSingleRollWinCents`, update it
+- Include in `turn:settled` payload
+
+**Client side** (`useGameStore.ts`):
+- `maxSingleRollWin: number` in store
+- Updated from every `turn:settled` event
+- Surfaced in `VictoryRecapPhase`
+
+---
+
+## Full Transition Flow — Complete Sequence
+
+```
+Game Start (first load)
+  → TitleScreenPhase (gated) → bootstrap() → TableBoard
+
+Roll → Marker Clear
+  → [snapshot frozen]
+  → ChipRain + Payout Pops + Screen Flash (against old state)
+  → chipRainComplete fires → MarkerCelebrationModal (gated)
+  → [snapshot cleared, new marker visible]
+  → PubScreen
+  → If floor boundary:
+      → FloorRevealPhase (2.5s auto) → FloorRevealConfirmPhase (gated)
+  → If boss marker:
+      → BossEntryDreadPhase (1.8s auto) → BossEntryRevealPhase (gated)
+  → MarkerIntroPhase (2.5s auto)
+  → TableBoard (first roll ready)
+
+Roll → Boss Clear
+  → [same chip rain sequence]
+  → VictoryExplosionPhase (auto) → BossVictoryCompPhase (gated)
+  → PubScreen
+  → [floor reveal if applicable]
+  → MarkerIntroPhase
+  → TableBoard
+
+Roll → Final Marker Clear (Victory)
+  → [chip rain]
+  → VictoryExplosionPhase (2.5s auto)
+  → VictoryRecapPhase (gated — markers, crew, max roll, bankroll)
+  → VictorySendoffPhase (gated — flavor text + play again)
+
+Shooters = 0
+  → GameOverPhase (gated — progress + tone-calibrated message + play again)
+  → Play Again → bootstrap(true) → TableBoard (no title screen)
+```
+
+---
+
+## Implementation Phases
+
+Each phase is a discrete, independently shippable unit. No phase requires future phases to function. Each one improves the game as it lands.
+
+---
+
+### Phase 1 — Foundation: TransitionOrchestrator + Snapshot System
+**Delivers:** The race condition fix. Zero visual change to existing modals.
+
+- Create `packages/shared/src/floors.ts` with all type definitions
+- Add `celebrationSnapshot`, `activeTransition`, `transitionData`, `transitionPhaseIndex` to Zustand store
+- Build `TransitionOrchestrator` context and `PhasePlayer` component (thin shell — just wires timers and gates)
+- Build the `TRANSITION_REGISTRY` (references component names as strings — components don't need to exist yet)
+- Refactor `applyPendingSettlement()` to populate snapshot and set `activeTransition`
+- Refactor `App.tsx` to render `<TransitionOrchestrator>` — existing modals wired as phase components (BossEntryModal, MarkerCelebration, etc. unchanged, just registered)
+- Remove `pubReady` and `bossEntryAcknowledged` boolean gates — orchestrator owns this now
+
+**Test:** Marker clear no longer shows new marker state during chip rain. All existing modals still appear. Nothing visually broken.
+
+---
+
+### Phase 2 — Floor Configuration System
+**Delivers:** `floors.md` and `floors.ts` as living documents. Existing content migrated.
+
+- Create `docs/floors.md` with full schema documentation and all 3 floors defined
+- Create `packages/shared/src/floors.ts` with `FloorConfig[]` array containing VFW Hall, The Riverboat, The Strip
+- Migrate `packages/shared/src/config.ts` gauntlet data to derive from `floors.ts` (GAUNTLET array becomes a computed flatten of `FLOORS.flatMap(f => f.markers)`)
+- Extend `lib/floorThemes.ts` to derive tokens from `FloorConfig.theme`
+- No visual change — this is a data migration
+
+**Test:** All existing floor-aware components (BossRoomHeader, PubScreen, floorThemes) still work identically.
+
+---
+
+### Phase 3 — Marker Celebration + Intro
+**Delivers:** Clean marker clear sequence. MarkerIntro card after pub.
+
+- Refactor `MarkerCelebration` into `MarkerCelebrationPhase` — full-screen takeover, reads from `celebrationSnapshot`
+- Add `chipRainComplete` callback to `ChipRain` — fires `advancePhase()` on orchestrator
+- Build `MarkerIntroPhase` — slides in after pub, shows floor pip progress + next target
+- Wire both into the registry
+
+**Test:** Marker clear feels sequential and clean. Player sees old state during celebration, new state revealed by the modal. Marker intro orients the player before first roll.
+
+---
+
+### Phase 4 — Floor Reveal
+**Delivers:** Floors feel like acts. New venue announced with weight.
+
+- Build `FloorRevealPhase` — full-screen wipe, reads `FloorConfig.name`, `FloorConfig.introLines`, `FloorConfig.bossTeaser`
+- Build `FloorRevealConfirmPhase` — player tap CTA
+- Detect floor boundary in orchestrator: `Math.floor(newMarkerIndex / 3) > Math.floor(oldMarkerIndex / 3)`
+- Insert `FLOOR_REVEAL` transition into sequence at the right moment (after pub, before boss entry)
+
+**Test:** Clearing marker 2 → Floor Reveal for "The Riverboat" → Boss Entry for Mme. Le Prix. Adding Floor 4 in the future: add one entry to `FLOORS` array in `floors.ts`, zero component changes.
+
+---
+
+### Phase 5 — Boss Sequence Polish
+**Delivers:** Boss entry has dread and weight. Boss victory has ceremony.
+
+- Build `BossEntryDreadPhase` — ominous auto phase, CTA button hidden for 1.8s
+- Refactor `BossEntryRevealPhase` from existing `BossEntryModal` — adds rule icon, richer CTA copy from `BossConfig`
+- Build `BossVictoryPhase` — triumph moment
+- Build `BossVictoryCompPhase` — animated comp reveal, reads from `CompConfig`
+
+**Test:** Boss entry feels like walking into a boss room. Victory feels earned.
+
+---
+
+### Phase 6 — Title Screen
+**Delivers:** First impression cinematic.
+
+- Build `TitleScreenPhase` — felt wipe in, game name, floor/boss teaser icons, single CTA
+- Add `hasSeenTitleScreen` to local storage (not store) — persists across sessions
+- `App.tsx`: if `!hasSeenTitleScreen`, push `TITLE` transition before bootstrap; set flag on proceed
+- `Play Again` path: calls `bootstrap(true)` directly, skips TITLE
+
+**Test:** Fresh load shows title. Play Again skips it. Hard refresh shows it again.
+
+---
+
+### Phase 7 — Maximum Win Tracking
+**Delivers:** Data infrastructure for win screen and future unlocks.
+
+- Add `maxSingleRollWinCents` column to run schema
+- Track in `rolls.ts` after every settlement
+- Include in `turn:settled` payload
+- Add `maxSingleRollWin` to store, updated on every settlement
+- No UI yet — this is pure data prep for Phase 8
+
+**Test:** After a run, `maxSingleRollWin` in store reflects the actual highest single-roll payout.
+
+---
+
+### Phase 8 — Victory Cinematic
+**Delivers:** The win screen overhaul. Epic ending.
+
+- Build `VictoryExplosionPhase` — Torrent ChipRain from all edges, "GAUNTLET CLEARED" headline, screen shake
+- Build `VictoryRecapPhase` — floor-by-floor with checkmarks, bosses defeated, final crew, bankroll peak, max single roll win (animated counter)
+- Build `VictorySendoffPhase` — flavor text keyed to final bankroll tier, "PLAY AGAIN"
+- Detect VICTORY vs. GAME_OVER in orchestrator: `markersCleared >= 9`
+- Route to `VICTORY` sequence instead of `GAME_OVER`
+
+**Test:** Clearing marker 8 triggers the cinematic. Game over on shooter loss shows `GAME_OVER` as before.
+
+---
+
+### Phase 9 — Game Over Polish
+**Delivers:** Progress acknowledgment, tone calibration.
+
+- Add pip progress display to `GameOverPhase` (how many of 9 markers cleared)
+- Add tone calibration: early loss (0-3) vs. mid (4-6) vs. near miss (7-8) — different headline, flavor text
+- No structural changes — enhancement to existing component
+
+---
+
+## File Map
+
+| File | Action | Phase |
+|---|---|---|
+| `packages/shared/src/floors.ts` | **Create** | 1 |
+| `packages/shared/src/config.ts` | **Modify** — derive GAUNTLET from floors.ts | 2 |
+| `packages/shared/src/types.ts` | **Modify** — add TransitionType, TransitionData | 1 |
+| `docs/floors.md` | **Create** | 2 |
+| `apps/web/src/transitions/TransitionOrchestrator.tsx` | **Create** | 1 |
+| `apps/web/src/transitions/PhasePlayer.tsx` | **Create** | 1 |
+| `apps/web/src/transitions/registry.ts` | **Create** | 1 |
+| `apps/web/src/transitions/phases/MarkerCelebrationPhase.tsx` | **Create** | 3 |
+| `apps/web/src/transitions/phases/MarkerIntroPhase.tsx` | **Create** | 3 |
+| `apps/web/src/transitions/phases/FloorRevealPhase.tsx` | **Create** | 4 |
+| `apps/web/src/transitions/phases/BossEntryDreadPhase.tsx` | **Create** | 5 |
+| `apps/web/src/transitions/phases/BossEntryRevealPhase.tsx` | **Create** (from BossEntryModal) | 5 |
+| `apps/web/src/transitions/phases/BossVictoryPhase.tsx` | **Create** (from BossVictoryModal) | 5 |
+| `apps/web/src/transitions/phases/TitleScreenPhase.tsx` | **Create** | 6 |
+| `apps/web/src/transitions/phases/VictoryExplosionPhase.tsx` | **Create** | 8 |
+| `apps/web/src/transitions/phases/VictoryRecapPhase.tsx` | **Create** | 8 |
+| `apps/web/src/transitions/phases/VictorySendoffPhase.tsx` | **Create** | 8 |
+| `apps/web/src/transitions/phases/GameOverPhase.tsx` | **Create** (from GameOverScreen) | 9 |
+| `apps/web/src/store/useGameStore.ts` | **Modify** — snapshot + transition state | 1 |
+| `apps/web/src/App.tsx` | **Modify** — defer to Orchestrator | 1 |
+| `apps/web/src/lib/floorThemes.ts` | **Modify** — derive from FloorConfig | 2 |
+| `apps/web/src/components/ChipRain.tsx` | **Modify** — add onComplete callback | 3 |
+| `apps/api/src/routes/rolls.ts` | **Modify** — track maxSingleRollWin | 7 |
+| `apps/api/db/schema` | **Modify** — add maxSingleRollWinCents column | 7 |
+
+---
+
+## What "Adding a New Floor" Looks Like After This
+
+A developer receives a `floors.md` entry with the new floor filled in. Their checklist:
+
+1. Add `FloorConfig` entry to `FLOORS` array in `floors.ts`
+2. Add `FloorTheme` tokens (colors, felt, glow) to the theme section
+3. Add boss comp logic to `recruit.ts` if the comp type is new (most won't be)
+4. Add boss rule logic to `rolls.ts` if the rule type is new (most won't be)
+5. Done — floor reveal, marker intro, boss entry, boss victory all pick up the config automatically
+
+No component surgery. No new modal files. No routing changes.
+
+---

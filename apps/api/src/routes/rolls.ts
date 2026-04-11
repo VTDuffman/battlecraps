@@ -47,6 +47,8 @@ import { runs, users, type RunRow, type StoredCrewSlots, type StoredCrewSlot } f
 import { rollDice } from '../lib/rng.js';
 import { getIO } from '../lib/io.js';
 import { hydrateCrewMember } from '../lib/crewRegistry.js';
+import { requireClerkAuth } from '../lib/clerkAuth.js';
+import { resolveUserByClerkId } from '../lib/resolveUser.js';
 
 // ---------------------------------------------------------------------------
 // Marker targets (gauntlet cash goals, in cents)
@@ -157,7 +159,7 @@ interface WsTurnSettledPayload {
 export async function rollsPlugin(app: FastifyInstance): Promise<void> {
   app.post<{ Params: RollParams; Body: RollBody }>(
     '/runs/:id/roll',
-    { schema: { body: rollBodySchema } },
+    { schema: { body: rollBodySchema }, preHandler: [requireClerkAuth] },
     rollHandler,
   );
 }
@@ -171,12 +173,12 @@ async function rollHandler(
   reply: FastifyReply,
 ): Promise<void> {
   // ── 0. Identity ───────────────────────────────────────────────────────────
-  // In production this comes from a verified JWT. For now we read a header.
-  // TODO: Replace with @fastify/jwt once auth is wired up.
-  const userId = request.headers['x-user-id'];
-  if (typeof userId !== 'string' || userId.length === 0) {
-    return reply.status(401).send({ error: 'Unauthorized' });
+  // clerkId verified by requireClerkAuth preHandler; resolve to internal UUID.
+  const user = await resolveUserByClerkId(request.clerkId);
+  if (!user) {
+    return reply.status(401).send({ error: 'User not found — please re-sign in.' });
   }
+  const userId = user.id;
 
   const runId = request.params.id;
 

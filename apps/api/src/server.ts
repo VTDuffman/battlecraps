@@ -66,7 +66,8 @@ await app.register(crewPlugin,      { prefix: '/api/v1' });
 await app.register(mechanicPlugin,  { prefix: '/api/v1' });
 await app.register(authPlugin,      { prefix: '/api/v1' });
 
-// Health check — used by container orchestration and CI smoke tests
+// Health check — Render health check path (healthCheckPath: /health in render.yaml).
+// Returns 200 so Render considers the deployment healthy and stops the redeploy loop.
 app.get('/health', async () => ({ status: 'ok', ts: Date.now() }));
 
 // ---------------------------------------------------------------------------

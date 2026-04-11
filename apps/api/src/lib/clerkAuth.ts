@@ -44,6 +44,6 @@ export async function requireClerkAuth(
     });
     request.clerkId = payload.sub;
   } catch {
-    await reply.status(401).send({ error: 'Invalid or expired token' });
+    return reply.status(401).send({ error: 'Invalid or expired token' });
   }
 }

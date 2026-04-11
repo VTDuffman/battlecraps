@@ -67,7 +67,7 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
           username:     displayName,
           passwordHash: null, // unused — auth is via Clerk
         })
-        .onConflictDoNothing()
+        .onConflictDoNothing({ target: users.clerkId })
         .returning();
 
       let user = inserted[0];

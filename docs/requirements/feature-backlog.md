@@ -375,7 +375,7 @@ Full UX/design spec: `docs/requirements/tutorial-user-journey.md`
 
 **Type:** Feature
 **Area:** `apps/web/src/App.tsx`, `apps/web/src/components/TitleLobbyScreen.tsx`
-**Status:** Design complete — pending implementation
+**Status:** Implemented
 **Technical design:** `docs/design/title-screen-technical-design.md`
 
 ### Problem

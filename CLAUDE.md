@@ -51,7 +51,7 @@ apps/api/src/                 # Fastify backend
 
 apps/web/src/                 # React SPA
   store/useGameStore.ts       # Zustand: all game state + socket listeners + cascade queue
-  App.tsx                     # Router: TableBoard | TransitionOrchestrator | PubScreen | GameOverScreen
+  App.tsx                     # Router: TitleLobbyScreen | TableBoard | TransitionOrchestrator | PubScreen | GameOverScreen
   components/                 # TableBoard, BettingGrid, DiceZone, CrewPortrait, RollLog, ChipRain, CompCardFan
   transitions/phases/         # 9 cinematic phases: Title, MarkerIntro, FloorReveal, Boss*, Victory*, GameOver
   hooks/                      # useAnimatedCounter, useFloorTheme, useCrowdAudio
@@ -106,9 +106,9 @@ apps/web/src/                 # React SPA
 ## Docs Structure
 
 ```
-docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–010), tutorial-user-journey.md, vibe-ideas.md
+docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–011), tutorial-user-journey.md, vibe-ideas.md
 docs/frameworks/      # crew_framework.md (15 live + 15 proposed crew), floor_design.md, boss_framework.md
-docs/design/          # crew-sprites-tdd.md (asset spec), transition_framework TDD, boss-mechanic-technical-design.md, CODE_REVIEW.md*
+docs/design/          # crew-sprites-tdd.md (asset spec), transition_framework TDD, boss-mechanic-technical-design.md, title-screen-technical-design.md, CODE_REVIEW.md*
 docs/testing/         # known_issues.md (open defects), test plans + results (alpha cycle — archived)
 ```
 
@@ -118,7 +118,7 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 
 ## Current State
 
-**Status:** Beta baseline. All 9 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped — all cinematic sequencing bugs resolved. Boss mechanic framework (FB-010) fully implemented — all three boss rules enforced server-side.
+**Status:** Beta baseline. All 9 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped — all cinematic sequencing bugs resolved. Boss mechanic framework (FB-010) fully implemented — all three boss rules enforced server-side. Title lobby screen (FB-011) live — every session starts on the title screen with Continue/New Run options.
 
 **Open defects:** None.
 
@@ -127,4 +127,3 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 - Proposed crew IDs 16–30 (design only, see `docs/frameworks/crew_framework.md`)
 - Tutorial & "How to Play" system (UX design: `docs/requirements/tutorial-user-journey.md`, backlog: FB-007)
 - Dice roll sound effect — synthesized rattle on throw (backlog: FB-009)
-- Title lobby screen — session-start screen with Continue/New Run options (design: `docs/design/title-screen-technical-design.md`, backlog: FB-011)

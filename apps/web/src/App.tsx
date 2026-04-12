@@ -5,11 +5,14 @@
 // Auth flow:
 //   1. Clerk manages the Google OAuth session via <ClerkProvider> in main.tsx.
 //   2. Unauthenticated visitors see a <SignIn /> screen.
-//   3. Authenticated users call POST /auth/provision to ensure a DB user record
-//      exists; the returned userId is discarded (JWT carries identity hereafter).
-//   4. Run state is loaded from localStorage (bc_run_id) or a fresh run is
+//   3. Authenticated users see TitleLobbyScreen — choose Continue or New Run.
+//   4. On lobby action, POST /auth/provision ensures a DB user record exists.
+//   5. Run state is loaded from localStorage (bc_run_id) or a fresh run is
 //      created via POST /api/v1/runs.
-//   5. connectToRun() initialises the game.
+//   6. connectToRun() initialises the game.
+//
+// The only bypass for TitleLobbyScreen is onPlayAgain() from Game Over /
+// Victory, which calls bootstrap(true) directly without re-showing the lobby.
 // =============================================================================
 
 import React, { useEffect, useState } from 'react';
@@ -17,6 +20,7 @@ import { SignIn, useUser, useAuth }    from '@clerk/react';
 import { TableBoard }                  from './components/TableBoard.js';
 import { useGameStore }                from './store/useGameStore.js';
 import { TransitionOrchestrator }      from './transitions/TransitionOrchestrator.js';
+import { TitleLobbyScreen }            from './components/TitleLobbyScreen.js';
 import type { StoredCrewSlots }        from './store/useGameStore.js';
 import type { Bets }                   from '@battlecraps/shared';
 
@@ -72,8 +76,9 @@ const AuthenticatedApp: React.FC = () => {
     return () => setGetToken(null);
   }, [getToken, setGetToken]);
 
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const [showTitleLobby, setShowTitleLobby] = useState(true);
+  const [loading,        setLoading]        = useState(false);
+  const [error,          setError]          = useState<string | null>(null);
 
   const bootstrap = React.useCallback(async (forceNew = false) => {
     if (!user) return;
@@ -180,11 +185,34 @@ const AuthenticatedApp: React.FC = () => {
     // Clean up legacy localStorage key from Phase 2/3.
     localStorage.removeItem('bc_run_user_id');
 
-    void bootstrap();
     return () => disconnect();
-  // bootstrap and disconnect are stable — safe to omit from deps.
+  // disconnect is stable — safe to omit from deps.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Lobby action handlers ────────────────────────────────────────────────
+  const handleContinue = () => {
+    setShowTitleLobby(false);
+    void bootstrap();
+  };
+
+  const handleNewRun = () => {
+    setShowTitleLobby(false);
+    void bootstrap(true);
+  };
+
+  // ── Title lobby — shown at session start before any run is loaded ───────
+  if (showTitleLobby) {
+    return (
+      <main className="h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
+        <TitleLobbyScreen
+          hasActiveRun={localStorage.getItem(LS_RUN_ID) !== null}
+          onContinue={handleContinue}
+          onNewRun={handleNewRun}
+        />
+      </main>
+    );
+  }
 
   // ── Loading screen ──────────────────────────────────────────────────────
   if (loading) {
@@ -235,23 +263,6 @@ const AuthenticatedApp: React.FC = () => {
   // ── Game screens ────────────────────────────────────────────────────────
   return (
     <main className="h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
-      {/* New Run button — top-left corner, always accessible */}
-      <button
-        type="button"
-        onClick={() => void bootstrap(true)}
-        className="
-          fixed top-2 left-2 z-50
-          font-pixel text-[5px] text-white/30
-          border border-white/10 rounded
-          px-1.5 py-1
-          hover:text-white/60 hover:border-white/30
-          transition-colors
-        "
-        title="Wipe localStorage and start a brand-new run"
-      >
-        NEW RUN
-      </button>
-
       <TransitionOrchestrator onPlayAgain={() => void bootstrap(true)}>
         <TableBoard />
       </TransitionOrchestrator>

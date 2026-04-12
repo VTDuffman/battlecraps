@@ -371,6 +371,49 @@ Full UX/design spec: `docs/requirements/tutorial-user-journey.md`
 
 ---
 
+## FB-011 — Title Lobby Screen
+
+**Type:** Feature
+**Area:** `apps/web/src/App.tsx`, `apps/web/src/components/TitleLobbyScreen.tsx`
+**Status:** Design complete — pending implementation
+**Technical design:** `docs/design/title-screen-technical-design.md`
+
+### Problem
+
+Every page load bootstraps immediately into the game without giving the player a chance
+to choose what to do. Players with an active run have no explicit "continue" action, and
+starting a new run requires a small, easily-missed button in the top-left corner with no
+confirmation guard.
+
+### Desired behavior
+
+- Every session (page load) opens on a title screen first
+- If an active run exists: offer **Continue Run** and **New Run**
+- **New Run** requires an inline confirmation before wiping the current run
+- The only bypass is **Play Again** from a Game Over screen — this goes directly to the
+  first VFW marker screen without passing through the lobby
+
+### Solution summary
+
+- New `TitleLobbyScreen` component — full-screen title UI (Floor 1 theme, matches
+  `TitleScreenPhase` aesthetic) with Continue/New Run buttons and an inline confirmation
+  overlay
+- `showTitleLobby: boolean` local state in `AuthenticatedApp` (defaults `true`)
+- `bootstrap()` is deferred; called only when the user makes a choice on the lobby
+- `onPlayAgain` callback bypasses the lobby entirely (`bootstrap(true)` direct call)
+- The existing one-time `TITLE` cinematic transition is preserved unchanged — it is a
+  different concept (first-ever player intro, not a session-start nav screen)
+- Remove the top-left "NEW RUN" button, superseded by the lobby
+
+### Files
+
+| File | Action |
+|---|---|
+| `apps/web/src/App.tsx` | Refactor bootstrap flow; add lobby rendering |
+| `apps/web/src/components/TitleLobbyScreen.tsx` | Create |
+
+---
+
 ## FB-010 — Boss Mechanic Framework
 
 **Type:** Feature / Architecture

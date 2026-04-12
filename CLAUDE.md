@@ -127,3 +127,4 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 - Proposed crew IDs 16–30 (design only, see `docs/frameworks/crew_framework.md`)
 - Tutorial & "How to Play" system (UX design: `docs/requirements/tutorial-user-journey.md`, backlog: FB-007)
 - Dice roll sound effect — synthesized rattle on throw (backlog: FB-009)
+- Title lobby screen — session-start screen with Continue/New Run options (design: `docs/design/title-screen-technical-design.md`, backlog: FB-011)

@@ -18,3 +18,79 @@ The Physics Prof had no come-out guard. When paired dice appeared during the com
 Added early return at the top of `execute()` when `ctx.activePoint === null`. Also removed the now-dead ternary that was deriving `phase` from `activePoint`.
 
 **File:** `packages/shared/src/crew/physicsProfessor.ts`
+
+---
+
+## KI-002 — Roll delta popup is confusing on marker-clear rolls
+
+**Area:** `apps/web/src/components/DiceZone.tsx`
+**Severity:** Low
+**Status:** Open
+
+**Issue:**
+When the player clears a marker, two win signals appear simultaneously: the celebration phase text ("Nice roll — $300 target cleared") and the gold `+$X.XX` delta popup from `DiceZone`. The popup shows the net bankroll change from that single roll (`lastDelta`), which the player is likely to misread as their highest single-roll return, a bonus amount, or some other special reward tied to clearing the marker.
+
+**Proposed fix:**
+Suppress the `lastDelta` popup (or replace it with a more contextual label) when the roll result is a marker-clear event — i.e. when `pendingTransition` is true or `celebrationSnapshot !== null` at the moment the delta would render. Alternatively, label it explicitly ("ROLL PROFIT") so its meaning is unambiguous.
+
+---
+
+## KI-003 — "Tap to Continue" on Marker Intro screen is not reliably clickable
+
+**Area:** `apps/web/src/transitions/registry.ts`, `apps/web/src/transitions/phases/MarkerIntroPhase.tsx`
+**Severity:** Low
+**Status:** Open
+**Source:** Playtester feedback
+
+**Issue:**
+The `MARKER_INTRO` phase is registered with `advanceMode: 'auto'` and `duration: 2500`. `PhasePlayer` fires `onAdvance` via `setTimeout` after 2.5 seconds regardless of user input. The "TAP TO CONTINUE" button in `MarkerIntroPhase` calls `onAdvance` correctly on click, but the 2.5s window is too short for most players to read the card and intentionally interact. Clicks after the timer fires land on the table board underneath.
+
+This is a known half-finished state — the phase component comment on line 16 notes: *"The player can also tap to skip early (future enhancement)"*.
+
+**Proposed fix:**
+Either raise `duration` substantially (e.g. 8000ms) so the auto-advance gives players real reading time, or switch `advanceMode` to `'gated'` entirely and remove the timer — matching the pattern used by `MARKER_CLEAR`, `BOSS_ENTRY` (reveal phase), and `FLOOR_REVEAL` (confirm phase).
+
+---
+
+## KI-004 — Screen flash and crowd cheer re-fire after exiting the pub
+
+**Area:** `apps/web/src/store/useGameStore.ts` (`clearTransition`)
+**Severity:** Medium
+**Status:** Open
+**Source:** Playtester observation
+
+**Issue:**
+After clearing a marker and exiting the pub, the gold screen flash and crowd cheer sound from the clearing roll replay on the fresh `TableBoard`. Both signals originate from `applyPendingSettlement()` setting `flashType: 'win'` and incrementing `_flashKey`. Neither field is reset when the celebration phases complete.
+
+Sequence:
+1. Clearing roll → `flashType: 'win'`, `_flashKey` increments. Flash and cheer fire correctly.
+2. `TableBoard` unmounts when `activeTransition` becomes `MARKER_CLEAR` (PhasePlayer takes over). `useCrowdAudio` unmounts with it.
+3. `clearTransition('MARKER_CLEAR')` clears `celebrationSnapshot` and `payoutPops` but **not** `flashType` or `_flashKey`.
+4. Player exits pub → `TableBoard` remounts. `useCrowdAudio` mounts fresh and its `useEffect` fires with the stale `_flashKey` (non-zero, bypasses the `=== 0` guard). `flashTypeRef.current` is still `'win'` → `playCheer()` fires again.
+5. Simultaneously, `flashType` is still `'win'` → the screen flash overlay renders and its CSS animation replays.
+
+**Proposed fix:**
+Add `flashType: null` and `_flashKey: 0` to the `set({...})` call in `clearTransition()` for the `MARKER_CLEAR | BOSS_VICTORY` branch — alongside the `payoutPops: null` already there. One change, kills both symptoms. Same root cause as KI (ChipRain stale-key-on-mount pattern); same fix pattern.
+
+---
+
+## KI-005 — Member's Jacket comp does not show 6th shooter pip in the UI
+
+**Area:** `apps/web/src/components/TableBoard.tsx` (`GameStatus` component, line 396)
+**Severity:** Low
+**Status:** Open
+**Source:** Playtester observation
+
+**Issue:**
+After defeating Sarge and receiving the Member's Jacket comp (+1 shooter), the shooter pip display on the table board still shows only 5 dots. The server correctly returns `shooters: 6`, and `recruitCrew()` writes that value to the store — the data is right. But `GameStatus` renders the pip strip with a hardcoded array length of 5:
+
+```tsx
+{Array.from({ length: 5 }, (_, i) => ( ... ))}
+```
+
+With `shooters = 6`, the coloring condition `i < shooters` lights all 5 dots gold (since 0–4 are all `< 6`), which looks identical to a normal full slate. The 6th dot is never rendered because there's no slot for it.
+
+`PubScreen` handles this correctly — it derives `upcomingShooters = isComped ? 6 : 5` and renders an extra ✦ with a "+1 COMP" label. But that awareness doesn't carry to the table board.
+
+**Proposed fix:**
+Change `Array.from({ length: 5 }, ...)` to `Array.from({ length: Math.max(5, shooters) }, ...)`. The baseline stays 5 dots; a 6th renders automatically when `shooters` exceeds 5. The existing coloring logic needs no changes.

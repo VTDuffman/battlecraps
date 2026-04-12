@@ -371,6 +371,84 @@ Full UX/design spec: `docs/requirements/tutorial-user-journey.md`
 
 ---
 
+## FB-010 — Boss Mechanic Framework
+
+**Type:** Feature / Architecture
+**Area:** `packages/shared/src/config.ts`, `packages/shared/src/bossRules/`, `packages/shared/src/types.ts`, `packages/shared/src/cascade.ts`, `apps/api/src/routes/rolls.ts`, `apps/web/src/transitions/phases/Boss*.tsx`, `apps/web/src/components/BossRoomHeader.tsx`
+**Status:** Implemented
+**Technical design:** `docs/design/boss-mechanic-technical-design.md`
+**Reference:** `docs/frameworks/boss_framework.md`
+
+### What was built
+
+1. **Extended `BossConfig`** — 18 fields covering identity, vibe copy (dreadTagline, entryLines, ruleBlurb, victoryQuote, defeatAnnouncement), mechanic params, and comp data. Replaces the old `risingMinBets?` accessor with a `BossRuleParams` discriminated union.
+
+2. **Boss rule hook architecture** — `packages/shared/src/bossRules/` directory mirroring the crew `execute()` pattern. Three hooks: `validateBet`, `modifyOutcome`, `modifyCascadeOrder`. One file per rule type. New boss rule = new file + one new union variant.
+
+3. **Full boss data** — All vibe copy, rule params, and comp descriptions filled in for Sarge, Mme. Le Prix, and The Executive directly in `GAUNTLET[]`.
+
+4. **Enforcement** — `DISABLE_CREW` suppresses the cascade entirely via `modifyCascadeOrder → []`. `FOURS_INSTANT_LOSS` sets `ctx.flags.instantLoss = true` → immediate GAME_OVER before cascade fires. `RISING_MIN_BETS` refactored from inline `rolls.ts` block to `validateBet` hook.
+
+5. **UI components read from config** — All five boss UI components (`BossEntryDreadPhase`, `BossEntryPhase`/`BossEntryModal`, `BossVictoryPhase`, `BossVictoryCompPhase`, `BossRoomHeader`) read exclusively from `BossConfig` — no hardcoded boss strings remain.
+
+6. **Reference document** — `docs/frameworks/boss_framework.md` covering all fields, hook interface, boss profiles, comp reference, and a "how to add a new boss" checklist.
+
+### Files
+
+| File | Action |
+|---|---|
+| `docs/frameworks/boss_framework.md` | Create |
+| `packages/shared/src/config.ts` | Extend BossConfig + BossRuleParams + fill boss data |
+| `packages/shared/src/bossRules/types.ts` | Create |
+| `packages/shared/src/bossRules/risingMinBets.ts` | Create (refactor from inline) |
+| `packages/shared/src/bossRules/disableCrew.ts` | Create (new enforcement) |
+| `packages/shared/src/bossRules/foursInstantLoss.ts` | Create (new enforcement) |
+| `packages/shared/src/bossRules/index.ts` | Create (registry) |
+| `packages/shared/src/types.ts` | Add `instantLoss` to `TurnContextFlags` |
+| `packages/shared/src/cascade.ts` | Add `modifyCascadeOrder` hook point |
+| `apps/api/src/routes/rolls.ts` | Replace inline boss logic with hook calls |
+| `apps/web/src/transitions/phases/BossEntryDreadPhase.tsx` | Read from config |
+| `apps/web/src/transitions/phases/BossEntryPhase.tsx` | Read from config |
+| `apps/web/src/transitions/phases/BossVictoryPhase.tsx` | Read from config |
+| `apps/web/src/transitions/phases/BossVictoryCompPhase.tsx` | Read from config, delete REWARD_LABELS |
+| `apps/web/src/components/BossRoomHeader.tsx` | Read `ruleHeaderText` from config |
+
+---
+
+## FB-009 — Dice Roll Sound Effect
+
+**Type:** Quality of Life / Audio
+**Area:** `apps/web/src/hooks/useCrowdAudio.ts`, `apps/web/src/store/useGameStore.ts`
+**Status:** Pending implementation
+**Source:** Playtester feedback
+
+### Request
+
+> "There should be a soothing dice roll sound effect when you roll."
+
+### Context
+
+The game already has a fully synthesized Web Audio API audio system in `useCrowdAudio.ts` — crowd cheer on win, crowd groan on loss, mute toggle persisted to localStorage. No audio asset files exist or are needed; all sounds are generated procedurally. The dice roll sound should follow the same pattern.
+
+"Soothing" points toward soft wooden/baize physics rather than sharp casino clattering — two short bandpass-filtered noise bursts mimicking dice settling on felt, ~200ms total, with gentle high-frequency rolloff.
+
+### Implementation plan
+
+**1. Add `playDiceRattle(ctx: AudioContext)` to `useCrowdAudio.ts`**
+Two bandpass white-noise bursts (~80ms each, ~40ms apart) at a low amplitude. Same synthesis pattern as the existing `makeNoiseBuf` + filter + gain envelope approach already used for cheer/groan.
+
+**2. Add `_rollKey` to the store (`useGameStore.ts`)**
+A monotonic counter incremented alongside `isRolling: true` in `rollDice()`. Same pattern as `_flashKey` / `_popsKey`. Three lines total: one field in `GameState`, one initial value, one increment in `rollDice()`.
+
+**3. Add a trigger `useEffect` in `useCrowdAudio.ts`**
+Watch `_rollKey` (not `isRolling` directly, to avoid double-fire on the `false` toggle). Fires `playDiceRattle()` when `_rollKey` increments. Gated by `mutedRef` like the existing sting effects.
+
+### Scope
+
+~25 lines across 2 files. No new components, no assets, no config changes. Mute toggle covers it automatically.
+
+---
+
 ## FB-008 — Transition Timing Overhaul
 
 **Type:** Bug / Quality of Life

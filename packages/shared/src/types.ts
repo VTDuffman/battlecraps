@@ -130,6 +130,13 @@ export interface TurnContextFlags {
    * version of their number is rolled (they skip the normal soft-number loss).
    */
   hardwayProtected: boolean;
+
+  /**
+   * Set by the FOURS_INSTANT_LOSS boss rule hook when the dice total equals the
+   * boss's triggerTotal. The server checks this after cascade completes and
+   * transitions the run directly to GAME_OVER regardless of bankroll or shooters.
+   */
+  instantLoss: boolean;
 }
 
 /**

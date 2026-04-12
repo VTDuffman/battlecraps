@@ -84,9 +84,7 @@ export const BossRoomHeader: React.FC = () => {
       <div
         className="px-4 pb-2 font-pixel text-[5px] text-red-400/50 tracking-wide text-center"
       >
-        {boss.rule === 'RISING_MIN_BETS' && '⚔ ANTE RISES ON POINT HIT — MIN BET HOLDS ON 7-OUT'}
-        {boss.rule === 'DISABLE_CREW'    && '⚔ CREW CASCADE IS REVERSED — RIGHTMOST FIRES FIRST'}
-        {boss.rule === 'FOURS_INSTANT_LOSS' && '⚔ ROLLING A TOTAL OF 4 IS INSTANT BUST'}
+        ⚔ {boss.ruleHeaderText}
       </div>
     </div>
   );

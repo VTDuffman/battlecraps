@@ -13,7 +13,7 @@
 /** The mechanical modifier a boss applies during their High Limit Room fight. */
 export type BossRuleType =
   | 'RISING_MIN_BETS'     // Floor 1 — Sarge: minimum Pass Line bet rises each Point Hit
-  | 'DISABLE_CREW'        // Floor 2 — Mme. Le Prix: Crew cascade fires in reverse
+  | 'DISABLE_CREW'        // Floor 2 — Mme. Le Prix: Crew cascade is fully suppressed
   | 'FOURS_INSTANT_LOSS'; // Floor 3 — The Executive: rolling a total of 4 is instant loss
 
 /** The permanent comp perk awarded for defeating a boss. */
@@ -25,6 +25,8 @@ export type CompRewardType =
 /**
  * Tunable parameters for the RISING_MIN_BETS boss rule.
  * All percentages are expressed as fractions of the marker's target (0.05 = 5%).
+ * @deprecated Superseded by BossRuleParams. Retained while BossEntryModal still
+ *   reads boss.risingMinBets directly. Removed in Part 7 once UI is migrated.
  */
 export interface RisingMinBetsParams {
   /** Fraction of the marker target that becomes the min-bet on the very first roll. */
@@ -35,21 +37,68 @@ export interface RisingMinBetsParams {
   capPct: number;
 }
 
+/**
+ * Discriminated union of per-rule tunable parameters.
+ * TypeScript narrows inside each hook file so Sarge's startPct can never be
+ * accidentally accessed on The Executive's config. Add a new union member here
+ * when a new boss rule type is introduced — no other shared types need changing.
+ */
+export type BossRuleParams =
+  | { rule: 'RISING_MIN_BETS';    startPct: number; incrementPct: number; capPct: number }
+  | { rule: 'DISABLE_CREW' }
+  | { rule: 'FOURS_INSTANT_LOSS'; triggerTotal: number };
+
 /** Full descriptor for a boss fight. Only present on markers where isBoss is true. */
 export interface BossConfig {
+  // ── Identity ──────────────────────────────────────────────────────────────
   /** NPC name shown in boss entry and victory screens. */
   name: string;
+  /** Subtitle rendered beneath the name on the dread screen. */
+  title: string;
+
+  // ── Vibe copy ─────────────────────────────────────────────────────────────
+  /** 1–3 word bark displayed on the dread screen before the rule briefing. */
+  dreadTagline: string;
+  /** 2–3 lines of boss dialogue shown on the entry screen. */
+  entryLines: [string, string] | [string, string, string];
+  /** One sentence explaining the boss mechanic shown on the entry screen. */
+  ruleBlurb: string;
+  /** What the boss says when defeated, shown on the victory screen. */
+  victoryQuote: string;
+  /** Header shown on the boss victory screen ("ENEMY NEUTRALIZED" etc.). */
+  defeatAnnouncement: string;
+
+  // ── Mechanic ──────────────────────────────────────────────────────────────
   /** The rule mechanic in effect for the duration of this fight. */
   rule: BossRuleType;
+  /** Short persistent text shown in the BossRoomHeader during the fight. */
+  ruleHeaderText: string;
+  /** Strongly-typed rule params — narrows via BossRuleParams discriminated union. */
+  ruleParams: BossRuleParams;
+
+  // ── Comp ──────────────────────────────────────────────────────────────────
   /** The comp perk awarded on defeat. */
   compReward: CompRewardType;
   /** Numeric ID written to users.comp_perk_ids after defeating this boss. */
   compPerkId: number;
-  /** Flavor text shown in the boss entry modal. */
+  /** Display name for the comp reward ("MEMBER'S JACKET"). */
+  compName: string;
+  /** One-sentence description of what the comp does. */
+  compDescription: string;
+  /** Short label used on the CompCardFan card. */
+  compFanLabel: string;
+
+  // ── Legacy (migration) ────────────────────────────────────────────────────
+  /**
+   * Flavor text shown in the boss entry modal.
+   * @deprecated Superseded by entryLines + ruleBlurb. Retained while
+   *   BossEntryModal still reads boss.flavorText. Removed in Part 7.
+   */
   flavorText: string;
   /**
-   * Parameters for RISING_MIN_BETS.
-   * Required when rule === 'RISING_MIN_BETS', undefined otherwise.
+   * Parameters for RISING_MIN_BETS — read by BossEntryModal and getBossMinBet().
+   * @deprecated Superseded by ruleParams. Retained while BossEntryModal and
+   *   getBossMinBet() still reference this field directly. Removed in Part 7.
    */
   risingMinBets?: RisingMinBetsParams;
 }
@@ -112,15 +161,35 @@ export const GAUNTLET: readonly MarkerConfig[] = [
     floor:       1,
     isBoss:      true,
     boss: {
-      name:       'Sarge',
-      rule:       'RISING_MIN_BETS',
-      compReward: 'EXTRA_SHOOTER',
-      compPerkId: COMP_PERK_IDS.MEMBER_JACKET,
-      flavorText: "You want to play in MY hall? Ante up, soldier.",
+      // Identity
+      name:  'Sarge',
+      title: 'The Pit Boss',
+      // Vibe
+      dreadTagline:        'FALL IN.',
+      entryLines: [
+        "You want to shoot in MY hall?",
+        "Every point you hit, the price goes up.",
+        "And it never comes back down.",
+      ],
+      ruleBlurb:          "Minimum Pass Line bet rises with every Point Hit — and holds on Seven Out.",
+      victoryQuote:       "…not bad, soldier. Dismissed.",
+      defeatAnnouncement: 'ENEMY NEUTRALIZED',
+      // Mechanic
+      rule:           'RISING_MIN_BETS',
+      ruleHeaderText: 'ANTE RISES ON POINT HIT — MIN BET HOLDS ON 7-OUT',
+      ruleParams:     { rule: 'RISING_MIN_BETS', startPct: 0.05, incrementPct: 0.02, capPct: 0.20 },
+      // Comp
+      compReward:      'EXTRA_SHOOTER',
+      compPerkId:      COMP_PERK_IDS.MEMBER_JACKET,
+      compName:        "MEMBER'S JACKET",
+      compDescription: "+1 SHOOTER this segment — they know you earned your seat.",
+      compFanLabel:    'JACKET',
+      // Legacy
+      flavorText:    "You want to play in MY hall? Ante up, soldier.",
       risingMinBets: {
-        startPct:     0.05,  // 5%  of target on roll 1 → $50 min
-        incrementPct: 0.02,  // +2% per subsequent roll → +$20/roll at this tier
-        capPct:       0.20,  // never exceeds 20%       → $200 max for this boss
+        startPct:     0.05,
+        incrementPct: 0.02,
+        capPct:       0.20,
       },
     },
   },
@@ -145,10 +214,30 @@ export const GAUNTLET: readonly MarkerConfig[] = [
     floor:       2,
     isBoss:      true,
     boss: {
-      name:       'Mme. Le Prix',
-      rule:       'DISABLE_CREW',
-      compReward: 'HYPE_RESET_HALF',
-      compPerkId: COMP_PERK_IDS.SEA_LEGS,
+      // Identity
+      name:  'Mme. Le Prix',
+      title: 'Madame of the Salon Privé',
+      // Vibe
+      dreadTagline:        'HOW CHARMING.',
+      entryLines: [
+        "Fresh money. How delightful.",
+        "On my table, your little friends stay quiet.",
+        "Let's see how well you play without them.",
+      ],
+      ruleBlurb:          "No crew fires in the Salon Privé. You're on your own.",
+      victoryQuote:       "…improbable. You may keep your winnings.",
+      defeatAnnouncement: 'TABLE CLOSED',
+      // Mechanic
+      rule:           'DISABLE_CREW',
+      ruleHeaderText: 'CREW IS SILENCED — CASCADE DOES NOT FIRE',
+      ruleParams:     { rule: 'DISABLE_CREW' },
+      // Comp
+      compReward:      'HYPE_RESET_HALF',
+      compPerkId:      COMP_PERK_IDS.SEA_LEGS,
+      compName:        'SEA LEGS',
+      compDescription: "On Seven Out, Hype resets to 50% instead of 1.0×.",
+      compFanLabel:    'SEA LEGS',
+      // Legacy
       flavorText: "On my table, the crew works backwards. Adapt.",
     },
   },
@@ -173,10 +262,30 @@ export const GAUNTLET: readonly MarkerConfig[] = [
     floor:       3,
     isBoss:      true,
     boss: {
-      name:       'The Executive',
-      rule:       'FOURS_INSTANT_LOSS',
-      compReward: 'GOLDEN_TOUCH',
-      compPerkId: COMP_PERK_IDS.GOLDEN_TOUCH,
+      // Identity
+      name:  'The Executive',
+      title: 'CFO, High Limit Division',
+      // Vibe
+      dreadTagline:        'YOUR MEETING IS SCHEDULED.',
+      entryLines: [
+        "Sit down. We've been expecting you.",
+        "One rule. Roll a four — you're finished.",
+        "The house has reviewed your file.",
+      ],
+      ruleBlurb:          "Roll a total of 4 and your run ends immediately. No exceptions.",
+      victoryQuote:       "…restructuring was inevitable. Well played.",
+      defeatAnnouncement: 'EXECUTIVE OVERRIDE',
+      // Mechanic
+      rule:           'FOURS_INSTANT_LOSS',
+      ruleHeaderText: 'ROLLING A 4 IS INSTANT BUST',
+      ruleParams:     { rule: 'FOURS_INSTANT_LOSS', triggerTotal: 4 },
+      // Comp
+      compReward:      'GOLDEN_TOUCH',
+      compPerkId:      COMP_PERK_IDS.GOLDEN_TOUCH,
+      compName:        'GOLDEN TOUCH',
+      compDescription: "Your first come-out roll each segment is guaranteed a Natural.",
+      compFanLabel:    'GOLDEN',
+      // Legacy
       flavorText: "Fours are for losers. Don't roll one.",
     },
   },

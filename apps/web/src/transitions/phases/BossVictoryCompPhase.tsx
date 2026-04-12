@@ -19,29 +19,7 @@ import React from 'react';
 import type { PhaseComponentProps } from '../types.js';
 import { useGameStore }            from '../../store/useGameStore.js';
 import { GAUNTLET }                from '@battlecraps/shared';
-import type { CompRewardType }     from '@battlecraps/shared';
 import { getFloorTheme }           from '../../lib/floorThemes.js';
-
-// ---------------------------------------------------------------------------
-// Reward display strings
-// ---------------------------------------------------------------------------
-
-const REWARD_LABELS: Record<CompRewardType, string> = {
-  EXTRA_SHOOTER:   "MEMBER'S JACKET",
-  HYPE_RESET_HALF: 'SEA LEGS',
-  GOLDEN_TOUCH:    'GOLDEN TOUCH',
-};
-
-const REWARD_SUBTEXTS: Record<CompRewardType, string> = {
-  EXTRA_SHOOTER:
-    '+1 SHOOTER this segment — they know you earned your seat.',
-  HYPE_RESET_HALF:
-    'On Seven Out, Hype resets to half its current value instead of 1.0×.',
-  GOLDEN_TOUCH:
-    'Your first Come Out roll of the next segment is guaranteed a Natural.',
-};
-
-// ---------------------------------------------------------------------------
 
 export const BossVictoryCompPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) => {
   const snapshot = useGameStore((s) => s.celebrationSnapshot);
@@ -50,9 +28,6 @@ export const BossVictoryCompPhase: React.FC<PhaseComponentProps> = ({ onAdvance 
   const theme = snapshot ? getFloorTheme(snapshot.markerIndex) : null;
 
   if (!boss || !theme) return null;
-
-  const rewardLabel   = REWARD_LABELS[boss.compReward];
-  const rewardSubtext = REWARD_SUBTEXTS[boss.compReward];
 
   return (
     <div
@@ -118,7 +93,7 @@ export const BossVictoryCompPhase: React.FC<PhaseComponentProps> = ({ onAdvance 
             textShadow: `0 0 20px ${theme.bossTextColor}60`,
           }}
         >
-          {rewardLabel}
+          {boss.compName}
         </div>
 
         <div
@@ -130,7 +105,7 @@ export const BossVictoryCompPhase: React.FC<PhaseComponentProps> = ({ onAdvance 
           className="font-pixel text-[6px] text-center leading-relaxed mt-1"
           style={{ color: `${theme.bossStarColor}80` }}
         >
-          {rewardSubtext}
+          {boss.compDescription}
         </p>
       </div>
 

@@ -13,6 +13,8 @@
 // =============================================================================
 
 import type { CrewMember, RollDiceFn, TurnContext } from './types.js';
+import type { BossRuleHooks } from './bossRules/index.js';
+import type { BossRuleParams } from './config.js';
 import { MIMIC_ID } from './crew/mimic.js';
 import { LUCKY_CHARM_ID } from './crew/luckyCharm.js';
 
@@ -167,12 +169,16 @@ function computeContextDelta(before: TurnContext, after: TurnContext): Partial<T
  * @param initialCtx   The TurnContext produced by resolveRoll() for this roll.
  * @param rollDice     Server-side RNG, injected here and passed through to crew.
  *                     Only Dice crew (Lefty, etc.) will call this; others ignore it.
+ * @param bossHooks    Optional boss rule hooks for the active boss fight.
+ * @param bossParams   Required when bossHooks is provided — typed params for the hook.
  * @returns            CascadeResult with final context, events, and updated crew state.
  */
 export function resolveCascade(
   crewSlots: (CrewMember | null)[],
   initialCtx: TurnContext,
   rollDice: RollDiceFn,
+  bossHooks?: BossRuleHooks,
+  bossParams?: BossRuleParams,
 ): CascadeResult {
   const events: CascadeEvent[] = [];
 
@@ -196,7 +202,13 @@ export function resolveCascade(
   // modified by all previous crew members, in slot order.
   let ctx = initialCtx;
 
-  for (let i = 0; i < crewSlots.length; i++) {
+  // Boss hook: DISABLE_CREW returns [] to skip the entire loop.
+  // Default: fire slots 0→N in order.
+  const slotOrder =
+    bossHooks?.modifyCascadeOrder?.(crewSlots.length, bossParams!) ??
+    Array.from({ length: crewSlots.length }, (_, i) => i);
+
+  for (const i of slotOrder) {
     const member = crewSlots[i];
 
     // ── Empty slot (null) or missing index (noUncheckedIndexedAccess) ─────

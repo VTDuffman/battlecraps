@@ -58,6 +58,11 @@ apps/web/src/                 # React SPA
   lib/floorThemes.ts          # Three floor theme objects (gritty / elegant / electric)
 ```
 
+**Audio system (`useCrowdAudio`):** Fully synthesized via Web Audio API — no asset files. `AudioContext` is lazy-created on first flash event (satisfies browser autoplay policy). Mute state persisted to `localStorage` (`bc_muted`). Current stings: crowd cheer (win flash), crowd groan (lose flash). Pending: dice roll rattle on throw (FB-009).
+
+```
+```
+
 **Key constraints:**
 - All money in integer cents throughout (suffix `Cents` where ambiguous)
 - Crew cascade is immutable: each `execute()` receives and returns a full `TurnContext` copy
@@ -101,9 +106,9 @@ apps/web/src/                 # React SPA
 ## Docs Structure
 
 ```
-docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–008), tutorial-user-journey.md, vibe-ideas.md
-docs/frameworks/      # crew_framework.md (15 live + 15 proposed crew), floor_design.md
-docs/design/          # crew-sprites-tdd.md (asset spec), transition_framework TDD, CODE_REVIEW.md*
+docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–010), tutorial-user-journey.md, vibe-ideas.md
+docs/frameworks/      # crew_framework.md (15 live + 15 proposed crew), floor_design.md, boss_framework.md
+docs/design/          # crew-sprites-tdd.md (asset spec), transition_framework TDD, boss-mechanic-technical-design.md, CODE_REVIEW.md*
 docs/testing/         # known_issues.md (open defects), test plans + results (alpha cycle — archived)
 ```
 
@@ -113,7 +118,7 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 
 ## Current State
 
-**Status:** Beta baseline. All 9 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped — all cinematic sequencing bugs resolved.
+**Status:** Beta baseline. All 9 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped — all cinematic sequencing bugs resolved. Boss mechanic framework (FB-010) fully implemented — all three boss rules enforced server-side.
 
 **Open defects:** None.
 
@@ -121,3 +126,4 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 - Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md` — 64×64 SNES-style PNGs)
 - Proposed crew IDs 16–30 (design only, see `docs/frameworks/crew_framework.md`)
 - Tutorial & "How to Play" system (UX design: `docs/requirements/tutorial-user-journey.md`, backlog: FB-007)
+- Dice roll sound effect — synthesized rattle on throw (backlog: FB-009)

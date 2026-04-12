@@ -11,8 +11,6 @@
 
 import React from 'react';
 import type { BossConfig } from '@battlecraps/shared';
-import { getBossMinBet, GAUNTLET } from '@battlecraps/shared';
-import { useGameStore } from '../store/useGameStore.js';
 import { getFloorTheme } from '../lib/floorThemes.js';
 
 interface BossEntryModalProps {
@@ -26,9 +24,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
   markerIndex,
   onEnter,
 }) => {
-  const bossPointHits  = useGameStore((s) => s.bossPointHits);
-  const startingMinBet = getBossMinBet(markerIndex, bossPointHits);
-  const theme          = getFloorTheme(markerIndex);
+  const theme = getFloorTheme(markerIndex);
 
   return (
     <div
@@ -89,7 +85,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
         </div>
       </div>
 
-      {/* ── Flavor text ─────────────────────────────────────────────────────── */}
+      {/* ── Entry lines — boss dialogue ──────────────────────────────────────── */}
       <div
         className="px-8 py-4 mx-6 rounded"
         style={{
@@ -97,9 +93,15 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
           border:     `1px solid ${theme.bossBorderColor}`,
         }}
       >
-        <p className="font-mono text-[9px] text-center leading-relaxed italic" style={{ color: `${theme.bossTextColor}99` }}>
-          &ldquo;{boss.flavorText}&rdquo;
-        </p>
+        {boss.entryLines.map((line, i) => (
+          <p
+            key={i}
+            className="font-mono text-[9px] text-center leading-relaxed italic"
+            style={{ color: `${theme.bossTextColor}99` }}
+          >
+            {i === 0 ? <>&ldquo;{line}</> : i === boss.entryLines.length - 1 ? <>{line}&rdquo;</> : line}
+          </p>
+        ))}
         <div
           className="mt-1 h-px"
           style={{ background: `linear-gradient(90deg, transparent, ${theme.bossBorderColor}, transparent)` }}
@@ -114,15 +116,9 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
         <div className="font-pixel text-[5px] tracking-widest mb-2 text-center" style={{ color: `${theme.bossTextColor}99` }}>
           ── HOUSE RULES ──
         </div>
-
-        {boss.rule === 'RISING_MIN_BETS' && boss.risingMinBets && (
-          <div className="space-y-1.5">
-            <RuleRow icon="⬆" text={`Minimum Pass Line bet starts at $${startingMinBet !== null ? (startingMinBet / 100).toFixed(0) : '—'}`} />
-            <RuleRow icon="⬆" text={`Rises by ${(boss.risingMinBets.incrementPct * 100).toFixed(0)}% of target each Point Hit`} />
-            <RuleRow icon="⏸" text="Min-bet HOLDS on a Seven Out — the floor never drops" />
-            <RuleRow icon="⚠" text={`Caps at $${Math.round(((GAUNTLET[markerIndex]?.targetCents ?? 0) * boss.risingMinBets.capPct) / 100)}`} danger />
-          </div>
-        )}
+        <p className="font-mono text-[8px] text-center leading-snug" style={{ color: `${theme.bossTextColor}80` }}>
+          {boss.ruleBlurb}
+        </p>
       </div>
 
       {/* ── Enter button ────────────────────────────────────────────────────── */}
@@ -159,18 +155,4 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
   );
 };
 
-// ---------------------------------------------------------------------------
-// Rule row helper
-// ---------------------------------------------------------------------------
-
-const RuleRow: React.FC<{ icon: string; text: string; danger?: boolean }> = ({ icon, text, danger }) => (
-  <div className="flex items-start gap-2">
-    <span className={`font-pixel text-[7px] flex-none mt-0.5 ${danger ? 'text-red-400' : 'text-red-600/70'}`}>
-      {icon}
-    </span>
-    <span className={`font-mono text-[8px] leading-snug ${danger ? 'text-red-300/80' : 'text-red-400/60'}`}>
-      {text}
-    </span>
-  </div>
-);
 

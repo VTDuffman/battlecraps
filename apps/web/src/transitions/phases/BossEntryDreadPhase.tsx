@@ -98,6 +98,17 @@ export const BossEntryDreadPhase: React.FC<PhaseComponentProps> = () => {
         {boss.name.toUpperCase()}
       </div>
 
+      {/* Dread tagline — boss's opening bark */}
+      <div
+        className="font-pixel text-[9px] tracking-[0.3em] text-center px-8"
+        style={{
+          color:      `${theme.bossStarColor}cc`,
+          textShadow: `0 0 16px ${theme.bossTextColor}40`,
+        }}
+      >
+        {boss.dreadTagline}
+      </div>
+
       {/* Bottom accent bar */}
       <div
         className="absolute bottom-0 left-0 right-0 h-1"

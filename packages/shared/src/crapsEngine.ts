@@ -510,11 +510,12 @@ export function resolveRoll(
     // ── Hype — carried in from GameState, crew may boost it ─────────────
     hype,
 
-    // ── Flags — all false until a crew member explicitly sets one ────────
+    // ── Flags — all false until a crew member or boss rule explicitly sets one ─
     flags: {
       sevenOutBlocked:   false,
       passLineProtected: false,
       hardwayProtected:  false,
+      instantLoss:       false,
     },
 
     // ── Resolved bets — zeroed for any bet that won or lost this roll ────

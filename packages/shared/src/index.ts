@@ -20,11 +20,16 @@ export {
 
 export type {
   BossRuleType,
+  BossRuleParams,
   CompRewardType,
   RisingMinBetsParams,
   BossConfig,
   MarkerConfig,
 } from './config.js';
+
+// Boss rule hook registry + types
+export { BOSS_RULE_HOOKS } from './bossRules/index.js';
+export type { BossRuleHooks, BossRuleState } from './bossRules/index.js';
 
 // All TypeScript interfaces and type aliases
 export type {

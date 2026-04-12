@@ -62,7 +62,7 @@ export const BossVictoryPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
           className="font-pixel text-[5px] tracking-[0.4em]"
           style={{ color: `${theme.bossTextColor}70` }}
         >
-          ENEMY NEUTRALIZED
+          {boss.defeatAnnouncement}
         </div>
 
         {/* Boss name */}

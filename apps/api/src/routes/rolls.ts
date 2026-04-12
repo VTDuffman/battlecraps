@@ -29,9 +29,10 @@ import {
   validateOddsBet,
   buildRollReceipt,
   MARKER_TARGETS,
+  GAUNTLET,
+  BOSS_RULE_HOOKS,
   getMaxBet,
   getMinBet,
-  getBossMinBet,
   isBossMarker,
   getBaseHypeTick,
   OLD_PRO_ID,
@@ -40,6 +41,8 @@ import {
   type CrewMember,
   type Bets,
   type GamePhase,
+  type BossRuleParams,
+  type BossRuleState,
 } from '@battlecraps/shared';
 
 import { db } from '../db/client.js';
@@ -204,6 +207,12 @@ async function rollHandler(
     });
   }
 
+  // ── 3b. Boss rule hooks (active during boss markers only) ─────────────────
+  const bossMarkerConfig = GAUNTLET[run.currentMarkerIndex];
+  const bossHooks        = bossMarkerConfig?.boss ? BOSS_RULE_HOOKS[bossMarkerConfig.boss.ruleParams.rule] : undefined;
+  const bossParams       = bossMarkerConfig?.boss ? bossMarkerConfig.boss.ruleParams : undefined;
+  const bossState: BossRuleState = { bossPointHits: run.bossPointHits, markerIndex: run.currentMarkerIndex };
+
   // ── 4. Bet validation ──────────────────────────────────────────────────────
   //
   // Deduct-on-placement model: the DB bankroll already reflects bets placed in
@@ -284,14 +293,12 @@ async function rollHandler(
     });
   }
 
-  // ── Boss fight: Rising Min-Bets rule ───────────────────────────────────
-  // During a boss marker, the minimum Pass Line bet rises with each roll.
-  // The floor holds (does not reset) on a Seven Out — Sarge doesn't let up.
-  const bossMinBet = getBossMinBet(run.currentMarkerIndex, run.bossPointHits);
-  if (bossMinBet !== null && incomingBets.passLine < bossMinBet) {
-    return reply.status(422).send({
-      error: `Minimum bet is ${bossMinBet}¢ ($${(bossMinBet / 100).toFixed(0)}) — Sarge won't deal for less.`,
-    });
+  // ── Boss fight: bet-validation hook (e.g. Sarge's Rising Min-Bets rule) ──
+  if (bossHooks?.validateBet) {
+    const bossError = bossHooks.validateBet(incomingBets, bossParams!, bossState);
+    if (bossError !== null) {
+      return reply.status(422).send({ error: bossError });
+    }
   }
 
   // ── 5. Hydrate crew slots ─────────────────────────────────────────────────
@@ -325,11 +332,71 @@ async function rollHandler(
     ? { ...initialCtx, hype: Math.round((initialCtx.hype + baseHypeTick) * 10_000) / 10_000 }
     : initialCtx;
 
+  // ── 7c. Boss outcome modifier (e.g. The Executive: 4s set instantLoss) ────
+  const outcomeCtx = bossHooks?.modifyOutcome
+    ? bossHooks.modifyOutcome(seededCtx, bossParams!, bossState)
+    : seededCtx;
+
+  // ── 7d. Instant-loss check — early GAME_OVER before cascade fires ──────────
+  if (outcomeCtx.flags.instantLoss) {
+    const lossBankroll = run.bankrollCents - betDelta;
+    const zeroBets: Bets = {
+      passLine: 0, odds: 0,
+      hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 },
+    };
+
+    const lossRun = await db
+      .update(runs)
+      .set({ status: 'GAME_OVER', bankrollCents: lossBankroll, bets: zeroBets, updatedAt: new Date() })
+      .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
+      .returning();
+
+    if (lossRun[0] === undefined) {
+      return reply.status(409).send({ error: 'Conflict: run was modified by another request. Please retry.' });
+    }
+
+    const io = getIO();
+    const lossPayload: WsTurnSettledPayload = {
+      runId,
+      dice:                    outcomeCtx.dice,
+      diceTotal:               outcomeCtx.diceTotal,
+      rollResult:              outcomeCtx.rollResult,
+      bankrollDelta:           -betDelta,
+      newBankroll:             lossBankroll,
+      newShooters:             run.shooters,
+      newHype:                 run.hype,
+      newPhase:                run.phase as GamePhase,
+      newPoint:                null,
+      runStatus:               'GAME_OVER',
+      newMarkerIndex:          run.currentMarkerIndex,
+      newBets:                 zeroBets,
+      newConsecutivePointHits: 0,
+      newBossPointHits:        run.bossPointHits,
+      payoutBreakdown:         { passLine: 0, odds: 0, hardways: 0 },
+    };
+    io.to(`run:${runId}`).emit('turn:settled', lossPayload);
+
+    return reply.status(200).send({
+      run: lossRun[0],
+      roll: {
+        dice:            outcomeCtx.dice,
+        diceTotal:       outcomeCtx.diceTotal,
+        rollResult:      outcomeCtx.rollResult,
+        cascadeEvents:   [],
+        bankrollDelta:   -betDelta,
+        receipt:         buildRollReceipt(outcomeCtx),
+        resolvedBets:    zeroBets,
+        payoutBreakdown: { passLine: 0, odds: 0, hardways: 0 },
+        mechanicFreeze:  null,
+      },
+    });
+  }
+
   // ── 8. Run the Clockwise Cascade ───────────────────────────────────────────
   //
   // Each crew member's execute() fires left-to-right (slot 0 → 4), each one
   // seeing the TurnContext as modified by all previous crew members.
-  const cascadeResult = resolveCascade(crewSlots, seededCtx, rollDice);
+  const cascadeResult = resolveCascade(crewSlots, outcomeCtx, rollDice, bossHooks, bossParams);
   const { finalContext, events, updatedCrewSlots } = cascadeResult;
 
   // ── 9. Settle the turn ─────────────────────────────────────────────────────

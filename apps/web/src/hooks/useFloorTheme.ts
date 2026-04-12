@@ -7,10 +7,10 @@
 // a stable reference — no spurious re-renders between rolls.
 // =============================================================================
 
-import { useGameStore } from '../store/useGameStore.js';
+import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 import { getFloorTheme, type FloorTheme } from '../lib/floorThemes.js';
 
 export function useFloorTheme(): FloorTheme {
-  const markerIndex = useGameStore((s) => s.currentMarkerIndex);
+  const markerIndex = useGameStore(selectDisplayMarkerIndex);
   return getFloorTheme(markerIndex);
 }

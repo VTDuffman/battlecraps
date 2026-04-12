@@ -1053,11 +1053,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     if (type === 'MARKER_CLEAR' || type === 'BOSS_VICTORY') {
       // Celebration complete — hand off to the pub screen.
       // Now safe to expose the new marker state: celebrationSnapshot is cleared.
+      // Clear payoutPops so ChipRain does not re-fire on the next TableBoard mount.
       set({
         status:               'TRANSITION',
         activeTransition:     null,
         transitionPhaseIndex: 0,
         celebrationSnapshot:  null,
+        payoutPops:           null,
       });
     } else if (type === 'VICTORY') {
       // All 3 victory phases complete. Signal the TransitionOrchestrator to
@@ -1332,3 +1334,14 @@ export const selectBankrollDisplay = (s: GameState): string =>
 /** Formatted hype string: "1.4×" */
 export const selectHypeDisplay = (s: GameState): string =>
   `${s.hype.toFixed(2)}×`;
+
+/**
+ * The marker index that UI display components should reflect.
+ * During any transition window (pendingTransition or activeTransition),
+ * returns the snapshot index so the player sees the pre-clear state
+ * until celebration phases complete. Returns currentMarkerIndex otherwise.
+ */
+export const selectDisplayMarkerIndex = (s: GameState): number =>
+  (s.pendingTransition || s.activeTransition !== null) && s.celebrationSnapshot !== null
+    ? s.celebrationSnapshot.markerIndex
+    : s.currentMarkerIndex;

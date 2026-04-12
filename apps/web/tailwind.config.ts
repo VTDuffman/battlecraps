@@ -52,12 +52,19 @@ export default {
           '0%, 100%': { textShadow: '0 0 4px #f5c842' },
           '50%':      { textShadow: '0 0 16px #f5c842, 0 0 32px #d4a017' },
         },
+        'marker-smash': {
+          '0%':   { transform: 'scaleX(1)',    opacity: '1',   backgroundColor: '#ffffff' },
+          '30%':  { transform: 'scaleX(1.02)', opacity: '1',   backgroundColor: '#fef9c3' },
+          '60%':  { transform: 'scaleX(1.01)', opacity: '0.8', backgroundColor: '#fef08a' },
+          '100%': { transform: 'scaleX(1)',    opacity: '0.4', backgroundColor: '#fef9c3' },
+        },
       },
       animation: {
         'portrait-flash': 'portrait-flash 600ms ease-out forwards',
         'bark-rise':       'bark-rise 900ms ease-out forwards',
         'bet-drop':        'bet-drop 200ms ease-out forwards',
         'hype-pulse':      'hype-pulse 1.4s ease-in-out infinite',
+        'marker-smash':    'marker-smash 500ms ease-out forwards',
         // Dice throw animations are defined in index.css (not here) so that
         // Vite HMR picks them up without a dev-server restart.
       },

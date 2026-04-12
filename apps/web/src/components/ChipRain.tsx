@@ -197,7 +197,8 @@ export const ChipRain: React.FC<ChipRainProps> = ({ onTorrent, onComplete }) => 
   const _popsKey   = useGameStore((s) => s._popsKey);
 
   // Wrapper ref — always mounted so we can read container dimensions
-  const wrapperRef = useRef<HTMLDivElement>(null);
+  const wrapperRef  = useRef<HTMLDivElement>(null);
+  const mountKeyRef = useRef(_popsKey); // capture key at mount to skip stale fires
 
   const [particles,    setParticles]    = useState<ChipParticle[]>([]);
   const [kachingKey,   setKachingKey]   = useState(0);
@@ -206,6 +207,7 @@ export const ChipRain: React.FC<ChipRainProps> = ({ onTorrent, onComplete }) => 
   const clearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (_popsKey === mountKeyRef.current) return; // skip stale key on mount
     if (!payoutPops || _popsKey === 0) return;
 
     const total = payoutPops.passLine + payoutPops.odds + payoutPops.hardways;

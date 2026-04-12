@@ -101,7 +101,7 @@ apps/web/src/                 # React SPA
 ## Docs Structure
 
 ```
-docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–006), vibe-ideas.md
+docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–008), tutorial-user-journey.md, vibe-ideas.md
 docs/frameworks/      # crew_framework.md (15 live + 15 proposed crew), floor_design.md
 docs/design/          # crew-sprites-tdd.md (asset spec), transition_framework TDD, CODE_REVIEW.md*
 docs/testing/         # known_issues.md (open defects), test plans + results (alpha cycle — archived)
@@ -113,11 +113,11 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 
 ## Current State
 
-**Status:** Beta baseline. All 9 transition phases shipped (Title → MarkerIntro → FloorReveal → Boss entry/victory → Victory cinematic → Game Over polish). Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live.
+**Status:** Beta baseline. All 9 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped — all cinematic sequencing bugs resolved.
 
 **Open defects:** None.
 
 **Not yet implemented:**
 - Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md` — 64×64 SNES-style PNGs)
 - Proposed crew IDs 16–30 (design only, see `docs/frameworks/crew_framework.md`)
-- Session management & auth (FB-006): current `x-user-id` header + `localStorage` is a dev stub; production requires OAuth (Google via Clerk or Supabase Auth) + JWT + httpOnly cookies
+- Tutorial & "How to Play" system (UX design: `docs/requirements/tutorial-user-journey.md`, backlog: FB-007)

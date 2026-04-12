@@ -58,128 +58,78 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
   const advanceTransitionPhase   = useGameStore((s) => s.advanceTransitionPhase);
   const clearTransition          = useGameStore((s) => s.clearTransition);
 
-  // ── Title screen detection ──────────────────────────────────────────────
-  // Fires exactly once, on the player's very first page load (before their
-  // first roll on marker 0). Guarded by the persistent titleShown flag which
-  // is backed by localStorage — survives refreshes and is never reset by
-  // connectToRun so Play Again skips this automatically.
-  // Also marks markerIntroShownFor(0) so MARKER_INTRO doesn't fire right
-  // after the title dismisses on the same marker.
+  // ── Transition detection — single consolidated effect ──────────────────
+  //
+  // All five detection cases share the same dependency set. Splitting them
+  // into five separate useEffect hooks causes a stale-closure race: each
+  // effect closure captures the state values from the render snapshot, not
+  // the values written by earlier effects in the same cycle. The prioritised
+  // if/else if chain below issues at most one setActiveTransition() call per
+  // firing and returns after the first match, eliminating that race.
+  //
+  // Priority order (highest → lowest):
+  //   1. TITLE        — marker 0, brand-new player
+  //   2. BOSS_ENTRY   — arrived at a boss marker
+  //   3. FLOOR_REVEAL — arrived at floor 2/3 opener (indices 3, 6)
+  //   4. VICTORY      — status=GAME_OVER, all 9 markers cleared
+  //   5. MARKER_INTRO — any other non-boss marker not yet introduced
   useEffect(() => {
+    if (activeTransition !== null) return;
+
+    // Priority 1 — Title splash (new player, marker 0, never shown before)
     if (
       status === 'IDLE_TABLE' &&
       currentMarkerIndex === 0 &&
-      activeTransition === null &&
       !titleShown
     ) {
       setMarkerIntroShownFor(0);
       setActiveTransition('TITLE');
+      return;
     }
-  }, [
-    status,
-    currentMarkerIndex,
-    activeTransition,
-    titleShown,
-    setActiveTransition,
-    setMarkerIntroShownFor,
-  ]);
 
-  // ── Boss entry detection ────────────────────────────────────────────────
-  // When the player arrives at a boss marker (status flips to IDLE_TABLE and
-  // isBossMarker is true), inject a BOSS_ENTRY transition — but only once
-  // per marker index so it doesn't re-trigger on every render.
-  useEffect(() => {
+    // Priority 2 — Boss entry
     if (
       status === 'IDLE_TABLE' &&
       isBossMarker(currentMarkerIndex) &&
-      activeTransition === null &&
       bossEntryShownFor !== currentMarkerIndex
     ) {
       setBossEntryShownFor(currentMarkerIndex);
       setActiveTransition('BOSS_ENTRY');
+      return;
     }
-  }, [
-    status,
-    currentMarkerIndex,
-    activeTransition,
-    bossEntryShownFor,
-    setActiveTransition,
-    setBossEntryShownFor,
-  ]);
 
-  // ── Floor reveal detection ──────────────────────────────────────────────
-  // When the player arrives at the first marker of a new floor (indices 3
-  // and 6), inject a two-phase FLOOR_REVEAL cinematic before they roll.
-  // Skipped for floor 1 (index 0) — that's the title screen's job (Phase 6).
-  // Also marks markerIntroShownFor so MARKER_INTRO doesn't double-trigger
-  // on the same marker immediately after.
-  useEffect(() => {
-    const currentFloor = getFloorByMarkerIndex(currentMarkerIndex);
-    if (
-      status === 'IDLE_TABLE' &&
-      currentMarkerIndex > 0 &&
-      currentMarkerIndex % 3 === 0 &&
-      !isBossMarker(currentMarkerIndex) &&
-      activeTransition === null &&
-      floorRevealShownFor !== currentFloor.id
-    ) {
-      setFloorRevealShownFor(currentFloor.id);
-      setMarkerIntroShownFor(currentMarkerIndex); // prevent MARKER_INTRO double-trigger
-      setActiveTransition('FLOOR_REVEAL');
+    // Priority 3 — Floor reveal (indices 3 and 6 — non-boss floor openers)
+    {
+      const currentFloor = getFloorByMarkerIndex(currentMarkerIndex);
+      if (
+        status === 'IDLE_TABLE' &&
+        currentMarkerIndex > 0 &&
+        currentMarkerIndex % 3 === 0 &&
+        !isBossMarker(currentMarkerIndex) &&
+        floorRevealShownFor !== currentFloor.id
+      ) {
+        setFloorRevealShownFor(currentFloor.id);
+        setMarkerIntroShownFor(currentMarkerIndex); // prevent MARKER_INTRO double-trigger
+        setActiveTransition('FLOOR_REVEAL');
+        return;
+      }
     }
-  }, [
-    status,
-    currentMarkerIndex,
-    activeTransition,
-    floorRevealShownFor,
-    setActiveTransition,
-    setFloorRevealShownFor,
-    setMarkerIntroShownFor,
-  ]);
 
-  // ── Victory detection ───────────────────────────────────────────────────
-  // When all 9 gauntlet markers are cleared (status === 'GAME_OVER' with a
-  // full currentMarkerIndex), inject the 3-phase VICTORY cinematic instead of
-  // showing the GameOverScreen. Guarded by victoryShown so it only fires once.
-  useEffect(() => {
+    // Priority 4 — Victory cinematic
     if (
       status === 'GAME_OVER' &&
       currentMarkerIndex >= GAUNTLET.length &&
-      activeTransition === null &&
       !victoryShown
     ) {
       setVictoryShown();
       setActiveTransition('VICTORY');
+      return;
     }
-  }, [
-    status,
-    currentMarkerIndex,
-    activeTransition,
-    victoryShown,
-    setVictoryShown,
-    setActiveTransition,
-  ]);
 
-  // ── Victory complete → new run ──────────────────────────────────────────
-  // After the VICTORY sendoff phase calls clearTransition('VICTORY'),
-  // victoryComplete flips to true. This effect calls onPlayAgain() which
-  // bootstraps a fresh run. connectToRun resets victoryComplete to false.
-  useEffect(() => {
-    if (victoryComplete) onPlayAgain();
-  }, [victoryComplete, onPlayAgain]);
-
-  // ── Marker intro detection ──────────────────────────────────────────────
-  // After the pub, when the player lands on a non-boss marker, show the
-  // orientation card once. Boss markers skip this — BossEntryPhase covers
-  // orientation for those. Fires on the very first marker too, giving the
-  // player their target before their first ever roll.
-  // Floor-entry markers skip this — FloorRevealPhase covers them and pre-sets
-  // markerIntroShownFor to prevent a double-trigger here.
-  useEffect(() => {
+    // Priority 5 — Marker intro (non-boss marker, not yet introduced)
     if (
       status === 'IDLE_TABLE' &&
       !isBossMarker(currentMarkerIndex) &&
-      activeTransition === null &&
       markerIntroShownFor !== currentMarkerIndex
     ) {
       setMarkerIntroShownFor(currentMarkerIndex);
@@ -189,10 +139,26 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
     status,
     currentMarkerIndex,
     activeTransition,
+    titleShown,
+    bossEntryShownFor,
+    floorRevealShownFor,
+    victoryShown,
     markerIntroShownFor,
     setActiveTransition,
+    setBossEntryShownFor,
+    setFloorRevealShownFor,
     setMarkerIntroShownFor,
+    setVictoryShown,
   ]);
+
+  // ── Victory complete → new run ──────────────────────────────────────────
+  // After the VICTORY sendoff phase calls clearTransition('VICTORY'),
+  // victoryComplete flips to true. This effect calls onPlayAgain() which
+  // bootstraps a fresh run. connectToRun resets victoryComplete to false.
+  // Kept as its own effect — it has a distinct dependency and no race risk.
+  useEffect(() => {
+    if (victoryComplete) onPlayAgain();
+  }, [victoryComplete, onPlayAgain]);
 
   // ── Phase advance handler ───────────────────────────────────────────────
   // Called by PhasePlayer (and forwarded to the phase component as onAdvance).

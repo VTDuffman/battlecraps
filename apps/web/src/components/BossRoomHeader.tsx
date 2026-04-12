@@ -11,10 +11,10 @@
 
 import React from 'react';
 import { getBossMinBet, GAUNTLET, isBossMarker } from '@battlecraps/shared';
-import { useGameStore } from '../store/useGameStore.js';
+import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 
 export const BossRoomHeader: React.FC = () => {
-  const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
+  const currentMarkerIndex = useGameStore(selectDisplayMarkerIndex);
   const bossPointHits      = useGameStore((s) => s.bossPointHits);
 
   if (!isBossMarker(currentMarkerIndex)) return null;

@@ -282,83 +282,162 @@ benefit from the soak window automatically.
 
 **Type:** Infrastructure / Security
 **Area:** Auth / `apps/api/src/` + `apps/web/src/App.tsx`
-**Status:** Planned
+**Status:** Implemented
+
+### Summary
+
+Replaced the dev-only UUID stub with production Clerk auth (Google OAuth). Validated end-to-end in production on 2026-04-11.
+
+### What Was Built
+
+**Auth provider:** Clerk (`@clerk/react@6.x` frontend, `@clerk/backend@3.x` API)
+
+**Frontend (`apps/web/`):**
+- `ClerkProvider` wraps the app; `useAuth` / `useUser` replace all `localStorage` identity logic
+- `SignIn` / `SignUp` Clerk-hosted UI components handle the Google OAuth flow
+- Clerk JWT attached as `Authorization: Bearer <token>` header on all API calls and in the Socket.IO handshake `auth` payload
+
+**Backend (`apps/api/src/`):**
+- `lib/clerkAuth.ts` — `requireClerkAuth` Fastify preHandler: verifies Clerk JWT via `verifyToken()`, attaches `req.clerkId`
+- `routes/auth.ts` — `POST /api/v1/auth/provision`: upserts user record on first sign-in; handles legacy email re-association (users created before Clerk with `clerk_id = 'legacy:<uuid>'`)
+- `server.ts` — Socket.IO middleware verifies Clerk JWT in handshake, resolves to internal `userId` via `resolveUserByClerkId()`
+- All game routes (`rolls`, `recruit`, `mechanic`, `crew`) use `requireClerkAuth`; `req.clerkId` → `resolveUserByClerkId()` replaces `x-user-id` header
+
+**DB migrations (run on boot in `server.ts`):**
+- `clerk_id` column added to `users` (NOT NULL, unique constraint `users_clerk_id_unique`)
+- `password_hash` made nullable (Clerk users have no password)
+- Legacy users back-filled: `clerk_id = 'legacy:' || id::text`
+- `max_bankroll_cents` column ensured
+
+**Infrastructure:**
+- `render.yaml`: `healthCheckPath: /health` added to prevent Render redeploy loop; `CLERK_SECRET_KEY` env var documented
+
+### Key Implementation Details
+
+- `clerkId` is always read from the verified JWT payload — never from the request body
+- `.onConflictDoNothing({ target: users.clerkId })` scopes conflict suppression to the clerk_id constraint only; email conflicts surface as real errors
+- Legacy email re-association: if a real Clerk user provisions with an email that matches a legacy record, the existing row's `clerk_id` is updated in-place rather than inserting a duplicate
+
+---
+
+---
+
+## FB-007 — Tutorial & "How to Play" System
+
+**Type:** Feature
+**Area:** Onboarding / `apps/web/src/`
+**Status:** Design complete — pending technical design and implementation
 
 ### Problem
 
-The current identity system is a dev-only stub, not production auth. Every player is
-identified by a UUID stored in `localStorage` and sent as a raw `x-user-id` header —
-no cryptographic verification occurs. A single shared user (`dev@battlecraps.local`)
-serves all players via the `/api/v1/dev/bootstrap` endpoint.
+Playtesters without craps experience are hitting Floor 1 cold with no mental model of the rules. Confusion about pass line, points, and seven-outs prevents engagement with the BattleCraps-specific systems (hype, crew, markers, bosses).
 
-**Consequences:**
-- No persistent identity: clearing localStorage = new identity, lost run
-- No cross-device continuity: a player can't resume their run on another device
-- No security: any UUID in the header is accepted; the bootstrap endpoint is public
-  and allows unlimited run creation
-- All players share the same DB user record (single `dev@battlecraps.local`)
+### Design
 
-### Current Implementation (to be replaced)
+Full UX/design spec: `docs/requirements/tutorial-user-journey.md`
 
-- `apps/web/src/App.tsx`: On load, checks `localStorage` for `bc_dev_user_id` /
-  `bc_dev_run_id`. If absent, calls `POST /api/v1/dev/bootstrap` to create both.
-- `apps/api/src/routes/bootstrap.ts`: Creates/upserts `dev@battlecraps.local`, creates
-  a new run, returns `{ userId, runId }`.
-- All API routes: Extract `x-user-id` header, load the run, verify `run.userId ===
-  header userId` (ownership check is correct — just not cryptographically sound).
-- Socket.IO: `userId` passed in `socket.handshake.auth`, validated in middleware.
+**Summary:**
 
-### Proposed Solution
+- Tutorial auto-launches on every player's **first run**, before the Title cinematic
+- Always **skippable** via a persistent "Skip Tutorial →" button
+- **"How to Play"** button on the main menu lets any player replay any section at any time
+- Adaptive **knowledge gate** up front: "You ever shot dice before?" branches to full tutorial (11 beats) or BattleCraps-only (4 beats)
+- Guide character **"Sal the Fixer"** — in-world NPC portrait, gritty cinematic voice, appears only during tutorial
+- Each beat uses a **spotlight/dim** mechanic: table dims, relevant zone glows, player takes one real action to advance
+- Tutorial flows seamlessly into the actual run — no menu return
 
-Use an auth service (recommended: **Clerk** or **Supabase Auth**) to handle OAuth
-flows, token issuance, and session management rather than rolling custom auth.
+**Tutorial paths:**
 
-**Auth flow (Google OAuth via Clerk/Supabase):**
-1. User clicks "Sign in with Google" on the frontend
-2. Redirected to Google consent screen
-3. Google redirects back; auth service exchanges code for tokens server-side
-4. Auth service creates/upserts a unique user record per Google account
-5. Server issues a short-lived JWT (15 min) + long-lived refresh token in an
-   `httpOnly; Secure; SameSite=Strict` cookie
-6. All game API routes verify the JWT via `@fastify/jwt` middleware
-7. `req.user.id` replaces the `x-user-id` header throughout
+| Path | Beats | Audience |
+|---|---|---|
+| Full (Path A → B) | 11 beats | Craps novice |
+| BattleCraps only (Path B) | 4 beats | Knows craps, new to BattleCraps |
 
-**Token storage:**
-- Access token: in-memory JS variable (XSS-safe, lost on refresh → re-issue via cookie)
-- Refresh token: `httpOnly; Secure; SameSite=Strict` cookie (JS-inaccessible)
-- `localStorage` retains only `bc_dev_run_id` for run recovery on page refresh
+**Main Menu "How to Play" sections:**
+- Craps Basics — static reference cards
+- BattleCraps Rules — marker, hype, gauntlet targets
+- Crew & Bosses — card gallery; bosses blurred until encountered
 
-### Files Affected
+### Notes for technical design
 
-| File | Change |
-|---|---|
-| `apps/api/src/routes/bootstrap.ts` | Remove `POST /dev/bootstrap` entirely; keep `GET /runs/:id` |
-| `apps/api/src/server.ts` | Add `@fastify/jwt` middleware; add auth routes (callback, refresh, logout) |
-| `apps/api/src/routes/rolls.ts` | Replace `x-user-id` header extraction with `req.user.id` from JWT |
-| `apps/api/src/routes/recruit.ts` | Same JWT swap |
-| `apps/api/src/routes/mechanic.ts` | Same JWT swap |
-| `apps/api/src/routes/crew.ts` | Same JWT swap |
-| `apps/api/src/db/schema.ts` | Add `googleId` (and/or `githubId`) columns to `users` table |
-| `apps/web/src/App.tsx` | Replace bootstrap flow with auth check; redirect unauthenticated users to login |
-| `apps/web/src/store/useGameStore.ts` | Remove `x-user-id` header from fetch calls; pass JWT Bearer token |
-
-### What Stays the Same
-
-- All `run.userId === req.user.id` ownership checks — logic is correct, just the
-  identity source changes
-- Optimistic locking (`updatedAt` WHERE clause) — unchanged
-- WebSocket room-based ownership validation — unchanged (userId comes from JWT instead)
-- `users` table schema columns (bankroll, unlocks, etc.) — add OAuth columns, keep rest
-
-### Open Decisions
-
-1. **Auth service vs. self-hosted**: Clerk or Supabase Auth recommended over
-   `@fastify/passport` — reduces maintenance surface and handles edge cases
-2. **OAuth providers**: Google OAuth as primary; GitHub and/or Discord as secondary
-3. **Guest play**: Allow anonymous runs that can be claimed after sign-in, or require
-   sign-in before starting? (UX tradeoff)
-4. **Existing dev data**: Migration path for any beta-tester data tied to dev@battlecraps.local
+- Tutorial state (completed, path taken) needs to persist per user — likely a column on the `users` table or a flag in the run bootstrap response
+- The spotlight/dim mechanic will need a rendering layer above `TableBoard` — consider how this interacts with `TransitionOrchestrator`
+- Simulated rolls in the tutorial (Beats 1, 5, 6) should be scripted/deterministic, not live RNG
+- "How to Play" is a pure client-side static reference — no API involvement
 
 ---
 
 *More entries to follow during playtesting.*
+
+---
+
+## FB-008 — Transition Timing Overhaul
+
+**Type:** Bug / Quality of Life
+**Area:** Transition system / `TransitionOrchestrator.tsx`, `useGameStore.ts`,
+          `TableBoard.tsx`, `CompCardFan.tsx`, `useFloorTheme.ts`, `ChipRain.tsx`
+**Status:** Implemented
+
+### Problem
+
+Five timing issues were degrading the cinematic flow of game progression:
+
+1. **VFW marker screen appears before title screen** — on new runs, the Marker 1
+   intro ("VFW Hall") flashed before the title splash.
+2. **Marker meter flips immediately to new limit** — bar filled to 100%, then
+   instantly reset to the new marker's partial fill with no drama.
+3. **Boss banner appears during ChipRain** — the boss room header rendered before
+   the player reached the pub or saw any transition modal.
+4. **ChipRain spills into the next round** — winning chips from the clearing roll
+   re-fired on the fresh board after the pub.
+5. **Comp card deals in and felt changes before victory phase** — defeating a boss
+   immediately triggered the new floor's palette and comp animation before the
+   BossVictory cinematic played.
+
+### Root causes
+
+**Cause A — Effect race in TransitionOrchestrator** (Bug 1):
+Five separate `useEffect` hooks fired in the same React render cycle. Each read
+stale closure values from the pre-render snapshot. The marker intro effect read
+`activeTransition=null` even though the title effect already called
+`setActiveTransition('TITLE')` in the same cycle, and overwrote it.
+
+**Cause B — Instant `currentMarkerIndex` advance** (Bugs 2, 3, 5):
+`applyPendingSettlement()` set `currentMarkerIndex` to the new value immediately,
+even though the player was still watching the clearing animation. Three components —
+`MarkerProgress`, `BossRoomHeader`, `CompCardFan` — and `useFloorTheme` all subscribed
+directly to `currentMarkerIndex` and reacted before the celebration sequence completed.
+
+**Cause C — Stale `_popsKey` on ChipRain remount** (Bug 4):
+After the pub, TableBoard remounted. ChipRain's trigger effect fired on mount with the
+stale `_popsKey` value from the clearing roll, and `payoutPops` was never cleared.
+ChipRain re-fired the old win-rain on an otherwise fresh board.
+
+### Solution
+
+**Fix A:** Consolidated the five `TransitionOrchestrator` detection `useEffect` hooks
+into one, with an explicit priority chain. One effect, one `setActiveTransition()` call
+per firing, no stale-state overlap.
+
+**Fix B:** Added `selectDisplayMarkerIndex` selector — returns
+`celebrationSnapshot.markerIndex` during any transition window, `currentMarkerIndex`
+otherwise. Switched `MarkerProgress`, `BossRoomHeader`, `CompCardFan`, and `useFloorTheme`
+to this selector. Added a distinct "marker smashed" visual to `MarkerProgress`: bar locks
+at 100% with an `animate-marker-smash` burst before the new target is revealed.
+
+**Fix C:** Clear `payoutPops: null` in `clearTransition()` for marker-clear/boss-victory
+completions. Added belt-and-suspenders mount guard in `ChipRain` so a stale `_popsKey` on
+first render is skipped.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `apps/web/src/store/useGameStore.ts` | Added `selectDisplayMarkerIndex`; clear `payoutPops` in `clearTransition` |
+| `apps/web/src/transitions/TransitionOrchestrator.tsx` | Consolidated 5 detection effects → 1 prioritized effect |
+| `apps/web/src/components/TableBoard.tsx` | `MarkerProgress` + `BossRoomHeader` use display index; added "smash" animation |
+| `apps/web/src/components/CompCardFan.tsx` | Use display index for threshold check |
+| `apps/web/src/hooks/useFloorTheme.ts` | Use display index for floor selection |
+| `apps/web/src/components/ChipRain.tsx` | Mount guard on trigger effect |
+| `apps/web/tailwind.config.ts` | Added `animate-marker-smash` keyframe |
+

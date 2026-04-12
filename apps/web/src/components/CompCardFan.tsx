@@ -16,7 +16,7 @@
 // =============================================================================
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useGameStore, type GameState } from '../store/useGameStore.js';
+import { useGameStore, selectDisplayMarkerIndex, type GameState } from '../store/useGameStore.js';
 
 // ---------------------------------------------------------------------------
 // Comp definitions
@@ -58,14 +58,12 @@ const COMP_DEFS: CompDef[] = [
   },
 ];
 
-const selectMarker = (s: GameState) => s.currentMarkerIndex;
-
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export const CompCardFan: React.FC = () => {
-  const currentMarkerIndex = useGameStore(selectMarker);
+  const currentMarkerIndex = useGameStore(selectDisplayMarkerIndex);
 
   const earnedComps = COMP_DEFS.filter((c) => currentMarkerIndex >= c.threshold);
 

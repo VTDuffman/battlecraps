@@ -27,6 +27,7 @@ import {
   selectActiveSlot,
   selectActiveBark,
   selectHypeDisplay,
+  selectDisplayMarkerIndex,
   type GameState,
 } from '../store/useGameStore.js';
 import { BettingGrid, ChipSelector } from './BettingGrid.js';
@@ -250,6 +251,7 @@ const GameStatus: React.FC = () => {
   const shooters            = useGameStore((s) => s.shooters);
   const bankroll            = useGameStore((s) => s.bankroll);
   const currentMarkerIndex  = useGameStore((s) => s.currentMarkerIndex);
+  const displayMarkerIndex  = useGameStore(selectDisplayMarkerIndex);
   const theme               = useFloorTheme();
 
   const { display: bankrollDisplay, direction: bankrollDir } = useAnimatedCounter(bankroll);
@@ -415,7 +417,7 @@ const GameStatus: React.FC = () => {
       />
 
       {/* Marker progress bar */}
-      <MarkerProgress bankroll={bankroll} markerIndex={currentMarkerIndex} />
+      <MarkerProgress bankroll={bankroll} markerIndex={displayMarkerIndex} liveMarkerIndex={currentMarkerIndex} />
 
       {/* Point puck + phase label */}
       <div className="flex items-center gap-2 justify-center">
@@ -454,16 +456,18 @@ const GameStatus: React.FC = () => {
 // Marker progress bar
 // ---------------------------------------------------------------------------
 
-const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number }> = ({
+const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMarkerIndex: number }> = ({
   bankroll,
   markerIndex,
+  liveMarkerIndex,
 }) => {
-  const target   = MARKER_TARGETS[markerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
-  const isBoss   = isBossMarker(markerIndex);
-  const progress = Math.min(bankroll / target, 1);
-  const label    = isBoss ? '★ BOSS' : `MARKER ${markerIndex + 1}`;
-  const pct      = Math.round(progress * 100);
-  const theme    = useFloorTheme();
+  const target    = MARKER_TARGETS[markerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
+  const isBoss    = isBossMarker(markerIndex);
+  const isCleared = markerIndex !== liveMarkerIndex; // display index behind live = in transition window
+  const progress  = isCleared ? 1 : Math.min(bankroll / target, 1);
+  const label     = isBoss ? '★ BOSS' : `MARKER ${markerIndex + 1}`;
+  const pct       = Math.round(progress * 100);
+  const theme     = useFloorTheme();
 
   return (
     <div className="w-full px-2 space-y-1">
@@ -481,10 +485,15 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number }> = ({
 
       <div className="h-1.5 w-full rounded-full border border-white/10 overflow-hidden" style={{ backgroundColor: theme.feltRail }}>
         <div
-          className="h-full rounded-full transition-all duration-500"
+          className={[
+            'h-full rounded-full transition-all duration-500',
+            isCleared ? 'animate-marker-smash' : '',
+          ].join(' ')}
           style={{
             width: `${pct}%`,
-            background: isBoss
+            background: isCleared
+              ? 'linear-gradient(90deg, #ffffff, #fef9c3)'
+              : isBoss
               ? 'linear-gradient(90deg, #7f1d1d, #ef4444)'
               : `linear-gradient(90deg, ${theme.accentDim}, ${theme.accentBright})`,
           }}

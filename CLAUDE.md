@@ -37,17 +37,19 @@ packages/shared/src/          # Pure-function game engine — zero runtime deps
   crapsEngine.ts              # classifyRoll(), settleTurn(), payout calculators
   cascade.ts                  # resolveCascade() — sequential crew execute() calls, emits CascadeEvents
   config.ts                   # GAUNTLET[9], boss rules, comp perks, getMaxBet(), getMinBet()
-  crew/                       # 15 execute() implementations + index.ts registry
+  crew/                       # 30 execute() implementations + index.ts registry (IDs 1–15 unlock-gated; 16–30 Starter)
 
 apps/api/src/                 # Fastify backend
   server.ts                   # Fastify + Socket.io setup, route registration
-  routes/rolls.ts             # POST /runs/:id/roll — main game loop (RNG → cascade → settle → persist → emit)
-  routes/recruit.ts           # POST /runs/:id/recruit
+  routes/rolls.ts             # POST /runs/:id/roll — main game loop (RNG → cascade → settle → persist → emit → unlock eval)
+  routes/recruit.ts           # POST /runs/:id/recruit (unlock-gated)
   routes/mechanic.ts          # POST /runs/:id/mechanic-freeze
-  routes/bootstrap.ts         # GET /runs/:id — full run state (page refresh recovery)
+  routes/runs.ts              # GET/POST /runs/:id — full run state (page refresh recovery) + create
   routes/crew.ts              # GET /crew
-  db/schema.ts                # Drizzle schema: users, runs (JSONB bets + crew_slots), runLogs
+  routes/crewRoster.ts        # GET /crew-roster — availability-filtered 30-crew roster per user
+  db/schema.ts                # Drizzle schema: users, runs (JSONB bets + crew_slots), crewDefinitions
   lib/rng.ts                  # Crypto RNG with rejection sampling (no modulo bias)
+  lib/unlocks.ts              # evaluateUnlocks() — all 15 unlock conditions, emits unlocks:granted
 
 apps/web/src/                 # React SPA
   store/useGameStore.ts       # Zustand: all game state + socket listeners + cascade queue
@@ -67,7 +69,7 @@ apps/web/src/                 # React SPA
 - All money in integer cents throughout (suffix `Cents` where ambiguous)
 - Crew cascade is immutable: each `execute()` receives and returns a full `TurnContext` copy
 - All game logic (RNG, payouts, cascade) is server-side only — client never sees pre-settlement state
-- WebSocket (`cascade:trigger`, `turn:settled`) drives UI animation sequencing
+- WebSocket (`cascade:trigger`, `turn:settled`, `unlocks:granted`) drives UI animation sequencing and unlock notifications
 
 **Payout formula:** `FinalPayout = baseStakeReturned + floor((GrossProfit + additives) × hype × ∏multipliers)`
 
@@ -106,9 +108,9 @@ apps/web/src/                 # React SPA
 ## Docs Structure
 
 ```
-docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–011), tutorial-user-journey.md, vibe-ideas.md
-docs/frameworks/      # crew_framework.md (15 live + 15 proposed crew), floor_design.md, boss_framework.md
-docs/design/          # crew-sprites-tdd.md (asset spec), transition_framework TDD, boss-mechanic-technical-design.md, title-screen-technical-design.md, CODE_REVIEW.md*
+docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–012), tutorial-user-journey.md, vibe-ideas.md
+docs/frameworks/      # crew_framework.md (30 crew — 15 Starter + 15 unlock-gated), floor_design.md, boss_framework.md
+docs/design/          # crew-sprites-tdd.md (asset spec), crew-implementation-design.md (FB-012 TDD), transition_framework TDD, boss-mechanic-technical-design.md, title-screen-technical-design.md, CODE_REVIEW.md*
 docs/testing/         # known_issues.md (open defects), test plans + results (alpha cycle — archived)
 ```
 
@@ -118,14 +120,13 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 
 ## Current State
 
-**Status:** Beta baseline. All 9 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped — all cinematic sequencing bugs resolved. Boss mechanic framework (FB-010) fully implemented — all three boss rules enforced server-side. Title lobby screen (FB-011) live — every session starts on the title screen with Continue/New Run options.
+**Status:** Beta. All 9 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped. Boss mechanic framework (FB-010) fully implemented. Title lobby screen (FB-011) live. Crew Expansion & Unlock System (FB-012) live — 30-crew roster, unlock gating, real-time unlock notifications.
 
-**Active development:** FB-012 — Crew Expansion & Unlock System. Technical design complete (`docs/design/crew-implementation-design.md`). Implementation in progress.
+**Active development:** None. Awaiting next backlog item.
 
 **Open defects:** None.
 
 **Not yet implemented:**
 - Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md` — 64×64 SNES-style PNGs)
-- Crew IDs 16–30 Starter roster + unlock system for IDs 1–15 (FB-012 — in progress)
 - Tutorial & "How to Play" system (UX design: `docs/requirements/tutorial-user-journey.md`, backlog: FB-007)
 - Dice roll sound effect — synthesized rattle on throw (backlog: FB-009)

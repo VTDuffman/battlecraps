@@ -372,16 +372,16 @@ Full UX/design spec: `docs/requirements/tutorial-user-journey.md`
 ## FB-012 — Crew Expansion & Unlock System
 
 **Type:** Feature / Architecture
-**Area:** `packages/shared/src/crew/`, `packages/shared/src/types.ts`, `apps/api/src/db/`, `apps/api/src/routes/`, `apps/api/src/lib/`, `apps/web/src/components/PubScreen.tsx`, `apps/web/src/store/useGameStore.ts`
-**Status:** In progress
+**Area:** `packages/shared/src/crew/`, `packages/shared/src/types.ts`, `apps/api/src/db/`, `apps/api/src/routes/`, `apps/api/src/lib/`, `apps/web/src/components/PubScreen.tsx`, `apps/web/src/components/UnlockNotification.tsx`, `apps/web/src/store/useGameStore.ts`
+**Status:** Implemented
 **Technical design:** `docs/design/crew-implementation-design.md`
 **Reference:** `docs/frameworks/crew_framework.md`
 
 ### Problem
 
-The Pub screen currently draws randomly from the same 15 crew on every visit with no gating — players never feel progression. New players have access to high-cost Legendary crew immediately, and the original 15 are available without any in-game achievement. Additionally, come-out and blank rolls have no crew coverage, creating dead stretches where nothing fires.
+The Pub screen drew randomly from the same 15 crew on every visit with no gating — players never felt progression. New players had access to high-cost Legendary crew immediately, and the original 15 were available without any in-game achievement. Additionally, come-out and blank rolls had no crew coverage, creating dead stretches where nothing fired.
 
-### What Is Being Built
+### What Was Built
 
 **Starter Roster (IDs 16–30):** Fifteen new `CrewMember` implementations, all Starter rarity, available from the first run. Designed to fire on dice-face patterns and roll types rather than bet outcomes, eliminating dead space:
 - DICE: The Lookout (16), "Ace" McGee (17), The Close Call (18)
@@ -390,27 +390,30 @@ The Pub screen currently draws randomly from the same 15 crew on every visit wit
 - PAYOUT: The Handicapper (26), The Mirror (27)
 - WILDCARD: The Bookkeeper (28), The Pressure Cooker (29), The Contrarian (30)
 
-Five of the new crew require three new game state fields: `previousRollTotal`, `shooterRollCount`, and `pointPhaseBlankStreak`.
+Five of the new crew required three new cross-roll game state fields: `previousRollTotal`, `shooterRollCount`, and `pointPhaseBlankStreak`.
 
-**Unlock System for IDs 1–15:** Each original crew member is gated behind a specific achievement. Unlock progress is tracked in-run and cross-run, evaluated after each roll as a fire-and-forget operation. New unlocks are written to `users.unlockedCrewIds` and emitted as a `unlocks:granted` WebSocket event.
+**Unlock System for IDs 1–15:** Each original crew member is gated behind a specific achievement across five unlock types (one-time event, per-run counter, cross-run cumulative, per-cascade event, run achievement). Unlock progress is tracked in-run via `perRunUnlockCounters` (JSONB on `runs`) and cross-run via `unlockProgress` (JSONB on `users`). Evaluated after each roll as a fire-and-forget operation in `lib/unlocks.ts`. New unlocks are written to `users.unlockedCrewIds` and emitted as an `unlocks:granted` WebSocket event. Client shows an auto-dismissing toast notification (`UnlockNotification.tsx`).
 
-**Pub Screen Overhaul:** Hard-coded `ALL_CREW` list replaced by a `GET /crew-roster` API call that returns only crew available to the current user. Rarity badges added to crew cards.
+**Pub Screen Overhaul:** Hard-coded `ALL_CREW` list replaced by a `GET /crew-roster` API call that returns only crew available to the current user. Rarity badges added to crew cards. 3-card draft draws from available crew only.
 
-### Architecture Summary
+### Files
 
-| Area | Change |
+| File | Action |
 |---|---|
-| `packages/shared/src/types.ts` | 3 new `TurnContext`/`GameState` fields; `rarity` on `CrewMember` |
-| `packages/shared/src/crew/` | 15 new files + `index.ts` updates |
-| `apps/api/src/db/schema.ts` | New columns on `runs`, `users`, `crewDefinitions`; migration |
+| `packages/shared/src/types.ts` | Added `previousRollTotal`, `shooterRollCount`, `pointPhaseBlankStreak` to `TurnContext`; `rarity` to `CrewMember` |
+| `packages/shared/src/crew/` (15 new files) | `lookout`, `aceMcgee`, `closeCall`, `momentum`, `echo`, `silverLining`, `oddCouple`, `evenKeel`, `doorman`, `grinder`, `handicapper`, `mirror`, `bookkeeper`, `pressureCooker`, `contrarian` |
+| `packages/shared/src/crew/index.ts` | Added 15 new barrel exports |
+| `apps/api/src/db/schema.ts` | New columns: `runs` (+3 counters + `perRunUnlockCounters`), `users` (+`unlockProgress`), `crewDefinitions` (+`rarity`, `briefDescription`, `detailedDescription`, `unlockDescription`) |
+| `apps/api/src/db/seed.ts` | All 30 crew seeded with rarity, descriptions, and unlock conditions |
+| `apps/api/src/lib/crewRegistry.ts` | All 30 crew registered |
 | `apps/api/src/lib/unlocks.ts` | New: `evaluateUnlocks()` — all 15 unlock conditions |
-| `apps/api/src/routes/crewRoster.ts` | New: `GET /crew-roster` — availability-filtered roster |
-| `apps/api/src/routes/recruit.ts` | Unlock gate on crew purchase |
-| `apps/api/src/routes/rolls.ts` | Counter maintenance; fire-and-forget unlock evaluation |
-| `apps/web/src/components/PubScreen.tsx` | API-fetched roster, rarity badges |
-| `apps/web/src/store/useGameStore.ts` | `crewRoster` + `unlockedCrewIds` state |
-
-*More entries to follow during playtesting.*
+| `apps/api/src/routes/crewRoster.ts` | New: `GET /crew-roster` — availability-filtered roster with progress metadata |
+| `apps/api/src/routes/recruit.ts` | Unlock gate (403 on locked crew) |
+| `apps/api/src/routes/rolls.ts` | Counter maintenance in `computeNextState()`; fire-and-forget unlock evaluation |
+| `apps/api/src/routes/runs.ts` | `unlockedCrewIds` included in create/fetch responses |
+| `apps/web/src/components/PubScreen.tsx` | API-fetched roster, rarity badges, availability-filtered 3-card draft |
+| `apps/web/src/components/UnlockNotification.tsx` | New: auto-dismissing toast for `unlocks:granted` events |
+| `apps/web/src/store/useGameStore.ts` | `crewRoster`, `unlockedCrewIds`, `unlockNotification` state; `fetchCrewRoster()`, `clearUnlockNotification()` actions; `unlocks:granted` WS listener |
 
 ---
 

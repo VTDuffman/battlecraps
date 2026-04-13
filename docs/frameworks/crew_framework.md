@@ -2,7 +2,7 @@
 
 > Values and descriptions sourced from code. Brief and detailed descriptions are the canonical player-facing copy; code UI strings should be updated to match.
 >
-> **Implementation status:** Original 15 (IDs 1–15) are live. IDs 16–30 and the unlock system for IDs 1–15 are being implemented under FB-012. Technical design: `docs/design/crew-implementation-design.md`.
+> **Implementation status:** All 30 crew are live as of FB-012. IDs 16–30 are Starter rarity (available from the first run). IDs 1–15 are unlock-gated — earned through specific in-game achievements. Technical design: `docs/design/crew-implementation-design.md`.
 
 ---
 

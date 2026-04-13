@@ -133,28 +133,28 @@ One-line fix in `settleTurn()` (`packages/shared/src/crapsEngine.ts`). The early
 
 ## KI-006 — New crew members (IDs 16–30) show no emoji in the UI
 
-**Area:** Crew portrait / roster display components
+**Area:** `apps/web/src/components/CrewPortrait.tsx` (`CREW_EMOJI`)
 **Severity:** Low
-**Status:** Open
+**Status:** Fixed
 **Source:** Post-FB-012 observation
 
 **Issue:**
-After the FB-012 crew expansion (30-crew roster, unlock gating), the 15 new starter crew members (IDs 16–30) render without emoji in the UI. The original 15 crew members (IDs 1–15) display their emoji correctly. The root cause is likely that the emoji lookup table or crew definition data used by the portrait/roster components was not extended to cover the new IDs.
+After the FB-012 crew expansion (30-crew roster, unlock gating), the 15 new starter crew members (IDs 16–30) rendered without emoji in the UI. The `CREW_EMOJI` lookup table in `CrewPortrait.tsx` only had entries for IDs 1–15; the new IDs fell through to the `?? '?'` fallback.
 
-**Proposed fix:**
-Audit the emoji mapping used by crew portrait and roster components (likely a record or array keyed by crew ID or name) and confirm all 30 entries are present. Cross-reference against the crew definitions in `packages/shared/src/crew/index.ts` and `apps/api/db/schema.ts` (or seed data) to ensure every crew member has a corresponding emoji assigned.
+**Fix applied:**
+Added emoji entries for all 15 new crew members (IDs 16–30) to `CREW_EMOJI` in `apps/web/src/components/CrewPortrait.tsx`. Since `CREW_EMOJI` is the single source of truth imported by `PubScreen`, `GameOverScreen`, and `CrewPortrait`, all three display surfaces are fixed by this one change.
 
 ---
 
 ## KI-007 — Crew member tooltips show "Crew #N" and "???" instead of name and description
 
-**Area:** Crew portrait / roster tooltip component
+**Area:** `apps/web/src/components/CrewPortrait.tsx`, `apps/web/src/components/TableBoard.tsx`
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed
 **Source:** Post-FB-012 observation
 
 **Issue:**
-Crew member tooltips display a generic placeholder — "Crew #20" style label and "???" for the description — instead of the crew member's actual name and ability text. This affects the new crew members (IDs 16–30) and possibly all 30. The tooltip component is likely falling back to a default when it cannot resolve the crew definition by ID.
+Crew member tooltips displayed "Crew #20" and "???" for new starter crew (IDs 16–30). Three static lookup tables were not extended when the 30-crew roster was added in FB-012: `ABILITY_DESCRIPTIONS` and `BARK_LINES` in `CrewPortrait.tsx`, and `CREW_NAMES` in `TableBoard.tsx` (which feeds the tooltip header via `crewNameFromId()`).
 
-**Proposed fix:**
-Trace the tooltip's data source — it should be pulling `name` and `description` (or `ability`) from the crew definition registry. Likely the tooltip is receiving only a numeric ID and the lookup against the crew definitions map is failing (undefined) for the new IDs, triggering a fallback render. Ensure the tooltip is wired to the full crew definition object (or that the registry lookup covers all 30 IDs) so `name` and `description` resolve correctly.
+**Fix applied:**
+Extended all four static tables with entries for IDs 16–30: `ABILITY_DESCRIPTIONS`, `BARK_LINES` (in `CrewPortrait.tsx`), `CREW_NAMES`, and `CREW_VISUAL_IDS` (in `TableBoard.tsx`). Ability descriptions and bark lines are authored to match each crew's actual ability and flavor.

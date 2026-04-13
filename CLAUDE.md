@@ -129,8 +129,6 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 - KI-003: "Tap to Continue" on Marker Intro not reliably clickable (Low)
 - KI-004: Screen flash and crowd cheer re-fire after exiting the pub (Medium)
 - KI-005: Member's Jacket comp does not show 6th shooter pip (Low)
-- KI-006: New crew members (IDs 16–30) show no emoji in the UI (Low)
-- KI-007: Crew member tooltips show "Crew #N" and "???" instead of name/description (Medium)
 - KI-008: Chip rain sound effect lingers after returning from the pub (Medium)
 
 **Not yet implemented:**

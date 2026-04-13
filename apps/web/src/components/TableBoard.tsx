@@ -573,6 +573,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => (
 // ---------------------------------------------------------------------------
 
 const CREW_NAMES: Record<number, string> = {
+  // ── IDs 1–15: Unlock-gated ─────────────────────────────────────────────
   1:  '"Lefty" McGuffin',
   2:  'Physics Prof',
   3:  'The Mechanic',
@@ -588,9 +589,26 @@ const CREW_NAMES: Record<number, string> = {
   13: 'The Mimic',
   14: 'Old Pro',
   15: 'Lucky Charm',
+  // ── IDs 16–30: Starter roster ──────────────────────────────────────────
+  16: 'The Lookout',
+  17: '"Ace" McGee',
+  18: 'The Close Call',
+  19: 'The Momentum',
+  20: 'The Echo',
+  21: 'The Silver Lining',
+  22: 'The Odd Couple',
+  23: 'The Even Keel',
+  24: 'The Doorman',
+  25: 'The Grinder',
+  26: 'The Handicapper',
+  27: 'The Mirror',
+  28: 'The Bookkeeper',
+  29: 'The Pressure Cooker',
+  30: 'The Contrarian',
 };
 
 const CREW_VISUAL_IDS: Record<number, string> = {
+  // ── IDs 1–15: Unlock-gated ─────────────────────────────────────────────
   1:  'lefty',
   2:  'physics_prof',
   3:  'mechanic',
@@ -606,6 +624,22 @@ const CREW_VISUAL_IDS: Record<number, string> = {
   13: 'mimic',
   14: 'old_pro',
   15: 'lucky_charm',
+  // ── IDs 16–30: Starter roster ──────────────────────────────────────────
+  16: 'lookout',
+  17: 'ace_mcgee',
+  18: 'close_call',
+  19: 'momentum',
+  20: 'echo',
+  21: 'silver_lining',
+  22: 'odd_couple',
+  23: 'even_keel',
+  24: 'doorman',
+  25: 'grinder',
+  26: 'handicapper',
+  27: 'mirror',
+  28: 'bookkeeper',
+  29: 'pressure_cooker',
+  30: 'contrarian',
 };
 
 function crewNameFromId(crewId: number | null): string | null {

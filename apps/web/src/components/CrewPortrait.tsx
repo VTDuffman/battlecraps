@@ -42,6 +42,7 @@ interface CrewPortraitProps {
 // ---------------------------------------------------------------------------
 
 const ABILITY_DESCRIPTIONS: Record<number, string> = {
+  // ── IDs 1–15: Unlock-gated ─────────────────────────────────────────────
   1:  'Re-rolls a Seven Out once per shooter.',
   2:  'Occasionally swaps a 7 for the active Point number.',
   3:  'Once per shooter: lock a die face (1–6). That die is held for up to 4 rolls, or until a Seven Out.',
@@ -57,6 +58,22 @@ const ABILITY_DESCRIPTIONS: Record<number, string> = {
   13: 'Copies the ability of the last crew member that fired.',
   14: 'If all others are on cooldown, activates all of them.',
   15: 'When alone on the rail, sets a Hype floor of 2.0×.',
+  // ── IDs 16–30: Starter roster ──────────────────────────────────────────
+  16: 'Adds +0.15× Hype whenever a 6 appears on either die.',
+  17: 'Adds a flat $50 bonus whenever a 1 appears on either die.',
+  18: 'Adds a flat $100 bonus when the two dice show consecutive face values.',
+  19: 'Adds +0.2× Hype whenever this roll\'s total is higher than the last.',
+  20: 'Adds +0.4× Hype whenever the dice repeat the same total as the last roll.',
+  21: 'Adds +0.6× Hype on a Craps Out — turns the worst come-out into a crowd moment.',
+  22: 'Adds +0.2× Hype whenever both dice show odd faces (1, 3, or 5).',
+  23: 'Adds a flat $80 bonus whenever both dice show even faces (2, 4, or 6).',
+  24: 'Adds a flat $40 bonus on every come-out roll, win or lose.',
+  25: 'Adds a flat $30 bonus on every blank point-phase roll.',
+  26: 'Adds Hype on Point Set, scaled by difficulty: +0.3 for 4/10, +0.2 for 5/9, +0.1 for 6/8.',
+  27: 'Adds +0.2× Hype on any roll totalling 7, come-out or point phase.',
+  28: 'Adds a flat $60 bonus on every 3rd roll of the current shooter.',
+  29: 'After 5 consecutive blank point-phase rolls, adds +0.5× Hype and a flat $100 bonus.',
+  30: 'Adds a flat $75 bonus whenever this roll\'s total is lower than the last.',
 };
 
 // ---------------------------------------------------------------------------
@@ -66,6 +83,7 @@ const ABILITY_DESCRIPTIONS: Record<number, string> = {
 // ---------------------------------------------------------------------------
 
 const BARK_LINES: Record<number, string> = {
+  // ── IDs 1–15: Unlock-gated ─────────────────────────────────────────────
   1:  '"Lucky!"',       // Lefty
   2:  '"Physics!"',     // Physics Professor
   3:  '"Click click."', // The Mechanic
@@ -81,6 +99,22 @@ const BARK_LINES: Record<number, string> = {
   13: '"Copycat!"',     // The Mimic
   14: '"I\'ve seen worse."', // Old Pro
   15: '"2× floor!"',    // Lucky Charm
+  // ── IDs 16–30: Starter roster ──────────────────────────────────────────
+  16: '"Six up!"',        // The Lookout
+  17: '"Ace!"',           // "Ace" McGee
+  18: '"So close!"',      // The Close Call
+  19: '"Keep climbing!"', // The Momentum
+  20: '"Again!"',         // The Echo
+  21: '"Not so bad."',    // The Silver Lining
+  22: '"Odds!"',          // The Odd Couple
+  23: '"Even money."',    // The Even Keel
+  24: '"Welcome back."',  // The Doorman
+  25: '"Grind it out."',  // The Grinder
+  26: '"Odds noted."',    // The Handicapper
+  27: '"Sevens pay."',    // The Mirror
+  28: '"On the books."',  // The Bookkeeper
+  29: '"RELEASE!"',       // The Pressure Cooker
+  30: '"Going down."',    // The Contrarian
 };
 
 function getBark(crewId: number | null, crewName: string | null): string {
@@ -100,6 +134,7 @@ function getBark(crewId: number | null, crewName: string | null): string {
 // ---------------------------------------------------------------------------
 
 export const CREW_EMOJI: Record<number, string> = {
+  // ── IDs 1–15: Unlock-gated ─────────────────────────────────────────────
   1:  '🎰', // Lefty
   2:  '🧪', // Physics Professor
   3:  '🔧', // The Mechanic
@@ -115,6 +150,22 @@ export const CREW_EMOJI: Record<number, string> = {
   13: '👥', // The Mimic
   14: '🦯', // Old Pro
   15: '🍀', // Lucky Charm
+  // ── IDs 16–30: Starter roster ──────────────────────────────────────────
+  16: '🔭', // The Lookout    — +Hype when a 6 shows
+  17: '🃏', // "Ace" McGee    — +$50 when a 1 shows
+  18: '😬', // The Close Call — +$100 on consecutive die faces
+  19: '📈', // The Momentum   — +Hype when roll total climbs
+  20: '🔁', // The Echo       — +Hype on repeated total
+  21: '🌤️', // The Silver Lining — +Hype on Craps Out
+  22: '🎭', // The Odd Couple — +Hype when both dice odd
+  23: '⚖️', // The Even Keel  — +$80 when both dice even
+  24: '🚪', // The Doorman    — +$40 on every come-out
+  25: '⚙️', // The Grinder    — +$30 on every blank point-phase roll
+  26: '📊', // The Handicapper — +Hype on Point Set, scaled by difficulty
+  27: '🪞', // The Mirror     — +Hype on any 7
+  28: '📒', // The Bookkeeper — +$60 on every 3rd shooter roll
+  29: '💥', // The Pressure Cooker — +Hype +$100 after 5 blank rolls
+  30: '📉', // The Contrarian — +$75 when roll total falls
 };
 
 // Die face Unicode characters — index 0 unused; indices 1–6 map to ⚀–⚅

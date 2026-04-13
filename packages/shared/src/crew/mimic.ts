@@ -34,6 +34,7 @@ export const mimic: CrewMember = {
   cooldownState:    0,
   baseCost:         22_000,  // $220.00
   visualId:         'mimic',
+  rarity:           'Epic',
 
   // No-op: the cascade handles the actual ability copying.
   // This execute() is a safe fallback if Mimic is in slot 0 (no prior crew).

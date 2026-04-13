@@ -22,6 +22,7 @@ export const physicsProfessor: CrewMember = {
   cooldownState:    0,
   baseCost:         12_000,  // $120.00 — reduced from $200; 17% activation rate was overpriced
   visualId:         'physics_prof',
+  rarity:           'Rare',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
     // No effect during come-out — no active point to nudge toward.

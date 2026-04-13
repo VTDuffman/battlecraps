@@ -38,6 +38,7 @@ export const luckyCharm: CrewMember = {
   cooldownState:    0,
   baseCost:         20_000,  // $200.00
   visualId:         'lucky_charm',
+  rarity:           'Rare',
 
   // No-op: the cascade injects the hype lock before calling execute() when
   // Lucky Charm is the sole crew. execute() itself doesn't need to do anything.

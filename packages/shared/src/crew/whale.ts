@@ -67,6 +67,7 @@ export const whale: CrewMember = {
   cooldownState:    0,
   baseCost:         30_000,   // $300.00 — premium late-game crew
   visualId:         'whale',
+  rarity:           'Legendary',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
     // ── Activation Guard ────────────────────────────────────────────────────

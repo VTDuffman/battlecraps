@@ -24,6 +24,7 @@ export const floorWalker: CrewMember = {
   cooldownState:    0,
   baseCost:         15_000,  // $150.00
   visualId:         'floor_walker',
+  rarity:           'Rare',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
     // Only activates on a Seven Out when there is a Pass Line bet to protect.

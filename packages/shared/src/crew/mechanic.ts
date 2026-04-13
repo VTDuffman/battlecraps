@@ -31,6 +31,7 @@ export const mechanic: CrewMember = {
   cooldownState:   0,
   baseCost:        25_000,  // $250.00
   visualId:        'mechanic',
+  rarity:          'Legendary',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
     // The freeze is applied in resolveRoll() before the cascade runs.

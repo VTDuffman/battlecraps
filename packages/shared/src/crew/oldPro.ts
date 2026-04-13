@@ -31,6 +31,7 @@ export const oldPro: CrewMember = {
   cooldownState:    0,
   baseCost:         25_000,  // $250.00 — premium survivability crew
   visualId:         'old_pro',
+  rarity:           'Epic',
 
   // No-op: ability is applied server-side during TRANSITION state handling.
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {

@@ -24,6 +24,7 @@ export const shark: CrewMember = {
   cooldownState:    0,
   baseCost:         18_000,  // $180.00
   visualId:         'shark',
+  rarity:           'Rare',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
     if (ctx.rollResult !== 'POINT_HIT') {

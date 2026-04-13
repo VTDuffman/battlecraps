@@ -46,10 +46,11 @@ import {
 } from '@battlecraps/shared';
 
 import { db } from '../db/client.js';
-import { runs, users, type RunRow, type StoredCrewSlots, type StoredCrewSlot } from '../db/schema.js';
+import { runs, users, type RunRow, type UserRow, type StoredCrewSlots, type StoredCrewSlot } from '../db/schema.js';
 import { rollDice } from '../lib/rng.js';
 import { getIO } from '../lib/io.js';
 import { hydrateCrewMember } from '../lib/crewRegistry.js';
+import { evaluateUnlocks } from '../lib/unlocks.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
 
@@ -312,11 +313,14 @@ async function rollHandler(
 
   // ── 7. Resolve roll — classify outcome and compute base payouts ────────────
   const initialCtx = resolveRoll(dice, {
-    phase:          run.phase as 'COME_OUT' | 'POINT_ACTIVE',
-    currentPoint:   run.currentPoint ?? null,
-    bets:           incomingBets,
-    hype:           run.hype,
-    mechanicFreeze: (run.mechanicFreeze as { lockedValue: number; rollsRemaining: number } | null | undefined) ?? null,
+    phase:                 run.phase as 'COME_OUT' | 'POINT_ACTIVE',
+    currentPoint:          run.currentPoint ?? null,
+    bets:                  incomingBets,
+    hype:                  run.hype,
+    mechanicFreeze:        (run.mechanicFreeze as { lockedValue: number; rollsRemaining: number } | null | undefined) ?? null,
+    previousRollTotal:     run.previousRollTotal ?? null,
+    shooterRollCount:      run.shooterRollCount,
+    pointPhaseBlankStreak: run.pointPhaseBlankStreak,
   });
 
   // ── 7b. Base-game Point Streak Hype tick ───────────────────────────────────
@@ -466,9 +470,12 @@ async function rollHandler(
                             updatedCrewSlots,
                             nextState.shooters < run.shooters, // new shooter → reset per_shooter cooldowns
                           ),
-      mechanicFreeze:     nextMechanicFreeze,
-      currentMarkerIndex: nextState.currentMarkerIndex,
-      updatedAt:          new Date(),
+      mechanicFreeze:        nextMechanicFreeze,
+      currentMarkerIndex:    nextState.currentMarkerIndex,
+      previousRollTotal:     nextState.previousRollTotal,
+      shooterRollCount:      nextState.shooterRollCount,
+      pointPhaseBlankStreak: nextState.pointPhaseBlankStreak,
+      updatedAt:             new Date(),
     })
     .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
     .returning();
@@ -480,7 +487,20 @@ async function rollHandler(
     });
   }
 
-  // ── 12b. Update personal-best bankroll (fire-and-forget) ──────────────────
+  // ── 12b. Unlock evaluation (fire-and-forget) ──────────────────────────────
+  void evaluateUnlocks(
+    userId,
+    user as UserRow,
+    finalContext,
+    nextState,
+    persistedRun,
+    events,
+    runId,
+  ).catch((err: unknown) => {
+    request.log.error({ err }, '[unlocks] evaluation error');
+  });
+
+  // ── 12c. Update personal-best bankroll (fire-and-forget) ──────────────────
   // Conditional update: the WHERE clause ensures this only writes to the DB
   // when newBankroll actually exceeds the stored max. On most rolls this is a
   // no-op (0 rows matched). Fire-and-forget so it doesn't add latency to the
@@ -601,9 +621,12 @@ function computeNextState(
   currentPoint:         number | null;
   hype:                 number;
   bets:                 Bets;
-  currentMarkerIndex:   number;
-  consecutivePointHits: number;
-  bossPointHits:        number;
+  currentMarkerIndex:    number;
+  consecutivePointHits:  number;
+  bossPointHits:         number;
+  previousRollTotal:     number | null;
+  shooterRollCount:      number;
+  pointPhaseBlankStreak: number;
 } {
   const { rollResult, flags } = finalCtx;
   const currentMarkerIndex = run.currentMarkerIndex;
@@ -638,7 +661,10 @@ function computeNextState(
         currentMarkerIndex:   hitMarker ? currentMarkerIndex + 1 : currentMarkerIndex,
         consecutivePointHits: run.consecutivePointHits, // streak unaffected by naturals
         // Boss: reset on marker clear; hold on natural (only Point Hits escalate).
-        bossPointHits: hitMarker ? 0 : run.bossPointHits,
+        bossPointHits:         hitMarker ? 0 : run.bossPointHits,
+        previousRollTotal:     finalCtx.diceTotal,
+        shooterRollCount:      run.shooterRollCount + 1,
+        pointPhaseBlankStreak: 0,
       };
     }
 
@@ -654,9 +680,12 @@ function computeNextState(
         hype:                 finalCtx.hype,  // Hype is NOT reset on craps-out (only 7-out)
         bets:                 clearedBets,
         currentMarkerIndex,
-        consecutivePointHits: run.consecutivePointHits, // streak unaffected by craps-out
+        consecutivePointHits:  run.consecutivePointHits, // streak unaffected by craps-out
         // Boss: min-bet holds on craps-out (only Point Hits escalate the ante).
-        bossPointHits: run.bossPointHits,
+        bossPointHits:         run.bossPointHits,
+        previousRollTotal:     finalCtx.diceTotal,
+        shooterRollCount:      run.shooterRollCount + 1,
+        pointPhaseBlankStreak: 0,
       };
 
     // ── Point established ───────────────────────────────────────────────────
@@ -675,9 +704,12 @@ function computeNextState(
         hype:                 finalCtx.hype,
         bets:                 clearedBets,
         currentMarkerIndex,
-        consecutivePointHits: run.consecutivePointHits, // unchanged until the point resolves
+        consecutivePointHits:  run.consecutivePointHits, // unchanged until the point resolves
         // Boss: min-bet holds on point-set (only Point Hits escalate the ante).
-        bossPointHits: run.bossPointHits,
+        bossPointHits:         run.bossPointHits,
+        previousRollTotal:     finalCtx.diceTotal,
+        shooterRollCount:      run.shooterRollCount + 1,
+        pointPhaseBlankStreak: 0,
       };
 
     // ── Point hit — check for marker / game completion ─────────────────────
@@ -709,9 +741,12 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex:   hitMarker ? currentMarkerIndex + 1 : currentMarkerIndex,
         // Streak resets on marker clear (new chapter); otherwise increments.
-        consecutivePointHits: hitMarker ? 0 : run.consecutivePointHits + 1,
+        consecutivePointHits:  hitMarker ? 0 : run.consecutivePointHits + 1,
         // Boss: reset on marker clear (boss defeated); increment on mid-fight Point Hit.
-        bossPointHits: hitMarker ? 0 : isBossMarker(currentMarkerIndex) ? run.bossPointHits + 1 : 0,
+        bossPointHits:         hitMarker ? 0 : isBossMarker(currentMarkerIndex) ? run.bossPointHits + 1 : 0,
+        previousRollTotal:     finalCtx.diceTotal,
+        shooterRollCount:      run.shooterRollCount + 1,
+        pointPhaseBlankStreak: 0,
       };
     }
 
@@ -778,10 +813,14 @@ function computeNextState(
         hype:                 isLuckyCharmSolo ? 2.0 : 1.0,  // SEVEN_OUT resets Hype; Lucky Charm re-floors to 2.0 if solo
         bets:                 clearedBets,
         currentMarkerIndex:   nextMarkerIndex,
-        consecutivePointHits: 0,  // Seven Out kills the streak
+        consecutivePointHits:  0,  // Seven Out kills the streak
         // Boss: min-bet HOLDS on Seven Out (run.bossPointHits unchanged).
         // Reset only on TRANSITION or GAME_OVER (when nextMarkerIndex advanced).
-        bossPointHits: nextMarkerIndex !== currentMarkerIndex ? 0 : run.bossPointHits,
+        bossPointHits:         nextMarkerIndex !== currentMarkerIndex ? 0 : run.bossPointHits,
+        // New shooter: counters reset. Blocked seven-out: shooter survives, counters continue.
+        previousRollTotal:     shooterLost ? null : finalCtx.diceTotal,
+        shooterRollCount:      shooterLost ? 0 : run.shooterRollCount + 1,
+        pointPhaseBlankStreak: 0,
       };
     }
 
@@ -816,8 +855,11 @@ function computeNextState(
           hype:                 finalCtx.hype,
           bets:                 zeroBets,
           currentMarkerIndex:   currentMarkerIndex + 1,
-          consecutivePointHits: 0,
-          bossPointHits:        0,
+          consecutivePointHits:  0,
+          bossPointHits:         0,
+          previousRollTotal:     finalCtx.diceTotal,
+          shooterRollCount:      run.shooterRollCount + 1,
+          pointPhaseBlankStreak: 0,
         };
       }
 
@@ -830,9 +872,12 @@ function computeNextState(
         hype:                 finalCtx.hype,
         bets:                 clearedBets,
         currentMarkerIndex,
-        consecutivePointHits: run.consecutivePointHits, // no change on non-resolving roll
+        consecutivePointHits:  run.consecutivePointHits, // no change on non-resolving roll
         // Boss: min-bet holds on no-resolution rolls (only Point Hits escalate).
-        bossPointHits: run.bossPointHits,
+        bossPointHits:         run.bossPointHits,
+        previousRollTotal:     finalCtx.diceTotal,
+        shooterRollCount:      run.shooterRollCount + 1,
+        pointPhaseBlankStreak: run.pointPhaseBlankStreak + 1,
       };
     }
   }

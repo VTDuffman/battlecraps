@@ -367,6 +367,49 @@ Full UX/design spec: `docs/requirements/tutorial-user-journey.md`
 
 ---
 
+---
+
+## FB-012 — Crew Expansion & Unlock System
+
+**Type:** Feature / Architecture
+**Area:** `packages/shared/src/crew/`, `packages/shared/src/types.ts`, `apps/api/src/db/`, `apps/api/src/routes/`, `apps/api/src/lib/`, `apps/web/src/components/PubScreen.tsx`, `apps/web/src/store/useGameStore.ts`
+**Status:** In progress
+**Technical design:** `docs/design/crew-implementation-design.md`
+**Reference:** `docs/frameworks/crew_framework.md`
+
+### Problem
+
+The Pub screen currently draws randomly from the same 15 crew on every visit with no gating — players never feel progression. New players have access to high-cost Legendary crew immediately, and the original 15 are available without any in-game achievement. Additionally, come-out and blank rolls have no crew coverage, creating dead stretches where nothing fires.
+
+### What Is Being Built
+
+**Starter Roster (IDs 16–30):** Fifteen new `CrewMember` implementations, all Starter rarity, available from the first run. Designed to fire on dice-face patterns and roll types rather than bet outcomes, eliminating dead space:
+- DICE: The Lookout (16), "Ace" McGee (17), The Close Call (18)
+- HYPE: The Momentum (19), The Echo (20), The Silver Lining (21), The Odd Couple (22)
+- TABLE: The Even Keel (23), The Doorman (24), The Grinder (25)
+- PAYOUT: The Handicapper (26), The Mirror (27)
+- WILDCARD: The Bookkeeper (28), The Pressure Cooker (29), The Contrarian (30)
+
+Five of the new crew require three new game state fields: `previousRollTotal`, `shooterRollCount`, and `pointPhaseBlankStreak`.
+
+**Unlock System for IDs 1–15:** Each original crew member is gated behind a specific achievement. Unlock progress is tracked in-run and cross-run, evaluated after each roll as a fire-and-forget operation. New unlocks are written to `users.unlockedCrewIds` and emitted as a `unlocks:granted` WebSocket event.
+
+**Pub Screen Overhaul:** Hard-coded `ALL_CREW` list replaced by a `GET /crew-roster` API call that returns only crew available to the current user. Rarity badges added to crew cards.
+
+### Architecture Summary
+
+| Area | Change |
+|---|---|
+| `packages/shared/src/types.ts` | 3 new `TurnContext`/`GameState` fields; `rarity` on `CrewMember` |
+| `packages/shared/src/crew/` | 15 new files + `index.ts` updates |
+| `apps/api/src/db/schema.ts` | New columns on `runs`, `users`, `crewDefinitions`; migration |
+| `apps/api/src/lib/unlocks.ts` | New: `evaluateUnlocks()` — all 15 unlock conditions |
+| `apps/api/src/routes/crewRoster.ts` | New: `GET /crew-roster` — availability-filtered roster |
+| `apps/api/src/routes/recruit.ts` | Unlock gate on crew purchase |
+| `apps/api/src/routes/rolls.ts` | Counter maintenance; fire-and-forget unlock evaluation |
+| `apps/web/src/components/PubScreen.tsx` | API-fetched roster, rarity badges |
+| `apps/web/src/store/useGameStore.ts` | `crewRoster` + `unlockedCrewIds` state |
+
 *More entries to follow during playtesting.*
 
 ---

@@ -134,6 +134,14 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         if (!crewDef) {
           return reply.status(422).send({ error: `Unknown crew ID ${crewId}.` });
         }
+        const isAvailable =
+          crewDef.isStarterRoster ||
+          (user.unlockedCrewIds ?? []).includes(crewId!);
+        if (!isAvailable) {
+          return reply.status(403).send({
+            error: `Crew member ${crewId} has not been unlocked yet.`,
+          });
+        }
         if (run.bankrollCents < crewDef.baseCostCents) {
           return reply.status(422).send({
             error: `Insufficient bankroll. Need ${crewDef.baseCostCents}¢, have ${run.bankrollCents}¢.`,

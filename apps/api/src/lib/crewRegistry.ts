@@ -28,6 +28,22 @@ import {
   mimic,
   oldPro,
   luckyCharm,
+  // Starter 15 (IDs 16–30)
+  lookout,
+  aceMcgee,
+  closeCall,
+  momentum,
+  echo,
+  silverLining,
+  oddCouple,
+  evenKeel,
+  doorman,
+  grinder,
+  handicapper,
+  mirror,
+  bookkeeper,
+  pressureCooker,
+  contrarian,
 } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
@@ -35,10 +51,12 @@ import {
 // ---------------------------------------------------------------------------
 
 /**
- * All 15 MVP crew members, keyed by their numeric ID.
- * Add new crew here as they're implemented in packages/shared.
+ * All 30 crew members, keyed by their numeric ID.
+ * IDs 1–15: original crew (require unlock).
+ * IDs 16–30: Starter crew (always available).
  */
 const CREW_REGISTRY = new Map<number, CrewMember>([
+  // Original 15 (IDs 1–15)
   [lefty.id,            lefty],
   [physicsProfessor.id, physicsProfessor],
   [mechanic.id,         mechanic],
@@ -54,6 +72,22 @@ const CREW_REGISTRY = new Map<number, CrewMember>([
   [mimic.id,            mimic],
   [oldPro.id,           oldPro],
   [luckyCharm.id,       luckyCharm],
+  // Starter 15 (IDs 16–30)
+  [lookout.id,          lookout],
+  [aceMcgee.id,         aceMcgee],
+  [closeCall.id,        closeCall],
+  [momentum.id,         momentum],
+  [echo.id,             echo],
+  [silverLining.id,     silverLining],
+  [oddCouple.id,        oddCouple],
+  [evenKeel.id,         evenKeel],
+  [doorman.id,          doorman],
+  [grinder.id,          grinder],
+  [handicapper.id,      handicapper],
+  [mirror.id,           mirror],
+  [bookkeeper.id,       bookkeeper],
+  [pressureCooker.id,   pressureCooker],
+  [contrarian.id,       contrarian],
 ]);
 
 // ---------------------------------------------------------------------------

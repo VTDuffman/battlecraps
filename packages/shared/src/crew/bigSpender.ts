@@ -25,6 +25,7 @@ export const bigSpender: CrewMember = {
   cooldownState:    0,
   baseCost:         8_000,  // $80.00
   visualId:         'big_spender',
+  rarity:           'Common',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
     // Only activates when a hardway bet has won this roll.

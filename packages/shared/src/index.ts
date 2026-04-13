@@ -69,8 +69,9 @@ export { resolveCascade } from './cascade.js';
 export type { TransitionType, CelebrationSnapshot, FloorConfig, FloorAtmosphere } from './floors.js';
 export { FLOORS, getFloorById, getFloorByMarkerIndex } from './floors.js';
 
-// All 15 MVP starter crew + server-side sentinel IDs
+// All 30 crew + server-side sentinel IDs
 export {
+  // Original 15 (IDs 1–15) — require unlock
   lefty, physicsProfessor, mechanic,
   mathlete, floorWalker, regular,
   bigSpender, shark, whale,
@@ -78,4 +79,10 @@ export {
   mimic,     MIMIC_ID,
   oldPro,    OLD_PRO_ID,
   luckyCharm, LUCKY_CHARM_ID,
+  // Starter 15 (IDs 16–30) — always available
+  lookout, aceMcgee, closeCall,
+  momentum, echo, silverLining, oddCouple,
+  evenKeel, doorman, grinder,
+  handicapper, mirror,
+  bookkeeper, pressureCooker, contrarian,
 } from './crew/index.js';

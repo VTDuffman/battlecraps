@@ -15,12 +15,13 @@ import { db }     from './db/client.js';
 import { runs }   from './db/schema.js';
 import { verifyToken } from '@clerk/backend';
 import { resolveUserByClerkId } from './lib/resolveUser.js';
-import { rollsPlugin }     from './routes/rolls.js';
-import { bootstrapPlugin } from './routes/runs.js';
-import { recruitPlugin }   from './routes/recruit.js';
-import { crewPlugin }      from './routes/crew.js';
-import { mechanicPlugin }  from './routes/mechanic.js';
-import { authPlugin }      from './routes/auth.js';
+import { rollsPlugin }      from './routes/rolls.js';
+import { bootstrapPlugin }  from './routes/runs.js';
+import { recruitPlugin }    from './routes/recruit.js';
+import { crewPlugin }       from './routes/crew.js';
+import { mechanicPlugin }   from './routes/mechanic.js';
+import { authPlugin }       from './routes/auth.js';
+import { crewRosterPlugin } from './routes/crewRoster.js';
 
 const PORT = Number(process.env['PORT'] ?? 3001);
 
@@ -59,12 +60,13 @@ await app.register(cors, {
 // Routes
 // ---------------------------------------------------------------------------
 
-await app.register(rollsPlugin,     { prefix: '/api/v1' });
-await app.register(bootstrapPlugin, { prefix: '/api/v1' });
-await app.register(recruitPlugin,   { prefix: '/api/v1' });
-await app.register(crewPlugin,      { prefix: '/api/v1' });
-await app.register(mechanicPlugin,  { prefix: '/api/v1' });
-await app.register(authPlugin,      { prefix: '/api/v1' });
+await app.register(rollsPlugin,      { prefix: '/api/v1' });
+await app.register(bootstrapPlugin,  { prefix: '/api/v1' });
+await app.register(recruitPlugin,    { prefix: '/api/v1' });
+await app.register(crewPlugin,       { prefix: '/api/v1' });
+await app.register(mechanicPlugin,   { prefix: '/api/v1' });
+await app.register(authPlugin,       { prefix: '/api/v1' });
+await app.register(crewRosterPlugin, { prefix: '/api/v1' });
 
 // Health check — Render health check path (healthCheckPath: /health in render.yaml).
 // Returns 200 so Render considers the deployment healthy and stops the redeploy loop.

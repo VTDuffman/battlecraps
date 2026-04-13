@@ -440,6 +440,9 @@ export function resolveRoll(
     bets: Bets;
     hype: number;
     mechanicFreeze?: { lockedValue: number; rollsRemaining: number } | null;
+    previousRollTotal: number | null;
+    shooterRollCount: number;
+    pointPhaseBlankStreak: number;
   },
 ): TurnContext {
   const { phase, currentPoint, bets, hype } = state;
@@ -523,6 +526,11 @@ export function resolveRoll(
 
     // ── Mechanic freeze — non-null when die 0 was locked this roll ───────
     mechanicLockedValue,
+
+    // ── New state fields — carried in from GameState via resolveRoll() state arg ─
+    previousRollTotal:     state.previousRollTotal,
+    shooterRollCount:      state.shooterRollCount,
+    pointPhaseBlankStreak: state.pointPhaseBlankStreak,
   };
 }
 

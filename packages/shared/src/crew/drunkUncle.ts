@@ -33,6 +33,7 @@ export const drunkUncle: CrewMember = {
   cooldownState:    0,
   baseCost:         6_000,  // $60.00 — cheap, unreliable, loveable
   visualId:         'drunk_uncle',
+  rarity:           'Common',
 
   execute(ctx: TurnContext, rollDice: RollDiceFn): ExecuteResult {
     // Roll the bonus dice (server-side RNG, separate from main game dice).

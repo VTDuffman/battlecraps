@@ -55,6 +55,7 @@ export const lefty: CrewMember = {
   cooldownState:    0,
   baseCost:         15_000,   // $150.00
   visualId:         'lefty',
+  rarity:           'Epic',
 
   execute(ctx: TurnContext, rollDice: RollDiceFn): ExecuteResult {
     // ── Activation Guard ────────────────────────────────────────────────────

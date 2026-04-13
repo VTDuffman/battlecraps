@@ -115,10 +115,22 @@ export const users = pgTable(
 
     /**
      * IDs of crew members this account has permanently unlocked.
-     * The starter roster (ids 1–5) is implicitly available to everyone.
-     * New unlocks are appended here after meta-progression purchases.
+     * Starter roster (IDs 16–30) is implicitly available to everyone.
+     * Original crew (IDs 1–15) are earned via unlock conditions.
      */
     unlockedCrewIds: integer('unlocked_crew_ids').array().notNull().default(sql`'{}'::integer[]`),
+
+    /**
+     * Cross-run progress counters keyed by crew ID.
+     * Stores raw event counts for cumulative and one-time unlock conditions.
+     * Example: { 5: 3, 8: 7 } → Floor Walker 3 seven-outs logged, Shark 7 point hits.
+     *
+     * Migration: migrate-crew-expansion.ts
+     */
+    unlockProgress: jsonb('unlock_progress')
+      .$type<Record<number, number>>()
+      .notNull()
+      .default({}),
 
     /**
      * IDs of permanent "Comp Perk" upgrades purchased with lifetime earnings.
@@ -269,6 +281,55 @@ export const runs = pgTable(
       .notNull()
       .default([null, null, null, null, null]),
 
+    // ── Crew-expansion counters (FB-012) ──────────────────────────────────
+
+    /**
+     * The dice total from the immediately preceding roll this shooter.
+     * NULL on a shooter's first roll and after any shooter change (SEVEN_OUT).
+     * Read by Momentum (19), Echo (20), and Contrarian (30) during the cascade.
+     *
+     * Migration: migrate-crew-expansion.ts
+     */
+    previousRollTotal: smallint('previous_roll_total'),
+
+    /**
+     * 1-based roll count for the current shooter. Incremented BEFORE the
+     * cascade runs so crew always see the current roll's position.
+     * Resets to 0 after SEVEN_OUT (next shooter starts at 1).
+     * Read by Bookkeeper (28).
+     *
+     * Migration: migrate-crew-expansion.ts
+     */
+    shooterRollCount: smallint('shooter_roll_count').notNull().default(0),
+
+    /**
+     * Consecutive NO_RESOLUTION rolls accumulated so far in the current
+     * point phase — does NOT include the current roll. Resets on POINT_HIT,
+     * SEVEN_OUT, or any come-out outcome.
+     * Read by Pressure Cooker (29).
+     *
+     * Migration: migrate-crew-expansion.ts
+     */
+    pointPhaseBlankStreak: smallint('point_phase_blank_streak').notNull().default(0),
+
+    /**
+     * Per-run unlock progress counters, reset each time a new run segment starts.
+     * Tracks raw event counts for per-run unlock conditions (IDs 1, 2, 4, 6).
+     * Shape: { naturalsThisRun, softHardwayLossesThisRun, pairedRollsThisRun,
+     *           sevenOutsThisRun }
+     *
+     * Migration: migrate-crew-expansion.ts
+     */
+    perRunUnlockCounters: jsonb('per_run_unlock_counters')
+      .$type<{
+        naturalsThisRun:          number;
+        softHardwayLossesThisRun: number;
+        pairedRollsThisRun:       number;
+        sevenOutsThisRun:         number;
+      }>()
+      .notNull()
+      .default({ naturalsThisRun: 0, softHardwayLossesThisRun: 0, pairedRollsThisRun: 0, sevenOutsThisRun: 0 }),
+
     // ── Mechanic freeze — persisted across rolls ───────────────────────────
 
     /**
@@ -347,12 +408,46 @@ export const crewDefinitions = pgTable('crew_definitions', {
   /**
    * One-line flavour description of the crew member's ability.
    * Shown on the Pub screen recruitment card.
+   * @deprecated Use briefDescription instead. Kept for backwards compatibility.
    */
   description: text('description'),
 
   /**
-   * True for the 15 MVP starter crew available from game launch.
-   * Future DLC crew will have this as false until a content patch enables them.
+   * Rarity tier. Controls unlock gating. 'Starter' = always available (IDs 16–30).
+   * IDs 1–15 each have a specific rarity earned via unlock conditions.
+   *
+   * Migration: migrate-crew-expansion.ts
+   */
+  rarity: text('rarity').notNull().default('Common'),
+
+  /**
+   * One-sentence description shown on crew cards and hover tooltips. ≤ 80 chars.
+   *
+   * Migration: migrate-crew-expansion.ts
+   */
+  briefDescription: text('brief_description'),
+
+  /**
+   * 2–3 sentences shown in the expanded help view. ≤ 300 chars.
+   *
+   * Migration: migrate-crew-expansion.ts
+   */
+  detailedDescription: text('detailed_description'),
+
+  /**
+   * Human-readable description of the unlock condition.
+   * Empty string for Starter rarity (no unlock required).
+   *
+   * Migration: migrate-crew-expansion.ts
+   */
+  unlockDescription: text('unlock_description').notNull().default(''),
+
+  /**
+   * True for Starter crew (IDs 16–30) — always available without unlock.
+   * IDs 1–15 require explicit unlock; this is false for all of them.
+   * Semantic change from original "MVP roster" meaning — client filters on this.
+   *
+   * Migration: migrate-crew-expansion.ts sets existing rows (1–15) to false.
    */
   isStarterRoster: boolean('is_starter_roster').notNull().default(false),
 });

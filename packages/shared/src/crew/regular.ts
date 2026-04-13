@@ -29,6 +29,7 @@ export const regular: CrewMember = {
   cooldownState:    0,
   baseCost:         10_000,  // $100.00
   visualId:         'regular',
+  rarity:           'Uncommon',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
     // Only fires on a Natural (7 or 11 on the come-out).

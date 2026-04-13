@@ -56,6 +56,7 @@ export const nervousIntern: CrewMember = {
   cooldownState:    0,
   baseCost:         5_000,    // $50.00 — intentionally cheap starter crew
   visualId:         'nervous_intern',
+  rarity:           'Common',
 
   // The `_rollDice` parameter is intentionally unused — HYPE crew don't need
   // to generate new dice. The underscore prefix silences the TypeScript

@@ -120,10 +120,12 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 
 **Status:** Beta baseline. All 9 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped — all cinematic sequencing bugs resolved. Boss mechanic framework (FB-010) fully implemented — all three boss rules enforced server-side. Title lobby screen (FB-011) live — every session starts on the title screen with Continue/New Run options.
 
+**Active development:** FB-012 — Crew Expansion & Unlock System. Technical design complete (`docs/design/crew-implementation-design.md`). Implementation in progress.
+
 **Open defects:** None.
 
 **Not yet implemented:**
 - Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md` — 64×64 SNES-style PNGs)
-- Proposed crew IDs 16–30 (design only, see `docs/frameworks/crew_framework.md`)
+- Crew IDs 16–30 Starter roster + unlock system for IDs 1–15 (FB-012 — in progress)
 - Tutorial & "How to Play" system (UX design: `docs/requirements/tutorial-user-journey.md`, backlog: FB-007)
 - Dice roll sound effect — synthesized rattle on throw (backlog: FB-009)

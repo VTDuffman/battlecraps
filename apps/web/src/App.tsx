@@ -21,6 +21,7 @@ import { TableBoard }                  from './components/TableBoard.js';
 import { useGameStore }                from './store/useGameStore.js';
 import { TransitionOrchestrator }      from './transitions/TransitionOrchestrator.js';
 import { TitleLobbyScreen }            from './components/TitleLobbyScreen.js';
+import { UnlockNotification }          from './components/UnlockNotification.js';
 import type { StoredCrewSlots }        from './store/useGameStore.js';
 import type { Bets }                   from '@battlecraps/shared';
 
@@ -266,6 +267,7 @@ const AuthenticatedApp: React.FC = () => {
       <TransitionOrchestrator onPlayAgain={() => void bootstrap(true)}>
         <TableBoard />
       </TransitionOrchestrator>
+      <UnlockNotification />
     </main>
   );
 };

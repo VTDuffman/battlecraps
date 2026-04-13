@@ -33,6 +33,7 @@ export const mathlete: CrewMember = {
   cooldownState:    0,
   baseCost:         12_000,  // $120.00
   visualId:         'mathlete',
+  rarity:           'Uncommon',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
     // Activates when: a soft roll of a hardway number would clear an active

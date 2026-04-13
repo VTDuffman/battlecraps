@@ -29,6 +29,7 @@ export const hypeTrainHolly: CrewMember = {
   cooldownState:    0,
   baseCost:         10_000,
   visualId:         'hype_train_holly',
+  rarity:           'Uncommon',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
     // Only activates on a POINT_HIT — when the shooter makes their point.

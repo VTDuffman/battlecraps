@@ -77,6 +77,27 @@ export type StoredCrewSlots = [
 ];
 
 // ---------------------------------------------------------------------------
+// Crew roster entry shape (mirrors GET /api/v1/crew-roster response)
+// Re-declared here so the web package has no hard dependency on the api package.
+// ---------------------------------------------------------------------------
+
+export interface CrewRosterEntry {
+  id:                  number;
+  name:                string;
+  abilityCategory:     string;
+  cooldownType:        string;
+  baseCostCents:       number;
+  visualId:            string;
+  rarity:              string;
+  briefDescription:    string | null;
+  detailedDescription: string | null;
+  unlockDescription:   string;
+  isAvailable:         boolean;
+  unlockProgress:      number | null;
+  unlockThreshold:     number | null;
+}
+
+// ---------------------------------------------------------------------------
 // Animation queue entry
 //
 // The queue holds CascadeEvents as emitted by the server. Each entry maps
@@ -354,6 +375,28 @@ export interface GameState {
   maxBankrollCents: number;
 
   /**
+   * Crew IDs (original 15) the player has permanently unlocked.
+   * Populated from POST /runs or GET /runs/:id responses via connectToRun initialState.
+   * Updated in real time by the `unlocks:granted` WebSocket event.
+   */
+  unlockedCrewIds: number[];
+
+  /**
+   * Pending unlock notification to show the player.
+   * Set by the `unlocks:granted` WebSocket listener. Cleared by clearUnlockNotification().
+   * null = no notification to show.
+   */
+  unlockNotification: { crewNames: string[] } | null;
+
+  /**
+   * Full 30-crew roster with per-user unlock status.
+   * null = not yet fetched (loading). Populated by fetchCrewRoster(), which is
+   * called automatically by clearTransition() when the pub screen is about to mount.
+   * Cleared to null on connectToRun (new/refreshed run) so it re-fetches each visit.
+   */
+  crewRoster: CrewRosterEntry[] | null;
+
+  /**
    * True once the VICTORY transition has been triggered for the current run.
    * Prevents the 3-phase cinematic from re-triggering on re-renders while it
    * is playing. Resets to false on connectToRun (new run).
@@ -490,6 +533,20 @@ export interface GameActions {
   setGetToken(fn: (() => Promise<string | null>) | null): void;
 
   /**
+   * Fetch the full crew roster from GET /api/v1/crew-roster and store it in
+   * crewRoster. Called automatically by clearTransition() when the pub screen
+   * is about to mount. Safe to call concurrently — subsequent calls are no-ops
+   * while a fetch is already in progress.
+   */
+  fetchCrewRoster(): Promise<void>;
+
+  /**
+   * Dismiss the current unlock notification. Called by UnlockNotification
+   * after the auto-dismiss timer fires or the player clicks close.
+   */
+  clearUnlockNotification(): void;
+
+  /**
    * Record that the BOSS_ENTRY transition has been shown for the given marker.
    * Prevents the modal from re-triggering on every render while in a boss fight.
    */
@@ -621,6 +678,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   // titleShown persists across runs — read from localStorage once at init.
   titleShown: localStorage.getItem('bc_title_shown') === '1',
   maxBankrollCents: 0,
+  unlockedCrewIds:      [],
+  crewRoster:           null,
+  unlockNotification:   null,
   victoryShown:     false,
   victoryComplete:  false,
   _seqCounter:    0,
@@ -634,6 +694,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     // Remove any stale listeners before re-registering (handles hot reconnects).
     socket.off('cascade:trigger');
     socket.off('turn:settled');
+    socket.off('unlocks:granted');
     socket.off('connect');
     socket.off('connect_error');
     socket.off('disconnect');
@@ -655,6 +716,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       floorRevealShownForFloor:  null,
       victoryShown:              false,
       victoryComplete:           false,
+      crewRoster:                null,
       // Explicitly clear all last-roll display state so a new run never
       // inherits stale dice, result labels, or delta animations from the
       // previous run. initialState may also set these, but we zero them
@@ -757,6 +819,21 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       });
     });
 
+    // ── unlocks:granted ───────────────────────────────────────────────────
+    //
+    // Emitted by the server (lib/unlocks.ts) after a roll grants one or more
+    // new crew unlocks. Updates unlockedCrewIds in-place and surfaces a
+    // toast notification so the player sees what they just earned.
+    // Also invalidates crewRoster so the next pub visit re-fetches fresh data.
+    socket.on('unlocks:granted', (payload: { newUnlockIds: number[]; crewNames: string[] }) => {
+      set((state) => ({
+        unlockedCrewIds:    [...new Set([...state.unlockedCrewIds, ...payload.newUnlockIds])],
+        unlockNotification: { crewNames: payload.crewNames },
+        // Invalidate the cached roster — availability has changed.
+        crewRoster:         null,
+      }));
+    });
+
     // ── Connect ───────────────────────────────────────────────────────────
     // Use function form so Socket.IO calls getToken() fresh on every
     // connect/reconnect attempt — Clerk auto-refresh keeps it valid.
@@ -778,6 +855,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   disconnect() {
     socket.off('cascade:trigger');
     socket.off('turn:settled');
+    socket.off('unlocks:granted');
     socket.off('connect');
     socket.off('connect_error');
     socket.off('disconnect');
@@ -1061,6 +1139,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         celebrationSnapshot:  null,
         payoutPops:           null,
       });
+      // Pre-fetch the roster so PubScreen data is ready (or nearly so) on mount.
+      void get().fetchCrewRoster();
     } else if (type === 'VICTORY') {
       // All 3 victory phases complete. Signal the TransitionOrchestrator to
       // call onPlayAgain() via its victoryComplete useEffect.
@@ -1303,6 +1383,29 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       mechanicFreeze: data.mechanicFreeze,
       crewSlots:      data.crewSlots,
     });
+  },
+
+  async fetchCrewRoster() {
+    // No-op if already fetched or a fetch is in progress (crewRoster !== null).
+    if (get().crewRoster !== null) return;
+
+    const token = await get().getToken?.();
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/v1/crew-roster`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { roster: CrewRosterEntry[] };
+      set({ crewRoster: data.roster });
+    } catch {
+      // Fetch failure is non-fatal — PubScreen shows an error state instead.
+    }
+  },
+
+  clearUnlockNotification() {
+    set({ unlockNotification: null });
   },
 
   setGetToken(fn) {

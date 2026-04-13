@@ -287,6 +287,29 @@ export interface TurnContext {
    * buildRollReceipt() to note the lock in the transaction log.
    */
   mechanicLockedValue: number | null;
+
+  // ── Cross-Roll Tracking Fields (Read-Only) ───────────────────────────────
+
+  /**
+   * The dice total from the immediately preceding roll this shooter.
+   * null on the shooter's first roll and after any shooter change.
+   * Used by Momentum (19), Echo (20), and Contrarian (30).
+   */
+  readonly previousRollTotal: number | null;
+
+  /**
+   * The roll count for the current shooter (1-based). Set before the cascade
+   * runs so crew always see this roll's position within the shooter's life.
+   * Used by Bookkeeper (28). Resets to 1 when a new shooter takes the table.
+   */
+  readonly shooterRollCount: number;
+
+  /**
+   * Consecutive NO_RESOLUTION rolls accumulated so far in the current
+   * point phase — does NOT include the current roll. Resets on POINT_HIT,
+   * SEVEN_OUT, or any come-out outcome. Used by Pressure Cooker (29).
+   */
+  readonly pointPhaseBlankStreak: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -392,6 +415,9 @@ export interface CrewMember {
 
   /** String key used to look up the 16-bit portrait sprite sheet frame. */
   readonly visualId: string;
+
+  /** Rarity tier of this crew member. Controls availability gating. */
+  readonly rarity: 'Starter' | 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
 
   /**
    * The crew member's core ability.
@@ -511,4 +537,15 @@ export interface GameState {
    * Cleared on SEVEN_OUT (shooter ends) or when rollsRemaining reaches 0.
    */
   mechanicFreeze: { lockedValue: number; rollsRemaining: number } | null;
+
+  // ── Cross-Roll Tracking Fields ───────────────────────────────────────────
+
+  /** See TurnContext.previousRollTotal. */
+  previousRollTotal: number | null;
+
+  /** See TurnContext.shooterRollCount. */
+  shooterRollCount: number;
+
+  /** See TurnContext.pointPhaseBlankStreak. */
+  pointPhaseBlankStreak: number;
 }

@@ -1,7 +1,8 @@
 # Battlecraps Crew Framework — Baseline Values
 
-> Values and descriptions sourced from code. Rarity and unlock mechanism fields intentionally left blank — not yet implemented.
-> Brief and detailed descriptions are the canonical player-facing copy; code UI strings should be updated to match.
+> Values and descriptions sourced from code. Brief and detailed descriptions are the canonical player-facing copy; code UI strings should be updated to match.
+>
+> **Implementation status:** Original 15 (IDs 1–15) are live. IDs 16–30 and the unlock system for IDs 1–15 are being implemented under FB-012. Technical design: `docs/design/crew-implementation-design.md`.
 
 ---
 
@@ -30,6 +31,17 @@ Stakes (1:1 returns) are **never** amplified — only profit above stake is mult
 | `per_roll` | Countdown; cascade decrements each roll |
 | `per_shooter` | Binary (0=ready / 1=spent); resets when new shooter begins after SEVEN_OUT |
 
+### Rarity Tiers
+
+| Rarity | Description | Cost Range |
+|---|---|---|
+| **Starter** | New-player crew; available immediately, no unlock required | $60–$130 |
+| **Common** | Simple, narrow effects; unlock via basic play milestones | $50–$80 |
+| **Uncommon** | Reliable conditional bonuses; unlock via moderate engagement | $100–$130 |
+| **Rare** | Strong effects with meaningful build implications; unlock via skilled play | $150–$225 |
+| **Epic** | Run-shaping; unlock requires mastery or sustained effort | $250–$300 |
+| **Legendary** | Multiplicative or meta-defining; unlock via exceptional achievement | $375–$475 |
+
 ### Description Fields
 
 Two player-facing copy fields are defined per crew member. These are the canonical strings; all UI components (PubScreen cards, CrewPortrait tooltips, database seed, etc.) should derive from these.
@@ -55,10 +67,10 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Visual ID** | `lefty` |
 | **Emoji** | 🎰 |
 | **Category** | DICE |
-| **Cost** | $150.00 (15,000 cents) |
+| **Cost** | $250.00 (25,000 cents) |
 | **Cooldown** | `per_shooter` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Epic |
+| **Unlock Mechanism** | Lose 3 or more shooters to Seven Out in a single run and still clear the floor marker |
 | **Brief Description** | Re-rolls a Seven Out once per shooter. |
 | **Detailed Description** | When the shooter rolls a Seven Out, Lefty steps in with a second chance. The dice are re-rolled — if the new roll isn't a 7, the shooter lives and play continues. Any Hype or bonuses already built up in the cascade carry through. One use per shooter. |
 
@@ -73,10 +85,10 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Visual ID** | `physics_prof` |
 | **Emoji** | 🧪 |
 | **Category** | DICE |
-| **Cost** | $120.00 (12,000 cents) |
+| **Cost** | $160.00 (16,000 cents) |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Rare |
+| **Unlock Mechanism** | Roll doubles (paired dice) 5 times in a single run |
 | **Brief Description** | On any paired roll, nudges both dice ±1 to land on the active point. |
 | **Detailed Description** | Whenever both dice show the same face, the Physics Prof shifts each die by one pip toward the active point, turning a near-miss into a Point Hit. Because the dice stay paired after the shift, any active Hardway bet also pays out. Fires on every paired roll; no cooldown. |
 
@@ -91,10 +103,10 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Visual ID** | `mechanic` |
 | **Emoji** | 🔧 |
 | **Category** | DICE |
-| **Cost** | $250.00 (25,000 cents) |
+| **Cost** | $375.00 (37,500 cents) |
 | **Cooldown** | `per_shooter` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Legendary |
+| **Unlock Mechanism** | Hit the active point 4 consecutive times within a single shooter without a Seven Out |
 | **Brief Description** | Once per shooter: lock a die to any face for up to 4 rolls. |
 | **Detailed Description** | Tap the Mechanic to choose a die face (1–6). That value is held on one die for the next 4 rolls or until the shooter sevens out. The lock is applied before any other crew fires, so the rest of your crew sees it. One use per shooter. |
 
@@ -114,10 +126,10 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Visual ID** | `mathlete` |
 | **Emoji** | 🧮 |
 | **Category** | TABLE |
-| **Cost** | $120.00 (12,000 cents) |
+| **Cost** | $110.00 (11,000 cents) |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Uncommon |
+| **Unlock Mechanism** | Lose 3 Hardway bets to soft rolls in a single run |
 | **Brief Description** | Active Hardway bets survive a soft-number hit. |
 | **Detailed Description** | When a roll hits a hardway total (4, 6, 8, or 10) with unmatched dice — a soft result that would normally wipe your Hardway bet — the Mathlete cancels that loss and keeps the bet alive. Doesn't protect against a Seven Out, and doesn't interfere with hardway wins. Fires every qualifying roll; no cooldown. |
 
@@ -132,10 +144,10 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Visual ID** | `floor_walker` |
 | **Emoji** | 🪬 |
 | **Category** | TABLE |
-| **Cost** | $150.00 (15,000 cents) |
+| **Cost** | $175.00 (17,500 cents) |
 | **Cooldown** | `per_shooter` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Rare |
+| **Unlock Mechanism** | Lose a shooter to Seven Out on 8 separate occasions across all runs (cumulative) |
 | **Brief Description** | The first Seven Out of a shooter refunds your Pass Line bet. |
 | **Detailed Description** | When the shooter sevens out, the Floor Walker gets your Pass Line stake back instead of losing it. Your Odds bet is not covered. Protection is used once per shooter and resets when a new shooter takes the table. |
 
@@ -152,8 +164,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | TABLE |
 | **Cost** | $100.00 (10,000 cents) |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Uncommon |
+| **Unlock Mechanism** | Hit 3 Naturals in a single come-out sequence within one run |
 | **Brief Description** | Grants a free Odds bet equal to your Pass Line on a Natural. |
 | **Detailed Description** | Every time the come-out roll is a Natural (7 or 11), the Regular adds a bonus to your payout equal to your Pass Line bet — treated like an Odds win and amplified by Hype and any active multipliers. Fires on every Natural; no cooldown. |
 
@@ -173,10 +185,10 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Visual ID** | `big_spender` |
 | **Emoji** | 💸 |
 | **Category** | PAYOUT |
-| **Cost** | $80.00 (8,000 cents) |
+| **Cost** | $75.00 (7,500 cents) |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Common |
+| **Unlock Mechanism** | Win your first Hardway bet |
 | **Brief Description** | Adds a flat $100 bonus to every Hardway win. |
 | **Detailed Description** | Whenever a Hardway bet pays out, the Big Spender throws in an extra $100. That bonus enters the payout pool before Hype is applied, so it scales up with your multiplier stack. Fires on every Hardway win; no cooldown. |
 
@@ -191,10 +203,10 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Visual ID** | `shark` |
 | **Emoji** | 🦈 |
 | **Category** | PAYOUT |
-| **Cost** | $180.00 (18,000 cents) |
+| **Cost** | $200.00 (20,000 cents) |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Rare |
+| **Unlock Mechanism** | Accumulate 10 total Point Hits across all runs |
 | **Brief Description** | Adds a flat $100 bonus to every Point Hit. |
 | **Detailed Description** | Every time the shooter hits their point, the Shark adds $100 to the payout pool. The bonus is applied before Hype and multipliers, so it gets amplified along with everything else. Fires on every Point Hit regardless of bet size; no cooldown. |
 
@@ -209,10 +221,10 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Visual ID** | `whale` |
 | **Emoji** | 🐋 |
 | **Category** | PAYOUT |
-| **Cost** | $300.00 (30,000 cents) |
+| **Cost** | $475.00 (47,500 cents) |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Legendary |
+| **Unlock Mechanism** | Reach a bankroll of $8,000 in a single run |
 | **Brief Description** | Multiplies all winning payouts by 1.2×. |
 | **Detailed Description** | On any roll that produces a winning payout, the Whale applies a 1.2× multiplier to the final result. Multiple multipliers from different crew stack by product — pair the Whale with the Mimic for a 1.44× combined boost. Does not fire on rolls where nothing wins. |
 
@@ -234,8 +246,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | HYPE |
 | **Cost** | $50.00 (5,000 cents) |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Common |
+| **Unlock Mechanism** | Roll a Natural (7 or 11) on your very first come-out roll |
 | **Brief Description** | Adds +0.2× Hype on every Natural. |
 | **Detailed Description** | Each come-out Natural (7 or 11) pumps global Hype up by 0.2×. Hype persists across rolls and amplifies every payout, so a steady stream of Naturals quietly compounds into a serious multiplier. No cooldown; fires on every Natural. |
 
@@ -250,10 +262,10 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Visual ID** | `hype_train_holly` |
 | **Emoji** | 📣 |
 | **Category** | HYPE |
-| **Cost** | $100.00 (10,000 cents) |
+| **Cost** | $130.00 (13,000 cents) |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Uncommon |
+| **Unlock Mechanism** | Hit the same point 3 consecutive times within a single shooter's life |
 | **Brief Description** | Adds +0.3× Hype on every Point Hit. |
 | **Detailed Description** | Every time the shooter hits their point, Holly adds 0.3× to global Hype. A run of consecutive Point Hits can stack Hype fast, turning every subsequent win into a bigger payout. No cooldown; fires on every Point Hit. |
 
@@ -270,8 +282,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | HYPE |
 | **Cost** | $60.00 (6,000 cents) |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Common |
+| **Unlock Mechanism** | See Hype climb above 2.0× in any single run |
 | **Brief Description** | 33% chance per roll: +0.5× Hype or −0.1× Hype. |
 | **Detailed Description** | Each roll, the Drunk Uncle secretly rolls his own dice. He fires roughly one roll in three — when he does, an odd second die means +0.5× Hype; an even second die means −0.1× Hype. The upside is big, the downside is small, but he's unpredictable. His dice are separate from the game roll. |
 
@@ -291,10 +303,10 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Visual ID** | `mimic` |
 | **Emoji** | 👥 |
 | **Category** | WILDCARD |
-| **Cost** | $220.00 (22,000 cents) |
+| **Cost** | $275.00 (27,500 cents) |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Epic |
+| **Unlock Mechanism** | Have 4 or more distinct crew bonuses activate in a single cascade |
 | **Special Constant** | `MIMIC_ID = 13` |
 | **Brief Description** | Copies the ability of the last crew member that fired. |
 | **Detailed Description** | The Mimic repeats the exact action of whichever crew member fired immediately before it in the cascade. Place it after your most valuable crew to double that effect. In slot 0 the Mimic does nothing — there's no prior crew to copy. Slot 4 is the sweet spot. |
@@ -310,10 +322,10 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Visual ID** | `old_pro` |
 | **Emoji** | 🦯 |
 | **Category** | WILDCARD |
-| **Cost** | $250.00 (25,000 cents) |
+| **Cost** | $300.00 (30,000 cents) |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Epic |
+| **Unlock Mechanism** | Clear all 9 Gauntlet markers in a single run (win the game once) |
 | **Special Constant** | `OLD_PRO_ID = 14` |
 | **Brief Description** | Earn +1 Shooter life each time you clear a Marker. |
 | **Detailed Description** | Each time you hit a Gauntlet Marker and advance to the next floor, the Old Pro grants an extra Shooter — so you enter the next stretch with one more life than normal. Fires at the Transition state between floors, not during rolls. No cooldown; applies every Marker you clear. |
@@ -329,10 +341,10 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Visual ID** | `lucky_charm` |
 | **Emoji** | 🍀 |
 | **Category** | WILDCARD |
-| **Cost** | $200.00 (20,000 cents) |
+| **Cost** | $220.00 (22,000 cents) |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Rare |
+| **Unlock Mechanism** | Clear any Gauntlet marker with only 1 crew member filling your roster |
 | **Special Constant** | `LUCKY_CHARM_ID = 15` |
 | **Brief Description** | When alone on the rail, your Hype can't drop below 2.0×. |
 | **Detailed Description** | If the Lucky Charm is the only crew member in your five slots, global Hype is prevented from falling below 2.0× — guaranteeing every payout is at least doubled. The moment any other crew occupies a slot, the floor effect is inactive. Hype can still rise above 2.0× from point streaks and other sources. |
@@ -343,23 +355,43 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 
 ## Original 15 — Summary Table
 
-| # | Name | Category | Cost | Cooldown | Trigger | Effect |
-|---|---|---|---|---|---|---|
-| 1 | "Lefty" McGuffin | DICE | $150 | per_shooter | SEVEN_OUT | Re-rolls dice; may save shooter |
-| 2 | The Physics Prof | DICE | $120 | none | Paired dice | Shifts both dice ±1 toward point |
-| 3 | The Mechanic | DICE | $250 | per_shooter | Manual (API) | Lock one die face for 4 rolls |
-| 4 | The Mathlete | TABLE | $120 | none | Soft hardway roll | Prevents hardway bet loss |
-| 5 | The Floor Walker | TABLE | $150 | per_shooter | SEVEN_OUT | Refunds Pass Line stake once |
-| 6 | The Regular | TABLE | $100 | none | NATURAL | Free Odds-style bonus on come-out 7/11 |
-| 7 | The Big Spender | PAYOUT | $80 | none | Hardway win | +$100 flat bonus |
-| 8 | The Shark | PAYOUT | $180 | none | POINT_HIT | +$100 flat bonus |
-| 9 | The Whale | PAYOUT | $300 | none | Any winning payout | ×1.2 multiplier on all payouts |
-| 10 | The Nervous Intern | HYPE | $50 | none | NATURAL | +0.2× Hype |
-| 11 | "Hype-Train" Holly | HYPE | $100 | none | POINT_HIT | +0.3× Hype |
-| 12 | The Drunk Uncle | HYPE | $60 | none | 33% per roll | ±Hype (random: +0.5 or −0.1) |
-| 13 | The Mimic | WILDCARD | $220 | none | After any firing crew | Copies previous crew's execute() |
-| 14 | The Old Pro | WILDCARD | $250 | none | Marker reached | +1 Shooter (extra life) |
-| 15 | The Lucky Charm | WILDCARD | $200 | none | Solo only | Hype floor locked at 2.0× |
+| # | Name | Category | Rarity | Cost | Cooldown | Trigger | Effect |
+|---|---|---|---|---|---|---|---|
+| 1 | "Lefty" McGuffin | DICE | Epic | $250 | per_shooter | SEVEN_OUT | Re-rolls dice; may save shooter |
+| 2 | The Physics Prof | DICE | Rare | $160 | none | Paired dice | Shifts both dice ±1 toward point |
+| 3 | The Mechanic | DICE | Legendary | $375 | per_shooter | Manual (API) | Lock one die face for 4 rolls |
+| 4 | The Mathlete | TABLE | Uncommon | $110 | none | Soft hardway roll | Prevents hardway bet loss |
+| 5 | The Floor Walker | TABLE | Rare | $175 | per_shooter | SEVEN_OUT | Refunds Pass Line stake once |
+| 6 | The Regular | TABLE | Uncommon | $100 | none | NATURAL | Free Odds-style bonus on come-out 7/11 |
+| 7 | The Big Spender | PAYOUT | Common | $75 | none | Hardway win | +$100 flat bonus |
+| 8 | The Shark | PAYOUT | Rare | $200 | none | POINT_HIT | +$100 flat bonus |
+| 9 | The Whale | PAYOUT | Legendary | $475 | none | Any winning payout | ×1.2 multiplier on all payouts |
+| 10 | The Nervous Intern | HYPE | Common | $50 | none | NATURAL | +0.2× Hype |
+| 11 | "Hype-Train" Holly | HYPE | Uncommon | $130 | none | POINT_HIT | +0.3× Hype |
+| 12 | The Drunk Uncle | HYPE | Common | $60 | none | 33% per roll | ±Hype (random: +0.5 or −0.1) |
+| 13 | The Mimic | WILDCARD | Epic | $275 | none | After any firing crew | Copies previous crew's execute() |
+| 14 | The Old Pro | WILDCARD | Epic | $300 | none | Marker reached | +1 Shooter (extra life) |
+| 15 | The Lucky Charm | WILDCARD | Rare | $220 | none | Solo only | Hype floor locked at 2.0× |
+
+### Unlock Progression Reference
+
+| Rarity | # | Name | Unlock Condition |
+|---|---|---|---|
+| Common | 10 | The Nervous Intern | Roll a Natural on your very first come-out roll |
+| Common | 12 | The Drunk Uncle | See Hype climb above 2.0× in any single run |
+| Common | 7 | The Big Spender | Win your first Hardway bet |
+| Uncommon | 6 | The Regular | Hit 3 Naturals in a single come-out sequence within one run |
+| Uncommon | 4 | The Mathlete | Lose 3 Hardway bets to soft rolls in a single run |
+| Uncommon | 11 | "Hype-Train" Holly | Hit the same point 3 consecutive times within a single shooter |
+| Rare | 2 | The Physics Prof | Roll doubles (paired dice) 5 times in a single run |
+| Rare | 5 | The Floor Walker | Lose a shooter to Seven Out on 8 separate occasions across all runs |
+| Rare | 8 | The Shark | Accumulate 10 total Point Hits across all runs |
+| Rare | 15 | The Lucky Charm | Clear any Gauntlet marker with only 1 crew member in your roster |
+| Epic | 1 | "Lefty" McGuffin | Lose 3+ shooters to Seven Out in a single run and still clear the floor marker |
+| Epic | 13 | The Mimic | Have 4 or more distinct crew bonuses activate in a single cascade |
+| Epic | 14 | The Old Pro | Clear all 9 Gauntlet markers in a single run (win the game once) |
+| Legendary | 3 | The Mechanic | Hit the active point 4 consecutive times within a single shooter without a Seven Out |
+| Legendary | 9 | The Whale | Reach a bankroll of $8,000 in a single run |
 
 ---
 
@@ -393,6 +425,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 > These 15 crew members are design proposals, not yet implemented. Costs and values are estimates for balance discussion. All have `cooldownType: none`. Members marked ⚠️ require new game state fields.
 >
 > **Design goal:** Trigger on dice values and roll patterns rather than bet outcomes, eliminating dead space between resolutions.
+>
+> **Rarity:** All starter crew are **Starter** rarity. No unlock required — they are available to all players from the start of their first run, providing an accessible foundation before players unlock the original 15.
 
 ---
 
@@ -410,8 +444,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | DICE |
 | **Cost** | $65.00 (6,500 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Adds Hype whenever a 6 appears on either die. |
 | **Detailed Description** | The Lookout watches for the big number — any roll where at least one die lands on 6 generates +0.15 Hype. Fires on roughly 1 in 3 rolls, making it one of the most consistently active crew members. No conditions beyond the die face; no cooldown. |
 
@@ -428,8 +462,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | DICE |
 | **Cost** | $60.00 (6,000 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Adds a flat bonus whenever a 1 appears on either die. |
 | **Detailed Description** | Snake eyes feel lucky now. Any roll where at least one die shows a 1 adds $50 to your payout pool. Fires on roughly 1 in 3 rolls regardless of game phase or outcome. Pairs with The Lookout to cover more than half of all rolls between them. |
 
@@ -446,8 +480,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | DICE |
 | **Cost** | $110.00 (11,000 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Pays out whenever the dice show consecutive face values. |
 | **Detailed Description** | When dice land on adjacent values — [1,2], [2,3], [3,4], [4,5], or [5,6] in either order — the Close Call adds $100 to the payout pool. So close to a pair. Fires on roughly 1 in 4 rolls regardless of outcome or phase. |
 
@@ -469,8 +503,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | HYPE |
 | **Cost** | $90.00 (9,000 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Adds Hype whenever this roll's total is higher than the last. |
 | **Detailed Description** | When the dice climb — any roll whose total beats the previous roll's total — the Momentum adds +0.2 Hype. The table reads the dice like a scoreboard. Fires on roughly 45% of rolls after the first of a shooter. Partners with The Echo and The Contrarian to cover nearly every roll with distinct rewards. |
 
@@ -487,8 +521,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | HYPE |
 | **Cost** | $85.00 (8,500 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Pops Hype when the dice repeat the same total as the last roll. |
 | **Detailed Description** | When the total matches the previous roll exactly, the Echo fires a +0.4 Hype burst — bigger than most Hype crew because repetition is rarer. Fires roughly 17% of rolls. Works alongside Momentum and Contrarian to cover almost every roll of a shooter with different rewards. |
 
@@ -505,8 +539,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | HYPE |
 | **Cost** | $75.00 (7,500 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Converts a Craps Out into a Hype bump. |
 | **Detailed Description** | When the come-out craps out (2, 3, or 12), the Silver Lining adds +0.6 Hype as consolation. CRAPS_OUT is currently the only outcome where no crew fires at all. The Silver Lining makes the worst come-out result build toward something — turning grief into momentum for the next roll. |
 
@@ -523,8 +557,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | HYPE |
 | **Cost** | $80.00 (8,000 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Adds Hype whenever both dice show odd faces. |
 | **Detailed Description** | When both dice land on odd values (1, 3, or 5), the Odd Couple adds +0.2 Hype. Fires on 25% of all rolls regardless of phase or outcome. Pairs with The Even Keel to cover 50% of rolls between them — Hype on odd rolls, cash on even ones. |
 
@@ -546,8 +580,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | TABLE |
 | **Cost** | $90.00 (9,000 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Pays a flat bonus whenever both dice show even faces. |
 | **Detailed Description** | When both dice land on even values (2, 4, or 6), the Even Keel adds $80 to the payout pool. Smooth and steady — fires on 25% of rolls. Partners with The Odd Couple to cover half of all rolls: Even Keel provides cash income while Odd Couple builds Hype. |
 
@@ -564,8 +598,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | TABLE |
 | **Cost** | $80.00 (8,000 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Pays a small bonus on every come-out roll regardless of outcome. |
 | **Detailed Description** | Every time a come-out roll happens — Natural, Craps Out, or Point Set — the Doorman adds $40 to the payout pool. Come-out rolls that aren't Naturals currently feel ignored by most crew. The Doorman means every new come-out earns something, making the transition between shooters feel productive. |
 
@@ -582,8 +616,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | TABLE |
 | **Cost** | $130.00 (13,000 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Earns a steady bonus on every in-between point-phase roll. |
 | **Detailed Description** | Every point-phase roll that doesn't resolve — no Point Hit, no Seven Out — the Grinder adds $30 to the payout pool. These blank rolls currently feel like dead air. At 65–70% of point-phase roll frequency, the Grinder turns the longest stretches of waiting into the most consistent earners. |
 
@@ -605,8 +639,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | PAYOUT |
 | **Cost** | $100.00 (10,000 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Adds Hype when a point is set — more for harder points. |
 | **Detailed Description** | Every time the come-out establishes a point, the Handicapper adds Hype scaled to difficulty: Point 6 or 8 gives +0.1 Hype, Point 5 or 9 gives +0.2, and Points 4 or 10 give +0.3. POINT_SET is currently ignored by every crew member. The Handicapper makes hard points feel like an opportunity instead of a threat. |
 
@@ -623,8 +657,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | PAYOUT |
 | **Cost** | $85.00 (8,500 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Adds Hype on any roll totalling 7, regardless of phase. |
 | **Detailed Description** | Opposite faces of a real die always sum to 7. When the dice show that balance — Natural on come-out or Seven Out in point phase — the Mirror banks +0.2 Hype regardless. Seven Outs are still costly, but you carry Hype into the next shooter. Naturals get an extra Hype bump on top of the win. Fires on roughly 1 in 6 rolls. |
 
@@ -646,8 +680,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | WILDCARD |
 | **Cost** | $100.00 (10,000 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Pays out on every 3rd roll of the current shooter, like clockwork. |
 | **Detailed Description** | Every third roll — regardless of outcome, phase, or dice values — the Bookkeeper adds $60 to the payout pool. The predictability is the design: players count rolls out loud. "One, two, THREE." This is the most deliberately Pavlovian crew member in the set. Counter resets per shooter. |
 
@@ -664,8 +698,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | WILDCARD |
 | **Cost** | $120.00 (12,000 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Releases a big payout after 5 consecutive blank point-phase rolls. |
 | **Detailed Description** | Every fifth consecutive NO_RESOLUTION roll in the point phase triggers a release: +0.5 Hype and +$100 additive. Long point phases feel like purgatory without this — the Pressure Cooker makes players actively want them. Each blank roll builds pressure; every five rolls it releases. Counter resets on any resolution. |
 
@@ -682,8 +716,8 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 | **Category** | WILDCARD |
 | **Cost** | $85.00 (8,500 cents) *(proposed)* |
 | **Cooldown** | `none` |
-| **Rarity** | — |
-| **Unlock Mechanism** | — |
+| **Rarity** | Starter |
+| **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Pays cash whenever this roll's total is lower than the last. |
 | **Detailed Description** | When the dice fall — any roll whose total is below the previous roll's total — the Contrarian adds $75 to the payout pool. Going down? Bank some cash. Different reward from The Momentum (Hype on ascent) and The Echo (big Hype on repeat) — together the three cover nearly every roll of a shooter with distinct rewards for every direction. |
 
@@ -693,23 +727,23 @@ Two player-facing copy fields are defined per crew member. These are the canonic
 
 ## New Starter Crew — Summary (IDs 16–30)
 
-| # | Name | Emoji | Category | Cost | Trigger | Freq. | Effect |
-|---|---|---|---|---|---|---|---|
-| 16 | The Lookout | 🔭 | DICE | $65 | Any die = 6 | 31% | +0.15 Hype |
-| 17 | "Ace" McGee | 🎯 | DICE | $60 | Any die = 1 | 31% | +$50 additive |
-| 18 | The Close Call | 😬 | DICE | $110 | Consecutive faces | 28% | +$100 additive |
-| 19 | The Momentum | 📈 | HYPE | $90 | Total > last roll ⚠️ | ~45% | +0.2 Hype |
-| 20 | The Echo | 🔁 | HYPE | $85 | Total = last roll ⚠️ | ~17% | +0.4 Hype |
-| 21 | The Silver Lining | 🌤️ | HYPE | $75 | CRAPS_OUT | 11%† | +0.6 Hype |
-| 22 | The Odd Couple | 🤪 | HYPE | $80 | Both dice odd | 25% | +0.2 Hype |
-| 23 | The Even Keel | ⚖️ | TABLE | $90 | Both dice even | 25% | +$80 additive |
-| 24 | The Doorman | 🚪 | TABLE | $80 | Every come-out | ~20%‡ | +$40 additive |
-| 25 | The Grinder | ⚙️ | TABLE | $130 | NO_RESOLUTION point phase | ~67%§ | +$30 additive |
-| 26 | The Handicapper | 📊 | PAYOUT | $100 | POINT_SET | 67%† | +Hype by difficulty |
-| 27 | The Mirror | 🪞 | PAYOUT | $85 | Any total = 7 | 17% | +0.2 Hype |
-| 28 | The Bookkeeper | 📒 | WILDCARD | $100 | Every 3rd roll ⚠️ | 33% sched. | +$60 additive |
-| 29 | The Pressure Cooker | 🌡️ | WILDCARD | $120 | 5 blank point-phase rolls ⚠️ | per streak | +0.5 Hype + $100 |
-| 30 | The Contrarian | 📉 | WILDCARD | $85 | Total < last roll ⚠️ | ~40% | +$75 additive |
+| # | Name | Emoji | Category | Rarity | Cost | Trigger | Freq. | Effect |
+|---|---|---|---|---|---|---|---|---|
+| 16 | The Lookout | 🔭 | DICE | Starter | $65 | Any die = 6 | 31% | +0.15 Hype |
+| 17 | "Ace" McGee | 🎯 | DICE | Starter | $60 | Any die = 1 | 31% | +$50 additive |
+| 18 | The Close Call | 😬 | DICE | Starter | $110 | Consecutive faces | 28% | +$100 additive |
+| 19 | The Momentum | 📈 | HYPE | Starter | $90 | Total > last roll ⚠️ | ~45% | +0.2 Hype |
+| 20 | The Echo | 🔁 | HYPE | Starter | $85 | Total = last roll ⚠️ | ~17% | +0.4 Hype |
+| 21 | The Silver Lining | 🌤️ | HYPE | Starter | $75 | CRAPS_OUT | 11%† | +0.6 Hype |
+| 22 | The Odd Couple | 🤪 | HYPE | Starter | $80 | Both dice odd | 25% | +0.2 Hype |
+| 23 | The Even Keel | ⚖️ | TABLE | Starter | $90 | Both dice even | 25% | +$80 additive |
+| 24 | The Doorman | 🚪 | TABLE | Starter | $80 | Every come-out | ~20%‡ | +$40 additive |
+| 25 | The Grinder | ⚙️ | TABLE | Starter | $130 | NO_RESOLUTION point phase | ~67%§ | +$30 additive |
+| 26 | The Handicapper | 📊 | PAYOUT | Starter | $100 | POINT_SET | 67%† | +Hype by difficulty |
+| 27 | The Mirror | 🪞 | PAYOUT | Starter | $85 | Any total = 7 | 17% | +0.2 Hype |
+| 28 | The Bookkeeper | 📒 | WILDCARD | Starter | $100 | Every 3rd roll ⚠️ | 33% sched. | +$60 additive |
+| 29 | The Pressure Cooker | 🌡️ | WILDCARD | Starter | $120 | 5 blank point-phase rolls ⚠️ | per streak | +0.5 Hype + $100 |
+| 30 | The Contrarian | 📉 | WILDCARD | Starter | $85 | Total < last roll ⚠️ | ~40% | +$75 additive |
 
 *⚠️ = requires new game state field; †of come-out rolls; ‡of all rolls (come-out phase proportion); §of point-phase rolls*
 

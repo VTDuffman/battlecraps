@@ -29,6 +29,8 @@ interface CreateRunResponse {
     currentMarkerIndex: number;
     /** Highest bankroll the player has ever reached, in cents (across all runs). */
     maxBankrollCents:   number;
+    /** Crew IDs the player has permanently unlocked (original 15). */
+    unlockedCrewIds:    number[];
   };
 }
 
@@ -60,6 +62,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
         currentMarkerIndex: run.currentMarkerIndex,
         bets:               run.bets,
         maxBankrollCents:   (run.user as UserRow).maxBankrollCents,
+        unlockedCrewIds:    (run.user as UserRow).unlockedCrewIds,
       });
     },
   );
@@ -108,6 +111,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
           crewSlots:          run.crewSlots as StoredCrewSlots,
           currentMarkerIndex: run.currentMarkerIndex,
           maxBankrollCents:   user.maxBankrollCents,
+          unlockedCrewIds:    user.unlockedCrewIds,
         },
       };
 

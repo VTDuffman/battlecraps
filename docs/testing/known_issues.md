@@ -56,7 +56,7 @@ Either raise `duration` substantially (e.g. 8000ms) so the auto-advance gives pl
 
 **Area:** `apps/web/src/store/useGameStore.ts` (`clearTransition`)
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed
 **Source:** Playtester observation
 
 **Issue:**
@@ -69,8 +69,8 @@ Sequence:
 4. Player exits pub → `TableBoard` remounts. `useCrowdAudio` mounts fresh and its `useEffect` fires with the stale `_flashKey` (non-zero, bypasses the `=== 0` guard). `flashTypeRef.current` is still `'win'` → `playCheer()` fires again.
 5. Simultaneously, `flashType` is still `'win'` → the screen flash overlay renders and its CSS animation replays.
 
-**Proposed fix:**
-Add `flashType: null` and `_flashKey: 0` to the `set({...})` call in `clearTransition()` for the `MARKER_CLEAR | BOSS_VICTORY` branch — alongside the `payoutPops: null` already there. One change, kills both symptoms. Same root cause as KI (ChipRain stale-key-on-mount pattern); same fix pattern.
+**Fix applied:**
+Added `flashType: null` and `_flashKey: 0` to the `set({...})` call in `clearTransition()` for the `MARKER_CLEAR | BOSS_VICTORY` branch — alongside `payoutPops: null` already there. This prevents `useCrowdAudio`'s `_flashKey` effect from re-firing with a stale `'win'` flashType when `TableBoard` remounts after the pub. Also resolves KI-008 (same root cause, same fix).
 
 ---
 
@@ -78,7 +78,7 @@ Add `flashType: null` and `_flashKey: 0` to the `set({...})` call in `clearTrans
 
 **Area:** `apps/web/src/components/TableBoard.tsx` (`GameStatus` component, line 396)
 **Severity:** Low
-**Status:** Open
+**Status:** Fixed
 **Source:** Playtester observation
 
 **Issue:**
@@ -92,25 +92,23 @@ With `shooters = 6`, the coloring condition `i < shooters` lights all 5 dots gol
 
 `PubScreen` handles this correctly — it derives `upcomingShooters = isComped ? 6 : 5` and renders an extra ✦ with a "+1 COMP" label. But that awareness doesn't carry to the table board.
 
-**Proposed fix:**
-Change `Array.from({ length: 5 }, ...)` to `Array.from({ length: Math.max(5, shooters) }, ...)`. The baseline stays 5 dots; a 6th renders automatically when `shooters` exceeds 5. The existing coloring logic needs no changes.
+**Fix applied:**
+Changed `Array.from({ length: 5 }, ...)` to `Array.from({ length: Math.max(5, shooters) }, ...)` in `TableBoard.tsx`. The baseline stays 5 dots; a 6th renders automatically when `shooters` exceeds 5. The existing `i < shooters` coloring logic needed no changes.
 
 ---
 
 ## KI-008 — Chip rain sound effect lingers after returning from the pub
 
-**Area:** `apps/web/src/hooks/useCrowdAudio.ts` (or equivalent chip rain audio trigger)
+**Area:** `apps/web/src/store/useGameStore.ts` (`clearTransition`)
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed
 **Source:** Playtester observation
 
 **Issue:**
-The chip rain sound effect (played when payout chips animate during a win) continues audibly after the player has transitioned through the pub screen and returned to the table board. The visual chip rain has ended but the audio keeps playing, leaving an orphaned sound with no corresponding visual — confusing and immersion-breaking.
+The crowd cheer sound (triggered by the win flash) replayed when the player returned from the pub to the table board. `useCrowdAudio` mounts fresh with `TableBoard`; its `_flashKey` effect fired because `_flashKey` was non-zero, bypassing the `=== 0` mount guard, and `flashType` was still `'win'` — causing `playCheer()` to fire again.
 
-This is likely the same stale-key-on-remount pattern as KI-004: `ChipRain` or its audio trigger fires again when `TableBoard` remounts after the pub, because `_popsKey` or a related flag is not cleared during `clearTransition()`. The audio source node may also have a long enough scheduled duration that it outlasts the transition.
-
-**Proposed fix:**
-Audit the chip rain audio trigger in `useCrowdAudio.ts` — ensure the sound source node is stopped/disconnected when `payoutPops` is cleared. Also confirm that `_popsKey` is reset to `0` in the `clearTransition()` call for the `MARKER_CLEAR | BOSS_VICTORY` branch (alongside the `payoutPops: null` already there), so the audio trigger effect does not re-fire on `TableBoard` remount. See KI-004 for the closely related visual re-fire fix.
+**Fix applied:**
+Same one-line fix as KI-004 — added `flashType: null` and `_flashKey: 0` to the `clearTransition()` `MARKER_CLEAR | BOSS_VICTORY` branch in `useGameStore.ts`. Both KI-004 and KI-008 were the same bug: stale `flashType`/`_flashKey` on `TableBoard` remount.
 
 ---
 
@@ -158,3 +156,38 @@ Crew member tooltips displayed "Crew #20" and "???" for new starter crew (IDs 16
 
 **Fix applied:**
 Extended all four static tables with entries for IDs 16–30: `ABILITY_DESCRIPTIONS`, `BARK_LINES` (in `CrewPortrait.tsx`), `CREW_NAMES`, and `CREW_VISUAL_IDS` (in `TableBoard.tsx`). Ability descriptions and bark lines are authored to match each crew's actual ability and flavor.
+
+---
+
+## KI-010 — Cannot remove bets on mobile
+
+**Area:** `apps/web/src/components/BettingGrid.tsx` (`BetZone` component)
+**Severity:** High
+**Status:** Fixed
+**Source:** Playtester observation
+
+**Issue:**
+Bet removal was right-click only (`onContextMenu`), which has no mobile equivalent. Mobile players could not take down odds or hardway bets before rolling.
+
+**Fix applied:**
+Added a long-press handler to `BetZone` in `BettingGrid.tsx`. A 500ms hold on any bet zone triggers `removeBet(field)` — the same action as right-click on desktop. A `didLongPress` ref suppresses the `onClick` that fires immediately after a touch release, preventing the bet from being re-placed in the same gesture. `onTouchMove` cancels the timer so scrolling doesn't accidentally trigger removal.
+
+---
+
+## KI-011 — Bottom of screens clipped on mobile; key buttons cut off
+
+**Area:** `apps/web/src/components/GameOverScreen.tsx` and other full-screen components
+**Severity:** High
+**Status:** Fixed
+**Source:** Playtester observation
+
+**Issue:**
+On mobile devices, the bottom portion of certain full-screen views is clipped and unreachable — the "New Run" button on the Game Over screen is a confirmed example. The content overflows the visible viewport but is not scrollable, leaving critical CTAs inaccessible.
+
+Root cause is likely one or more of:
+- A full-screen container using `height: 100vh` (or `h-screen`) which does not account for the mobile browser's dynamic toolbar (address bar + bottom nav chrome). On iOS Safari and Android Chrome, `100vh` is taller than the actual usable viewport, causing the bottom of the layout to sit behind the browser UI.
+- Fixed or absolute-positioned footer elements that assume a desktop viewport height.
+- Missing `overflow-y: auto` / `overflow-y: scroll` on the scroll container, so content below the fold is unreachable even when it overflows.
+
+**Proposed fix:**
+Replace `h-screen` / `height: 100vh` containers on affected screens with `min-h-[100dvh]` (`dvh` = dynamic viewport height), which correctly tracks the usable viewport on mobile browsers. Where scrolling is appropriate, ensure the root container has `overflow-y: auto` so overflowing content is reachable. Audit `GameOverScreen`, `TitleLobbyScreen`, `PubScreen`, and transition phase components for this pattern — any full-bleed screen is a potential candidate.

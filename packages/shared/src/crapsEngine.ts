@@ -573,8 +573,8 @@ export function settleTurn(ctx: TurnContext): number {
   // Sum the profit components (all ≥ 0 in the new model).
   const grossProfit = basePassLinePayout + baseOddsPayout + baseHardwaysPayout;
 
-  // No wins at all — return 0. (Losses were already charged at placement.)
-  if (grossProfit === 0 && baseStakeReturned === 0) {
+  // No wins and no crew flat bonuses — return 0. (Losses were already charged at placement.)
+  if (grossProfit === 0 && baseStakeReturned === 0 && ctx.additives === 0) {
     return 0;
   }
 

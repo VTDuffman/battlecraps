@@ -108,7 +108,7 @@ apps/web/src/                 # React SPA
 ## Docs Structure
 
 ```
-docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–012), tutorial-user-journey.md, vibe-ideas.md
+docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–013), tutorial-user-journey.md, vibe-ideas.md
 docs/frameworks/      # crew_framework.md (30 crew — 15 Starter + 15 unlock-gated), floor_design.md, boss_framework.md
 docs/design/          # crew-sprites-tdd.md (asset spec), crew-implementation-design.md (FB-012 TDD), transition_framework TDD, boss-mechanic-technical-design.md, title-screen-technical-design.md, CODE_REVIEW.md*
 docs/testing/         # known_issues.md (open defects), test plans + results (alpha cycle — archived)
@@ -124,9 +124,17 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 
 **Active development:** None. Awaiting next backlog item.
 
-**Open defects:** None.
+**Open defects:** See `docs/testing/known_issues.md` for full list. Current open issues:
+- KI-002: Roll delta popup confusing on marker-clear rolls (Low)
+- KI-003: "Tap to Continue" on Marker Intro not reliably clickable (Low)
+- KI-004: Screen flash and crowd cheer re-fire after exiting the pub (Medium)
+- KI-005: Member's Jacket comp does not show 6th shooter pip (Low)
+- KI-006: New crew members (IDs 16–30) show no emoji in the UI (Low)
+- KI-007: Crew member tooltips show "Crew #N" and "???" instead of name/description (Medium)
+- KI-008: Chip rain sound effect lingers after returning from the pub (Medium)
 
 **Not yet implemented:**
 - Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md` — 64×64 SNES-style PNGs)
 - Tutorial & "How to Play" system (UX design: `docs/requirements/tutorial-user-journey.md`, backlog: FB-007)
 - Dice roll sound effect — synthesized rattle on throw (backlog: FB-009)
+- Cinematic crew unlock experience (backlog: FB-013)

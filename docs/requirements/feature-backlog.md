@@ -322,6 +322,55 @@ Replaced the dev-only UUID stub with production Clerk auth (Google OAuth). Valid
 
 ---
 
+## FB-013 — Cinematic Crew Unlock Experience
+
+**Type:** Feature / Polish
+**Area:** `apps/web/src/components/UnlockNotification.tsx`, `apps/web/src/store/useGameStore.ts`, `apps/api/src/lib/unlocks.ts`
+**Status:** Pending implementation
+
+### Problem
+
+When a player unlocks a new crew member, they receive a small auto-dismissing toast notification with the crew member's name. This tells them *that* something happened but not *why* it happened or *who* they just unlocked. There is no flavor — it feels like a system message rather than a reward.
+
+The unlock system was designed with rich data per crew member (`unlockDescription`, `briefDescription`, `detailedDescription` already seeded in `crewDefinitions`) — none of this is surfaced in the current notification.
+
+### Desired behavior
+
+The unlock event should feel like a cinematic reward moment:
+
+- A dedicated full-screen or large modal overlay replaces the dismissing toast
+- Shows the crew member's emoji and name prominently
+- Includes the **unlock flavor text** — *why* they showed up ("Word travels fast when a shooter goes on a run...")
+- Includes the crew member's **brief description** — what they actually do
+- Has a clear "Add to Roster" or "Got It" CTA to dismiss
+- The overlay should be visually distinct and celebratory — differentiated from the standard Pub UI
+
+### What needs to be built
+
+1. **`UnlockModal` component** — full-screen overlay (or large centered modal). Displays:
+   - Crew emoji (large)
+   - Crew name
+   - Unlock flavor text (`unlockDescription` from `crewDefinitions`)
+   - Brief ability description (`briefDescription`)
+   - Dismiss button
+
+2. **`unlocks:granted` payload extension** — the WebSocket event currently emits crew IDs only. The API should enrich the payload with the crew definition data needed for the modal (name, emoji, `unlockDescription`, `briefDescription`) so the client doesn't need a separate fetch.
+
+3. **Store wiring** — replace the current `unlockNotification: string | null` (name-only) with a richer `UnlockNotification` object containing the full display data. Update `unlocks:granted` listener in `useGameStore.ts` accordingly.
+
+4. **Timing** — the modal should queue if multiple unlocks fire in the same session (unlikely but possible). Dismiss is player-gated (no auto-dismiss timer).
+
+### Files (estimated)
+
+| File | Action |
+|---|---|
+| `apps/web/src/components/UnlockModal.tsx` | Create — replaces `UnlockNotification.tsx` |
+| `apps/web/src/components/UnlockNotification.tsx` | Delete or repurpose |
+| `apps/web/src/store/useGameStore.ts` | Enrich `unlockNotification` type; update WS listener |
+| `apps/api/src/lib/unlocks.ts` | Include crew definition fields in `unlocks:granted` emit |
+
+---
+
 ## FB-007 — Tutorial & "How to Play" System
 
 **Type:** Feature

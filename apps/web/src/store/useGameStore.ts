@@ -415,6 +415,15 @@ export interface GameState {
   /** Monotonically increasing counter used to generate `seq` values. */
   _seqCounter: number;
 
+  // ── Tutorial ──────────────────────────────────────────────────────────────
+  /**
+   * Predetermined dice outcome to be consumed on the next rollDice() call.
+   * Set by setTutorialCheatDice() before the player hits Roll on a manual-roll
+   * beat. Consumed (used + cleared) automatically inside rollDice() when no
+   * explicit cheatDice argument is provided.
+   */
+  tutorialCheatDice: [number, number] | null;
+
   // ── Auth ──────────────────────────────────────────────────────────────────
   /**
    * Function that returns a fresh Clerk JWT. Injected by App.tsx after sign-in.
@@ -488,7 +497,7 @@ export interface GameActions {
    * Returns true on success, false on any server/network error so the caller
    * (DiceZone) can abort the throw animation before it gets stuck.
    */
-  rollDice(): Promise<boolean>;
+  rollDice(cheatDice?: [number, number]): Promise<boolean>;
 
   /**
    * Apply the buffered turn:settled payload to visible game state.
@@ -525,6 +534,13 @@ export interface GameActions {
    * to inject the BOSS_ENTRY transition when a boss marker is detected.
    */
   setActiveTransition(type: TransitionType | null): void;
+
+  /**
+   * Buffer a predetermined dice outcome for the next player-triggered roll.
+   * Called by the tutorial on manual-roll beats before the player hits Roll.
+   * Pass null to clear without rolling.
+   */
+  setTutorialCheatDice(dice: [number, number] | null): void;
 
   /**
    * Inject the Clerk getToken function from the React auth context.
@@ -687,6 +703,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   rollHistory:    [],
   socketStatus:   'disconnected',
   getToken:       null,
+  tutorialCheatDice: null,
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -1131,13 +1148,16 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     if (type === 'MARKER_CLEAR' || type === 'BOSS_VICTORY') {
       // Celebration complete — hand off to the pub screen.
       // Now safe to expose the new marker state: celebrationSnapshot is cleared.
-      // Clear payoutPops so ChipRain does not re-fire on the next TableBoard mount.
+      // Clear payoutPops, flashType, and _flashKey so neither ChipRain nor
+      // useCrowdAudio re-fire their stale events when TableBoard remounts after the pub.
       set({
         status:               'TRANSITION',
         activeTransition:     null,
         transitionPhaseIndex: 0,
         celebrationSnapshot:  null,
         payoutPops:           null,
+        flashType:            null,
+        _flashKey:            0,
       });
       // Pre-fetch the roster so PubScreen data is ready (or nearly so) on mount.
       void get().fetchCrewRoster();
@@ -1189,11 +1209,16 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     });
   },
 
-  async rollDice() {
-    const { runId, bets, isRolling } = get();
+  async rollDice(cheatDice?: [number, number]) {
+    const { runId, bets, isRolling, tutorialCheatDice } = get();
     if (isRolling || !runId) return false;
 
-    set({ isRolling: true });
+    // If no explicit dice were passed but buffered tutorial dice are loaded,
+    // consume them now and clear the buffer atomically with the isRolling flag.
+    const effectiveDice: [number, number] | undefined =
+      cheatDice ?? (tutorialCheatDice ?? undefined);
+
+    set({ isRolling: true, tutorialCheatDice: null });
     try {
       const token = await get().getToken?.();
       const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/roll`, {
@@ -1202,7 +1227,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token ?? ''}`,
         },
-        body: JSON.stringify({ bets }),
+        body: JSON.stringify({ bets, ...(effectiveDice !== undefined && { cheat_dice: effectiveDice }) }),
       });
 
       if (!res.ok) {
@@ -1410,6 +1435,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   setGetToken(fn) {
     set({ getToken: fn });
+  },
+
+  setTutorialCheatDice(dice) {
+    set({ tutorialCheatDice: dice });
   },
 }));
 

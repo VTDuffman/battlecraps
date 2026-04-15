@@ -117,6 +117,20 @@ await db.execute(sql`
 `);
 app.log.info('[migrate] clerk_id NOT NULL ensured');
 
+// FB-007: Tutorial completed flag.
+// Backfill existing accounts to true so they never see the tutorial gate.
+// Safe to re-run: updating true→true is a no-op; new accounts (created after
+// 2026-04-14) start at the default (false) and are not touched by the backfill.
+await db.execute(sql`
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS tutorial_completed boolean NOT NULL DEFAULT false
+`);
+await db.execute(sql`
+  UPDATE users SET tutorial_completed = true
+  WHERE tutorial_completed = false
+    AND created_at < '2026-04-14 00:00:00+00'::timestamptz
+`);
+app.log.info('[migrate] tutorial_completed ensured');
+
 // ---------------------------------------------------------------------------
 // Start listening
 // ---------------------------------------------------------------------------

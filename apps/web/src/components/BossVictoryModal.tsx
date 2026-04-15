@@ -32,7 +32,7 @@ export const BossVictoryModal: React.FC<BossVictoryModalProps> = ({
   return (
     <div
       className="
-        relative w-full max-w-lg mx-auto min-h-screen
+        relative w-full max-w-lg mx-auto min-h-[100dvh]
         flex flex-col items-center justify-center gap-7
         border-x-4 border-amber-900/60
         overflow-hidden

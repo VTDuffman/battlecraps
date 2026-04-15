@@ -29,7 +29,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
   return (
     <div
       className="
-        relative w-full max-w-lg mx-auto min-h-screen
+        relative w-full max-w-lg mx-auto min-h-[100dvh]
         flex flex-col items-center justify-center gap-6
         border-x-4
         overflow-hidden

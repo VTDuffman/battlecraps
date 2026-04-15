@@ -413,7 +413,7 @@ export const PubScreen: React.FC = () => {
 
   return (
     <div
-      className="relative w-full max-w-lg mx-auto min-h-screen flex flex-col overflow-hidden border-x-4"
+      className="relative w-full max-w-lg mx-auto min-h-[100dvh] flex flex-col overflow-hidden border-x-4"
       style={{
         background:  theme.pubBg,
         borderColor: theme.borderHigh,

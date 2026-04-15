@@ -374,8 +374,10 @@ The unlock event should feel like a cinematic reward moment:
 ## FB-007 — Tutorial & "How to Play" System
 
 **Type:** Feature
-**Area:** Onboarding / `apps/web/src/`
-**Status:** Design complete — pending technical design and implementation
+**Area:** Onboarding / `apps/web/src/`, `apps/api/src/`
+**Status:** Technical design complete — pending implementation
+**UX design:** `docs/requirements/tutorial-user-journey.md`
+**Technical design:** `docs/design/tutorial-technical-design.md`
 
 ### Problem
 
@@ -384,16 +386,17 @@ Playtesters without craps experience are hitting Floor 1 cold with no mental mod
 ### Design
 
 Full UX/design spec: `docs/requirements/tutorial-user-journey.md`
+Full technical design: `docs/design/tutorial-technical-design.md`
 
 **Summary:**
 
 - Tutorial auto-launches on every player's **first run**, before the Title cinematic
 - Always **skippable** via a persistent "Skip Tutorial →" button
-- **"How to Play"** button on the main menu lets any player replay any section at any time
+- **"How to Play"** button on `TitleLobbyScreen` lets any player replay any section at any time
 - Adaptive **knowledge gate** up front: "You ever shot dice before?" branches to full tutorial (11 beats) or BattleCraps-only (4 beats)
 - Guide character **"Sal the Fixer"** — in-world NPC portrait, gritty cinematic voice, appears only during tutorial
-- Each beat uses a **spotlight/dim** mechanic: table dims, relevant zone glows, player takes one real action to advance
-- Tutorial flows seamlessly into the actual run — no menu return
+- Each beat uses a **spotlight/dim** mechanic (SVG mask overlay): table dims, relevant zone glows, player takes one real action to advance
+- Tutorial flows seamlessly into the actual run — no menu return; `TITLE` cinematic fires normally after tutorial
 
 **Tutorial paths:**
 
@@ -403,16 +406,32 @@ Full UX/design spec: `docs/requirements/tutorial-user-journey.md`
 | BattleCraps only (Path B) | 4 beats | Knows craps, new to BattleCraps |
 
 **Main Menu "How to Play" sections:**
-- Craps Basics — static reference cards
-- BattleCraps Rules — marker, hype, gauntlet targets
-- Crew & Bosses — card gallery; bosses blurred until encountered
+- Craps Basics — static reference cards (come-out, pass line, point, odds, hardways, seven-out)
+- BattleCraps Rules — marker system, hype formula, gauntlet targets (reads from `@battlecraps/shared`)
+- Crew & Bosses — card gallery; bosses blurred until player has reached that marker
 
-### Notes for technical design
+### Implementation tickets (7 incremental shippable items)
 
-- Tutorial state (completed, path taken) needs to persist per user — likely a column on the `users` table or a flag in the run bootstrap response
-- The spotlight/dim mechanic will need a rendering layer above `TableBoard` — consider how this interacts with `TransitionOrchestrator`
-- Simulated rolls in the tutorial (Beats 1, 5, 6) should be scripted/deterministic, not live RNG
-- "How to Play" is a pure client-side static reference — no API involvement
+| Ticket | Description | Size | Depends on |
+|---|---|---|---|
+| T-001 | DB migration + API changes (`tutorial_completed` flag) | Small | — |
+| T-002 | How to Play static reference (independent, zero risk) | Medium | — |
+| T-003 | Sal portrait + Knowledge Gate component | Small-Med | T-001 |
+| T-004 | Tutorial overlay shell + spotlight system | Large | T-003 |
+| T-005 | Interactive beats: Path A (Beats 1–7) | Large | T-004 |
+| T-006 | BattleCraps beats: Path B (Beats 8–11) | Medium | T-004 |
+| T-007 | Polish, completion tracking, in-game HTP access | Small-Med | T-005, T-006 |
+
+### Key technical decisions
+
+- **Tutorial state is isolated from the game store** — local state in `AuthenticatedApp`; `TransitionOrchestrator` untouched
+- **Simulated rolls are purely visual** — no API calls, no game state changes
+- **`tutorial_completed` column on `users`** — persisted via new `POST /auth/tutorial-complete` endpoint; existing users backfilled to true in migration
+- **Spotlight: SVG mask approach** — `getBoundingClientRect()` on `data-tutorial-zone` / `aria-label` elements; golden ring overlay; pointer events pass through to spotlighted zone only
+
+### Files affected
+
+See `docs/design/tutorial-technical-design.md` §18 for the complete file change table.
 
 ---
 

@@ -31,6 +31,8 @@ interface CreateRunResponse {
     maxBankrollCents:   number;
     /** Crew IDs the player has permanently unlocked (original 15). */
     unlockedCrewIds:    number[];
+    /** True if this player has already completed or skipped the tutorial. */
+    tutorialCompleted:  boolean;
   };
 }
 
@@ -63,6 +65,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
         bets:               run.bets,
         maxBankrollCents:   (run.user as UserRow).maxBankrollCents,
         unlockedCrewIds:    (run.user as UserRow).unlockedCrewIds,
+        tutorialCompleted:  (run.user as UserRow).tutorialCompleted,
       });
     },
   );
@@ -112,6 +115,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
           currentMarkerIndex: run.currentMarkerIndex,
           maxBankrollCents:   user.maxBankrollCents,
           unlockedCrewIds:    user.unlockedCrewIds,
+          tutorialCompleted:  user.tutorialCompleted,
         },
       };
 

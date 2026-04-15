@@ -32,7 +32,7 @@ export const BossEntryDreadPhase: React.FC<PhaseComponentProps> = () => {
   return (
     <div
       className="
-        relative w-full max-w-lg mx-auto min-h-screen h-[100dvh]
+        relative w-full max-w-lg mx-auto min-h-[100dvh]
         flex flex-col items-center justify-center gap-5
         border-x-4
         overflow-hidden

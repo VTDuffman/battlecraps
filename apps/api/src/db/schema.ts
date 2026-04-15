@@ -158,6 +158,16 @@ export const users = pgTable(
       .notNull()
       .default(0),
 
+    /**
+     * True once the player has completed or skipped the interactive tutorial.
+     * False for all newly created accounts — causes the tutorial gate to auto-launch
+     * on first run. Backfilled to true for all accounts created before this column
+     * was added (via the startup migration in server.ts).
+     *
+     * Migration: server.ts startup block (tutorial_completed)
+     */
+    tutorialCompleted: boolean('tutorial_completed').notNull().default(false),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

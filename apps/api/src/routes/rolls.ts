@@ -96,6 +96,17 @@ const rollBodySchema = {
      * then proceeds to resolve the roll.
      */
     bets: betsSchema,
+    /**
+     * Tutorial-only: predetermined dice values [die1, die2].
+     * Only honoured when the requesting user's tutorialCompleted flag is false.
+     * Ignored for any other user to prevent exploit use in real runs.
+     */
+    cheat_dice: {
+      type: 'array',
+      items: { type: 'integer', minimum: 1, maximum: 6 },
+      minItems: 2,
+      maxItems: 2,
+    },
   },
   additionalProperties: false,
 } as const;
@@ -105,7 +116,8 @@ const rollBodySchema = {
 // ---------------------------------------------------------------------------
 
 interface RollBody {
-  bets: Bets;
+  bets:        Bets;
+  cheat_dice?: [number, number];
 }
 
 interface RollParams {
@@ -308,8 +320,14 @@ async function rollHandler(
   // CrewMember objects (with execute() methods) here before the cascade runs.
   const crewSlots = hydrateCrewSlots(run.crewSlots);
 
-  // ── 6. Generate dice (server-side RNG) ─────────────────────────────────────
-  const dice = rollDice();
+  // ── 6. Generate dice (server-side RNG, or tutorial predetermined values) ────
+  // cheat_dice is only honoured when the requesting user has not yet completed
+  // the tutorial. This prevents the field being used to rig rolls in real runs.
+  const cheatDice = request.body.cheat_dice;
+  const dice: [number, number] =
+    cheatDice !== undefined && !user.tutorialCompleted
+      ? cheatDice
+      : rollDice();
 
   // ── 7. Resolve roll — classify outcome and compute base payouts ────────────
   const initialCtx = resolveRoll(dice, {

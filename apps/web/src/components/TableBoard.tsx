@@ -131,6 +131,7 @@ export const TableBoard: React.FC = () => {
       {/* ── GAME STATUS (back wall / far end) ────────────────────────────── */}
       <section
         aria-label="Game Status"
+        data-tutorial-zone="game-status"
         className="flex-none px-4 border-b-2"
         style={{
           borderColor: theme.borderLow,
@@ -162,6 +163,7 @@ export const TableBoard: React.FC = () => {
       {/* ── DICE ZONE ────────────────────────────────────────────────────── */}
       <section
         aria-label="Dice Zone"
+        data-tutorial-zone="dice-zone"
         className="flex-none border-b-2"
         style={{ borderColor: theme.borderLow }}
       >
@@ -177,6 +179,7 @@ export const TableBoard: React.FC = () => {
       {/* ── CREW RAIL ────────────────────────────────────────────────────── */}
       <section
         aria-label="Crew Rail"
+        data-tutorial-zone="crew-rail"
         className="flex-none px-4 border-t-4"
         style={{
           backgroundColor: theme.feltRail,
@@ -294,6 +297,8 @@ const GameStatus: React.FC = () => {
     fillPct > 0.33 ? 'linear-gradient(to top, #f97316, #fbbf24)' :
                      'linear-gradient(to top, #16a34a, #fbbf24)';
 
+  // Hype thermometer wrapper needs data-tutorial-zone for spotlight targeting
+
   const barGlow =
     hypeHeat === 'blazing' ? '0 0 12px 3px rgba(248,113,113,0.7)' :
     hypeHeat === 'hot'     ? '0 0  8px 2px rgba(251,146, 60,0.55)':
@@ -367,7 +372,7 @@ const GameStatus: React.FC = () => {
         {/* RIGHT column — hype on top, shooters below */}
         <div className="flex flex-col items-center gap-2">
           {/* Hype */}
-          <div className="text-center">
+          <div className="text-center" data-tutorial-zone="hype-meter">
             <div className="font-pixel text-[6px] text-white/40 mb-0.5">
               HYPE{streak >= 2 ? ` ${'🔥'.repeat(Math.min(streak, 4))}` : ''}
             </div>
@@ -393,7 +398,7 @@ const GameStatus: React.FC = () => {
           <div className="text-center">
             <div className="font-pixel text-[6px] text-white/40 mb-0.5">SHOOTERS</div>
             <div className="flex gap-1 justify-center">
-              {Array.from({ length: 5 }, (_, i) => (
+              {Array.from({ length: Math.max(5, shooters) }, (_, i) => (
                 <div
                   key={i}
                   className={[
@@ -470,7 +475,7 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
   const theme     = useFloorTheme();
 
   return (
-    <div className="w-full px-2 space-y-1">
+    <div className="w-full px-2 space-y-1" data-tutorial-zone="marker-progress">
       <div className="flex justify-between items-baseline">
         <span
           className="font-pixel text-[6px]"

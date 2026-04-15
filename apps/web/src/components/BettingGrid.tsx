@@ -13,10 +13,11 @@
 //   Right-click → removeBet(field)             — returns entire bet to bankroll
 // =============================================================================
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useGameStore } from '../store/useGameStore.js';
 import type { BetField } from '../store/useGameStore.js';
 import { GAUNTLET } from '@battlecraps/shared';
+import { useTutorialContext } from '../contexts/TutorialContext.js';
 
 // ---------------------------------------------------------------------------
 // Chip denominations — floor-gated
@@ -120,6 +121,7 @@ interface BetZoneProps {
   popKey?:         number;   // React key to re-fire animation each reveal
   popDelay?:       number;   // ms stagger delay
   streakCount?:    number;   // consecutive point hits — shows flame badge >= 2
+  tutorialZone?:   string;   // data-tutorial-zone attribute for spotlight targeting
 }
 
 const BetZone: React.FC<BetZoneProps> = ({
@@ -135,6 +137,7 @@ const BetZone: React.FC<BetZoneProps> = ({
   popKey = 0,
   popDelay = 0,
   streakCount = 0,
+  tutorialZone,
 }) => {
   const placeBet   = useGameStore((s) => s.placeBet);
   const removeBet  = useGameStore((s) => s.removeBet);
@@ -142,12 +145,46 @@ const BetZone: React.FC<BetZoneProps> = ({
 
   // A bet is "locked" when the entire amount is committed from the last roll.
   // Right-click is a no-op in this state — nothing pending to undo.
-  const isLocked  = committedAmount > 0 && amount <= committedAmount;
+  const isLocked   = committedAmount > 0 && amount <= committedAmount;
   const hasPending = amount > committedAmount;
 
+  // Long-press tracking — used to suppress the click that fires after a
+  // touch-triggered removal so the bet isn't immediately re-placed.
+  const longPressTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const didLongPress    = useRef(false);
+
+  const cancelLongPress = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
+  const handleTouchStart = useCallback(() => {
+    if (!hasPending) return;
+    didLongPress.current = false;
+    longPressTimer.current = setTimeout(() => {
+      didLongPress.current = true;
+      removeBet(field);
+    }, 500);
+  }, [field, removeBet, hasPending]);
+
+  // Cancel on move so that scrolling doesn't accidentally trigger removal.
+  const handleTouchEnd  = cancelLongPress;
+  const handleTouchMove = cancelLongPress;
+
+  useEffect(() => () => cancelLongPress(), []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const tutorialCtx = useTutorialContext();
+
   const handleClick = useCallback(() => {
+    if (didLongPress.current) {
+      didLongPress.current = false;
+      return; // long press already handled removal — suppress the tap click
+    }
     placeBet(field, activeChip);
-  }, [field, activeChip, placeBet]);
+    tutorialCtx?.onBetChanged(field, amount + activeChip);
+  }, [field, activeChip, placeBet, tutorialCtx, amount]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -163,6 +200,10 @@ const BetZone: React.FC<BetZoneProps> = ({
       disabled={disabled}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchMove}
+      data-tutorial-zone={tutorialZone}
       className={[
         'relative flex flex-col items-center justify-center',
         'border-2 rounded transition-all duration-150',
@@ -275,6 +316,7 @@ export const BettingGrid: React.FC = () => {
           popKey={_popsKey}
           popDelay={0}
           streakCount={consecutivePointHits}
+          tutorialZone="betting-passline"
         />
         <BetZone
           label="ODDS"
@@ -287,11 +329,12 @@ export const BettingGrid: React.FC = () => {
           popAmount={payoutPops?.odds ?? 0}
           popKey={_popsKey}
           popDelay={80}
+          tutorialZone="betting-odds"
         />
       </div>
 
       {/* ── Row 2: Four Hardways ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-2" data-tutorial-zone="betting-hardways">
         {(
           [
             { field: 'hard4'  as BetField, label: 'HARD 4',  sublabel: '7:1' },

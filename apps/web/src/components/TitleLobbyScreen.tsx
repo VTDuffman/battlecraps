@@ -14,8 +14,9 @@
 // Visual tone: Floor 1 theme (gold / green), matching TitleScreenPhase.
 // =============================================================================
 
-import React, { useState } from 'react';
-import { getFloorTheme }   from '../lib/floorThemes.js';
+import React, { useState }    from 'react';
+import { getFloorTheme }      from '../lib/floorThemes.js';
+import { HowToPlayScreen }    from './tutorial/HowToPlayScreen.js';
 
 const theme = getFloorTheme(0);
 
@@ -33,7 +34,8 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
   onContinue,
   onNewRun,
 }) => {
-  const [confirming, setConfirming] = useState(false);
+  const [confirming,   setConfirming]   = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
 
   const handleNewRunClick = () => {
     if (hasActiveRun) {
@@ -43,10 +45,17 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
     }
   };
 
+  // ── How to Play screen overlay ─────────────────────────────────────────
+  if (showHowToPlay) {
+    return (
+      <HowToPlayScreen onBack={() => setShowHowToPlay(false)} />
+    );
+  }
+
   return (
     <div
       className="
-        relative w-full max-w-lg mx-auto min-h-screen h-[100dvh]
+        relative w-full max-w-lg mx-auto min-h-[100dvh]
         flex flex-col items-center justify-center gap-8
         border-x-4
       "
@@ -160,6 +169,32 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
           }}
         >
           {hasActiveRun ? '+ NEW RUN' : '▶ NEW RUN'}
+        </button>
+
+        {/* How to Play — always visible, low visual weight */}
+        <button
+          type="button"
+          onClick={() => setShowHowToPlay(true)}
+          className="
+            mt-2 w-full py-2 rounded
+            font-pixel text-[8px] tracking-widest
+            border transition-all duration-150 active:scale-95
+          "
+          style={{
+            borderColor: `${theme.accentDim}30`,
+            background:  'transparent',
+            color:       `${theme.accentPrimary}60`,
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.color = `${theme.accentPrimary}90`;
+            (e.currentTarget as HTMLButtonElement).style.borderColor = `${theme.accentDim}60`;
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.color = `${theme.accentPrimary}60`;
+            (e.currentTarget as HTMLButtonElement).style.borderColor = `${theme.accentDim}30`;
+          }}
+        >
+          ? HOW TO PLAY
         </button>
       </div>
 

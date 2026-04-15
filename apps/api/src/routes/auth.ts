@@ -26,7 +26,8 @@ interface ProvisionBody {
 }
 
 interface ProvisionResponse {
-  userId: string;
+  userId:            string;
+  tutorialCompleted: boolean;
 }
 
 export async function authPlugin(app: FastifyInstance): Promise<void> {
@@ -57,7 +58,7 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
       });
 
       if (existing) {
-        const body: ProvisionResponse = { userId: existing.id };
+        const body: ProvisionResponse = { userId: existing.id, tutorialCompleted: existing.tutorialCompleted };
         return reply.send(body);
       }
 
@@ -114,8 +115,26 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
       }
 
       app.log.info(`[auth] Provisioned user ${user.id} for clerk_id ${clerkId}`);
-      const body: ProvisionResponse = { userId: user.id };
+      const body: ProvisionResponse = { userId: user.id, tutorialCompleted: user.tutorialCompleted };
       return reply.status(201).send(body);
+    },
+  );
+
+  // ── POST /auth/tutorial-complete ─────────────────────────────────────────
+  // Marks the authenticated user's tutorial as completed. Called by the client
+  // on tutorial skip or on completion of all beats. Idempotent — safe to call
+  // multiple times (true→true is a no-op in Postgres).
+  app.post(
+    '/auth/tutorial-complete',
+    { preHandler: [requireClerkAuth] },
+    async (req, reply): Promise<void> => {
+      await db
+        .update(users)
+        .set({ tutorialCompleted: true })
+        .where(eq(users.clerkId, req.clerkId));
+
+      app.log.info(`[auth] tutorial_completed set for clerk_id ${req.clerkId}`);
+      return reply.status(200).send({ ok: true });
     },
   );
 }

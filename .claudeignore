@@ -1,0 +1,81 @@
+# =============================================================================
+# BattleCraps — .claudeignore
+# Goal: expose only game logic, UI, and active docs to Claude.
+# =============================================================================
+
+# ── Git internals ─────────────────────────────────────────────────────────────
+.git/
+
+# ── Node / package management ─────────────────────────────────────────────────
+node_modules/
+package-lock.json
+
+# ── Build outputs (compiled from your own source — redundant) ─────────────────
+apps/web/dist/
+packages/shared/dist/
+# Pre-empt any future API dist
+apps/api/dist/
+# Generic catch-all for nested dist folders
+**/dist/
+
+# ── Vercel deploy cache & config ──────────────────────────────────────────────
+.vercel/
+# Next.js / other static export dirs (not currently used, pre-empted)
+.next/
+out/
+
+# ── Runtime logs (Fastify / Pino) ─────────────────────────────────────────────
+**/*.log
+**/logs/
+# Pino transport output files
+**/*.ndjson
+
+# ── Supabase auto-generated types ─────────────────────────────────────────────
+supabase/
+**/database.types.ts
+**/supabase-types.ts
+
+# ── Clerk session dumps ───────────────────────────────────────────────────────
+**/clerk-session*.json
+**/clerk-*.json
+
+# ── Auto-generated TS declaration files (tsc emit) ───────────────────────────
+# (Already covered by dist/ above, but explicit for stray emits)
+**/*.d.ts
+
+# ── Raw media assets (sprites, images, sheets) ────────────────────────────────
+apps/web/src/assets/
+**/*.png
+**/*.jpg
+**/*.jpeg
+**/*.gif
+**/*.webp
+**/*.svg
+**/*.ico
+**/*.bmp
+**/*.tiff
+
+# ── Dice-roll / simulation data dumps ─────────────────────────────────────────
+**/data-dumps/
+**/roll-logs/
+**/sim-output/
+
+# ── Infra / deploy config (not game logic) ────────────────────────────────────
+docker-compose.yml
+render.yaml
+
+# ── Archived / historical docs (per CLAUDE.md — resolved alpha issues) ────────
+docs/design/CODE_REVIEW.md
+docs/design/crew-sprites-tdd.md
+docs/design/transition_framework-technical_design.md.txt
+docs/testing/crew-test-results.md
+docs/testing/regression-test-results.md
+docs/testing/sanity-test-results.md
+docs/testing/playtest.md
+
+# ── Noise / brainstorm docs ───────────────────────────────────────────────────
+docs/requirements/vibe-ideas.md
+docs/floors.md
+
+# ── Claude internal memory (not project source) ───────────────────────────────
+.claude/

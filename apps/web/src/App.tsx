@@ -15,13 +15,15 @@
 // Victory, which calls bootstrap(true) directly without re-showing the lobby.
 // =============================================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { SignIn, useUser, useAuth }    from '@clerk/react';
 import { TableBoard }                  from './components/TableBoard.js';
 import { useGameStore }                from './store/useGameStore.js';
 import { TransitionOrchestrator }      from './transitions/TransitionOrchestrator.js';
 import { TitleLobbyScreen }            from './components/TitleLobbyScreen.js';
 import { UnlockNotification }          from './components/UnlockNotification.js';
+import { KnowledgeGate }              from './components/tutorial/KnowledgeGate.js';
+import { TutorialOverlay }            from './components/tutorial/TutorialOverlay.js';
 import type { StoredCrewSlots }        from './store/useGameStore.js';
 import type { Bets }                   from '@battlecraps/shared';
 
@@ -52,11 +54,12 @@ interface RunStateData {
   currentMarkerIndex: number;
   bets?:              Bets;
   maxBankrollCents?:  number;
+  tutorialCompleted?: boolean;
 }
 
 interface CreateRunResponse {
   runId: string;
-  run:   RunStateData;
+  run:   RunStateData & { tutorialCompleted?: boolean };
 }
 
 // ---------------------------------------------------------------------------
@@ -77,9 +80,20 @@ const AuthenticatedApp: React.FC = () => {
     return () => setGetToken(null);
   }, [getToken, setGetToken]);
 
-  const [showTitleLobby, setShowTitleLobby] = useState(true);
-  const [loading,        setLoading]        = useState(false);
-  const [error,          setError]          = useState<string | null>(null);
+  const [showTitleLobby,       setShowTitleLobby]       = useState(true);
+  const [loading,              setLoading]              = useState(false);
+  const [error,                setError]                = useState<string | null>(null);
+  // Default true — existing users who bootstrap before the flag is read are
+  // treated as tutorial-complete so they never see the gate unexpectedly.
+  // Overridden to false when the API returns tutorialCompleted: false.
+  const [tutorialCompleted,    setTutorialCompleted]    = useState(true);
+  // Gate is shown when !tutorialCompleted && !tutorialGateDismissed.
+  // Dismissed once the player makes a choice (full / bc-only / skip).
+  const [tutorialGateDismissed, setTutorialGateDismissed] = useState(false);
+  // T-004: path selected in the gate, consumed by TutorialOverlay.
+  const [tutorialPath,         setTutorialPath]         = useState<'FULL' | 'BC_ONLY' | null>(null);
+  // T-004: true while the TutorialOverlay is rendering beats.
+  const [tutorialActive,       setTutorialActive]       = useState(false);
 
   const bootstrap = React.useCallback(async (forceNew = false) => {
     if (!user) return;
@@ -116,6 +130,11 @@ const AuthenticatedApp: React.FC = () => {
         throw new Error(`Provision failed: ${provRes.status} ${provRes.statusText}`);
       }
 
+      const provData = (await provRes.json()) as { userId: string; tutorialCompleted?: boolean };
+      if (provData.tutorialCompleted === false) {
+        setTutorialCompleted(false);
+      }
+
       // ── 2. Try to restore cached run ─────────────────────────────────────
       const runId = localStorage.getItem(LS_RUN_ID);
 
@@ -127,6 +146,9 @@ const AuthenticatedApp: React.FC = () => {
 
         if (check.ok) {
           const data = (await check.json()) as RunStateData;
+          if (data.tutorialCompleted === false) {
+            setTutorialCompleted(false);
+          }
           connectToRun(runId, {
             bankroll:           data.bankroll,
             shooters:           data.shooters,
@@ -161,6 +183,10 @@ const AuthenticatedApp: React.FC = () => {
       const data = (await res.json()) as CreateRunResponse;
       localStorage.setItem(LS_RUN_ID, data.runId);
 
+      if (data.run.tutorialCompleted === false) {
+        setTutorialCompleted(false);
+      }
+
       connectToRun(data.runId, {
         bankroll:           data.run.bankroll,
         shooters:           data.run.shooters,
@@ -181,6 +207,51 @@ const AuthenticatedApp: React.FC = () => {
       setLoading(false);
     }
   }, [user, connectToRun, getToken]);
+
+  // Fire-and-forget — marks tutorial complete in DB on skip or beat completion.
+  const markTutorialComplete = React.useCallback(async () => {
+    try {
+      const token = await getToken();
+      void fetch(`${API_BASE}/api/v1/auth/tutorial-complete`, {
+        method:  'POST',
+        headers: { 'Authorization': `Bearer ${token ?? ''}` },
+      });
+    } catch {
+      // Non-critical — tutorial flag is cosmetic, failure is safe to ignore.
+    }
+  }, [getToken]);
+
+  // ── Tutorial completion handlers (hoisted above early returns per Rules of Hooks) ──
+  const handleTutorialComplete = useCallback(() => {
+    void markTutorialComplete();
+    setTutorialActive(false);
+    setTutorialCompleted(true);
+  }, [markTutorialComplete]);
+
+  const handleTutorialSkip = useCallback(() => {
+    void markTutorialComplete();
+    setTutorialActive(false);
+    setTutorialCompleted(true);
+  }, [markTutorialComplete]);
+
+  // ── Knowledge Gate handlers ──────────────────────────────────────────────
+  const handleGateFull = () => {
+    setTutorialPath('FULL');
+    setTutorialActive(true);
+    setTutorialGateDismissed(true);
+  };
+
+  const handleGateBCOnly = () => {
+    setTutorialPath('BC_ONLY');
+    setTutorialActive(true);
+    setTutorialGateDismissed(true);
+  };
+
+  const handleGateSkip = () => {
+    void markTutorialComplete();
+    setTutorialCompleted(true);
+    setTutorialGateDismissed(true);
+  };
 
   useEffect(() => {
     // Clean up legacy localStorage key from Phase 2/3.
@@ -218,7 +289,7 @@ const AuthenticatedApp: React.FC = () => {
   // ── Loading screen ──────────────────────────────────────────────────────
   if (loading) {
     return (
-      <main className="min-h-screen h-[100dvh] flex flex-col items-center justify-center bg-black gap-4">
+      <main className="min-h-[100dvh] flex flex-col items-center justify-center bg-black gap-4">
         <div className="font-pixel text-[10px] text-gold animate-pulse">
           LOADING TABLE…
         </div>
@@ -232,7 +303,7 @@ const AuthenticatedApp: React.FC = () => {
   // ── Error screen ────────────────────────────────────────────────────────
   if (error) {
     return (
-      <main className="min-h-screen h-[100dvh] flex flex-col items-center justify-center bg-black gap-6 px-8">
+      <main className="min-h-[100dvh] flex flex-col items-center justify-center bg-black gap-6 px-8">
         <div className="font-pixel text-[9px] text-red-400 text-center leading-6">
           FAILED TO CONNECT
         </div>
@@ -261,6 +332,41 @@ const AuthenticatedApp: React.FC = () => {
     );
   }
 
+  // ── Tutorial Knowledge Gate ──────────────────────────────────────────────
+  // Shown once for new players before the TransitionOrchestrator fires TITLE.
+  const forceTutorial = true; //DELETE ME BEFORE PUSHING TO PROD - FOR LOCALTESTING ONLY ALSO THE OR GATE BELOW
+  if ((!tutorialCompleted || forceTutorial) && !tutorialGateDismissed) {
+    return (
+      <main className="h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
+        <div className="relative w-full max-w-lg h-[100dvh]">
+          <TableBoard />
+          <KnowledgeGate
+            onFull={handleGateFull}
+            onBCOnly={handleGateBCOnly}
+            onSkip={handleGateSkip}
+          />
+        </div>
+      </main>
+    );
+  }
+
+  // ── Tutorial Overlay ─────────────────────────────────────────────────────
+  if (tutorialActive && tutorialPath) {
+    return (
+      <main className="h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
+        <div className="relative w-full max-w-lg h-[100dvh]">
+          <TutorialOverlay
+            path={tutorialPath}
+            onComplete={handleTutorialComplete}
+            onSkip={handleTutorialSkip}
+          >
+            <TableBoard />
+          </TutorialOverlay>
+        </div>
+      </main>
+    );
+  }
+
   // ── Game screens ────────────────────────────────────────────────────────
   return (
     <main className="h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
@@ -282,7 +388,7 @@ export const App: React.FC = () => {
   // Clerk is still loading its session state — show nothing briefly.
   if (!isLoaded) {
     return (
-      <main className="min-h-screen h-[100dvh] flex items-center justify-center bg-black">
+      <main className="min-h-[100dvh] flex items-center justify-center bg-black">
         <div className="font-pixel text-[10px] text-gold animate-pulse">
           LOADING…
         </div>
@@ -293,7 +399,7 @@ export const App: React.FC = () => {
   // Not signed in — render Clerk's pre-built sign-in UI.
   if (!isSignedIn) {
     return (
-      <main className="min-h-screen h-[100dvh] flex flex-col items-center justify-center bg-black gap-6">
+      <main className="min-h-[100dvh] flex flex-col items-center justify-center bg-black gap-6">
         <div className="font-pixel text-[12px] text-gold tracking-widest">
           BATTLE CRAPS
         </div>

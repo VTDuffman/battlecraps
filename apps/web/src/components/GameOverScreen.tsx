@@ -97,8 +97,8 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
   return (
     <div
       className="
-        relative w-full max-w-lg mx-auto min-h-screen
-        flex flex-col overflow-hidden
+        relative w-full max-w-lg mx-auto min-h-[100dvh]
+        flex flex-col overflow-y-auto
         bg-black border-x-4 border-red-900/70
       "
       style={{

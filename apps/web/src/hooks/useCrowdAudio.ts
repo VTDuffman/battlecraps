@@ -138,7 +138,10 @@ async function playDiceRattle(ctx: AudioContext): Promise<void> {
   if (!selectedBuffer) return;
   const source = ctx.createBufferSource();
   source.buffer = selectedBuffer;
-  source.connect(ctx.destination);
+  const gain = ctx.createGain();
+  gain.gain.value = 0.75;
+  source.connect(gain);
+  gain.connect(ctx.destination);
   // 0.72 s syncs with the `dice-throw` CSS animation duration
   source.start(ctx.currentTime + 0.72);
 }

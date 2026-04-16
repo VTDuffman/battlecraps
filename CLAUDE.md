@@ -93,6 +93,13 @@ apps/web/src/                 # React SPA
 
 ---
 
+## TypeScript Strictness Protocol
+This project uses strict TypeScript. Whenever you write or modify TypeScript code, you MUST be hyper-vigilant about `null` and `undefined` checks. 
+- Always guard array lookups (e.g., `const item = arr[0]; if (!item) return;`).
+- Before finalizing a task or creating a commit, you MUST run `npm run build` or `npx tsc --noEmit` in the affected workspace to guarantee you haven't introduced any TS compilation errors. Do not declare a task finished if `tsc` throws an error.
+
+---
+
 ## Game Constants (quick reference)
 
 **Gauntlet targets:** Floor 1: $300/$600/$1k | Floor 2: $1.5k/$2.5k/$4k | Floor 3: $6k/$9k/$12.5k

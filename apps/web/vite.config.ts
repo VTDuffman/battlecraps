@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import checker from 'vite-plugin-checker';
 import path from 'node:path';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), checker({ typescript: true })],
   resolve: {
     alias: {
       '@battlecraps/shared': path.resolve(__dirname, '../../packages/shared/src/index.ts'),

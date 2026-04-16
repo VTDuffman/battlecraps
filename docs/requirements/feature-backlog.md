@@ -320,57 +320,6 @@ Replaced the dev-only UUID stub with production Clerk auth (Google OAuth). Valid
 
 ---
 
----
-
-## FB-013 — Cinematic Crew Unlock Experience
-
-**Type:** Feature / Polish
-**Area:** `apps/web/src/components/UnlockNotification.tsx`, `apps/web/src/store/useGameStore.ts`, `apps/api/src/lib/unlocks.ts`
-**Status:** Pending implementation
-
-### Problem
-
-When a player unlocks a new crew member, they receive a small auto-dismissing toast notification with the crew member's name. This tells them *that* something happened but not *why* it happened or *who* they just unlocked. There is no flavor — it feels like a system message rather than a reward.
-
-The unlock system was designed with rich data per crew member (`unlockDescription`, `briefDescription`, `detailedDescription` already seeded in `crewDefinitions`) — none of this is surfaced in the current notification.
-
-### Desired behavior
-
-The unlock event should feel like a cinematic reward moment:
-
-- A dedicated full-screen or large modal overlay replaces the dismissing toast
-- Shows the crew member's emoji and name prominently
-- Includes the **unlock flavor text** — *why* they showed up ("Word travels fast when a shooter goes on a run...")
-- Includes the crew member's **brief description** — what they actually do
-- Has a clear "Add to Roster" or "Got It" CTA to dismiss
-- The overlay should be visually distinct and celebratory — differentiated from the standard Pub UI
-
-### What needs to be built
-
-1. **`UnlockModal` component** — full-screen overlay (or large centered modal). Displays:
-   - Crew emoji (large)
-   - Crew name
-   - Unlock flavor text (`unlockDescription` from `crewDefinitions`)
-   - Brief ability description (`briefDescription`)
-   - Dismiss button
-
-2. **`unlocks:granted` payload extension** — the WebSocket event currently emits crew IDs only. The API should enrich the payload with the crew definition data needed for the modal (name, emoji, `unlockDescription`, `briefDescription`) so the client doesn't need a separate fetch.
-
-3. **Store wiring** — replace the current `unlockNotification: string | null` (name-only) with a richer `UnlockNotification` object containing the full display data. Update `unlocks:granted` listener in `useGameStore.ts` accordingly.
-
-4. **Timing** — the modal should queue if multiple unlocks fire in the same session (unlikely but possible). Dismiss is player-gated (no auto-dismiss timer).
-
-### Files (estimated)
-
-| File | Action |
-|---|---|
-| `apps/web/src/components/UnlockModal.tsx` | Create — replaces `UnlockNotification.tsx` |
-| `apps/web/src/components/UnlockNotification.tsx` | Delete or repurpose |
-| `apps/web/src/store/useGameStore.ts` | Enrich `unlockNotification` type; update WS listener |
-| `apps/api/src/lib/unlocks.ts` | Include crew definition fields in `unlocks:granted` emit |
-
----
-
 ## FB-007 — Tutorial & "How to Play" System
 
 **Type:** Feature
@@ -432,177 +381,6 @@ Full technical design: `docs/design/tutorial-technical-design.md`
 ### Files affected
 
 See `docs/design/tutorial-technical-design.md` §18 for the complete file change table.
-
----
-
----
-
-## FB-012 — Crew Expansion & Unlock System
-
-**Type:** Feature / Architecture
-**Area:** `packages/shared/src/crew/`, `packages/shared/src/types.ts`, `apps/api/src/db/`, `apps/api/src/routes/`, `apps/api/src/lib/`, `apps/web/src/components/PubScreen.tsx`, `apps/web/src/components/UnlockNotification.tsx`, `apps/web/src/store/useGameStore.ts`
-**Status:** Implemented
-**Technical design:** `docs/design/crew-implementation-design.md`
-**Reference:** `docs/frameworks/crew_framework.md`
-
-### Problem
-
-The Pub screen drew randomly from the same 15 crew on every visit with no gating — players never felt progression. New players had access to high-cost Legendary crew immediately, and the original 15 were available without any in-game achievement. Additionally, come-out and blank rolls had no crew coverage, creating dead stretches where nothing fired.
-
-### What Was Built
-
-**Starter Roster (IDs 16–30):** Fifteen new `CrewMember` implementations, all Starter rarity, available from the first run. Designed to fire on dice-face patterns and roll types rather than bet outcomes, eliminating dead space:
-- DICE: The Lookout (16), "Ace" McGee (17), The Close Call (18)
-- HYPE: The Momentum (19), The Echo (20), The Silver Lining (21), The Odd Couple (22)
-- TABLE: The Even Keel (23), The Doorman (24), The Grinder (25)
-- PAYOUT: The Handicapper (26), The Mirror (27)
-- WILDCARD: The Bookkeeper (28), The Pressure Cooker (29), The Contrarian (30)
-
-Five of the new crew required three new cross-roll game state fields: `previousRollTotal`, `shooterRollCount`, and `pointPhaseBlankStreak`.
-
-**Unlock System for IDs 1–15:** Each original crew member is gated behind a specific achievement across five unlock types (one-time event, per-run counter, cross-run cumulative, per-cascade event, run achievement). Unlock progress is tracked in-run via `perRunUnlockCounters` (JSONB on `runs`) and cross-run via `unlockProgress` (JSONB on `users`). Evaluated after each roll as a fire-and-forget operation in `lib/unlocks.ts`. New unlocks are written to `users.unlockedCrewIds` and emitted as an `unlocks:granted` WebSocket event. Client shows an auto-dismissing toast notification (`UnlockNotification.tsx`).
-
-**Pub Screen Overhaul:** Hard-coded `ALL_CREW` list replaced by a `GET /crew-roster` API call that returns only crew available to the current user. Rarity badges added to crew cards. 3-card draft draws from available crew only.
-
-### Files
-
-| File | Action |
-|---|---|
-| `packages/shared/src/types.ts` | Added `previousRollTotal`, `shooterRollCount`, `pointPhaseBlankStreak` to `TurnContext`; `rarity` to `CrewMember` |
-| `packages/shared/src/crew/` (15 new files) | `lookout`, `aceMcgee`, `closeCall`, `momentum`, `echo`, `silverLining`, `oddCouple`, `evenKeel`, `doorman`, `grinder`, `handicapper`, `mirror`, `bookkeeper`, `pressureCooker`, `contrarian` |
-| `packages/shared/src/crew/index.ts` | Added 15 new barrel exports |
-| `apps/api/src/db/schema.ts` | New columns: `runs` (+3 counters + `perRunUnlockCounters`), `users` (+`unlockProgress`), `crewDefinitions` (+`rarity`, `briefDescription`, `detailedDescription`, `unlockDescription`) |
-| `apps/api/src/db/seed.ts` | All 30 crew seeded with rarity, descriptions, and unlock conditions |
-| `apps/api/src/lib/crewRegistry.ts` | All 30 crew registered |
-| `apps/api/src/lib/unlocks.ts` | New: `evaluateUnlocks()` — all 15 unlock conditions |
-| `apps/api/src/routes/crewRoster.ts` | New: `GET /crew-roster` — availability-filtered roster with progress metadata |
-| `apps/api/src/routes/recruit.ts` | Unlock gate (403 on locked crew) |
-| `apps/api/src/routes/rolls.ts` | Counter maintenance in `computeNextState()`; fire-and-forget unlock evaluation |
-| `apps/api/src/routes/runs.ts` | `unlockedCrewIds` included in create/fetch responses |
-| `apps/web/src/components/PubScreen.tsx` | API-fetched roster, rarity badges, availability-filtered 3-card draft |
-| `apps/web/src/components/UnlockNotification.tsx` | New: auto-dismissing toast for `unlocks:granted` events |
-| `apps/web/src/store/useGameStore.ts` | `crewRoster`, `unlockedCrewIds`, `unlockNotification` state; `fetchCrewRoster()`, `clearUnlockNotification()` actions; `unlocks:granted` WS listener |
-
----
-
-## FB-011 — Title Lobby Screen
-
-**Type:** Feature
-**Area:** `apps/web/src/App.tsx`, `apps/web/src/components/TitleLobbyScreen.tsx`
-**Status:** Implemented
-**Technical design:** `docs/design/title-screen-technical-design.md`
-
-### Problem
-
-Every page load bootstraps immediately into the game without giving the player a chance
-to choose what to do. Players with an active run have no explicit "continue" action, and
-starting a new run requires a small, easily-missed button in the top-left corner with no
-confirmation guard.
-
-### Desired behavior
-
-- Every session (page load) opens on a title screen first
-- If an active run exists: offer **Continue Run** and **New Run**
-- **New Run** requires an inline confirmation before wiping the current run
-- The only bypass is **Play Again** from a Game Over screen — this goes directly to the
-  first VFW marker screen without passing through the lobby
-
-### Solution summary
-
-- New `TitleLobbyScreen` component — full-screen title UI (Floor 1 theme, matches
-  `TitleScreenPhase` aesthetic) with Continue/New Run buttons and an inline confirmation
-  overlay
-- `showTitleLobby: boolean` local state in `AuthenticatedApp` (defaults `true`)
-- `bootstrap()` is deferred; called only when the user makes a choice on the lobby
-- `onPlayAgain` callback bypasses the lobby entirely (`bootstrap(true)` direct call)
-- The existing one-time `TITLE` cinematic transition is preserved unchanged — it is a
-  different concept (first-ever player intro, not a session-start nav screen)
-- Remove the top-left "NEW RUN" button, superseded by the lobby
-
-### Files
-
-| File | Action |
-|---|---|
-| `apps/web/src/App.tsx` | Refactor bootstrap flow; add lobby rendering |
-| `apps/web/src/components/TitleLobbyScreen.tsx` | Create |
-
----
-
-## FB-010 — Boss Mechanic Framework
-
-**Type:** Feature / Architecture
-**Area:** `packages/shared/src/config.ts`, `packages/shared/src/bossRules/`, `packages/shared/src/types.ts`, `packages/shared/src/cascade.ts`, `apps/api/src/routes/rolls.ts`, `apps/web/src/transitions/phases/Boss*.tsx`, `apps/web/src/components/BossRoomHeader.tsx`
-**Status:** Implemented
-**Technical design:** `docs/design/boss-mechanic-technical-design.md`
-**Reference:** `docs/frameworks/boss_framework.md`
-
-### What was built
-
-1. **Extended `BossConfig`** — 18 fields covering identity, vibe copy (dreadTagline, entryLines, ruleBlurb, victoryQuote, defeatAnnouncement), mechanic params, and comp data. Replaces the old `risingMinBets?` accessor with a `BossRuleParams` discriminated union.
-
-2. **Boss rule hook architecture** — `packages/shared/src/bossRules/` directory mirroring the crew `execute()` pattern. Three hooks: `validateBet`, `modifyOutcome`, `modifyCascadeOrder`. One file per rule type. New boss rule = new file + one new union variant.
-
-3. **Full boss data** — All vibe copy, rule params, and comp descriptions filled in for Sarge, Mme. Le Prix, and The Executive directly in `GAUNTLET[]`.
-
-4. **Enforcement** — `DISABLE_CREW` suppresses the cascade entirely via `modifyCascadeOrder → []`. `FOURS_INSTANT_LOSS` sets `ctx.flags.instantLoss = true` → immediate GAME_OVER before cascade fires. `RISING_MIN_BETS` refactored from inline `rolls.ts` block to `validateBet` hook.
-
-5. **UI components read from config** — All five boss UI components (`BossEntryDreadPhase`, `BossEntryPhase`/`BossEntryModal`, `BossVictoryPhase`, `BossVictoryCompPhase`, `BossRoomHeader`) read exclusively from `BossConfig` — no hardcoded boss strings remain.
-
-6. **Reference document** — `docs/frameworks/boss_framework.md` covering all fields, hook interface, boss profiles, comp reference, and a "how to add a new boss" checklist.
-
-### Files
-
-| File | Action |
-|---|---|
-| `docs/frameworks/boss_framework.md` | Create |
-| `packages/shared/src/config.ts` | Extend BossConfig + BossRuleParams + fill boss data |
-| `packages/shared/src/bossRules/types.ts` | Create |
-| `packages/shared/src/bossRules/risingMinBets.ts` | Create (refactor from inline) |
-| `packages/shared/src/bossRules/disableCrew.ts` | Create (new enforcement) |
-| `packages/shared/src/bossRules/foursInstantLoss.ts` | Create (new enforcement) |
-| `packages/shared/src/bossRules/index.ts` | Create (registry) |
-| `packages/shared/src/types.ts` | Add `instantLoss` to `TurnContextFlags` |
-| `packages/shared/src/cascade.ts` | Add `modifyCascadeOrder` hook point |
-| `apps/api/src/routes/rolls.ts` | Replace inline boss logic with hook calls |
-| `apps/web/src/transitions/phases/BossEntryDreadPhase.tsx` | Read from config |
-| `apps/web/src/transitions/phases/BossEntryPhase.tsx` | Read from config |
-| `apps/web/src/transitions/phases/BossVictoryPhase.tsx` | Read from config |
-| `apps/web/src/transitions/phases/BossVictoryCompPhase.tsx` | Read from config, delete REWARD_LABELS |
-| `apps/web/src/components/BossRoomHeader.tsx` | Read `ruleHeaderText` from config |
-
----
-
-## FB-009 — Dice Roll Sound Effect
-
-**Type:** Quality of Life / Audio
-**Area:** `apps/web/src/hooks/useCrowdAudio.ts`, `apps/web/src/store/useGameStore.ts`
-**Status:** Pending implementation
-**Source:** Playtester feedback
-
-### Request
-
-> "There should be a soothing dice roll sound effect when you roll."
-
-### Context
-
-The game already has a fully synthesized Web Audio API audio system in `useCrowdAudio.ts` — crowd cheer on win, crowd groan on loss, mute toggle persisted to localStorage. No audio asset files exist or are needed; all sounds are generated procedurally. The dice roll sound should follow the same pattern.
-
-"Soothing" points toward soft wooden/baize physics rather than sharp casino clattering — two short bandpass-filtered noise bursts mimicking dice settling on felt, ~200ms total, with gentle high-frequency rolloff.
-
-### Implementation plan
-
-**1. Add `playDiceRattle(ctx: AudioContext)` to `useCrowdAudio.ts`**
-Two bandpass white-noise bursts (~80ms each, ~40ms apart) at a low amplitude. Same synthesis pattern as the existing `makeNoiseBuf` + filter + gain envelope approach already used for cheer/groan.
-
-**2. Add `_rollKey` to the store (`useGameStore.ts`)**
-A monotonic counter incremented alongside `isRolling: true` in `rollDice()`. Same pattern as `_flashKey` / `_popsKey`. Three lines total: one field in `GameState`, one initial value, one increment in `rollDice()`.
-
-**3. Add a trigger `useEffect` in `useCrowdAudio.ts`**
-Watch `_rollKey` (not `isRolling` directly, to avoid double-fire on the `false` toggle). Fires `playDiceRattle()` when `_rollKey` increments. Gated by `mutedRef` like the existing sting effects.
-
-### Scope
-
-~25 lines across 2 files. No new components, no assets, no config changes. Mute toggle covers it automatically.
 
 ---
 
@@ -675,4 +453,235 @@ first render is skipped.
 | `apps/web/src/hooks/useFloorTheme.ts` | Use display index for floor selection |
 | `apps/web/src/components/ChipRain.tsx` | Mount guard on trigger effect |
 | `apps/web/tailwind.config.ts` | Added `animate-marker-smash` keyframe |
+
+---
+
+## FB-009 — Dice Roll Sound Effect
+
+**Type:** Quality of Life / Audio
+**Area:** `apps/web/src/hooks/useCrowdAudio.ts`, `apps/web/src/store/useGameStore.ts`
+**Status:** Pending implementation
+**Source:** Playtester feedback
+
+### Request
+
+> "There should be a soothing dice roll sound effect when you roll."
+
+### Context
+
+The game already has a fully synthesized Web Audio API audio system in `useCrowdAudio.ts` — crowd cheer on win, crowd groan on loss, mute toggle persisted to localStorage. No audio asset files exist or are needed; all sounds are generated procedurally. The dice roll sound should follow the same pattern.
+
+"Soothing" points toward soft wooden/baize physics rather than sharp casino clattering — two short bandpass-filtered noise bursts mimicking dice settling on felt, ~200ms total, with gentle high-frequency rolloff.
+
+### Implementation plan
+
+**1. Add `playDiceRattle(ctx: AudioContext)` to `useCrowdAudio.ts`**
+Two bandpass white-noise bursts (~80ms each, ~40ms apart) at a low amplitude. Same synthesis pattern as the existing `makeNoiseBuf` + filter + gain envelope approach already used for cheer/groan.
+
+**2. Add `_rollKey` to the store (`useGameStore.ts`)**
+A monotonic counter incremented alongside `isRolling: true` in `rollDice()`. Same pattern as `_flashKey` / `_popsKey`. Three lines total: one field in `GameState`, one initial value, one increment in `rollDice()`.
+
+**3. Add a trigger `useEffect` in `useCrowdAudio.ts`**
+Watch `_rollKey` (not `isRolling` directly, to avoid double-fire on the `false` toggle). Fires `playDiceRattle()` when `_rollKey` increments. Gated by `mutedRef` like the existing sting effects.
+
+### Scope
+
+~25 lines across 2 files. No new components, no assets, no config changes. Mute toggle covers it automatically.
+
+---
+
+## FB-010 — Boss Mechanic Framework
+
+**Type:** Feature / Architecture
+**Area:** `packages/shared/src/config.ts`, `packages/shared/src/bossRules/`, `packages/shared/src/types.ts`, `packages/shared/src/cascade.ts`, `apps/api/src/routes/rolls.ts`, `apps/web/src/transitions/phases/Boss*.tsx`, `apps/web/src/components/BossRoomHeader.tsx`
+**Status:** Implemented
+**Technical design:** `docs/design/boss-mechanic-technical-design.md`
+**Reference:** `docs/frameworks/boss_framework.md`
+
+### What was built
+
+1. **Extended `BossConfig`** — 18 fields covering identity, vibe copy (dreadTagline, entryLines, ruleBlurb, victoryQuote, defeatAnnouncement), mechanic params, and comp data. Replaces the old `risingMinBets?` accessor with a `BossRuleParams` discriminated union.
+
+2. **Boss rule hook architecture** — `packages/shared/src/bossRules/` directory mirroring the crew `execute()` pattern. Three hooks: `validateBet`, `modifyOutcome`, `modifyCascadeOrder`. One file per rule type. New boss rule = new file + one new union variant.
+
+3. **Full boss data** — All vibe copy, rule params, and comp descriptions filled in for Sarge, Mme. Le Prix, and The Executive directly in `GAUNTLET[]`.
+
+4. **Enforcement** — `DISABLE_CREW` suppresses the cascade entirely via `modifyCascadeOrder → []`. `FOURS_INSTANT_LOSS` sets `ctx.flags.instantLoss = true` → immediate GAME_OVER before cascade fires. `RISING_MIN_BETS` refactored from inline `rolls.ts` block to `validateBet` hook.
+
+5. **UI components read from config** — All five boss UI components (`BossEntryDreadPhase`, `BossEntryPhase`/`BossEntryModal`, `BossVictoryPhase`, `BossVictoryCompPhase`, `BossRoomHeader`) read exclusively from `BossConfig` — no hardcoded boss strings remain.
+
+6. **Reference document** — `docs/frameworks/boss_framework.md` covering all fields, hook interface, boss profiles, comp reference, and a "how to add a new boss" checklist.
+
+### Files
+
+| File | Action |
+|---|---|
+| `docs/frameworks/boss_framework.md` | Create |
+| `packages/shared/src/config.ts` | Extend BossConfig + BossRuleParams + fill boss data |
+| `packages/shared/src/bossRules/types.ts` | Create |
+| `packages/shared/src/bossRules/risingMinBets.ts` | Create (refactor from inline) |
+| `packages/shared/src/bossRules/disableCrew.ts` | Create (new enforcement) |
+| `packages/shared/src/bossRules/foursInstantLoss.ts` | Create (new enforcement) |
+| `packages/shared/src/bossRules/index.ts` | Create (registry) |
+| `packages/shared/src/types.ts` | Add `instantLoss` to `TurnContextFlags` |
+| `packages/shared/src/cascade.ts` | Add `modifyCascadeOrder` hook point |
+| `apps/api/src/routes/rolls.ts` | Replace inline boss logic with hook calls |
+| `apps/web/src/transitions/phases/BossEntryDreadPhase.tsx` | Read from config |
+| `apps/web/src/transitions/phases/BossEntryPhase.tsx` | Read from config |
+| `apps/web/src/transitions/phases/BossVictoryPhase.tsx` | Read from config |
+| `apps/web/src/transitions/phases/BossVictoryCompPhase.tsx` | Read from config, delete REWARD_LABELS |
+| `apps/web/src/components/BossRoomHeader.tsx` | Read `ruleHeaderText` from config |
+
+---
+
+## FB-011 — Title Lobby Screen
+
+**Type:** Feature
+**Area:** `apps/web/src/App.tsx`, `apps/web/src/components/TitleLobbyScreen.tsx`
+**Status:** Implemented
+**Technical design:** `docs/design/title-screen-technical-design.md`
+
+### Problem
+
+Every page load bootstraps immediately into the game without giving the player a chance
+to choose what to do. Players with an active run have no explicit "continue" action, and
+starting a new run requires a small, easily-missed button in the top-left corner with no
+confirmation guard.
+
+### Desired behavior
+
+- Every session (page load) opens on a title screen first
+- If an active run exists: offer **Continue Run** and **New Run**
+- **New Run** requires an inline confirmation before wiping the current run
+- The only bypass is **Play Again** from a Game Over screen — this goes directly to the
+  first VFW marker screen without passing through the lobby
+
+### Solution summary
+
+- New `TitleLobbyScreen` component — full-screen title UI (Floor 1 theme, matches
+  `TitleScreenPhase` aesthetic) with Continue/New Run buttons and an inline confirmation
+  overlay
+- `showTitleLobby: boolean` local state in `AuthenticatedApp` (defaults `true`)
+- `bootstrap()` is deferred; called only when the user makes a choice on the lobby
+- `onPlayAgain` callback bypasses the lobby entirely (`bootstrap(true)` direct call)
+- The existing one-time `TITLE` cinematic transition is preserved unchanged — it is a
+  different concept (first-ever player intro, not a session-start nav screen)
+- Remove the top-left "NEW RUN" button, superseded by the lobby
+
+### Files
+
+| File | Action |
+|---|---|
+| `apps/web/src/App.tsx` | Refactor bootstrap flow; add lobby rendering |
+| `apps/web/src/components/TitleLobbyScreen.tsx` | Create |
+
+---
+
+## FB-012 — Crew Expansion & Unlock System
+
+**Type:** Feature / Architecture
+**Area:** `packages/shared/src/crew/`, `packages/shared/src/types.ts`, `apps/api/src/db/`, `apps/api/src/routes/`, `apps/api/src/lib/`, `apps/web/src/components/PubScreen.tsx`, `apps/web/src/components/UnlockNotification.tsx`, `apps/web/src/store/useGameStore.ts`
+**Status:** Implemented
+**Technical design:** `docs/design/crew-implementation-design.md`
+**Reference:** `docs/frameworks/crew_framework.md`
+
+### Problem
+
+The Pub screen drew randomly from the same 15 crew on every visit with no gating — players never felt progression. New players had access to high-cost Legendary crew immediately, and the original 15 were available without any in-game achievement. Additionally, come-out and blank rolls had no crew coverage, creating dead stretches where nothing fired.
+
+### What Was Built
+
+**Starter Roster (IDs 16–30):** Fifteen new `CrewMember` implementations, all Starter rarity, available from the first run. Designed to fire on dice-face patterns and roll types rather than bet outcomes, eliminating dead space:
+- DICE: The Lookout (16), "Ace" McGee (17), The Close Call (18)
+- HYPE: The Momentum (19), The Echo (20), The Silver Lining (21), The Odd Couple (22)
+- TABLE: The Even Keel (23), The Doorman (24), The Grinder (25)
+- PAYOUT: The Handicapper (26), The Mirror (27)
+- WILDCARD: The Bookkeeper (28), The Pressure Cooker (29), The Contrarian (30)
+
+Five of the new crew required three new cross-roll game state fields: `previousRollTotal`, `shooterRollCount`, and `pointPhaseBlankStreak`.
+
+**Unlock System for IDs 1–15:** Each original crew member is gated behind a specific achievement across five unlock types (one-time event, per-run counter, cross-run cumulative, per-cascade event, run achievement). Unlock progress is tracked in-run via `perRunUnlockCounters` (JSONB on `runs`) and cross-run via `unlockProgress` (JSONB on `users`). Evaluated after each roll as a fire-and-forget operation in `lib/unlocks.ts`. New unlocks are written to `users.unlockedCrewIds` and emitted as an `unlocks:granted` WebSocket event. Client shows an auto-dismissing toast notification (`UnlockNotification.tsx`).
+
+**Pub Screen Overhaul:** Hard-coded `ALL_CREW` list replaced by a `GET /crew-roster` API call that returns only crew available to the current user. Rarity badges added to crew cards. 3-card draft draws from available crew only.
+
+### Files
+
+| File | Action |
+|---|---|
+| `packages/shared/src/types.ts` | Added `previousRollTotal`, `shooterRollCount`, `pointPhaseBlankStreak` to `TurnContext`; `rarity` to `CrewMember` |
+| `packages/shared/src/crew/` (15 new files) | `lookout`, `aceMcgee`, `closeCall`, `momentum`, `echo`, `silverLining`, `oddCouple`, `evenKeel`, `doorman`, `grinder`, `handicapper`, `mirror`, `bookkeeper`, `pressureCooker`, `contrarian` |
+| `packages/shared/src/crew/index.ts` | Added 15 new barrel exports |
+| `apps/api/src/db/schema.ts` | New columns: `runs` (+3 counters + `perRunUnlockCounters`), `users` (+`unlockProgress`), `crewDefinitions` (+`rarity`, `briefDescription`, `detailedDescription`, `unlockDescription`) |
+| `apps/api/src/db/seed.ts` | All 30 crew seeded with rarity, descriptions, and unlock conditions |
+| `apps/api/src/lib/crewRegistry.ts` | All 30 crew registered |
+| `apps/api/src/lib/unlocks.ts` | New: `evaluateUnlocks()` — all 15 unlock conditions |
+| `apps/api/src/routes/crewRoster.ts` | New: `GET /crew-roster` — availability-filtered roster with progress metadata |
+| `apps/api/src/routes/recruit.ts` | Unlock gate (403 on locked crew) |
+| `apps/api/src/routes/rolls.ts` | Counter maintenance in `computeNextState()`; fire-and-forget unlock evaluation |
+| `apps/api/src/routes/runs.ts` | `unlockedCrewIds` included in create/fetch responses |
+| `apps/web/src/components/PubScreen.tsx` | API-fetched roster, rarity badges, availability-filtered 3-card draft |
+| `apps/web/src/components/UnlockNotification.tsx` | New: auto-dismissing toast for `unlocks:granted` events |
+| `apps/web/src/store/useGameStore.ts` | `crewRoster`, `unlockedCrewIds`, `unlockNotification` state; `fetchCrewRoster()`, `clearUnlockNotification()` actions; `unlocks:granted` WS listener |
+
+---
+
+## FB-013 — Cinematic Crew Unlock Experience
+
+**Type:** Feature / Polish
+**Area:** `apps/web/src/components/UnlockNotification.tsx`, `apps/web/src/store/useGameStore.ts`, `apps/api/src/lib/unlocks.ts`
+**Status:** Pending implementation
+
+### Problem
+
+When a player unlocks a new crew member, they receive a small auto-dismissing toast notification with the crew member's name. This tells them *that* something happened but not *why* it happened or *who* they just unlocked. There is no flavor — it feels like a system message rather than a reward.
+
+The unlock system was designed with rich data per crew member (`unlockDescription`, `briefDescription`, `detailedDescription` already seeded in `crewDefinitions`) — none of this is surfaced in the current notification.
+
+### Desired behavior
+
+The unlock event should feel like a cinematic reward moment:
+
+- A dedicated full-screen or large modal overlay replaces the dismissing toast
+- Shows the crew member's emoji and name prominently
+- Includes the **unlock flavor text** — *why* they showed up ("Word travels fast when a shooter goes on a run...")
+- Includes the crew member's **brief description** — what they actually do
+- Has a clear "Add to Roster" or "Got It" CTA to dismiss
+- The overlay should be visually distinct and celebratory — differentiated from the standard Pub UI
+
+### What needs to be built
+
+1. **`UnlockModal` component** — full-screen overlay (or large centered modal). Displays:
+   - Crew emoji (large)
+   - Crew name
+   - Unlock flavor text (`unlockDescription` from `crewDefinitions`)
+   - Brief ability description (`briefDescription`)
+   - Dismiss button
+
+2. **`unlocks:granted` payload extension** — the WebSocket event currently emits crew IDs only. The API should enrich the payload with the crew definition data needed for the modal (name, emoji, `unlockDescription`, `briefDescription`) so the client doesn't need a separate fetch.
+
+3. **Store wiring** — replace the current `unlockNotification: string | null` (name-only) with a richer `UnlockNotification` object containing the full display data. Update `unlocks:granted` listener in `useGameStore.ts` accordingly.
+
+4. **Timing** — the modal should queue if multiple unlocks fire in the same session (unlikely but possible). Dismiss is player-gated (no auto-dismiss timer).
+
+### Files (estimated)
+
+| File | Action |
+|---|---|
+| `apps/web/src/components/UnlockModal.tsx` | Create — replaces `UnlockNotification.tsx` |
+| `apps/web/src/components/UnlockNotification.tsx` | Delete or repurpose |
+| `apps/web/src/store/useGameStore.ts` | Enrich `unlockNotification` type; update WS listener |
+| `apps/api/src/lib/unlocks.ts` | Include crew definition fields in `unlocks:granted` emit |
+
+---
+
+---
+
+
+
+
+
+
+
+
+
 

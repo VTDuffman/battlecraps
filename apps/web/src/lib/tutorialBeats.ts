@@ -17,6 +17,7 @@ export type SpotlightZone =
   | 'dice-zone'
   | 'crew-rail'
   | 'marker-progress'
+  | 'hype-meter'
   | 'boss-portrait';
 
 export type BeatAdvanceMode =

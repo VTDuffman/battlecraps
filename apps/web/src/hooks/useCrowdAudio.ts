@@ -135,6 +135,7 @@ async function loadDiceAudio(ctx: AudioContext): Promise<void> {
 async function playDiceRattle(ctx: AudioContext): Promise<void> {
   await loadDiceAudio(ctx);
   const selectedBuffer = diceBuffers[Math.floor(Math.random() * diceBuffers.length)];
+  if (!selectedBuffer) return;
   const source = ctx.createBufferSource();
   source.buffer = selectedBuffer;
   source.connect(ctx.destination);

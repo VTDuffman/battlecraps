@@ -25,13 +25,15 @@ function queryZoneElement(
     case 'boss-portrait':
       return null;
     case 'game-status':
-      return document.querySelector('[aria-label="Game Status"]');
+      return document.querySelector('[data-tutorial-zone="game-status"]');
+    case 'bankroll-zone':
+      return document.querySelector('[data-tutorial-zone="bankroll-zone"]');
     case 'betting-grid':
       return document.querySelector('[aria-label="Betting Grid"]');
     case 'dice-zone':
-      return document.querySelector('[aria-label="Dice Zone"]');
+      return document.querySelector('[data-tutorial-zone="dice-zone"]');
     case 'crew-rail':
-      return document.querySelector('[aria-label="Crew Rail"]');
+      return document.querySelector('[data-tutorial-zone="crew-rail"]');
     case 'hype-meter':
       return document.querySelector('[data-tutorial-zone="hype-meter"]');
     case 'marker-progress':

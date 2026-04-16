@@ -6,7 +6,7 @@
 // expander, and a CTA button to advance the beat.
 // =============================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getFloorTheme } from '../../lib/floorThemes.js';
 import { SalPortrait }   from './SalPortrait.js';
 import type { SpotlightZone } from '../../lib/tutorialBeats.js';
@@ -26,6 +26,8 @@ interface SalDialogProps {
   beatId:       number;
   totalBeats:   number;
   spotlightZone?: SpotlightZone;
+  /** True during overlay close — triggers slide-out */
+  isClosing?:   boolean;
 }
 
 export const SalDialog: React.FC<SalDialogProps> = ({
@@ -39,27 +41,45 @@ export const SalDialog: React.FC<SalDialogProps> = ({
   beatId,
   totalBeats,
   spotlightZone,
+  isClosing = false,
 }) => {
   const isUpperZone = spotlightZone === 'dice-zone' || spotlightZone === 'crew-rail' || spotlightZone === 'betting-passline';
   const [expanded, setExpanded] = useState(false);
+  const [visible,  setVisible]  = useState(false);
 
   // Reset expander when beat changes
   React.useEffect(() => {
     setExpanded(false);
   }, [beatId]);
 
+  // One-frame defer to trigger slide-in
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setVisible(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  const active = visible && !isClosing;
+  const slideDir = isUpperZone ? '-100%' : '100%';
+
   return (
     <div
       className={`absolute inset-x-0 flex flex-col ${isUpperZone ? 'top-0' : 'bottom-0'}`}
-      style={{ zIndex: 70, pointerEvents: 'auto', ...(isUpperZone && { paddingTop: '10%' }) }}
+      style={{
+        zIndex:     70,
+        pointerEvents: 'auto',
+        ...(isUpperZone && { paddingTop: '10%' }),
+        transform:  active ? 'translateY(0)' : `translateY(${slideDir})`,
+        opacity:    active ? 1 : 0,
+        transition: 'transform 600ms cubic-bezier(0.16, 1, 0.3, 1), opacity 400ms ease-out',
+      }}
     >
       {/* Tutorial skip — always visible at top-right of dialog */}
       <div className="flex justify-end px-4 pb-1">
         <button
           type="button"
           onClick={onSkip}
-          className="font-pixel text-[7px] tracking-widest transition-colors"
-          style={{ color: `${theme.accentDim}60` }}
+          className="font-pixel text-[7px] tracking-widest transition-colors flex items-center"
+          style={{ color: `${theme.accentDim}60`, minHeight: '44px', paddingLeft: '12px', paddingRight: '4px' }}
         >
           Skip Tutorial →
         </button>
@@ -80,22 +100,24 @@ export const SalDialog: React.FC<SalDialogProps> = ({
           className="flex items-center gap-3 px-4 py-2 border-b"
           style={{ borderColor: `${theme.accentDim}40` }}
         >
-          <SalPortrait size="sm" />
+          <SalPortrait size="sm" isClosing={isClosing} />
           <div className="flex-1">
             {/* Progress dots */}
             <div className="flex gap-1 mb-1">
               {Array.from({ length: totalBeats }, (_, i) => (
                 <div
                   key={i}
-                  className="rounded-full transition-all duration-300"
+                  className="rounded-full"
                   style={{
-                    width:  i === beatId - 1 ? 10 : 6,
-                    height: 6,
+                    width:      i === beatId - 1 ? 10 : 6,
+                    height:     6,
+                    transition: 'width 300ms ease, background-color 300ms ease',
                     backgroundColor: i < beatId - 1
-                      ? theme.accentDim
+                      ? `${theme.accentDim}90`
                       : i === beatId - 1
-                        ? theme.accentPrimary
+                        ? '#fbbf24'
                         : 'rgba(255,255,255,0.12)',
+                    boxShadow: i === beatId - 1 ? '0 0 6px 1px rgba(251,191,36,0.50)' : 'none',
                   }}
                 />
               ))}
@@ -133,8 +155,8 @@ export const SalDialog: React.FC<SalDialogProps> = ({
                 <button
                   type="button"
                   onClick={() => setExpanded(true)}
-                  className="mt-2 font-pixel text-[7px] tracking-wider transition-opacity hover:opacity-80"
-                  style={{ color: theme.accentDim }}
+                  className="mt-2 font-pixel text-[7px] tracking-wider transition-opacity hover:opacity-80 flex items-center"
+                  style={{ color: theme.accentDim, minHeight: '44px', paddingRight: '16px' }}
                 >
                   Tell me more ▾
                 </button>
@@ -152,8 +174,9 @@ export const SalDialog: React.FC<SalDialogProps> = ({
             type="button"
             onClick={waiting ? undefined : onAdvance}
             disabled={waiting}
-            className="flex-1 py-2.5 rounded border font-pixel text-[8px] tracking-widest transition-all active:scale-[0.98]"
+            className="flex-1 rounded border font-pixel text-[8px] tracking-widest transition-all active:scale-[0.98]"
             style={{
+              minHeight:   '44px',
               borderColor: waiting ? `${theme.accentDim}40` : theme.accentPrimary,
               color:        waiting ? `${theme.accentDim}50` : '#fef3c7',
               background:   waiting
@@ -170,8 +193,9 @@ export const SalDialog: React.FC<SalDialogProps> = ({
             <button
               type="button"
               onClick={onAdvance}
-              className="px-3 py-2.5 rounded border font-pixel text-[7px] tracking-wider transition-all active:scale-[0.98]"
+              className="px-3 rounded border font-pixel text-[7px] tracking-wider transition-all active:scale-[0.98]"
               style={{
+                minHeight:   '44px',
                 borderColor: `${theme.accentDim}40`,
                 color:        `${theme.accentDim}80`,
                 background:   'rgba(10,10,10,0.6)',

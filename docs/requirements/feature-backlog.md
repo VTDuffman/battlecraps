@@ -375,7 +375,7 @@ The unlock event should feel like a cinematic reward moment:
 
 **Type:** Feature
 **Area:** Onboarding / `apps/web/src/`, `apps/api/src/`
-**Status:** Technical design complete — pending implementation
+**Status:** Implemented
 **UX design:** `docs/requirements/tutorial-user-journey.md`
 **Technical design:** `docs/design/tutorial-technical-design.md`
 

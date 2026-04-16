@@ -13,10 +13,11 @@ import { getFloorTheme } from '../../lib/floorThemes.js';
 const theme = getFloorTheme(0);
 
 interface SalPortraitProps {
-  size?: 'sm' | 'md';
+  size?:      'sm' | 'md';
+  isClosing?: boolean;
 }
 
-export const SalPortrait: React.FC<SalPortraitProps> = ({ size = 'md' }) => {
+export const SalPortrait: React.FC<SalPortraitProps> = ({ size = 'md', isClosing = false }) => {
   const [visible, setVisible] = useState(false);
 
   // Defer visibility by one frame to trigger the slide-in transition
@@ -32,13 +33,15 @@ export const SalPortrait: React.FC<SalPortraitProps> = ({ size = 'md' }) => {
   const cardSize  = isMd ? 'text-lg'   : 'text-sm';
   const labelSize = isMd ? 'text-[6px]' : 'text-[5px]';
 
+  const active = visible && !isClosing;
+
   return (
     <div
       className="flex flex-col items-center gap-1.5"
       style={{
-        transform:  visible ? 'translateY(0)' : 'translateY(16px)',
-        opacity:    visible ? 1 : 0,
-        transition: 'transform 400ms ease-out, opacity 300ms ease-out',
+        transform:  active ? 'translateY(0)' : 'translateY(100%)',
+        opacity:    active ? 1 : 0,
+        transition: 'transform 600ms cubic-bezier(0.16, 1, 0.3, 1), opacity 400ms ease-out',
       }}
     >
       {/* Portrait box */}
@@ -46,7 +49,9 @@ export const SalPortrait: React.FC<SalPortraitProps> = ({ size = 'md' }) => {
         className={`${boxClass} flex flex-col items-center justify-center rounded border-2 bg-black/80 relative overflow-hidden flex-none`}
         style={{
           borderColor: theme.accentDim,
-          boxShadow:   `0 0 14px 3px ${theme.accentPrimary}20`,
+          boxShadow:   `0 0 18px 4px ${theme.accentPrimary}30, inset 0 1px 0 ${theme.accentPrimary}40`,
+          outline:     `1px solid ${theme.accentPrimary}18`,
+          outlineOffset: '2px',
         }}
       >
         {/* Scanline texture */}

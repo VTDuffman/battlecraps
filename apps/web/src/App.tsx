@@ -332,10 +332,9 @@ const AuthenticatedApp: React.FC = () => {
     );
   }
 
-  // ── Tutorial Knowledge Gate ──────────────────────────────────────────────
+// ── Tutorial Knowledge Gate ──────────────────────────────────────────────
   // Shown once for new players before the TransitionOrchestrator fires TITLE.
-  const forceTutorial = true; //DELETE ME BEFORE PUSHING TO PROD - FOR LOCALTESTING ONLY ALSO THE OR GATE BELOW
-  if ((!tutorialCompleted || forceTutorial) && !tutorialGateDismissed) {
+  if (!tutorialCompleted && !tutorialGateDismissed) {
     return (
       <main className="h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
         <div className="relative w-full max-w-lg h-[100dvh]">

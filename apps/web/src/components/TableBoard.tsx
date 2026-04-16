@@ -22,6 +22,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { MARKER_TARGETS, getMaxBet, isBossMarker } from '@battlecraps/shared';
+import { HowToPlayScreen } from './tutorial/HowToPlayScreen.js';
 import {
   useGameStore,
   selectActiveSlot,
@@ -41,6 +42,7 @@ import { useFloorTheme }       from '../hooks/useFloorTheme.js';
 import { ChipRain }            from './ChipRain.js';
 import { CompCardFan }         from './CompCardFan.js';
 import { FloorEmblem }         from './FloorEmblem.js';
+import { useTutorialContext }  from '../contexts/TutorialContext.js';
 
 const selectFlash    = (s: GameState) => ({ flashType: s.flashType, _flashKey: s._flashKey });
 const selectWallFlash = (s: GameState) => ({ wallFlash: s.wallFlash, _wallFlashKey: s._wallFlashKey });
@@ -61,6 +63,8 @@ export const TableBoard: React.FC = () => {
   const hype         = useGameStore((s) => s.hype);
   const { muted, toggleMute } = useCrowdAudio();
   const theme = useFloorTheme();
+
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
 
   // Table shake — triggered by ChipRain when a TORRENT payout lands
   const [isShaking, setIsShaking] = useState(false);
@@ -125,13 +129,22 @@ export const TableBoard: React.FC = () => {
         {muted ? '🔇' : '🔊'}
       </button>
 
+      {/* ── How To Play button ────────────────────────────────────────────── */}
+      <button
+        type="button"
+        onClick={() => setShowHowToPlay(true)}
+        className="absolute top-2 left-10 z-10 px-1.5 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/40 hover:text-white/70 transition-colors tracking-widest"
+        aria-label="How To Play"
+      >
+        ?
+      </button>
+
       {/* ── Comp Card Fan — boss-defeat rewards, top-left corner ─────────── */}
       <CompCardFan />
 
       {/* ── GAME STATUS (back wall / far end) ────────────────────────────── */}
       <section
         aria-label="Game Status"
-        data-tutorial-zone="game-status"
         className="flex-none px-4 border-b-2"
         style={{
           borderColor: theme.borderLow,
@@ -160,18 +173,19 @@ export const TableBoard: React.FC = () => {
         <BettingGrid />
       </section>
 
-      {/* ── DICE ZONE ────────────────────────────────────────────────────── */}
-      <section
-        aria-label="Dice Zone"
-        data-tutorial-zone="dice-zone"
-        className="flex-none border-b-2"
-        style={{ borderColor: theme.borderLow }}
-      >
-        <DiceZone />
-      </section>
+      {/* ── DICE ZONE + CHIP RAIL — grouped for tutorial spotlight ─────── */}
+      <div data-tutorial-zone="dice-zone">
+        <section
+          aria-label="Dice Zone"
+          className="flex-none border-b-2"
+          style={{ borderColor: theme.borderLow }}
+        >
+          <DiceZone />
+        </section>
 
-      {/* ── CHIP RAIL (player's denomination rail) ───────────────────────── */}
-      <ChipRail />
+        {/* ── CHIP RAIL (player's denomination rail) ───────────────────────── */}
+        <ChipRail />
+      </div>
 
       {/* ── QA TRANSACTION LOG ───────────────────────────────────────────── */}
       <RollLog />
@@ -239,6 +253,13 @@ export const TableBoard: React.FC = () => {
             flashType === 'win' ? 'animate-screen-flash-win' : 'animate-screen-flash-lose',
           ].join(' ')}
         />
+      )}
+
+      {/* ── How To Play overlay ───────────────────────────────────────────── */}
+      {showHowToPlay && (
+        <div className="absolute inset-0 z-[70]">
+          <HowToPlayScreen onBack={() => setShowHowToPlay(false)} />
+        </div>
       )}
     </div>
   );
@@ -314,7 +335,7 @@ const GameStatus: React.FC = () => {
     <div className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.5dvh,8px)' }}>
 
       {/* ── 2-column header: logo + bankroll (left) | hype + shooters (right) ── */}
-      <div className="flex items-center gap-3 px-1">
+      <div className="flex items-center gap-3 px-1" data-tutorial-zone="bankroll-zone">
 
         {/* LEFT column — Vegas logo stack + bankroll beneath */}
         <div className="flex-1 flex flex-col items-center">
@@ -425,7 +446,7 @@ const GameStatus: React.FC = () => {
       <MarkerProgress bankroll={bankroll} markerIndex={displayMarkerIndex} liveMarkerIndex={currentMarkerIndex} />
 
       {/* Point puck + phase label */}
-      <div className="flex items-center gap-2 justify-center">
+      <div className="flex items-center gap-2 justify-center" data-tutorial-zone="game-status">
         <div className="relative">
           {/* Ring animation overlay — re-mounts on _pointRingKey to re-fire */}
           <div
@@ -519,6 +540,7 @@ const ChipRail: React.FC = () => {
   const bossPointHits      = useGameStore((s) => s.bossPointHits);
   const maxBet             = getMaxBet(currentMarkerIndex, bossPointHits);
   const theme              = useFloorTheme();
+  const tutorialCtx        = useTutorialContext();
 
   return (
     <section
@@ -533,7 +555,7 @@ const ChipRail: React.FC = () => {
       <div className="text-center font-pixel text-[7px] text-white/30" style={{ marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
         TABLE MAX: ${maxBet / 100}
       </div>
-      <ChipSelector activeChip={activeChip} disabled={isRolling} />
+      <ChipSelector activeChip={activeChip} disabled={isRolling || tutorialCtx?.activeBeatMode === 'manual-roll'} />
     </section>
   );
 };

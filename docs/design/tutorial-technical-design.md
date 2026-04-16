@@ -1,6 +1,6 @@
 # BattleCraps — Tutorial & How to Play: Technical Design
 **Feature:** FB-007
-**Status:** Design approved — ready for implementation
+**Status:** Implemented
 **Reference:** `docs/requirements/tutorial-user-journey.md`
 
 ---

@@ -111,7 +111,7 @@ export const KnowledgeGate: React.FC<KnowledgeGateProps> = ({ onFull, onBCOnly, 
       {/* Skip link */}
       <button
         type="button"
-        onClick={onSkip}
+        onClick={() => { void fetch('/api/v1/auth/tutorial-complete', { method: 'POST' }); onSkip(); }}
         className="font-pixel text-[7px] tracking-widest transition-colors duration-150"
         style={{ color: `${theme.accentDim}60` }}
         onMouseEnter={(e) => {

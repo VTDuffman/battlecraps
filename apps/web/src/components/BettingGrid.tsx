@@ -299,6 +299,8 @@ export const BettingGrid: React.FC = () => {
   const consecutivePointHits = useGameStore((s) => s.consecutivePointHits);
   const isComeOut     = phase === 'COME_OUT' || phase === null;
   const isPointActive = phase === 'POINT_ACTIVE';
+  const tutorialCtx   = useTutorialContext();
+  const isBetHardwayBeat = tutorialCtx?.activeBeatMode === 'bet-hardway';
 
   return (
     <div className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.5dvh,8px)' }}>
@@ -350,7 +352,7 @@ export const BettingGrid: React.FC = () => {
             field={field}
             amount={bets.hardways[field as keyof typeof bets.hardways]}
             committedAmount={committedBets.hardways[field as keyof typeof committedBets.hardways]}
-            disabled={isRolling}
+            disabled={isRolling || (isBetHardwayBeat && field !== 'hard8')}
             popAmount={payoutPops?.hardwayField === field ? (payoutPops?.hardways ?? 0) : 0}
             popKey={_popsKey}
             popDelay={160 + idx * 80}

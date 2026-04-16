@@ -2,20 +2,20 @@
 // BATTLECRAPS — TUTORIAL BEAT DEFINITIONS
 // apps/web/src/lib/tutorialBeats.ts
 //
-// All 11 tutorial beats. Pure data — no component logic.
-// Path A = craps basics (beats 1–7), Path B = BattleCraps rules (beats 8–11).
+// All 15 tutorial beats. Pure data — no component logic.
+// Path A = craps basics (beats 1–9), Path B = BattleCraps rules (beats 10–13).
 // =============================================================================
 
 export type SpotlightZone =
   | 'none'
   | 'game-status'
+  | 'bankroll-zone'
   | 'betting-grid'
   | 'betting-passline'
   | 'betting-odds'
   | 'betting-hardways'
   | 'dice-zone'
   | 'crew-rail'
-  | 'hype-meter'
   | 'marker-progress'
   | 'boss-portrait';
 
@@ -132,7 +132,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
   {
     id: 6.1,
     path: 'A',
-    spotlight: 'game-status',
+    spotlight: 'bankroll-zone',
     salText: `The seven-out. 7 shows before the point — you lose your pass and your odds. Shooter's done. New shooter steps up.`,
     advanceMode: 'tap',
     advanceLabel: 'Got it.',
@@ -190,9 +190,44 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
   {
     id: 9,
     path: 'A',
-    spotlight: 'none',
-    salText: `You're looking good. Go to the pub to select your first crew member and get back to rollin'!`,
+    spotlight: 'bankroll-zone',
+    salText: `Hard 8 hits! That's a solid payout. Watch your bankroll jump.`,
     advanceMode: 'tap',
-    advanceLabel: 'TO THE PUB!',
+    advanceLabel: 'Got it.',
+  },
+
+  // ── PATH B: BattleCraps Module (Beats 10–13) ─────────────────────────────
+
+  {
+    id: 10,
+    path: 'B',
+    spotlight: 'marker-progress',
+    salText: `See that target up top? That's your marker — $300. Every chip you win counts toward it. Clear the marker and you move up a floor. Three floors, nine markers. That's the gauntlet.`,
+    advanceMode: 'tap',
+    advanceLabel: 'Got it.',
+  },
+  {
+    id: 11,
+    path: 'B',
+    spotlight: 'hype-meter',
+    salText: `That's your Hype multiplier. Every time you hit a point, it ticks up. String hits together and your payouts explode. Seven-out and it resets. Keep the heat going.`,
+    advanceMode: 'tap',
+    advanceLabel: 'Got it.',
+  },
+  {
+    id: 12,
+    path: 'B',
+    spotlight: 'crew-rail',
+    salText: `You'll build your crew as you go. You unlock crew members by hitting certain achievements, and you recruit them in the pub between runs.`,
+    advanceMode: 'tap',
+    advanceLabel: 'Got it.',
+  },
+  {
+    id: 13,
+    path: 'B',
+    spotlight: 'boss-portrait',
+    salText: `Every floor has a boss. They make the rules. Sarge jacks up your minimum bets. Mme. Le Prix shuts down your crew. The Executive makes every 4 an instant loss. Know who you're facing before you throw.`,
+    advanceMode: 'tap',
+    advanceLabel: "LET'S ROLL",
   },
 ];

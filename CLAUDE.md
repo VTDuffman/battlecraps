@@ -120,9 +120,9 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 
 ## Current State
 
-**Status:** Beta. All 9 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped. Boss mechanic framework (FB-010) fully implemented. Title lobby screen (FB-011) live. Crew Expansion & Unlock System (FB-012) live — 30-crew roster, unlock gating, real-time unlock notifications.
+**Status:** Beta. All 9 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped. Boss mechanic framework (FB-010) fully implemented. Title lobby screen (FB-011) live. Crew Expansion & Unlock System (FB-012) live — 30-crew roster, unlock gating, real-time unlock notifications. Tutorial & How to Play system (FB-007) live.
 
-**Active development:** FB-007 Tutorial & "How to Play" — technical design complete, awaiting implementation approval.
+**Active development:** 
 
 **Open defects:** See `docs/testing/known_issues.md` for full list. Current open issues:
 - KI-002: Roll delta popup confusing on marker-clear rolls (Low)
@@ -131,6 +131,5 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 
 **Not yet implemented:**
 - Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md` — 64×64 SNES-style PNGs)
-- Tutorial & "How to Play" system — technical design: `docs/design/tutorial-technical-design.md`, UX design: `docs/requirements/tutorial-user-journey.md`, backlog: FB-007 (7 incremental tickets: T-001 through T-007)
 - Dice roll sound effect — synthesized rattle on throw (backlog: FB-009)
 - Cinematic crew unlock experience (backlog: FB-013)

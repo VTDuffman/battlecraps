@@ -72,9 +72,10 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = ({
     path === 'BC_ONLY' ? b.path === 'B' : true,
   );
 
-  const [beatIndex, setBeatIndex] = useState(0);
-  const [waiting,   setWaiting]   = useState(false);
-  const [closing,   setClosing]   = useState(false);
+  const [beatIndex,          setBeatIndex]          = useState(0);
+  const [waiting,            setWaiting]            = useState(false);
+  const [closing,            setClosing]            = useState(false);
+  const [showClosingMessage, setShowClosingMessage] = useState(false);
 
   // Active beat mode exposed to BettingGrid via TutorialContext
   const [activeBeatMode, setActiveBeatMode] = useState<BeatAdvanceMode | null>(null);
@@ -145,12 +146,18 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = ({
 
     const nextIndex = beatIndex + 1;
     if (nextIndex >= beats.length) {
-      setClosing(true);
-      setTimeout(() => onComplete(), 600);
+      void fetch('/api/v1/auth/tutorial-complete', { method: 'POST' });
+      setShowClosingMessage(true);
     } else {
       setBeatIndex(nextIndex);
     }
-  }, [beatIndex, beats.length, currentBeat, waiting, onComplete]);
+  }, [beatIndex, beats.length, currentBeat, waiting]);
+
+  // ── Closing message advance (fires after the true last beat) ─────────────
+  const handleClosingAdvance = useCallback(() => {
+    setClosing(true);
+    setTimeout(() => onComplete(), 600);
+  }, [onComplete]);
 
   // ── manual-roll: watch isRolling to auto-advance after roll settles ─────
   useEffect(() => {
@@ -192,14 +199,50 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = ({
   const spotlightRect = useTutorialSpotlight(spotlightZone, tableRef as React.RefObject<HTMLDivElement>);
 
   // ── Closing / no-beat guard ──────────────────────────────────────────────
-  if (!currentBeat || closing) {
+  if (closing) {
     return (
       <div
         className="absolute inset-0 pointer-events-none transition-opacity duration-600"
-        style={{ opacity: closing ? 0 : 1 }}
+        style={{ opacity: 0 }}
       />
     );
   }
+
+  // ── Closing message — shown after the true last beat of the selected path ─
+  if (showClosingMessage) {
+    const closingAdvanceLabel = path === 'BC_ONLY' ? "Let's Roll!" : 'To the Pub!';
+    const closingSalText = path === 'BC_ONLY'
+      ? "You knew craps, now you know BattleCraps. Get out there and show 'em how it's done!"
+      : "You're looking good. Go to the pub to select your first crew member and get back to rollin'!";
+    return (
+      <TutorialProvider value={contextValue}>
+        {children}
+        <div
+          ref={tableRef}
+          className="absolute inset-0"
+          style={{ zIndex: 59, pointerEvents: 'none' }}
+        >
+          <SalDialog
+            salText={closingSalText}
+            advanceLabel={closingAdvanceLabel}
+            onAdvance={handleClosingAdvance}
+            onSkip={() => { void fetch('/api/v1/auth/tutorial-complete', { method: 'POST' }); onSkip(); }}
+            waiting={false}
+            beatId={beats.length}
+            totalBeats={beats.length}
+            spotlightZone="none"
+            isClosing={false}
+          />
+        </div>
+      </TutorialProvider>
+    );
+  }
+
+  if (!currentBeat) {
+    return <div className="absolute inset-0 pointer-events-none" />;
+  }
+
+  const advanceLabel = currentBeat.advanceLabel ?? 'Got it.';
 
   const isBossPortrait = currentBeat.spotlight === 'boss-portrait';
   const bossConfig     = GAUNTLET[2]?.boss;
@@ -267,14 +310,15 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = ({
         <SalDialog
           salText={currentBeat.salText}
           salTextMore={currentBeat.salTextMore}
-          advanceLabel={currentBeat.advanceLabel ?? 'Got it.'}
+          advanceLabel={advanceLabel}
           onAdvance={advance}
-          onSkip={onSkip}
+          onSkip={() => { void fetch('/api/v1/auth/tutorial-complete', { method: 'POST' }); onSkip(); }}
           waiting={waiting}
           skipable={currentBeat.skipable}
           beatId={currentBeat.id}
           totalBeats={beats.length}
           spotlightZone={spotlightZone}
+          isClosing={closing}
         />
       </div>
     </TutorialProvider>

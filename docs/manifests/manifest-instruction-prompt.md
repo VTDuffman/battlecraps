@@ -9,6 +9,6 @@ Please generate a separate 'Implementation Manifest' in markdown. Break the feat
 
 A brief explanation of the goal.
 
-The exact list of files the CLI needs to read (keep this strictly limited to only what is necessary).
+The exact list of files the CLI needs to read (keep this strictly limited to only what is necessary). Mark the files and their path with the @ symbol to allow Claude to reference it directly.
 
 The exact, surgical prompt I should copy and paste into my CLI to execute that step. Do not include architectural fluff in the prompt; focus only on the specific code changes required for those specific files."

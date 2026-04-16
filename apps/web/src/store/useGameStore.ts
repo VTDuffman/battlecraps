@@ -415,6 +415,9 @@ export interface GameState {
   /** Monotonically increasing counter used to generate `seq` values. */
   _seqCounter: number;
 
+  /** Increments on every rollDice() call — React key to re-fire dice animations. */
+  _rollKey: number;
+
   // ── Tutorial ──────────────────────────────────────────────────────────────
   /**
    * Predetermined dice outcome to be consumed on the next rollDice() call.
@@ -700,6 +703,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   victoryShown:     false,
   victoryComplete:  false,
   _seqCounter:    0,
+  _rollKey:       0,
   rollHistory:    [],
   socketStatus:   'disconnected',
   getToken:       null,
@@ -1218,7 +1222,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const effectiveDice: [number, number] | undefined =
       cheatDice ?? (tutorialCheatDice ?? undefined);
 
-    set({ isRolling: true, tutorialCheatDice: null });
+    set((state) => ({ isRolling: true, tutorialCheatDice: null, _rollKey: state._rollKey + 1 }));
     try {
       const token = await get().getToken?.();
       const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/roll`, {

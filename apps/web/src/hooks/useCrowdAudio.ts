@@ -113,6 +113,36 @@ function playGroan(ctx: AudioContext): void {
 }
 
 // ---------------------------------------------------------------------------
+// Dice audio — WAV buffer loader
+// ---------------------------------------------------------------------------
+
+let diceBuffers: AudioBuffer[] = [];
+
+async function loadDiceAudio(ctx: AudioContext): Promise<void> {
+  if (diceBuffers.length > 0) return;
+  const [res1, res2] = await Promise.all([
+    fetch('/audio/dice-roll-1.wav'),
+    fetch('/audio/dice-roll-2.wav'),
+  ]);
+  const [ab1, ab2] = await Promise.all([res1.arrayBuffer(), res2.arrayBuffer()]);
+  const [buf1, buf2] = await Promise.all([
+    ctx.decodeAudioData(ab1),
+    ctx.decodeAudioData(ab2),
+  ]);
+  diceBuffers.push(buf1, buf2);
+}
+
+async function playDiceRattle(ctx: AudioContext): Promise<void> {
+  await loadDiceAudio(ctx);
+  const selectedBuffer = diceBuffers[Math.floor(Math.random() * diceBuffers.length)];
+  const source = ctx.createBufferSource();
+  source.buffer = selectedBuffer;
+  source.connect(ctx.destination);
+  // 0.72 s syncs with the `dice-throw` CSS animation duration
+  source.start(ctx.currentTime + 0.72);
+}
+
+// ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 
@@ -127,6 +157,7 @@ export function useCrowdAudio(): { muted: boolean; toggleMute: () => void } {
 
   const flashType = useGameStore((s) => s.flashType);
   const _flashKey = useGameStore((s) => s._flashKey);
+  const _rollKey  = useGameStore((s) => s._rollKey);
 
   // flashType ref: keeps the _flashKey effect from capturing a stale value
   const flashTypeRef = useRef(flashType);
@@ -151,6 +182,14 @@ export function useCrowdAudio(): { muted: boolean; toggleMute: () => void } {
     if (ft === 'win')  playCheer(ctx);
     if (ft === 'lose') playGroan(ctx);
   }, [_flashKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Dice rattle on throw ────────────────────────────────────────────────
+  useEffect(() => {
+    if (_rollKey === 0) return;
+    const ctx = getCtx();
+    if (!ctx) return;
+    void playDiceRattle(ctx);
+  }, [_rollKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Mute toggle ─────────────────────────────────────────────────────────
   const toggleMute = useCallback(() => {

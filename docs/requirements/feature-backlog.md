@@ -674,8 +674,205 @@ The unlock event should feel like a cinematic reward moment:
 
 ---
 
+## FB-014 — High Roller's Club & Leaderboards
+
+**Type:** Feature  
+**Area:** Leaderboard / Title Screen / `apps/api/src/`  
+**Status:** Pending Implementation  
+
+### Summary  
+Add a comprehensive high-score and run-history system accessible from the Title Lobby. This provides meta-progression and global competition, allowing players to compare their best builds and record-breaking rolls.  
+
+### Design Requirements  
+
+**1. Access & Navigation**
+* Accessible via a new **"High Roller's Club"** button on the `TitleLobbyScreen`.  
+* Supports two primary views: **Global** (Tab 1) and **Personal** (Tab 2).  
+
+**2. Global Tab (The Hall of Fame)**
+* **High Roller's Club (Top Section):** Lists players who successfully cleared the final floor (Floor 3, Marker 2) by defeating **The Executive**.  
+* **"Gone but not Forgotten" (Bottom Section):** Dedicated to players who died mid-run. Entries include the **Highest Marker Achieved** to show exactly how close they were to victory.  
+* **Display Logic:** Both sections show the Top 10 by default and are internally scrollable to the Top 25.  
+
+**3. Personal Tab (Run History)**
+* Lists the active player's top 25 runs regardless of outcome (no boss-victory requirement).  
+* Displayed as a single static list.  
+
+**4. Entry Data & Tie-Breaking**
+* Each entry displays: Player Name (via Clerk/Google), Bankroll, Date, and **Highest Single Roll Win**.  
+* **Highest Single Roll Win** is calculated using **Amplified Profit**: `floor(BoostedProfit × FinalMultiplier)`.  
+* **Expandable Drawer:** Each entry can be expanded to reveal the specific **Crew Arrangement** (5 slots) used during that run.  
+* **Tie-Breaker:** In the event of identical bankrolls, the entry with more **Remaining Shooters** ranks higher.  
+
+### Technical Implementation  
+
+**1. Database Schema (`apps/api/src/db/schema.ts`)**
+A new `leaderboard_entries` table to avoid expensive aggregate logic on the `runs` table:  
+* `id` (uuid, PK)  
+* `user_id` (references `users.id`)  
+* `run_id` (references `runs.id`)  
+* `final_bankroll_cents` (integer)  
+* `highest_roll_amplified_cents` (integer)  
+* `highest_marker_index` (integer)  
+* `shooters_remaining` (integer)  
+* `crew_layout` (jsonb - array of crew IDs)  
+* `did_win_run` (boolean)  
+* `created_at` (timestamp)  
+
+**2. API Endpoints**
+* `GET /api/v1/leaderboard`: Returns filtered results for Global (Winners), Global (Non-winners), and Personal.  
+* `POST /api/v1/leaderboard/submit`: Internal-only logic triggered during `GAME_OVER` resolution to upsert a run into the leaderboard table if it qualifies for a top-25 slot.  
+
+**3. UI Components**
+* `LeaderboardScreen.tsx`: The main container with Tab switching.  
+* `LeaderboardEntry.tsx`: The row component with the expandable crew drawer.  
+* Update `TitleLobbyScreen.tsx` to include the entry point.  
+
+### Files Affected  
+
+| File | Action |
+|---|---|
+| `apps/api/src/db/schema.ts` | Add `leaderboard_entries` table |
+| `apps/api/src/routes/leaderboard.ts` | New: GET and internal submission logic |
+| `apps/web/src/components/TitleLobbyScreen.tsx` | Add leaderboard navigation button |
+| `apps/web/src/components/LeaderboardScreen.tsx` | Create: Main leaderboard UI and tabs |
+| `apps/web/src/components/LeaderboardEntry.tsx` | Create: Entry row with crew drawer |
+| `packages/shared/src/types.ts` | Add `LeaderboardEntry` type definitions |
+
 ---
 
+## FB-015 — Expanded Gauntlet (9-Floor Progression)
+
+**Type:** Feature / Content  
+**Area:** Progression / `packages/shared/src/config.ts` / `apps/web/src/lib/floorThemes.ts`  
+**Status:** In Progress  
+
+### Summary  
+Expand the game's core progression gauntlet from the MVP 3 floors to a full 9-floor experience. This requires defining new aesthetics, marker targets, boss rules, and comp rewards for each new venue.   
+
+This ticket serves as the living master tracker for the 9-floor gauntlet. It will be updated iteratively as new floors are conceptualized, documented, and merged into the engine. The feature is considered complete when all 9 floors are fully playable.
+
+### Floor Progression Tracker  
+
+| Floor | Venue Name | Design Status | Implementation Status | Notes |
+|---|---|---|---|---|
+| **1** | The Loading Dock | 🟡 Designed | 🔴 Pending | Specs in `floors.md` & `floor-aesthetics.md` |
+| **2** | VFW Hall | 🟢 Designed | 🟢 Implemented | Legacy Floor 1 |
+| **3** | Riverboat | 🟢 Designed | 🟢 Implemented | Legacy Floor 2 |
+| **4** | The Strip | 🟢 Designed | 🟢 Implemented | Legacy Floor 3 |
+| **5** | *TBD* | 🔴 Not Designed | 🔴 Pending | |
+| **6** | *TBD* | 🔴 Not Designed | 🔴 Pending | |
+| **7** | *TBD* | 🔴 Not Designed | 🔴 Pending | |
+| **8** | *TBD* | 🔴 Not Designed | 🔴 Pending | |
+| **9** | *TBD* | 🔴 Not Designed | 🔴 Pending | Final Boss / Game Completion |
+
+*(Note: The exact ordering of legacy floors vs. new floors may shift during balancing. Ensure marker targets scale appropriately as new floors are slotted into the array).*
+
+### Definition of Done (per Floor)  
+For a floor to be marked as **Implemented**, the following components must be complete:  
+1. **Engine Config:** Entry added to `GAUNTLET[]` in `packages/shared/src/config.ts` with correct marker scales.  
+2. **Boss Configured:** Boss identity, vibe copy, rule params, and comp reward fully defined.  
+3. **Boss Rule Hook:** Mechanic enforcement file created in `packages/shared/src/bossRules/`.  
+4. **Theme Defined:** Color palette and aesthetic variables added to `apps/web/src/lib/floorThemes.ts`.  
+5. **Assets:** Floor emblem/iconography generated and integrated into the transition screens.
+
+---
+
+## FB-016 — Mobile-First UI/UX & Readability Overhaul
+
+**Type:** UX/UI / Accessibility  
+**Area:** Global Typography / `RollLog` / Modals / Layout  
+**Status:** Pending Implementation  
+
+### Summary  
+A global UI overhaul to address severe readability issues, particularly on mobile viewports. The current reliance on sub-12px pixel fonts and low-opacity text over textured backgrounds causes eye strain. This feature introduces an "HD-Retro" typography stack, enforces strict minimum font sizes, replaces translucent text with high-contrast alternatives, and repositions the Roll Log into a mobile-friendly Bottom Sheet.
+
+### Design Requirements  
+
+**1. The "HD-Retro" Typography Stack (Global Sweep)** * **Enforce a strict 12px minimum** font size across the entire application.  
+* **Display Font (`"Press Start 2P"`):** Restrict usage to high-level headers, titles, boss names, and critical game-state flashes (e.g., "POINT HIT").  
+* **Data Font (`"Share Tech Mono"`):** Retain for numeric data, bankroll, and betting grids (enforcing the 12px minimum).  
+* **Dense Text Font (NEW):** Introduce a clean, high-resolution sans-serif font (e.g., *Inter*, *Roboto*, or *Space Grotesk*) for all dense reading material. Apply this globally to: Crew ability descriptions, "How to Play" text, Transition/Boss Modals, and the Roll Log.  
+
+**2. High Contrast & Solid Colors** * **Remove Low-Opacity Text:** Eliminate styles like `text-white/30`. Replace with solid, low-luminance colors (e.g., a solid gray or dimmed gold).  
+* **Opaque Data Panels:** Data-heavy panels must use solid, opaque backgrounds (e.g., `#0f2a1d` `felt-dark`) with heavy borders to completely block out the table felt texture behind them.  
+* **Universal Text Shadows:** Apply a hard 1px drop-shadow (`text-shadow: 1px 1px 0px #000`) to any text floating directly over the table to guarantee contrast.  
+
+**3. Roll Log Bottom Sheet** * **Convert to Drawer:** Replace the floating bottom-right `RollLog` box with a mobile-standard Bottom Sheet component.  
+* **Collapsed State (Trigger):** A prominent "View Log" button or tab anchored at the bottom of the screen. **Crucial:** The trigger must be positioned so it does not overlap or obscure the Crew Portrait rail.  
+* **Expanded State:** Tapping the trigger slides the drawer up from the bottom, occupying ~60-80% of the screen with a dark, opaque background. Displays the full transaction history using the new sans-serif/mono fonts.  
+
+**4. Tutorial State Compatibility** * The `SpotlightMask` in the tutorial relies on `getBoundingClientRect()`. Since the Roll Log is now hidden inside a drawer, the tutorial state machine must be updated.  
+* If a tutorial beat requires highlighting the Roll Log, the system must programmatically force the drawer open (`isOpen = true`) *before* the spotlight calculates its position, and automatically close it when the player advances the beat.  
+
+### Files Affected (Estimated)  
+
+| File | Action |
+|---|---|
+| `apps/web/tailwind.config.ts` | Add new sans-serif font to the theme family |
+| `apps/web/src/index.css` | Import new font; add global text-shadow utility classes |
+| `apps/web/src/components/RollLog.tsx` | Complete refactor into a Bottom Sheet layout |
+| `apps/web/src/components/PubScreen.tsx` | Typography updates for Crew descriptions |
+| `apps/web/src/components/CompCardFan.tsx` | Typography updates for comp text |
+| `apps/web/src/components/tutorial/*` | Typography updates globally |
+| `apps/web/src/contexts/TutorialContext.tsx` | Add state control to programmatically open the Roll Log drawer |
+| `apps/web/src/transitions/phases/*` | Typography updates for all transition modals |
+
+---
+
+## FB-017 — Tutorial Replay & State Reset
+
+**Type:** Feature / UX  
+**Area:** API Auth / `AuthenticatedApp` / `HowToPlayScreen`  
+**Status:** Pending Implementation  
+
+### Summary  
+Allow players to manually trigger a replay of the interactive tutorial from the "How to Play" screen. This requires a dedicated backend state reset to re-authorize the use of `cheat_dice` simulated rolls, along with frontend safety guards to prevent accidental deletion of active runs.
+
+### Design Requirements  
+
+**1. Access & UI Placement**
+* Add a prominent "Replay Interactive Tutorial" button pinned to the bottom of the `SectionPicker` view inside `HowToPlayScreen.tsx`.
+* The button should be visually distinct from the static reading sections (e.g., using the `chip.red` or `gold.dim` theme colors) to indicate it is an executable action.
+
+**2. The Active Run Guard (Safety Check)**
+* When the replay button is clicked, the system must check if the player currently has an active, saved run.
+* **If an active run exists:** Show a confirmation modal (similar to the "New Run" guard) stating: *"Starting the tutorial will abandon your current run. Are you sure?"*
+* **If no active run exists (or upon confirmation):** Proceed with the state reset.
+
+**3. Application Flow & State Reset**
+* Triggering the replay must unmount the `HowToPlayScreen` and `TitleLobbyScreen`.
+* The system calls the new API endpoint to reset the backend flag.
+* `AuthenticatedApp` resets its local state (`tutorialCompleted = false`, `tutorialGateDismissed = false`), which automatically mounts the `KnowledgeGate` and begins the tutorial flow on a fresh Floor 1 board.
+* If an active run was abandoned, the system must properly wipe/reset that run in the database (leveraging the existing "New Run" logic) before the tutorial mounts.
+
+### Technical Implementation  
+
+**1. Backend API (`apps/api/src/routes/auth.ts`)**
+* Create a new `POST /api/v1/auth/tutorial-reset` endpoint.
+* **Logic:** `UPDATE users SET tutorial_completed = false WHERE clerk_id = req.clerkId;`
+* This correctly re-authorizes the `POST /api/v1/runs/:id/roll` endpoint to accept the `cheat_dice` payloads required for Beats 1, 5, and 6.
+
+**2. Frontend Wiring (`apps/web/src/App.tsx`)**
+* Create a `handleReplayTutorial` function in `AuthenticatedApp`.
+* Pass this function down through `<TitleLobbyScreen />` to `<HowToPlayScreen />`.
+* Inside `handleReplayTutorial`:
+  1. Await the `POST /tutorial-reset` API call.
+  2. If abandoning an active run, trigger the existing "abandon run" store action.
+  3. `setTutorialCompleted(false)`
+  4. `setTutorialGateDismissed(false)`
+  5. `setShowHowToPlay(false)` / `setShowTitleLobby(false)` to return to the game board context.
+
+### Files Affected  
+
+| File | Action |
+|---|---|
+| `apps/api/src/routes/auth.ts` | Add `POST /tutorial-reset` endpoint |
+| `apps/web/src/App.tsx` | Add `handleReplayTutorial` logic and prop drilling |
+| `apps/web/src/components/TitleLobbyScreen.tsx` | Propagate `onReplayTutorial` prop |
+| `apps/web/src/components/tutorial/HowToPlayScreen.tsx` | Add action button and confirmation modal guard |
+
+---
 
 
 

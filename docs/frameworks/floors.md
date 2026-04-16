@@ -18,9 +18,10 @@
 6. [Boss Rule Catalogue](#boss-rule-catalogue)
 7. [How to Add a New Floor](#how-to-add-a-new-floor)
 8. [How to Add a New Boss Rule](#how-to-add-a-new-boss-rule)
-9. [Floor 1 — VFW Hall](#floor-1--vfw-hall)
-10. [Floor 2 — The Riverboat](#floor-2--the-riverboat)
-11. [Floor 3 — The Strip](#floor-3--the-strip)
+9. [Floor 1 — The Loading Dock](#floor-1--the-loading-dock)
+10. [Floor 2 — VFW Hall](#floor-2--vfw-hall)
+11. [Floor 3 — The Riverboat](#floor-3--the-riverboat)
+12. [Floor 4 — The Strip](#floor-4--the-strip)
 
 ---
 
@@ -31,10 +32,11 @@ The Gauntlet is divided into **floors**. Each floor contains exactly **3 markers
 floor is always a **Boss fight** with a special rule modifier.
 
 ```
-Gauntlet (9 markers total)
-├── Floor 1: VFW Hall          [marker 0] [marker 1] [marker 2 — BOSS: Sarge]
-├── Floor 2: The Riverboat     [marker 3] [marker 4] [marker 5 — BOSS: Mme. Le Prix]
-└── Floor 3: The Strip         [marker 6] [marker 7] [marker 8 — BOSS: The Executive]
+Gauntlet (12 markers total)
+├── Floor 1: The Loading Dock  [marker 0] [marker 1] [marker 2 — BOSS: The Foreman]
+├── Floor 2: VFW Hall          [marker 3] [marker 4] [marker 5 — BOSS: Sarge]
+├── Floor 3: The Riverboat     [marker 6] [marker 7] [marker 8 — BOSS: Mme. Le Prix]
+└── Floor 4: The Strip         [marker 9] [marker 10] [marker 11 — BOSS: The Executive]
 ```
 
 Clearing a marker sends the player to the **Seven-Proof Pub** to recruit a crew
@@ -369,7 +371,47 @@ suggestion, effect description, parameters (if any).
 
 ---
 
-## Floor 1 — VFW Hall
+## Floor 1 — The Loading Dock
+
+**Atmosphere:** `exposed`
+**Tagline:** The street. The hustle. Where it all begins.
+**Intro lines:**
+1. Stained concrete and the harsh glare of a sodium-vapor streetlamp. The air is cold, and the dice are chipped.
+2. The Foreman stands by the freight elevator, steel-toed and impatient. He decides who gets to step inside.
+3. The street always takes its cut. Don't bleed out before the real game even starts.
+
+### Markers
+
+| Index | Target | Venue | Boss? |
+|---|---|---|---|
+| 0 | $50 | The Loading Dock | No |
+| 1 | $100 | The Loading Dock | No |
+| 2 | $250 | The Loading Dock — Freight Elevator | **Yes** |
+
+### Boss: The Foreman
+
+| Field | Value |
+|---|---|
+| **Title** | Loading Dock Gatekeeper |
+| **Venue** | The Loading Dock — Freight Elevator |
+| **Teaser** | The Foreman doesn't care if you win or lose. He just wants his cut. |
+| **Rule** | `EXTORTION_FEE` |
+| **Comp reward** | `THE_VIG` — You took over the corner. Any crew abilities that award direct cash are permanently increased by 20%. |
+| **Comp perk ID** | 4 |
+
+**Rule effect:** A flat 20% tax is automatically deducted from all winning payouts across all bets. The math rounds down to the nearest cent. This severely impacts bankroll acceleration and forces the player to rely more on crew abilities to build momentum.
+
+**Flavor text:** *"You're blocking my dock. Clear out or pay up."*
+
+**Visual theme tokens:**
+- Felt: `#1c1d21` (stained concrete)
+- Accent: `#ff9900` (sodium-vapor orange)
+- Boss tint: `#eab308` (industrial hazard yellow)
+- Pub name: THE MILK CRATE CIRCLE
+
+---
+
+## Floor 2 — VFW Hall
 
 **Atmosphere:** `gritty`
 **Tagline:** Where dice meet duty.
@@ -382,9 +424,9 @@ suggestion, effect description, parameters (if any).
 
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
-| 0 | $300 | VFW Hall | No |
-| 1 | $600 | VFW Hall | No |
-| 2 | $1,000 | VFW Hall — High Limit Room | **Yes** |
+| 3 | $300 | VFW Hall | No |
+| 4 | $600 | VFW Hall | No |
+| 5 | $1,000 | VFW Hall — High Limit Room | **Yes** |
 
 ### Boss: Sarge
 
@@ -413,7 +455,7 @@ suggestion, effect description, parameters (if any).
 
 ---
 
-## Floor 2 — The Riverboat
+## Floor 3 — The Riverboat
 
 **Atmosphere:** `elegant`
 **Tagline:** Fortune flows with the current.
@@ -426,9 +468,9 @@ suggestion, effect description, parameters (if any).
 
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
-| 3 | $1,500 | The Riverboat | No |
-| 4 | $2,500 | The Riverboat | No |
-| 5 | $4,000 | The Riverboat — Salon Privé | **Yes** |
+| 6 | $1,500 | The Riverboat | No |
+| 7 | $2,500 | The Riverboat | No |
+| 8 | $4,000 | The Riverboat — Salon Privé | **Yes** |
 
 ### Boss: Mme. Le Prix
 
@@ -455,7 +497,7 @@ context may misfire or have reduced effect.
 
 ---
 
-## Floor 3 — The Strip
+## Floor 4 — The Strip
 
 **Atmosphere:** `electric`
 **Tagline:** Sixty floors up. No safety net.
@@ -468,9 +510,9 @@ context may misfire or have reduced effect.
 
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
-| 6 | $6,000 | The Strip | No |
-| 7 | $9,000 | The Strip | No |
-| 8 | $12,500 | The Strip — Penthouse | **Yes** |
+| 9 | $6,000 | The Strip | No |
+| 10 | $9,000 | The Strip | No |
+| 11 | $12,500 | The Strip — Penthouse | **Yes** |
 
 ### Boss: The Executive
 

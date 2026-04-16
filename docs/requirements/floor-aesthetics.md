@@ -2,23 +2,86 @@
 
 ## Design Philosophy: The Progression Arc
 
-The three floors of BattleCraps are not just difficulty tiers — they are a journey through
-three distinct worlds of gambling culture, each with its own smell, sound, and soul. The
-visual language escalates deliberately:
+The four floors of BattleCraps are a journey from the absolute bottom rung of the street up to the mythological heights of high-roller gambling. The visual language escalates deliberately:
 
-> **Gritty → Genteel → Electric**
+> **Exposed → Gritty → Genteel → Electric**
 
-Floor 1 is where you start — rough, honest, slightly illegal. By Floor 3 you are somewhere
-money goes to disappear. Each transition should feel like a genuine step up into a world the
-player wasn't sure they'd make it to.
+Floor 1 is where you start — out in the cold, rolling on concrete, just trying to earn your way indoors. By Floor 4 you are somewhere money goes to disappear. Each transition should feel like a genuine step up into a world the player wasn't sure they'd make it to.
 
-The core visual system (pixel font, 16-bit aesthetic, dark palette, neon-on-dark) stays
-constant across all floors — it's the _hue_, _temperature_, and _ornamentation_ that shifts.
-Think of it as the same band playing three different venues.
+The core visual system (pixel font, 16-bit aesthetic, dark palette, neon-on-dark) stays constant across all floors — it's the *hue*, *temperature*, and *ornamentation* that shifts.
 
 ---
 
-## Floor 1 — The Moose Lodge (VFW Hall)
+## Floor 1 — The Loading Dock (Alleyway)
+
+### Identity
+**"The street. The hustle. Where it all begins."**
+
+You aren't even inside yet. You're out back behind a strip mall or a warehouse, rolling on stained concrete illuminated by a single flickering sodium-vapor streetlamp. The air is cold. The dice are chipped. There is no felt, only a chalk outline drawn on the ground to mark the boundaries. If the cops roll by, everyone scatters. 
+
+This sets the absolute baseline of the game. It contrasts sharply with the worn, indoor comfort of Floor 2's VFW Hall. Here, the visuals are stark, industrial, and exposed.
+
+### Color Palette
+
+| Role               | Value       | Notes                                              |
+|--------------------|-------------|----------------------------------------------------|
+| Felt (primary)     | `#1c1d21`   | Stained concrete / Asphalt                         |
+| Felt (dark/rail)   | `#0a0a0c`   | Deep alleyway shadow for the crew rail             |
+| Felt (light)       | `#2d2f36`   | Slightly lighter concrete for highlights           |
+| Background         | `#030304`   | Pure night                                         |
+| Accent (bright)    | `#ff9900`   | Harsh sodium-vapor streetlamp orange               |
+| Accent (primary)   | `#b35900`   | Rusted metal / Dried brick                         |
+| Accent (dim)       | `#4a2c11`   | Grime / Muted rust for borders                     |
+| Border tint        | `rust/30`   | Rust orange at 30% opacity                         |
+
+### Felt Breathing (Ambient Overlay)
+
+The ground doesn't breathe warmth; it reflects the unstable environment. Cold is the blue-black night, warm is the streetlamp, and hot mimics the distant flash of police sirens bouncing off brick walls.
+
+| Tier   | Trigger                  | Color                           | Speed  |
+|--------|--------------------------|----------------------------------|--------|
+| Cold   | No streak, hype ≤ 1.0    | `rgba(30, 35, 50, 0.20)`        | 6.0s   |
+| Warm   | Streak 1–2 or hype ≥ 1.2 | `rgba(200, 100, 0, 0.18)`       | 3.0s   |
+| Hot    | Streak 3+ or hype ≥ 2.0  | `rgba(220, 20, 40, 0.22)`       | 1.0s   |
+
+### Screen Flash Colors
+
+Raw and unapologetic. 
+
+| Event              | Color                          |
+|--------------------|--------------------------------|
+| Win (Natural/Hit)  | `rgba(255, 153, 0, 0.35)`      |
+| Lose (Seven Out)   | `rgba(20, 25, 35, 0.50)`       |
+
+*Win flash: A sudden surge of the streetlamp overhead. Lose flash: A plunge into cold alleyway shadows.*
+
+### Recruitment Screen — "The Milk Crate Circle"
+
+There is no bar. Between runs, the crew is just huddled around a rusted burn barrel or sitting on overturned milk crates by a chainlink fence. You're hiring whoever happened to linger in the alley tonight.
+
+- **Background gradient:** `radial-gradient(ellipse at 50% 10%, #2a1500 0%, #110900 40%, #020202 100%)`
+- **Top accent bar:** Rust to streetlamp orange gradient
+- **Fog/Steam overlay:** `rgba(200, 200, 220, 0.05)` drifting horizontally (like breath in the cold air or sewer steam)
+- **Text colors:** Streetlamp `#ff9900` headers, `text-stone-400/60` body
+- **UI borders:** `border-orange-900/40`
+- **Decorative motif:** Chainlink crosshatches ( # ), rugged dashed lines
+- **Narrative voice:** Scrappy, paranoid, urgent. *"Grab a stray. Keep your voice down."*
+
+### Boss Room — The Freight Elevator (The Foreman)
+
+The game pauses, and the heavy corrugated metal door of the loading dock rolls up. The Foreman stands there in steel-toed boots. He controls who gets to walk through that door into the real games inside. 
+
+- **Background gradient:** `radial-gradient(ellipse at 50% 40%, #1a1b20 0%, #0a0a0c 60%, #000000 100%)`
+- **Top/bottom accent bars:** Industrial yellow `#eab308` → Black
+- **Ambient glow:** `rgba(234, 179, 8, 0.08)` harsh overhead industrial light
+- **Text accent:** `#eab308` Caution yellow
+- **Border tint:** `rgba(133, 77, 14, 0.5)`
+- **Decorative motif:** Diagonal hazard stripes (////), heavy bracket corners `[` `]`
+- **Narrative voice:** Gruff, dismissive, impatient. *"You're blocking my dock. Clear out or pay up."*
+- **Key distinction from Sarge:** Sarge is running a structured, disciplined game. The Foreman isn't running a casino at all—he's just a guy who uses his physical territory to extort the street players before letting them inside. 
+
+---
+## Floor 2 — The Moose Lodge (VFW Hall)
 
 ### Identity
 **"The dive. The grind. Where real ones play."**
@@ -28,7 +91,7 @@ tubes flicker overhead. The felt is worn but real. The gold trim is tarnished. T
 here have seen some things. Sarge has been running this table longer than you've been alive.
 
 This is already the game's baseline aesthetic — document it here as the formal spec for
-Floor 1 so future deviations from it are intentional and coherent.
+Floor 2 so future deviations from it are intentional and coherent.
 
 ### Color Palette
 
@@ -86,7 +149,7 @@ place that smells like gun oil and regret.
 
 ---
 
-## Floor 2 — The Riverboat (Mississippi Salon Privé)
+## Floor 3 — The Riverboat (Mississippi Salon Privé)
 
 ### Identity
 **"The upgrade. Old money, new danger."**
@@ -174,7 +237,7 @@ composed. The danger here isn't ominous — it's _refined_. That's worse.
 
 ---
 
-## Floor 3 — The Strip (Penthouse)
+## Floor 4 — The Strip (Penthouse)
 
 ### Identity
 **"The pinnacle. Where the money gets mythological."**
@@ -266,11 +329,12 @@ the colors of a boardroom, not a battlefield. He's not angry. He's just already 
 
 ## Progression Summary
 
-| Floor | Venue          | Pub/Rest Stop        | Boss Room       | Palette Core                    | Temperature       |
-|-------|----------------|----------------------|-----------------|---------------------------------|-------------------|
-| 1     | VFW Hall       | The Seven-Proof Pub  | VFW High Limit  | Forest green + tarnished gold   | Warm, worn, amber |
-| 2     | The Riverboat  | The Promenade Bar    | Salon Privé     | Navy blue + champagne brass     | Cool, candlelit   |
-| 3     | The Strip      | The Sky Lounge       | The Penthouse   | Obsidian black + electric gold  | Frigid, electric  |
+| Floor | Venue          | Pub/Rest Stop          | Boss Room       | Palette Core                    | Temperature       |
+|-------|----------------|------------------------|-----------------|---------------------------------|-------------------|
+| 1     | Loading Dock   | The Milk Crate Circle  | Freight Elevator| Stained concrete + sodium orange| Exposed, cold     |
+| 2     | VFW Hall       | The Seven-Proof Pub    | VFW High Limit  | Forest green + tarnished gold   | Warm, worn, amber |
+| 3     | The Riverboat  | The Promenade Bar      | Salon Privé     | Navy blue + champagne brass     | Cool, candlelit   |
+| 4     | The Strip      | The Sky Lounge         | The Penthouse   | Obsidian black + electric gold  | Frigid, electric  |
 
 ## Transition Signals
 

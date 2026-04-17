@@ -12,8 +12,7 @@
 // Reads from the LIVE store (not celebrationSnapshot) because this phase
 // fires AFTER the pub — the new marker state is the correct state to show.
 //
-// Advance mode: 'auto' at 2500ms. The player can also tap to skip early
-// (future enhancement — Phase 3 wires auto-advance only for simplicity).
+// Advance mode: 'gated' — waits for the player to tap "TAP TO CONTINUE".
 // =============================================================================
 
 import React from 'react';
@@ -160,14 +159,14 @@ export const MarkerIntroPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
         </div>
       )}
 
-      {/* Tap to skip (subtle affordance) */}
+      {/* Primary CTA */}
       <button
         type="button"
         onClick={onAdvance}
-        className="absolute bottom-6 font-pixel text-[5px] tracking-widest opacity-30 hover:opacity-60 transition-opacity"
-        style={{ color: theme.accentPrimary }}
+        className="px-8 py-3 rounded border border-white/20 mt-4 font-pixel text-[7px] tracking-widest transition-opacity hover:opacity-80"
+        style={{ color: theme.accentBright, borderColor: `${theme.accentPrimary}50` }}
       >
-        TAP TO CONTINUE
+        ▶ TAP TO CONTINUE
       </button>
 
       {/* Bottom accent bar */}

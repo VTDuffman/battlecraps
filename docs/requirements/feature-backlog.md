@@ -460,7 +460,7 @@ first render is skipped.
 
 **Type:** Quality of Life / Audio
 **Area:** `apps/web/src/hooks/useCrowdAudio.ts`, `apps/web/src/store/useGameStore.ts`
-**Status:** Pending implementation
+**Status:** Implemented
 **Source:** Playtester feedback
 
 ### Request
@@ -874,7 +874,49 @@ Allow players to manually trigger a replay of the interactive tutorial from the 
 
 ---
 
+---
 
+## FB-018 — Playtester Feedback System (Deep Context)
+
+**Type:** Research / QoL
+**Area:** UI / API / `TitleLobbyScreen`
+**Status:** Pending Implementation
+
+### Problem
+As the game enters Beta, there is no formal channel to capture bug reports, sentiment, or feature ideas from playtesters. Relying on manual messages results in "low-signal" feedback where the developer has to guess the game state during a bug.
+
+### Proposed Solution
+An in-game feedback modal accessible from the Title Lobby.
+
+**1. Entry Point:** A "Submit Feedback" link or button anchored on the `TitleLobbyScreen`.
+**2. The Modal UI:**
+   - **Type Selector:** Dropdown for `Bug`, `Sentiment`, `Idea`.
+   - **Vibe Rating:** A 1-5 star or chip rating (optional).
+   - **Comment Box:** Multi-line text area for the user's observation.
+**3. The "Deep Context" Payload:**
+   Every submission automatically attaches a `context` JSON object containing:
+   - `floor`: current floor index.
+   - `bankroll`: current bankroll in cents.
+   - `crew`: array of active crew IDs.
+   - `history`: the last 10 entries from the game's roll log.
+   - `metadata`: device type (mobile/desktop) and session duration.
+
+### Technical Implementation
+- **API:** New `POST /api/v1/feedback` endpoint.
+- **DB:** New `feedback_submissions` table (User ID, Type, Rating, Comment, Context JSON, Timestamp).
+- **Frontend:** A standalone `FeedbackModal` component; triggered via a new action in `useGameStore` to pull the current state snapshot for the payload.
+
+### Files Affected (Estimated)
+
+| File | Action |
+|---|---|
+| `apps/api/src/db/schema.ts` | Add `feedback_submissions` table |
+| `apps/api/src/routes/feedback.ts` | New: POST feedback endpoint |
+| `apps/web/src/store/useGameStore.ts` | Add state/actions for context capture |
+| `apps/web/src/components/TitleLobbyScreen.tsx` | Add trigger link/button |
+| `apps/web/src/components/FeedbackModal.tsx` | Create: New feedback UI |
+
+---
 
 
 

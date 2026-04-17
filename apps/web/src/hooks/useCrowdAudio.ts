@@ -116,6 +116,7 @@ function playGroan(ctx: AudioContext): void {
 // Dice audio — WAV buffer loader
 // ---------------------------------------------------------------------------
 
+let globalAudioCtx: AudioContext | null = null;
 let diceBuffers: AudioBuffer[] = [];
 
 async function loadDiceAudio(ctx: AudioContext): Promise<void> {
@@ -153,8 +154,6 @@ async function playDiceRattle(ctx: AudioContext): Promise<void> {
 const STORAGE_KEY = 'bc_muted';
 
 export function useCrowdAudio(): { muted: boolean; toggleMute: () => void } {
-  const ctxRef = useRef<AudioContext | null>(null);
-
   const [muted, setMuted] = useState(() => localStorage.getItem(STORAGE_KEY) === '1');
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
@@ -167,19 +166,22 @@ export function useCrowdAudio(): { muted: boolean; toggleMute: () => void } {
   const flashTypeRef = useRef(flashType);
   flashTypeRef.current = flashType;
 
-  // ── Lazy AudioContext init on first flash event ─────────────────────────
-  // No murmur — AudioContext is created only when needed for a sting.
+  // Capture entry-state keys to suppress ghost sounds on remount
+  const initialRollKey  = useRef(_rollKey);
+  const initialFlashKey = useRef(_flashKey);
+
+  // ── Singleton AudioContext — survives remounts ───────────────────────────
   function getCtx(): AudioContext | null {
     if (mutedRef.current) return null;
-    if (!ctxRef.current) ctxRef.current = new AudioContext();
-    const ctx = ctxRef.current;
+    if (!globalAudioCtx) globalAudioCtx = new AudioContext();
+    const ctx = globalAudioCtx;
     if (ctx.state === 'suspended') void ctx.resume();
     return ctx;
   }
 
   // ── Event stings: cheer on win flash, groan on lose flash ───────────────
   useEffect(() => {
-    if (_flashKey === 0) return; // initial mount, no flash yet
+    if (_flashKey === 0 || _flashKey === initialFlashKey.current) return;
     const ctx = getCtx();
     if (!ctx) return;
     const ft = flashTypeRef.current;
@@ -189,7 +191,7 @@ export function useCrowdAudio(): { muted: boolean; toggleMute: () => void } {
 
   // ── Dice rattle on throw ────────────────────────────────────────────────
   useEffect(() => {
-    if (_rollKey === 0) return;
+    if (_rollKey === 0 || _rollKey === initialRollKey.current) return;
     const ctx = getCtx();
     if (!ctx) return;
     void playDiceRattle(ctx);
@@ -202,11 +204,6 @@ export function useCrowdAudio(): { muted: boolean; toggleMute: () => void } {
       localStorage.setItem(STORAGE_KEY, next ? '1' : '0');
       return next;
     });
-  }, []);
-
-  // ── Cleanup on unmount ──────────────────────────────────────────────────
-  useEffect(() => {
-    return () => { ctxRef.current?.close(); };
   }, []);
 
   return { muted, toggleMute };

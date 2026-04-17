@@ -107,6 +107,7 @@ export const DiceZone: React.FC = () => {
   const status              = useGameStore((s) => s.status);
   const currentMarkerIndex  = useGameStore((s) => s.currentMarkerIndex);
   const bossPointHits       = useGameStore((s) => s.bossPointHits);
+  const celebrationSnapshot = useGameStore((s) => s.celebrationSnapshot);
 
   // ── Throw animation state ─────────────────────────────────────────────────
   const [throwPhase, setThrowPhase]   = useState<ThrowPhase>('idle');
@@ -391,7 +392,7 @@ export const DiceZone: React.FC = () => {
         )}
 
         {/* Post-roll WIN flash */}
-        {showDelta && lastDelta !== null && lastDelta > 0 && (
+        {showDelta && lastDelta !== null && lastDelta > 0 && celebrationSnapshot === null && (
           <div
             key={lastDelta}
             className="absolute top-0 left-1/2 -translate-x-1/2 font-pixel text-lg animate-bark-rise pointer-events-none text-gold-bright"

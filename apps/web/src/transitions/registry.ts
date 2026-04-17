@@ -155,12 +155,11 @@ export const TRANSITION_REGISTRY: Record<TransitionType, TransitionPhase[]> = {
   ],
 
   // ── MARKER_INTRO — post-pub orientation card ─────────────────────────────
-  // Auto-advances after 2500ms. Player can also tap to skip.
+  // Gated: waits for player to tap "TAP TO CONTINUE" before advancing.
   MARKER_INTRO: [
     {
       id:          'intro',
-      advanceMode: 'auto',
-      duration:    2500,
+      advanceMode: 'gated',
       component:   'MarkerIntroPhase',
     },
   ],

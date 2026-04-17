@@ -39,14 +39,12 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
     );
   }
 
-  const { markerIndex, targetCents, floorId, bankrollBefore, bankrollAfter } = snapshot;
+  const { markerIndex, targetCents, floorId, bankrollAfter } = snapshot;
 
   const theme       = getFloorTheme(markerIndex);
   const floor       = getFloorByMarkerIndex(markerIndex);
   const posInFloor  = markerIndex % 3;          // 0, 1, or 2
-  const deltaCents  = bankrollAfter - bankrollBefore;
-  const deltaSign   = deltaCents >= 0 ? '+' : '';
-  const deltaStr    = `${deltaSign}$${(Math.abs(deltaCents) / 100).toLocaleString()}`;
+  const bankrollStr = `CURRENT BANKROLL: $${(bankrollAfter / 100).toLocaleString()}`;
 
   return (
     <div
@@ -94,15 +92,15 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
           ${(targetCents / 100).toLocaleString()} TARGET CLEARED
         </div>
 
-        {/* Bankroll delta */}
+        {/* Current Bankroll */}
         <div
           className="font-pixel text-[14px]"
           style={{
-            color:      deltaCents >= 0 ? theme.accentBright : '#f87171',
-            textShadow: `0 0 16px ${deltaCents >= 0 ? theme.accentBright : '#ef4444'}60`,
+            color:      theme.accentBright,
+            textShadow: `0 0 16px ${theme.accentBright}60`,
           }}
         >
-          {deltaStr}
+          {bankrollStr}
         </div>
       </div>
 

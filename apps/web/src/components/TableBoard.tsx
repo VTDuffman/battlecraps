@@ -150,6 +150,9 @@ export const TableBoard: React.FC = () => {
           borderColor: theme.borderLow,
           paddingTop: 'clamp(8px,1.4dvh,16px)',
           paddingBottom: 'clamp(6px,1dvh,12px)',
+          // isolation: isolate prevents GPU compositing cascade from dice
+          // animation affecting background-clip:text on the CRAPS heading
+          isolation: 'isolate',
         }}
       >
         <GameStatus />
@@ -240,7 +243,8 @@ export const TableBoard: React.FC = () => {
       {wallFlash && (
         <div
           key={_wallFlashKey}
-          className="absolute top-0 inset-x-0 h-10 pointer-events-none z-40 animate-wall-flash bg-white/40 rounded-b-lg"
+          className="absolute top-0 inset-x-0 h-24 pointer-events-none z-40 animate-wall-flash mix-blend-screen"
+          style={{ background: `radial-gradient(ellipse at top, ${theme.accentBright}66 0%, transparent 70%)` }}
         />
       )}
 

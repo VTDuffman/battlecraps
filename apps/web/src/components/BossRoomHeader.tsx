@@ -33,6 +33,9 @@ export const BossRoomHeader: React.FC = () => {
         background: 'linear-gradient(180deg, #1a0a00 0%, #2d1200 60%, #1a0a00 100%)',
         borderBottom: '2px solid rgba(180, 30, 30, 0.6)',
         boxShadow: '0 4px 20px rgba(180, 30, 30, 0.25)',
+        // isolation: isolate prevents GPU compositing cascade from dice
+        // animation causing a white flash in this region (KI-012)
+        isolation: 'isolate',
       }}
     >
       {/* Red alert bar */}

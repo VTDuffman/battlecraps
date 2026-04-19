@@ -50,16 +50,16 @@ export const BossRoomHeader: React.FC = () => {
         {/* Left: boss identity */}
         <div className="flex items-center gap-2 min-w-0">
           <div
-            className="flex-none w-5 h-5 rounded flex items-center justify-center font-pixel text-[8px]"
+            className="flex-none w-5 h-5 rounded flex items-center justify-center font-pixel text-xs"
             style={{ background: 'rgba(185,28,28,0.5)', border: '1px solid rgba(239,68,68,0.6)' }}
           >
             ★
           </div>
           <div className="min-w-0">
-            <div className="font-pixel text-[5px] text-red-400/80 tracking-widest leading-none">
+            <div className="font-pixel text-xs text-red-400/80 tracking-widest leading-none">
               HIGH LIMIT ROOM
             </div>
-            <div className="font-pixel text-[8px] text-red-200 leading-tight truncate">
+            <div className="font-pixel text-xs text-red-200 leading-tight truncate">
               {boss.name.toUpperCase()}
             </div>
           </div>
@@ -68,14 +68,14 @@ export const BossRoomHeader: React.FC = () => {
         {/* Right: min-bet display */}
         {currentMinBet !== null && (
           <div className="flex-none text-right">
-            <div className="font-pixel text-[5px] text-red-400/70 tracking-widest leading-none">
+            <div className="font-pixel text-xs text-red-400/70 tracking-widest leading-none">
               MIN BET
             </div>
-            <div className="font-pixel text-[10px] text-red-300 leading-tight">
+            <div className="font-pixel text-xs text-red-300 leading-tight">
               ${(currentMinBet / 100).toFixed(0)}
             </div>
             {nextMinBet !== null && nextMinBet > currentMinBet && (
-              <div className="font-pixel text-[5px] text-red-500/60 leading-none">
+              <div className="font-pixel text-xs text-red-500/60 leading-none">
                 → ${(nextMinBet / 100).toFixed(0)} next
               </div>
             )}
@@ -85,7 +85,7 @@ export const BossRoomHeader: React.FC = () => {
 
       {/* Rule reminder text */}
       <div
-        className="px-4 pb-2 font-pixel text-[5px] text-red-400/50 tracking-wide text-center"
+        className="px-4 pb-2 font-pixel text-xs text-red-400/50 tracking-wide text-center"
       >
         ⚔ {boss.ruleHeaderText}
       </div>

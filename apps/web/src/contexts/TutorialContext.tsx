@@ -17,11 +17,24 @@ export interface TutorialCallbacks {
 export interface TutorialContextValue {
   activeBeatMode: BeatAdvanceMode | null;
   onBetChanged:   (field: BetField, newAmount: number) => void;
+  forceRollLogOpen: boolean;
+  setForceRollLogOpen: (val: boolean) => void;
 }
 
 const TutorialContext = createContext<TutorialContextValue | null>(null);
 
-export const TutorialProvider = TutorialContext.Provider;
+interface TutorialProviderProps {
+  value: TutorialContextValue;
+  children: React.ReactNode;
+}
+
+export function TutorialProvider({ value, children }: TutorialProviderProps) {
+  return (
+    <TutorialContext.Provider value={value}>
+      {children}
+    </TutorialContext.Provider>
+  );
+}
 
 export function useTutorialContext(): TutorialContextValue | null {
   return useContext(TutorialContext);

@@ -293,7 +293,7 @@ const AuthenticatedApp: React.FC = () => {
         <div className="font-pixel text-[10px] text-gold animate-pulse">
           LOADING TABLE…
         </div>
-        <div className="font-pixel text-[7px] text-white/30">
+        <div className="font-pixel text-[7px] text-gray-500">
           Connecting to server
         </div>
       </main>
@@ -307,10 +307,10 @@ const AuthenticatedApp: React.FC = () => {
         <div className="font-pixel text-[9px] text-red-400 text-center leading-6">
           FAILED TO CONNECT
         </div>
-        <div className="font-mono text-xs text-white/50 text-center max-w-sm break-words">
+        <div className="font-dense text-xs text-gray-300 text-center max-w-sm break-words">
           {error}
         </div>
-        <div className="font-pixel text-[7px] text-white/30 text-center leading-6">
+        <div className="font-pixel text-[7px] text-gray-500 text-center leading-6">
           Is the API running on :3001?
           <br />
           Did you run the DB migration?

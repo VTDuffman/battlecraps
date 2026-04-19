@@ -18,7 +18,8 @@ export type SpotlightZone =
   | 'crew-rail'
   | 'marker-progress'
   | 'hype-meter'
-  | 'boss-portrait';
+  | 'boss-portrait'
+  | 'roll-log';
 
 export type BeatAdvanceMode =
   | 'tap'
@@ -38,6 +39,8 @@ export interface TutorialBeat {
   advanceMode: BeatAdvanceMode;
   advanceLabel?: string;
   skipable?: boolean;
+  requiresDrawer?: boolean;
+  spotlightDelay?: number;
   simulatedRoll?: {
     die1: number;
     die2: number;

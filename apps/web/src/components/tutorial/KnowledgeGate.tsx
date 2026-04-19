@@ -75,7 +75,7 @@ export const KnowledgeGate: React.FC<KnowledgeGateProps> = ({ onFull, onBCOnly, 
           }}
         >
           SHOW ME EVERYTHING
-          <div className="font-mono text-[7px] text-white/40 mt-1 normal-case tracking-normal font-normal">
+          <div className="font-dense text-[7px] text-gray-400 mt-1 normal-case tracking-normal font-normal">
             Full craps basics + BattleCraps rules
           </div>
         </button>
@@ -102,7 +102,7 @@ export const KnowledgeGate: React.FC<KnowledgeGateProps> = ({ onFull, onBCOnly, 
           }}
         >
           YEAH, I KNOW CRAPS
-          <div className="font-mono text-[7px] text-white/40 mt-1 normal-case tracking-normal font-normal">
+          <div className="font-dense text-[7px] text-gray-400 mt-1 normal-case tracking-normal font-normal">
             Just show me the BattleCraps rules
           </div>
         </button>

@@ -123,7 +123,7 @@ export const TableBoard: React.FC = () => {
       <button
         type="button"
         onClick={toggleMute}
-        className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded font-pixel text-[8px] bg-black/30 text-white/40 hover:text-white/70 transition-colors"
+        className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded font-pixel text-xs bg-black/30 text-gray-400 hover:text-gray-200 transition-colors"
         aria-label={muted ? 'Unmute crowd audio' : 'Mute crowd audio'}
       >
         {muted ? '🔇' : '🔊'}
@@ -133,7 +133,7 @@ export const TableBoard: React.FC = () => {
       <button
         type="button"
         onClick={() => setShowHowToPlay(true)}
-        className="absolute top-2 left-10 z-10 px-1.5 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/40 hover:text-white/70 transition-colors tracking-widest"
+        className="absolute top-2 left-10 z-10 px-1.5 py-0.5 rounded font-pixel text-xs bg-black/30 text-gray-400 hover:text-gray-200 transition-colors tracking-widest"
         aria-label="How To Play"
       >
         ?
@@ -190,8 +190,12 @@ export const TableBoard: React.FC = () => {
         <ChipRail />
       </div>
 
-      {/* ── QA TRANSACTION LOG ───────────────────────────────────────────── */}
-      <RollLog />
+      {/* ── ROLL LOG trigger — anchored between Dice Zone and Crew Rail ──── */}
+      {/* z-[45] keeps the trigger clickable above the open drawer (z-40)  */}
+      {/* but the collapsed trigger is in-flow so it never covers the crew. */}
+      <div className="relative z-[45] flex-none">
+        <RollLog />
+      </div>
 
       {/* ── CREW RAIL ────────────────────────────────────────────────────── */}
       <section
@@ -208,7 +212,7 @@ export const TableBoard: React.FC = () => {
         {/* Rail header */}
         <div className="flex items-center gap-2" style={{ marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
           <div className="h-px flex-1" style={{ backgroundColor: theme.borderLow }} />
-          <span className="font-pixel text-[6px] tracking-widest" style={{ color: theme.accentPrimary }}>
+          <span className="font-pixel text-xs tracking-widest" style={{ color: theme.accentPrimary }}>
             CREW
           </span>
           <div className="h-px flex-1" style={{ backgroundColor: theme.borderLow }} />
@@ -346,9 +350,9 @@ const GameStatus: React.FC = () => {
           {/* Decorative star row */}
           <div className="flex items-center justify-center gap-1.5 mb-1">
             <div className="h-px w-6 bg-gradient-to-r from-transparent to-gold/40" />
-            <span className="font-pixel text-[5px] text-gold/50">✦</span>
-            <span className="font-pixel text-[7px] text-gold/70">★</span>
-            <span className="font-pixel text-[5px] text-gold/50">✦</span>
+            <span className="font-pixel text-xs text-gold-dim text-shadow-hard">✦</span>
+            <span className="font-pixel text-xs text-gold text-shadow-hard">★</span>
+            <span className="font-pixel text-xs text-gold-dim text-shadow-hard">✦</span>
             <div className="h-px w-6 bg-gradient-to-l from-transparent to-gold/40" />
           </div>
 
@@ -381,13 +385,13 @@ const GameStatus: React.FC = () => {
           </h1>
 
           {/* Tagline */}
-          <div className="font-pixel text-[5px] text-gold/40 tracking-[0.4em] mt-0.5">
+          <div className="font-pixel text-xs text-gold-dim tracking-[0.4em] mt-0.5 text-shadow-hard">
             · CASINO GAUNTLET ·
           </div>
 
           {/* Bankroll — directly beneath logo */}
           <div className="mt-1.5 text-center">
-            <div className="font-pixel text-[6px] text-white/40 mb-0.5">BANKROLL</div>
+            <div className="font-pixel text-xs text-gray-400 mb-0.5 text-shadow-hard">BANKROLL</div>
             <div className={`font-pixel text-sm transition-colors duration-150 ${bankrollColor}`}>
               {bankrollStr}
             </div>
@@ -398,7 +402,7 @@ const GameStatus: React.FC = () => {
         <div className="flex flex-col items-center gap-2">
           {/* Hype */}
           <div className="text-center" data-tutorial-zone="hype-meter">
-            <div className="font-pixel text-[6px] text-white/40 mb-0.5">
+            <div className="font-pixel text-xs text-gray-400 mb-0.5 text-shadow-hard">
               HYPE{streak >= 2 ? ` ${'🔥'.repeat(Math.min(streak, 4))}` : ''}
             </div>
             <div className="flex items-center justify-center gap-1.5">
@@ -421,7 +425,7 @@ const GameStatus: React.FC = () => {
 
           {/* Shooters */}
           <div className="text-center">
-            <div className="font-pixel text-[6px] text-white/40 mb-0.5">SHOOTERS</div>
+            <div className="font-pixel text-xs text-gray-400 mb-0.5 text-shadow-hard">SHOOTERS</div>
             <div className="flex gap-1 justify-center">
               {Array.from({ length: Math.max(5, shooters) }, (_, i) => (
                 <div
@@ -465,16 +469,16 @@ const GameStatus: React.FC = () => {
           <div
             className={[
               'w-10 h-10 rounded-full border-2 flex items-center justify-center',
-              'font-pixel text-[9px] transition-colors duration-300',
+              'font-pixel text-xs transition-colors duration-300',
               phase === 'POINT_ACTIVE' && point !== null
                 ? 'bg-white border-white text-black shadow-[0_0_10px_2px_rgba(255,255,255,0.6)]'
-                : 'bg-black border-white/20 text-white/20',
+                : 'bg-black border-white/20 text-gray-600',
             ].join(' ')}
           >
             {phase === 'POINT_ACTIVE' && point !== null ? point : 'OFF'}
           </div>
         </div>
-        <span className="font-pixel text-[7px] text-white/30">
+        <span className="font-pixel text-xs text-gray-500 text-shadow-hard">
           {phase === 'POINT_ACTIVE' ? 'POINT ACTIVE' : 'COME OUT'}
         </span>
       </div>
@@ -503,12 +507,12 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
     <div className="w-full px-2 space-y-1" data-tutorial-zone="marker-progress">
       <div className="flex justify-between items-baseline">
         <span
-          className="font-pixel text-[6px]"
+          className="font-pixel text-xs"
           style={{ color: isBoss ? '#f87171' : theme.accentPrimary }}
         >
           {label}
         </span>
-        <span className="font-pixel text-[6px] text-white/30">
+        <span className="font-pixel text-xs text-gray-500 text-shadow-hard">
           ${(bankroll / 100).toFixed(0)} / ${(target / 100).toFixed(0)}
         </span>
       </div>
@@ -556,7 +560,7 @@ const ChipRail: React.FC = () => {
         paddingBottom: 'clamp(4px,0.6dvh,8px)',
       }}
     >
-      <div className="text-center font-pixel text-[7px] text-white/30" style={{ marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
+      <div className="text-center font-pixel text-xs text-gray-500 text-shadow-hard" style={{ marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
         TABLE MAX: ${maxBet / 100}
       </div>
       <ChipSelector activeChip={activeChip} disabled={isRolling || tutorialCtx?.activeBeatMode === 'manual-roll'} />
@@ -582,7 +586,7 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => (
       'absolute top-2 right-2 z-10',
       'flex items-center gap-1',
       'px-1.5 py-0.5 rounded',
-      'font-pixel text-[5px]',
+      'font-pixel text-xs',
       STATUS_STYLES[status] ?? 'bg-gray-900 text-gray-400',
     ].join(' ')}
   >

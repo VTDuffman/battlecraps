@@ -51,7 +51,7 @@ export const UnlockNotification: React.FC = () => {
           onClick={clearUnlockNotification}
           aria-label="Dismiss"
           className="
-            font-pixel text-[7px] text-white/40 hover:text-white/80
+            font-pixel text-[7px] text-gray-400 hover:text-gray-100
             leading-none transition-colors
           "
         >

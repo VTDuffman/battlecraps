@@ -33,7 +33,7 @@ const ROLL_RESULT_COLOURS: Record<string, string> = {
   POINT_SET:     'text-blue-300',
   POINT_HIT:     'text-gold-bright',
   SEVEN_OUT:     'text-red-500',
-  NO_RESOLUTION: 'text-white/30',
+  NO_RESOLUTION: 'text-gray-500',
 };
 
 // Glow color for the result popup border/background per result type
@@ -81,7 +81,7 @@ const ResultPopup: React.FC<ResultPopupProps> = ({ result, total, phase }) => {
       style={{ top: '50%', transform: 'translateY(-50%)' }}
     >
       <span className={`font-pixel text-base leading-tight ${colour}`}>{label}</span>
-      <span className="font-pixel text-[9px] text-white/60">— {total} —</span>
+      <span className="font-pixel text-[9px] text-gray-200">— {total} —</span>
     </div>
   );
 };
@@ -430,7 +430,7 @@ export const DiceZone: React.FC = () => {
               ].join(' ')
             : belowMinBet
               ? 'bg-felt-dark border-amber-700/50 text-amber-600/80 cursor-not-allowed'
-              : 'bg-felt-dark border-white/10 text-white/20 cursor-not-allowed',
+              : 'bg-felt-dark border-white/10 text-gray-600 cursor-not-allowed',
         ].join(' ')}
         style={{ height: 'clamp(44px, 5.5dvh, 56px)' }}
       >

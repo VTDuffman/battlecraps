@@ -73,7 +73,7 @@ const SectionPicker: React.FC<SectionPickerProps> = ({ onSelect, onBack }) => (
       <button
         type="button"
         onClick={onBack}
-        className="font-pixel text-[8px] text-white/40 hover:text-white/70 transition-colors active:scale-95"
+        className="font-pixel text-[8px] text-gray-400 hover:text-gray-200 transition-colors active:scale-95"
         aria-label="Back to lobby"
       >
         ← BACK
@@ -119,7 +119,7 @@ const SectionPicker: React.FC<SectionPickerProps> = ({ onSelect, onBack }) => (
               >
                 {section.label}
               </div>
-              <div className="font-mono text-[8px] text-white/40 mt-0.5">
+              <div className="font-dense text-[8px] text-gray-400 mt-0.5">
                 {section.subtitle}
               </div>
             </div>
@@ -155,7 +155,7 @@ const SectionView: React.FC<SectionViewProps> = ({ section, onBack }) => {
         <button
           type="button"
           onClick={onBack}
-          className="font-pixel text-[8px] text-white/40 hover:text-white/70 transition-colors active:scale-95"
+          className="font-pixel text-[8px] text-gray-400 hover:text-gray-200 transition-colors active:scale-95"
           aria-label="Back to section list"
         >
           ← BACK

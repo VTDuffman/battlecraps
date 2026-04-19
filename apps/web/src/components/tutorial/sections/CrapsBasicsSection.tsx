@@ -20,7 +20,7 @@ const ReferenceCard: React.FC<ReferenceCardProps> = ({ title, icon, children }) 
       <span className="text-lg">{icon}</span>
       <span className="font-pixel text-[8px] text-amber-300 tracking-widest">{title}</span>
     </div>
-    <div className="font-mono text-[9px] text-white/70 leading-relaxed space-y-1">
+    <div className="font-dense text-[9px] text-gray-200 leading-relaxed space-y-1">
       {children}
     </div>
   </div>
@@ -40,7 +40,7 @@ export const CrapsBasicsSection: React.FC = () => (
 
     {/* Come-Out Roll */}
     <ReferenceCard title="COME-OUT ROLL" icon="🎲">
-      <p className="text-white/50 text-[8px] mb-2">
+      <p className="font-dense text-gray-300 text-[8px] mb-2">
         The first roll of a new shooter's turn.
       </p>
       <Outcome label="WIN" color="text-green-400">
@@ -56,7 +56,7 @@ export const CrapsBasicsSection: React.FC = () => (
 
     {/* Pass Line */}
     <ReferenceCard title="PASS LINE" icon="🎯">
-      <p className="text-white/50 text-[8px] mb-2">
+      <p className="font-dense text-gray-300 text-[8px] mb-2">
         The core bet. You're wagering with the shooter.
       </p>
       <Outcome label="WIN" color="text-green-400">
@@ -65,14 +65,14 @@ export const CrapsBasicsSection: React.FC = () => (
       <Outcome label="LOSE" color="text-red-400">
         7 rolls before the point (Seven Out). Bet is lost.
       </Outcome>
-      <p className="text-white/40 text-[8px] mt-1">
+      <p className="font-dense text-gray-400 text-[8px] mt-1">
         Place before each come-out. Take it down before the point is set.
       </p>
     </ReferenceCard>
 
     {/* Point & Puck */}
     <ReferenceCard title="THE POINT" icon="⬜">
-      <p className="text-white/50 text-[8px] mb-2">
+      <p className="font-dense text-gray-300 text-[8px] mb-2">
         Set on any come-out roll of 4, 5, 6, 8, 9, or 10.
         The white puck on the board marks the active point.
       </p>
@@ -89,7 +89,7 @@ export const CrapsBasicsSection: React.FC = () => (
 
     {/* Odds Bet */}
     <ReferenceCard title="ODDS BET" icon="📐">
-      <p className="text-white/50 text-[8px] mb-2">
+      <p className="font-dense text-gray-300 text-[8px] mb-2">
         The only bet in the casino with zero house edge.
         Backs your Pass Line at true mathematical odds.
       </p>
@@ -102,34 +102,34 @@ export const CrapsBasicsSection: React.FC = () => (
           <div key={point} className="border border-white/10 rounded p-1.5 bg-black/20">
             <div className="text-amber-300 text-[8px] font-pixel">{point}</div>
             <div className="text-green-400 text-[8px] font-pixel mt-0.5">{pays}</div>
-            <div className="text-white/30 text-[7px] mt-0.5">max {max}</div>
+            <div className="font-dense text-gray-500 text-[7px] mt-0.5">max {max}</div>
           </div>
         ))}
       </div>
-      <p className="text-white/40 text-[8px] mt-1">
+      <p className="font-dense text-gray-400 text-[8px] mt-1">
         Place behind your Pass Line after the point is set.
       </p>
     </ReferenceCard>
 
     {/* Seven-Out */}
     <ReferenceCard title="SEVEN OUT" icon="💀">
-      <p className="text-white/50 text-[8px] mb-2">
+      <p className="font-dense text-gray-300 text-[8px] mb-2">
         When a 7 rolls during the point phase before the point is hit.
       </p>
       <Outcome label="RESULT" color="text-red-400">
         Pass Line and Odds bets are both lost.
       </Outcome>
-      <Outcome label="THEN" color="text-white/50">
+      <Outcome label="THEN" color="text-gray-300">
         Shooter is done. New shooter steps up. New come-out begins.
       </Outcome>
-      <p className="text-white/40 text-[8px] mt-1">
+      <p className="font-dense text-gray-400 text-[8px] mt-1">
         In BattleCraps, each seven-out costs one Shooter life.
       </p>
     </ReferenceCard>
 
     {/* Hardways */}
     <ReferenceCard title="HARDWAYS" icon="🎰">
-      <p className="text-white/50 text-[8px] mb-2">
+      <p className="font-dense text-gray-300 text-[8px] mb-2">
         Side bets that require both dice to show matching faces.
         "Hard" means the exact pair — not any other combination.
       </p>
@@ -144,10 +144,10 @@ export const CrapsBasicsSection: React.FC = () => (
             <div className="font-pixel text-[7px] text-amber-300">{bet}</div>
             <div className="text-[8px]">
               <span className="text-green-400">{example}</span>
-              <span className="text-white/30"> → </span>
+              <span className="text-gray-500"> → </span>
               <span className="text-green-400">{pays}</span>
             </div>
-            <div className="text-[7px] text-white/30">Soft: {soft}</div>
+            <div className="font-dense text-[7px] text-gray-500">Soft: {soft}</div>
           </div>
         ))}
       </div>

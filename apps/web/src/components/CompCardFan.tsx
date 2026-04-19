@@ -143,7 +143,7 @@ export const CompCardFan: React.FC = () => {
 
             {/* ── COMP stamp ─────────────────────────────────────────────── */}
             <div
-              className="font-pixel text-[4px] tracking-widest mt-0.5 leading-none"
+              className="font-pixel text-xs tracking-widest mt-0.5 leading-none"
               style={{ color: 'rgba(0,0,0,0.35)' }}
             >
               COMP
@@ -151,7 +151,7 @@ export const CompCardFan: React.FC = () => {
 
             {/* ── Card name ──────────────────────────────────────────────── */}
             <div
-              className="font-pixel text-[5px] text-center leading-tight px-0.5 mt-0.5"
+              className="font-pixel text-xs text-center leading-tight px-0.5 mt-0.5"
               style={{ color: 'rgba(0,0,0,0.75)' }}
             >
               {comp.name}
@@ -163,7 +163,7 @@ export const CompCardFan: React.FC = () => {
                 className="
                   absolute left-full ml-2 top-0
                   w-36 px-2 py-1.5 rounded
-                  font-mono text-[8px] text-white/90 leading-snug
+                  font-dense text-xs text-white leading-snug
                   bg-black/90 border border-white/20
                   pointer-events-none z-50
                   opacity-0 group-hover:opacity-100
@@ -171,7 +171,7 @@ export const CompCardFan: React.FC = () => {
                 "
               >
                 <div
-                  className="font-pixel text-[5px] mb-1 tracking-widest"
+                  className="font-pixel text-xs mb-1 tracking-widest"
                   style={{ color: comp.accentColor }}
                 >
                   {comp.name.toUpperCase()}
@@ -187,7 +187,7 @@ export const CompCardFan: React.FC = () => {
           <div
             className="
               absolute left-1/2 -translate-x-1/2
-              font-pixel text-[5px] text-gold/60 whitespace-nowrap tracking-widest
+              font-pixel text-xs text-gold-dim whitespace-nowrap tracking-widest
             "
             style={{ top: `calc(76px + ${(earnedComps.length - 1) * 2 + 6}px)` }}
           >

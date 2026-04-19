@@ -22,16 +22,16 @@ function dollars(cents: number): string {
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="font-pixel text-[7px] text-white/40 tracking-widest uppercase pt-3 pb-1 border-b border-white/10">
+  <div className="font-pixel text-[7px] text-gray-400 tracking-widest uppercase pt-3 pb-1 border-b border-white/10">
     {children}
   </div>
 );
 
 const Row: React.FC<{ label: string; value: string; valueColor?: string }> = ({
-  label, value, valueColor = 'text-white/80',
+  label, value, valueColor = 'text-gray-100',
 }) => (
   <div className="flex justify-between items-baseline py-1 border-b border-white/5">
-    <span className="font-mono text-[9px] text-white/50">{label}</span>
+    <span className="font-dense text-[9px] text-gray-300">{label}</span>
     <span className={`font-pixel text-[8px] ${valueColor}`}>{value}</span>
   </div>
 );
@@ -50,7 +50,7 @@ export const BattleCrapsRulesSection: React.FC = () => {
 
       {/* ── Gauntlet Structure ─────────────────────────────────────────────── */}
       <SectionHeader>The Gauntlet</SectionHeader>
-      <p className="text-white/50 leading-relaxed py-2">
+      <p className="font-dense text-gray-300 leading-relaxed py-2">
         Nine markers across three floors. Each floor ends with a boss fight.
         Clear all nine to win the run.
       </p>
@@ -76,7 +76,7 @@ export const BattleCrapsRulesSection: React.FC = () => {
                 >
                   <div className="flex items-center gap-2">
                     <span
-                      className={`font-pixel text-[7px] ${isBoss ? 'text-red-400' : 'text-white/30'}`}
+                      className={`font-pixel text-[7px] ${isBoss ? 'text-red-400' : 'text-gray-500'}`}
                     >
                       {isBoss ? '★ BOSS' : `MK ${globalIdx + 1}`}
                     </span>
@@ -85,7 +85,7 @@ export const BattleCrapsRulesSection: React.FC = () => {
                     )}
                   </div>
                   <span
-                    className={`font-pixel text-[8px] ${isBoss ? 'text-red-300' : 'text-white/70'}`}
+                    className={`font-pixel text-[8px] ${isBoss ? 'text-red-300' : 'text-gray-200'}`}
                   >
                     {dollars(m.targetCents)}
                   </span>
@@ -98,7 +98,7 @@ export const BattleCrapsRulesSection: React.FC = () => {
 
       {/* ── Shooter Lives ──────────────────────────────────────────────────── */}
       <SectionHeader>Shooter Lives</SectionHeader>
-      <p className="text-white/50 leading-relaxed py-2">
+      <p className="font-dense text-gray-300 leading-relaxed py-2">
         You start each run with <span className="text-amber-300">5 shooter lives</span>.
         Each Seven Out costs one. Reach zero and the run ends.
         Certain boss comp perks can add lives back.
@@ -113,14 +113,14 @@ export const BattleCrapsRulesSection: React.FC = () => {
         <Row label="Odds cap (5/9)" value="4× Pass Line" />
         <Row label="Odds cap (6/8)" value="5× Pass Line" />
       </div>
-      <p className="text-white/40 leading-relaxed">
+      <p className="font-dense text-gray-400 leading-relaxed">
         Hit the target bankroll to clear the marker and advance. Fall short
         with no lives left and the run ends.
       </p>
 
       {/* ── Hype Multiplier ───────────────────────────────────────────────── */}
       <SectionHeader>Hype Multiplier</SectionHeader>
-      <p className="text-white/50 leading-relaxed py-2">
+      <p className="font-dense text-gray-300 leading-relaxed py-2">
         Every consecutive point hit by the current shooter increases your Hype
         multiplier. It boosts the profit portion of every winning payout.
       </p>
@@ -134,10 +134,10 @@ export const BattleCrapsRulesSection: React.FC = () => {
       </div>
       <div className="mt-2 border border-amber-900/40 rounded bg-amber-950/20 p-3">
         <div className="font-pixel text-[7px] text-amber-300 mb-1">PAYOUT FORMULA</div>
-        <div className="text-white/60 leading-relaxed">
+        <div className="font-dense text-gray-200 leading-relaxed">
           Final payout = stake returned + ⌈ gross profit × Hype ⌉
         </div>
-        <div className="text-white/30 text-[8px] mt-1">
+        <div className="font-dense text-gray-500 text-[8px] mt-1">
           Example: $100 Pass Line wins $100 base. At 1.5× Hype, profit is $150 (not $100).
         </div>
       </div>
@@ -153,7 +153,7 @@ export const BattleCrapsRulesSection: React.FC = () => {
           <div key={point} className="border border-white/10 rounded p-2 bg-black/20">
             <div className="font-pixel text-[7px] text-amber-300">{point}</div>
             <div className="font-pixel text-[9px] text-green-400 mt-0.5">{pays}</div>
-            <div className="text-white/30 text-[7px] mt-0.5">cap {max} Pass</div>
+            <div className="font-dense text-gray-500 text-[7px] mt-0.5">cap {max} Pass</div>
           </div>
         ))}
       </div>

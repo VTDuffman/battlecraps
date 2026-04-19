@@ -29,6 +29,7 @@ export default {
       fontFamily: {
         pixel: ['"Press Start 2P"', 'monospace'],
         mono:  ['"Share Tech Mono"', 'monospace'],
+        dense: ['"Space Grotesk"', 'sans-serif'],
       },
       // ── Crew portrait glow animation ─────────────────────────────────────
       keyframes: {

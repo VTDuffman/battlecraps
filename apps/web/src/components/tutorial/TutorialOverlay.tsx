@@ -30,7 +30,7 @@ import { SpotlightMask }         from './SpotlightMask.js';
 import { SalDialog }             from './SalDialog.js';
 import { useGameStore }          from '../../store/useGameStore.js';
 import { GAUNTLET }              from '@battlecraps/shared';
-import type { BeatAdvanceMode }  from '../../lib/tutorialBeats.js';
+import type { BeatAdvanceMode, SpotlightZone } from '../../lib/tutorialBeats.js';
 import type { BetField }         from '../../store/useGameStore.js';
 import type { TutorialContextValue } from '../../contexts/TutorialContext.js';
 
@@ -80,6 +80,12 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = ({
   // Active beat mode exposed to BettingGrid via TutorialContext
   const [activeBeatMode, setActiveBeatMode] = useState<BeatAdvanceMode | null>(null);
 
+  // forceRollLogOpen: controlled here so the beat sync useEffect can set it
+  const [forceRollLogOpen, setForceRollLogOpen] = useState(false);
+
+  // Delayed spotlight zone — updated immediately or after spotlightDelay ms
+  const [activeSpotlightZone, setActiveSpotlightZone] = useState<SpotlightZone>('none');
+
   const currentBeat = beats[beatIndex];
 
   // ── Store subscriptions for manual-roll support ──────────────────────────
@@ -89,10 +95,26 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = ({
   // Tracks whether the current manual-roll beat's roll has started
   const rollStartedRef = useRef(false);
 
-  // Sync activeBeatMode when beat changes
+  // Sync activeBeatMode and forceRollLogOpen when beat changes
   useEffect(() => {
     if (!currentBeat) return;
     setActiveBeatMode(currentBeat.advanceMode);
+    setForceRollLogOpen(currentBeat.requiresDrawer === true);
+    return () => { setForceRollLogOpen(false); };
+  }, [currentBeat]);
+
+  // Sync activeSpotlightZone — delayed if beat.spotlightDelay is set
+  useEffect(() => {
+    if (!currentBeat) {
+      setActiveSpotlightZone('none');
+      return;
+    }
+    const zone = currentBeat.spotlight ?? 'none';
+    if (currentBeat.spotlightDelay) {
+      const timer = setTimeout(() => setActiveSpotlightZone(zone), currentBeat.spotlightDelay);
+      return () => clearTimeout(timer);
+    }
+    setActiveSpotlightZone(zone);
   }, [currentBeat]);
 
   // ── Per-mode waiting logic ──────────────────────────────────────────────
@@ -192,11 +214,13 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = ({
   const contextValue: TutorialContextValue = {
     activeBeatMode,
     onBetChanged: handleBetChanged,
+    forceRollLogOpen,
+    setForceRollLogOpen,
   };
 
   // ── Spotlight ────────────────────────────────────────────────────────────
   const spotlightZone = currentBeat?.spotlight ?? 'none';
-  const spotlightRect = useTutorialSpotlight(spotlightZone, tableRef as React.RefObject<HTMLDivElement>);
+  const spotlightRect = useTutorialSpotlight(activeSpotlightZone, tableRef as React.RefObject<HTMLDivElement>);
 
   // ── Closing / no-beat guard ──────────────────────────────────────────────
   if (closing) {
@@ -286,20 +310,17 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = ({
                 boxShadow:   '0 0 30px 8px rgba(220,38,38,0.15)',
               }}
             >
-              <div className="font-pixel text-[7px] tracking-widest" style={{ color: 'rgba(248,113,113,0.70)' }}>
+              <div className="font-pixel text-[7px] tracking-widest text-red-400">
                 END OF FLOOR 1
               </div>
               <div className="font-pixel text-2xl text-red-400">★</div>
               <div className="font-pixel text-lg tracking-widest text-red-300">
                 {bossConfig.name.toUpperCase()}
               </div>
-              <p
-                className="font-mono text-center leading-relaxed max-w-[220px]"
-                style={{ fontSize: '9px', color: 'rgba(255,255,255,0.50)' }}
-              >
+              <p className="font-dense text-[9px] text-gray-300 text-center leading-relaxed max-w-[220px]">
                 {bossConfig.ruleBlurb}
               </p>
-              <div className="font-pixel text-[7px]" style={{ color: 'rgba(248,113,113,0.50)' }}>
+              <div className="font-pixel text-[7px] text-red-500">
                 You'll meet them at the end of Floor 1.
               </div>
             </div>

@@ -13,6 +13,14 @@
     /* Disable rubber-band scroll on iOS — feels wrong for a table game */
     overscroll-behavior: none;
   }
+
+  html, body {
+    @apply text-sm md:text-base;
+  }
+
+  * {
+    min-font-size: 12px !important;
+  }
 }
 
 @layer utilities {
@@ -21,6 +29,8 @@
     image-rendering: pixelated;
     image-rendering: crisp-edges;
   }
+
+  .text-shadow-hard { text-shadow: 1px 1px 0px #000; }
 }
 
 /* ── Dice throw animation keyframes ────────────────────────────────────────

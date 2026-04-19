@@ -297,14 +297,14 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
           className="
             absolute bottom-full mb-2 left-1/2 -translate-x-1/2
             w-40 px-2 py-1.5 rounded
-            font-mono text-[8px] text-white/90 leading-snug text-center
+            font-dense text-[8px] text-white leading-snug text-center
             bg-black/90 border border-white/20
             pointer-events-none z-30
             opacity-0 group-hover:opacity-100
             transition-opacity duration-150
           "
         >
-          <div className="font-pixel text-[6px] text-gold/70 mb-1">{crewName}</div>
+          <div className="font-pixel text-[6px] text-gold mb-1">{crewName}</div>
           {ABILITY_DESCRIPTIONS[crewId] ?? '???'}
         </div>
       )}
@@ -460,7 +460,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
                     'w-5 h-5 rounded text-[10px] leading-none border transition-colors',
                     pendingDieValue === v
                       ? 'bg-amber-500 border-amber-300 text-black'
-                      : 'bg-stone-800 border-stone-600 text-white/80 hover:border-amber-500/60',
+                      : 'bg-stone-800 border-stone-600 text-gray-100 hover:border-amber-500/60',
                   ].join(' ')}
                 >
                   {DIE_FACES[v]}

@@ -18,6 +18,13 @@ import React, { useState } from 'react';
 import type { RollReceipt, RollReceiptLine, RollReceiptLineKind } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
 
+const CloseIcon: React.FC = () => (
+  <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <line x1="1.5" y1="1.5" x2="9.5" y2="9.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+    <line x1="9.5" y1="1.5" x2="1.5" y2="9.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+  </svg>
+);
+
 // ---------------------------------------------------------------------------
 // Line colour map
 // ---------------------------------------------------------------------------
@@ -86,50 +93,88 @@ export const RollLog: React.FC = () => {
   const rollHistory = useGameStore((s) => s.rollHistory);
   const [collapsed, setCollapsed] = useState(true);
 
+  const open  = () => setCollapsed(false);
+  const close = () => setCollapsed(true);
+
   return (
-    <div
-      className="
-        fixed bottom-4 right-4 z-50
-        w-56
-        bg-black/75 backdrop-blur-sm
-        border border-gold/30
-        rounded
-        text-[9px] font-mono
-        shadow-lg shadow-black/60
-        select-none
-      "
-    >
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <button
-        type="button"
-        onClick={() => setCollapsed((c) => !c)}
+    <>
+      {/* ── Background scrim (tap to close) ─────────────────────────────── */}
+      {!collapsed && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30"
+          onClick={close}
+          aria-hidden="true"
+        />
+      )}
+
+      <div
         className="
-          w-full flex items-center justify-between
-          px-2 py-1
-          border-b border-gold/20
-          font-pixel text-[7px] text-gold/70 tracking-widest
-          hover:text-gold transition-colors
-          cursor-pointer
+          fixed bottom-4 right-4 z-50
+          w-56
+          bg-black/75 backdrop-blur-sm
+          border border-gold/30
+          rounded
+          text-[9px] font-mono
+          shadow-lg shadow-black/60
+          select-none
         "
       >
-        <span>ROLL LOG</span>
-        <span className="text-[8px] text-white/40">{collapsed ? '▲' : '▼'}</span>
-      </button>
+        {/* ── Grab handle (open state only) ───────────────────────────────── */}
+        {!collapsed && (
+          <div className="flex justify-center pt-2 pb-0.5">
+            <div className="w-12 h-1.5 bg-white/20 rounded-full" />
+          </div>
+        )}
 
-      {/* ── Scrollable receipt list ──────────────────────────────────────── */}
-      {!collapsed && (
-        <div className="max-h-[30dvh] overflow-y-auto overscroll-contain px-2">
-          {rollHistory.length === 0 ? (
-            <div className="py-3 text-center text-white/30 italic">
-              No rolls yet.
-            </div>
-          ) : (
-            rollHistory.map((receipt) => (
-              <ReceiptEntry key={receipt.timestamp} receipt={receipt} />
-            ))
-          )}
+        {/* ── Header ──────────────────────────────────────────────────────── */}
+        <div className="w-full flex items-center justify-between px-2 py-1 border-b border-gold/20">
+          <button
+            type="button"
+            onClick={() => setCollapsed((c) => !c)}
+            className="
+              font-pixel text-[7px] text-gold/70 tracking-widest
+              hover:text-gold transition-colors
+              cursor-pointer
+            "
+          >
+            ROLL LOG
+          </button>
+
+          {/* Close (×) when open; expand (▲) when collapsed */}
+          <button
+            type="button"
+            onClick={collapsed ? open : close}
+            aria-label={collapsed ? 'Open roll log' : 'Close roll log'}
+            className="
+              flex items-center justify-center
+              min-w-[44px] min-h-[44px]
+              -mr-2 -my-1
+              text-white/40 hover:text-white transition-colors
+              cursor-pointer
+            "
+          >
+            {collapsed
+              ? <span className="text-[8px]">▲</span>
+              : <CloseIcon />
+            }
+          </button>
         </div>
-      )}
-    </div>
+
+        {/* ── Scrollable receipt list ──────────────────────────────────────── */}
+        {!collapsed && (
+          <div className="max-h-[30dvh] overflow-y-auto overscroll-contain px-2">
+            {rollHistory.length === 0 ? (
+              <div className="py-3 text-center text-white/30 italic">
+                No rolls yet.
+              </div>
+            ) : (
+              rollHistory.map((receipt) => (
+                <ReceiptEntry key={receipt.timestamp} receipt={receipt} />
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 };

@@ -15,17 +15,31 @@
 // for the correct defeated marker, not the already-incremented next marker.
 // =============================================================================
 
-import React from 'react';
-import type { PhaseComponentProps } from '../types.js';
-import { useGameStore }            from '../../store/useGameStore.js';
-import { GAUNTLET }                from '@battlecraps/shared';
-import { getFloorTheme }           from '../../lib/floorThemes.js';
+import React, { useState, useEffect } from 'react';
+import type { PhaseComponentProps }    from '../types.js';
+import { useGameStore }                from '../../store/useGameStore.js';
+import { GAUNTLET }                    from '@battlecraps/shared';
+import { getFloorTheme }               from '../../lib/floorThemes.js';
+import { CompCard, getCompForBossMarker } from '../../components/CompCard.js';
 
 export const BossVictoryCompPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) => {
   const snapshot = useGameStore((s) => s.celebrationSnapshot);
 
-  const boss  = snapshot ? GAUNTLET[snapshot.markerIndex]?.boss : undefined;
-  const theme = snapshot ? getFloorTheme(snapshot.markerIndex) : null;
+  const boss     = snapshot ? GAUNTLET[snapshot.markerIndex]?.boss : undefined;
+  const theme    = snapshot ? getFloorTheme(snapshot.markerIndex) : null;
+  const compDef  = snapshot ? getCompForBossMarker(snapshot.markerIndex) : undefined;
+
+  const [showCard,   setShowCard]   = useState(false);
+  const [showButton, setShowButton] = useState(false);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setShowCard(true),   600);
+    const t2 = setTimeout(() => setShowButton(true), 1400);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, []);
 
   if (!boss || !theme) return null;
 
@@ -70,55 +84,30 @@ export const BossVictoryCompPhase: React.FC<PhaseComponentProps> = ({ onAdvance 
         </div>
       </div>
 
-      {/* Comp award card */}
-      <div
-        className="w-full max-w-xs mx-auto py-5 px-6 rounded flex flex-col items-center gap-2"
-        style={{
-          background: 'rgba(0,0,0,0.65)',
-          border:     `2px solid ${theme.bossTextColor}50`,
-          boxShadow:  `0 0 30px 4px ${theme.bossTextColor}18`,
-        }}
-      >
-        <div
-          className="font-pixel text-[5px] tracking-widest"
-          style={{ color: `${theme.bossTextColor}60` }}
-        >
-          COMP AWARDED
-        </div>
-
-        <div
-          className="font-pixel text-[15px] text-center mt-1"
-          style={{
-            color:      theme.bossStarColor,
-            textShadow: `0 0 20px ${theme.bossTextColor}60`,
-          }}
-        >
-          {boss.compName}
-        </div>
-
-        <div
-          className="h-px w-20 mt-1"
-          style={{ background: `${theme.bossTextColor}30` }}
+      {/* Comp award card — large cinematic version, drops in after header */}
+      {showCard && (
+        <CompCard
+          variant="cinematic"
+          name={boss.compName}
+          icon={compDef?.icon ?? '★'}
+          effect={boss.compDescription}
+          accentColor={compDef?.accentColor ?? theme.bossStarColor}
+          className="animate-comp-deal-in"
         />
-
-        <p
-          className="font-pixel text-[6px] text-center leading-relaxed mt-1"
-          style={{ color: `${theme.bossStarColor}80` }}
-        >
-          {boss.compDescription}
-        </p>
-      </div>
+      )}
 
       {/* CTA */}
       <button
         type="button"
         onClick={onAdvance}
-        className="
+        className={`
           px-10 py-3 rounded
           font-pixel text-[8px] tracking-widest
           border-2
           transition-all duration-150 active:scale-95
-        "
+          transition-opacity duration-500
+          ${showButton ? 'opacity-100' : 'opacity-0'}
+        `}
         style={{
           color:       theme.bossStarColor,
           borderColor: theme.bossTextColor,
@@ -130,7 +119,7 @@ export const BossVictoryCompPhase: React.FC<PhaseComponentProps> = ({ onAdvance 
       </button>
 
       <p
-        className="font-pixel text-[5px] tracking-wide text-center px-10"
+        className={`font-pixel text-[5px] tracking-wide text-center px-10 transition-opacity duration-500 ${showButton ? 'opacity-100' : 'opacity-0'}`}
         style={{ color: `${theme.bossTextColor}40` }}
       >
         Your crew awaits at the pub.<br />

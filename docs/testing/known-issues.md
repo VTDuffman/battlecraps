@@ -250,7 +250,7 @@ Perform a targeted sweep of `apps/web/src/components/TitleLobbyScreen.tsx` and a
 
 **Area:** `apps/web/src/components/CrewPortrait.tsx` / Tooltip Logic
 **Severity:** Low
-**Status:** Open
+**Status:** Fixed
 **Source:** Playtester observation
 
 **Issue:**
@@ -267,7 +267,7 @@ When hovering over the leftmost crew member in the rail, the resulting tooltip (
 
 **Area:** `apps/web/src/components/RollLog.tsx`
 **Severity:** Low
-**Status:** Open
+**Status:** Fixed
 **Source:** Playtester observation
 
 **Issue:**
@@ -284,7 +284,7 @@ When the Roll Log bottom sheet is expanded, there is no explicit visual affordan
 
 **Area:** `apps/web/src/transitions/phases/BossVictoryCompPhase.tsx`
 **Severity:** Low (Enhancement)
-**Status:** Open
+**Status:** Fixed
 **Source:** Testing session observation
 
 **Issue:**
@@ -297,4 +297,279 @@ Integrate the `animate-comp-deal-in` CSS animation into the `BossVictoryCompPhas
     3. Stagger the visibility of the "COLLECT & VISIT THE PUB" CTA button so it only appears after the card animation completes, preventing the player from skipping the reveal too quickly.
 
 ---
+
+## KI-018 — Crew ability firing lacks visual impact and "juice"
+
+**Area:** `apps/web/src/components/CrewPortrait.tsx`
+**Severity:** Low (Enhancement)
+**Status:** Fixed
+**Source:** Testing session observation
+
+**Issue:**
+The visual feedback when a crew member's ability fires (during the roll cascade) is currently too subtle. While the portrait animates and a "bark line" (quote) appears, the effect lacks the "cinematic impact" desired for a key gameplay event. Specifically, the portrait scale-up is minimal (`scale: 1.1`), and the bark line text is rendered in `text-xs`, making it difficult to read and emotionally flat.
+
+**Proposed fix:**
+1.  **Dramatically Increase Scale:** In `CrewPortrait.tsx`, update the `isFiring` animation state in the `motion.div` to scale to at least `1.5` and lift the portrait further (e.g., `y: -40`). Ensure the active portrait has a high z-index (e.g., `z-50`) to clear the table.
+2.  **Upgrade Bark Line Typography:** Replace the `text-xs` class on the bark line container with a high-impact combination like `text-2xl font-bold font-dense`. 
+3.  **Animate the "Saying":** Instead of a static conditional render, wrap the bark line in its own `motion.div` with an entry animation (e.g., a springy "pop" or a slight overshoot scale) to make the text feel like it's being "shouted."
+4.  **Visual Polish:** Add a gold drop-shadow or glow effect (`drop-shadow-[0_0_15px_rgba(255,215,0,0.7)]`) to the portrait during the `isFiring` sequence to emphasize the power activation.
+
+---
+
+## KI-019 — Win signals (flash and cheer) do not fire on intermediate Hardway wins
+
+**Area:** `apps/web/src/store/useGameStore.ts` (`applyPendingSettlement`)
+**Severity:** Medium
+**Status:** Open
+**Source:** Testing session observation
+
+**Issue:**
+When a player wins a Hardway bet during the point phase on a roll that does not resolve the point (e.g., rolling a Hard 8 when the point is 6), the bankroll increases and "+$X.XX" pops appear, but the gold screen flash and crowd cheer sound do not fire.
+
+The logic in `applyPendingSettlement` derives `flashType` strictly from `p.rollResult`. Intermediate rolls return `NO_RESOLUTION`, which defaults the `flashType` to `null`. Consequently, `_flashKey` does not increment, and `useCrowdAudio` never triggers `playCheer()`. This makes significant Hardway payouts feel "silent" and unrewarding compared to Natural or Point Hit wins.
+
+**Proposed fix:**
+Update the `flashType` derivation in `applyPendingSettlement` to include a check for profit (payouts). If any bet field in the `payoutBreakdown` is greater than zero, the `flashType` should be set to `'win'`, regardless of the `rollResult`.
+
+```typescript
+// apps/web/src/store/useGameStore.ts
+
+// Current logic:
+const flashType: 'win' | 'lose' | null =
+  p.rollResult === 'NATURAL'   || p.rollResult === 'POINT_HIT'  ? 'win'  :
+  p.rollResult === 'SEVEN_OUT' || p.rollResult === 'CRAPS_OUT'  ? 'lose' :
+  null;
+
+// Proposed logic:
+const hasProfit = p.payoutBreakdown.passLine > 0 || 
+                  p.payoutBreakdown.odds > 0 || 
+                  p.payoutBreakdown.hardways > 0;
+
+const flashType: 'win' | 'lose' | null =
+  hasProfit || p.rollResult === 'NATURAL' || p.rollResult === 'POINT_HIT' ? 'win' :
+  p.rollResult === 'SEVEN_OUT' || p.rollResult === 'CRAPS_OUT' ? 'lose' :
+  null;
+
+  ---
+
+  ## KI-020 — Extra shooter pip from Member's Jacket disappears when life is lost
+
+**Area:** `apps/web/src/components/TableBoard.tsx` (`GameStatus` component)
+**Severity:** Low
+**Status:** Open
+**Source:** Testing session observation
+
+**Issue:**
+The shooter pip display logic implemented in KI-005 uses `Math.max(5, shooters)` to determine how many circles to render. While this correctly shows a 6th dot when the player has 6 shooters (via the Member's Jacket comp), that 6th circle vanishes entirely once the player's bankroll/shooter count drops back to 5 or lower. 
+
+The player expects the "capacity" to remain visible. If they earned a 6th shooter, there should be 6 circles on the board; if they lose that life, the 6th circle should stay but be rendered in the "empty" state (transparent/dim), rather than the UI layout shifting and hiding the slot.
+
+**Proposed fix:**
+The `TableBoard` needs a way to persistently know the player has earned the extra shooter capacity, similar to how `PubScreen` calculates `isComped`. 
+
+Update the pip rendering logic in `TableBoard.tsx` to check if the player has passed the specific Boss marker that grants the Member's Jacket (e.g., Sarge at Marker 2). If they have cleared that boss, the base capacity should be 6.
+
+```tsx
+// apps/web/src/components/TableBoard.tsx
+
+// Identify if the Member's Jacket comp is active based on gauntlet progress
+// (Assuming Sarge is Marker 2, index 2)
+const hasExtraShooterComp = currentMarkerIndex > 2; 
+const shooterCapacity = hasExtraShooterComp ? 6 : 5;
+
+// Update the array generation to use the capacity rather than the current count
+{Array.from({ length: shooterCapacity }, (_, i) => (
+  <div
+    key={i}
+    className={[
+      'w-2 h-2 rounded-full border',
+      i < shooters
+        ? 'bg-gold border-gold/80' // Filled/Active
+        : 'bg-transparent border-white/20', // Empty/Expended
+    ].join(' ')}
+  />
+))}```
+
+---
+
+## KI-021 — Crew-member payouts do not trigger win feedback (flash and cheer)
+
+**Area:** `apps/web/src/store/useGameStore.ts` (`applyPendingSettlement`)
+**Severity:** Medium
+**Status:** Open
+**Source:** Testing session observation
+
+**Issue:**
+When a crew member (e.g., "The Shark") awards a flat bonus payout (`additives`) on a roll that does not result in a `NATURAL` or `POINT_HIT` (such as a `NO_RESOLUTION` or `POINT_SET` roll), the game does not trigger the "win" feedback signals. While the bankroll increases and the roll delta popup appears, the gold screen flash and crowd cheer are absent.
+
+This occurs because `applyPendingSettlement` derives `flashType` solely from the `rollResult` enum. Crew-based bonuses are added to the bankroll even on intermediate rolls, but since the `rollResult` remains `NO_RESOLUTION`, the `flashType` defaults to `null`, preventing the celebratory audio-visual cues.
+
+**Proposed fix:**
+Expand the `flashType` logic in `applyPendingSettlement` to trigger a win state whenever the roll results in a positive bankroll change, ensuring crew bonuses feel impactful.
+
+1.  Update the `flashType` derivation to check the `bankrollDelta` in addition to the `rollResult`.
+2.  If `p.bankrollDelta > 0`, set `flashType` to `'win'`.
+
+```typescript
+// apps/web/src/store/useGameStore.ts
+
+const flashType: 'win' | 'lose' | null =
+  p.bankrollDelta > 0 || p.rollResult === 'NATURAL' || p.rollResult === 'POINT_HIT' ? 'win' :
+  p.rollResult === 'SEVEN_OUT' || p.rollResult === 'CRAPS_OUT' ? 'lose' :
+  null;```
+
+  ---
+
+## KI-022 — Lefty McGuffin's "Seven-Out Save" lacks cinematic dread and payoff
+
+**Area:** `packages/shared/src/crew/lefty.ts`, `apps/web/src/store/useGameStore.ts`, `apps/web/src/components/DiceZone.tsx`
+**Severity:** Medium (UX/Juice)
+**Status:** Open
+**Source:** Testing session observation
+
+**Issue:**
+Currently, when "Lefty" McGuffin (ID: 1) saves a shooter from a Seven-Out, the game logic immediately substitutes the dice result server-side. The client only receives the final "saved" result in the `turn:settled` payload. This means the player never actually sees the "7" land; the dice simply tumble and land on a safe number, and Lefty's portrait flashes as a post-hoc explanation. This misses the intended emotional arc of "dread followed by relief."
+
+**Proposed fix:**
+Implement a two-stage reveal for saved rolls to "scare" the player before showing the save.
+1.  **Server-Side Update:** Modify the roll resolution logic and the `TurnSettledPayload` to include an `originalDice` field when `ctx.flags.sevenOutBlocked` is true.
+2.  **Store Orchestration:** Update `useGameStore.ts` to hold `originalDice`. The `applyPendingSettlement` logic should be split: if `originalDice` exists, the UI should first "settle" on those dice without applying the financial state changes yet.
+3.  **UI Animation Sequence:** * **Phase 1 (Dread):** `DiceZone.tsx` receives the `originalDice` (the 7) and plays the landing animation. The game briefly displays a "SEVEN OUT?" warning label.
+    * **Phase 2 (The Save):** Lefty’s `cascade:trigger` event fires. Following the improvements in KI-018, his portrait should expand significantly as he "intervenes."
+    * **Phase 3 (Relief):** Upon Lefty's activation, trigger a second "re-roll" animation in `DiceZone` that transitions the dice from the 7 to the final `lastDice` result.
+    * **Phase 4 (Settlement):** Finally, apply the bankroll and phase updates as normal.
+    * 
+
+---
+
+## KI-023 — Hype increases lack visual flow and "juice"
+
+**Area:** `apps/web/src/store/useGameStore.ts`, `apps/web/src/components/TableBoard.tsx`
+**Severity:** Low (Enhancement)
+**Status:** Open
+**Source:** Testing session observation
+
+**Issue:**
+Currently, when Hype increases—whether from a Point Hit or a Crew Member's ability (e.g., Holly)—the change is purely reflected by the numerical readout updating and the thermometer filling. There is no "physical" visual connection between the source of the hype and the meter itself. This makes the increase feel disconnected from the action, whereas a visual "flow" (similar to the chip rain for bankroll) would emphasize the reward.
+
+**Proposed fix:**
+Implement a "Hype Particle" system that sends visual energy (e.g., fire/spark particles) from the triggering source directly into the Hype Meter.
+
+1.  **Coordinate Tracking:** In `TableBoard.tsx`, use a context or refs to track the screen coordinates of the `DiceZone` (for Point Hits) and each `CrewPortrait` slot.
+2.  **Triggering the Flow:** Update `useGameStore.ts` to include a `lastHypeSource` field (either a slot index or 'dice') and a `_hypeKey` to trigger animations.
+    * In `applyPendingSettlement`, if `p.newHype > oldHype` due to a Point Hit, set the source to `'dice'`.
+    * In the cascade logic, when a Hype-category crew member (ID: 11) fires, set the source to their `slotIndex`.
+3.  **Animation Component:** Create a `HypeFlow` component in `TableBoard.tsx` that renders on top of the felt. When `_hypeKey` increments, it should:
+    * Spawn a burst of particles at the source coordinate.
+    * Animate those particles in an arc toward the `hype-meter` tutorial zone.
+4.  **Impact Feedback:** Add a "Hype Pop" animation to the thermometer in `GameStatus`. When particles arrive, the meter should briefly scale up (`scale: 1.1`) and trigger the `boilClass` animations more intensely to signify it is "heating up".
+
+---
+
+## KI-024 — "New Run" button missing from main gameplay table
+
+**Area:** `apps/web/src/components/TableBoard.tsx` / `apps/web/src/components/GameOverScreen.tsx`
+**Severity:** High
+**Status:** Open
+**Source:** Testing session observation
+
+**Issue:**
+The "New Run" button has disappeared from the main gameplay table area. Previously, this button provided a clear path for players to reset their progress or start a fresh gauntlet run without navigating through multiple menus. Its absence prevents players from easily restarting if they find themselves in an unfavorable state or if they simply wish to begin again. 
+
+This may be related to the viewport clipping issues identified in KI-011, where critical buttons on full-screen components were being cut off on mobile devices, or it could be a state-driven rendering bug where the button is not being un-hidden after a specific transition (like returning from the Pub).
+
+**Proposed fix:**
+1. **Relocate and Standardize:** Ensure the "New Run" button is part of a persistent "Game Menu" or "Settings" overlay reachable from the `TableBoard` (e.g., adjacent to the "How To Play" button) rather than floating as a stand-alone element.
+2. **State Audit:** Check `useGameStore.ts` to ensure the `status` or `activeTransition` flags are not inadvertently hiding the button during valid gameplay states.
+3. **Responsive Verification:** Apply the `min-h-[100dvh]` fix suggested in KI-011 to the container holding the "New Run" button to ensure it isn't simply pushed off-screen by the browser's dynamic toolbar on mobile.
+
+---
+
+## KI-025 — Crew Hype bonuses are wiped by Seven-Out reset
+
+**Area:** `packages/shared/src/crapsEngine.ts` / Server-side Roll Resolution
+**Severity:** Medium
+**Status:** Open
+**Source:** Testing session observation
+
+**Issue:**
+When a "Seven-Out" occurs, the global Hype multiplier is intended to reset to 1.0x for the next shooter. However, if a crew member with a Hype-boosting ability fires during that same roll (e.g., to give the player a "head start" on the next run), their bonus is currently applied to the *pre-reset* Hype value. When the server later enforces the Seven-Out reset, it overwrites the `ctx.hype` value with a hardcoded `1.0`, effectively deleting the crew member's contribution.
+
+As noted in `types.ts`, the server persists `ctx.hype` back to the state *or* resets it to 1.0 on Seven-Out. If the reset happens last, the crew's power is wasted.
+
+**Proposed fix:**
+The Hype reset logic should be moved into the initial `resolveRoll` or the beginning of the cascade for Seven-Out results, allowing subsequent crew interactions to build upon the new baseline.
+
+1. In the server-side roll handler (likely `apps/api/src/routes/rolls.ts`), detect a `SEVEN_OUT` result before executing the cascade.
+2. If a `SEVEN_OUT` is detected, initialize the `TurnContext.hype` at `1.0` regardless of the previous `GameState.hype`.
+3. Allow the cascade to proceed as normal. Crew members who fire on a Seven-Out (like "Lucky Charm" or "Holly") will now be adding their `+0.1x` or `+0.5x` to the `1.0` baseline, resulting in a `1.1x` or `1.5x` carried over to the next shooter, preserving the "dread then relief" and "head start" mechanics.
+
+---
+
+## KI-026 — "Sea Legs" Comp Hype reset logic is underpowered
+
+**Area:** `apps/api/src/routes/rolls.ts` (`computeNextState`)
+**Severity:** Medium
+**Status:** Open
+**Source:** Testing session observation
+
+**Issue:**
+The "Sea Legs" Comp (rewarded for defeating Mme. Le Prix) is intended to soften the blow of a Seven-Out by resetting Hype to a higher value than the standard 1.0x. However, the current proposed logic of "resetting to 50% of total Hype" makes the perk effectively meaningless at lower Hype levels (e.g., a 2.0x Hype resets to 1.0x, which is the standard baseline). 
+
+To remain a high-tier reward, the math should preserve 50% of the *accumulated* Hype (the "juice" above 1.0x) rather than 50% of the absolute total.
+
+**Proposed fix:**
+Update the Hype reset logic in the `SEVEN_OUT` case within `computeNextState` to check for the `SEA_LEGS` comp and apply the "Half of Added" formula.
+
+1.  Modify `computeNextState` to accept the player's `compPerkIds` as an argument.
+2.  In the `SEVEN_OUT` case, calculate the new Hype baseline:
+    * **Standard:** `1.0`
+    * **Sea Legs:** `1.0 + (finalCtx.hype - 1.0) / 2`
+3.  Ensure that `isLuckyCharmSolo` (the 2.0x floor) still takes precedence if it results in a higher value.
+
+```typescript
+// apps/api/src/routes/rolls.ts
+
+// Current logic:
+hype: isLuckyCharmSolo ? 2.0 : 1.0
+
+// Proposed logic:
+const hasSeaLegs = userCompPerkIds.includes(COMP_PERK_IDS.SEA_LEGS);
+const seaLegsBaseline = hasSeaLegs ? 1.0 + (finalCtx.hype - 1.0) / 2 : 1.0;
+
+// Apply the highest available floor
+hype: Math.max(seaLegsBaseline, isLuckyCharmSolo ? 2.0 : 0)```
+
+---
+
+## KI-027 — Floor and Marker intros trigger late after "Continue Run"
+
+**Area:** `apps/web/src/transitions/TransitionOrchestrator.tsx` / `apps/web/src/store/useGameStore.ts`
+**Severity:** Medium
+**Status:** Open
+**Source:** Testing session observation
+
+**Issue:**
+When resuming an existing run from the title screen, the "Floor Reveal" or "Marker Intro" transitions do not play immediately upon entering the table. Instead, they trigger only *after* the first roll has been resolved. This is disorienting because the player has already seen the table and made a bet, only to be interrupted by a "New Floor" cinematic once the dice land.
+
+The root cause lies in the `TransitionOrchestrator`'s reliance on store updates to trigger its `useEffect` hooks. While `connectToRun` resets the "Shown" flags (e.g., `markerIntroShownForMarker`) to `null`, the orchestrator's effects may not be firing on the initial mount of the `TableBoard` because the `currentMarkerIndex` or `floor` hasn't changed relative to the hydrated state. The first roll resolution forces a state update via `applyPendingSettlement`, which "wakes up" the orchestrator.
+
+**Proposed fix:**
+1. **Immediate Evaluation:** Update the `useEffect` hooks in `TransitionOrchestrator.tsx` that handle `BOSS_ENTRY`, `MARKER_INTRO`, and `FLOOR_REVEAL` to ensure they run immediately upon mounting if the corresponding "Shown" flag in the store is `null`.
+2. **Phase Priority:** Ensure that if a transition is required on mount, the `TransitionOrchestrator` sets the `activeTransition` before the `TableBoard` completes its first render cycle. 
+3. **State Sync:** In `useGameStore.ts`, consider adding a `lastHydratedAt` timestamp during `connectToRun`. The orchestrator can use this as a dependency to ensure it re-evaluates intro requirements specifically after a "Continue" action.
+
+```typescript
+// apps/web/src/transitions/TransitionOrchestrator.tsx
+
+// Potential Fix: Ensure the effect isn't just watching index changes, 
+// but also checking for the 'null' (not shown) state on mount.
+useEffect(() => {
+  if (status === 'IDLE_TABLE' && markerIntroShownForMarker === null) {
+    setActiveTransition('MARKER_INTRO');
+  }
+}, [status, markerIntroShownForMarker, setActiveTransition]);```
+
+---
+
 

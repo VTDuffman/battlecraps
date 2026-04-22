@@ -444,6 +444,15 @@ export interface GameState {
 
   // ── Socket connection ─────────────────────────────────────────────────────
   socketStatus: SocketStatus;
+
+  // ── Comp card HUD animation ───────────────────────────────────────────────
+  /**
+   * Count of comp cards that have already played their deal-in animation.
+   * Compared against earnedComps.length in CompCardFan to detect newly earned
+   * cards after returning from a boss victory transition (component remounts).
+   * Resets to 0 only on a new run (not on reconnect to the same run).
+   */
+  seenCompCount: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -635,6 +644,12 @@ export interface GameActions {
    * Throws on network or server error so the caller can surface it.
    */
   setMechanicFreeze(lockedValue: number): Promise<void>;
+
+  /**
+   * Record that N comp cards have played their deal-in animation.
+   * Called by CompCardFan after the newest card's animation ends.
+   */
+  markCompsAnimated(count: number): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -708,6 +723,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   socketStatus:   'disconnected',
   getToken:       null,
   tutorialCheatDice: null,
+  seenCompCount:     0,
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -725,7 +741,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({
       runId,
       socketStatus:        'connecting',
-      ...(isNewRun && { rollHistory: [] }),
+      ...(isNewRun && { rollHistory: [], seenCompCount: 0 }),
       pendingCascadeQueue:       [],
       cascadeQueue:              [],
       pendingTransition:         false,
@@ -1443,6 +1459,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   setTutorialCheatDice(dice) {
     set({ tutorialCheatDice: dice });
+  },
+
+  markCompsAnimated(count) {
+    set({ seenCompCount: count });
   },
 }));
 

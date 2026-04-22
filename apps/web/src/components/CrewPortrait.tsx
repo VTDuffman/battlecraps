@@ -18,6 +18,7 @@
 // =============================================================================
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore.js';
 
 interface CrewPortraitProps {
@@ -268,41 +269,55 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   const isEmpty  = crewId === null;
   const onCooldown = cooldownState > 0;
 
+  // Anchor tooltip to the near viewport edge when in an end slot so it doesn't
+  // clip. Slot 0 aligns left (extends rightward); slot 4 aligns right (extends
+  // leftward); middle slots center normally.
+  const tooltipAlignClass =
+    slotIndex === 0 ? 'left-0' :
+    slotIndex === 4 ? 'right-0' :
+    'left-1/2 -translate-x-1/2';
+
   return (
     <div
-      className="group relative flex flex-col items-center gap-1 select-none outline-none"
+      className={[
+        'group relative flex flex-col items-center gap-1 select-none outline-none',
+        isTriggering ? 'z-[60]' : '',
+      ].join(' ')}
       tabIndex={onFire ? 0 : -1}
     >
       {/* ── Bark bubble (floats above the portrait while animating) ───────── */}
-      {isTriggering && barkSeq !== null && (
-        <div
-          key={barkSeq}
-          className="
-            absolute -top-8 left-1/2 -translate-x-1/2
-            whitespace-nowrap
-            font-pixel text-[7px] text-white
-            bg-black/80 border border-white/30
-            px-1.5 py-0.5 rounded
-            animate-bark-rise
-            pointer-events-none z-20
-          "
-        >
-          {getBark(crewId, crewName)}
-        </div>
-      )}
+      <AnimatePresence>
+        {isTriggering && barkSeq !== null && (
+          <motion.div
+            key={barkSeq}
+            initial={{ scale: 0.5, opacity: 0, y: 10 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.8, opacity: 0, transition: { duration: 0.15 } }}
+            transition={{ type: 'spring', stiffness: 400, damping: 10 }}
+            className="
+              absolute -top-16 left-1/2 -translate-x-1/2
+              whitespace-nowrap
+              text-2xl font-bold uppercase text-white drop-shadow-lg
+              pointer-events-none z-20
+            "
+          >
+            {getBark(crewId, crewName)}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Ability tooltip (hover, non-empty slots only) ─────────────────── */}
       {!isEmpty && crewId !== null && (
         <div
-          className="
-            absolute bottom-full mb-2 left-1/2 -translate-x-1/2
+          className={`
+            absolute bottom-full mb-2 ${tooltipAlignClass}
             w-40 px-2 py-1.5 rounded
             font-mono text-[8px] text-white/90 leading-snug text-center
             bg-black/90 border border-white/20
             pointer-events-none z-30
             opacity-0 group-hover:opacity-100
             transition-opacity duration-150
-          "
+          `}
         >
           <div className="font-pixel text-[6px] text-gold/70 mb-1">{crewName}</div>
           {ABILITY_DESCRIPTIONS[crewId] ?? '???'}
@@ -310,6 +325,16 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
       )}
 
       {/* ── Portrait frame ────────────────────────────────────────────────── */}
+      <motion.div
+        animate={{
+          scale:  isTriggering ? 1.5 : 1,
+          y:      isTriggering ? -40 : 0,
+          filter: isTriggering
+            ? 'drop-shadow(0px 0px 15px rgba(255,215,0,0.8))'
+            : 'none',
+        }}
+        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      >
       <div
         ref={portraitRef}
         className={[
@@ -419,6 +444,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
           </button>
         )}
       </div>
+      </motion.div>
 
       {/* ── Slot index / freeze status label ─────────────────────────────── */}
       {freezeState ? (

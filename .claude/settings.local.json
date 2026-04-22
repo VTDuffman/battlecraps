@@ -16,7 +16,9 @@
       "TaskGet(*)",
       "TaskList(*)",
       "TaskOutput(*)",
-      "TaskStop(*)"
+      "TaskStop(*)",
+      "PowerShell(Get-Command *)",
+      "PowerShell(Get-ChildItem *)"
     ]
   }
 }

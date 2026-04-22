@@ -15,48 +15,9 @@
 // are already in place when the component mounts or re-renders.
 // =============================================================================
 
-import React, { useEffect, useRef, useState } from 'react';
-import { useGameStore, selectDisplayMarkerIndex, type GameState } from '../store/useGameStore.js';
-
-// ---------------------------------------------------------------------------
-// Comp definitions
-// ---------------------------------------------------------------------------
-
-interface CompDef {
-  perkId:      number;
-  threshold:   number;   // currentMarkerIndex must be >= this to have earned it
-  name:        string;
-  icon:        string;
-  effect:      string;
-  accentColor: string;
-}
-
-const COMP_DEFS: CompDef[] = [
-  {
-    perkId:      1,
-    threshold:   3,
-    name:        "Member's Jacket",
-    icon:        '🪖',
-    effect:      '+1 Shooter granted at each segment reset. Defeat Sarge reward.',
-    accentColor: '#d4891a',  // amber — VFW Hall floor
-  },
-  {
-    perkId:      2,
-    threshold:   6,
-    name:        'Sea Legs',
-    icon:        '⚓',
-    effect:      'Hype resets to 50% on Seven Out instead of zeroing. Mme. Le Prix reward.',
-    accentColor: '#0d9488',  // teal — Riverboat floor
-  },
-  {
-    perkId:      3,
-    threshold:   9,
-    name:        'Golden Touch',
-    icon:        '👑',
-    effect:      'Guaranteed Natural on the first come-out of each segment. The Executive reward.',
-    accentColor: '#f5c842',  // gold — The Strip floor
-  },
-];
+import React, { useEffect, useState } from 'react';
+import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
+import { COMP_DEFS, CompCard }                    from './CompCard.js';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -64,25 +25,23 @@ const COMP_DEFS: CompDef[] = [
 
 export const CompCardFan: React.FC = () => {
   const currentMarkerIndex = useGameStore(selectDisplayMarkerIndex);
+  const seenCompCount      = useGameStore((s) => s.seenCompCount);
+  const markCompsAnimated  = useGameStore((s) => s.markCompsAnimated);
 
   const earnedComps = COMP_DEFS.filter((c) => currentMarkerIndex >= c.threshold);
 
-  const [isOpen,     setIsOpen]     = useState(false);
-  const [dealingIn,  setDealingIn]  = useState<number | null>(null);
+  const [isOpen,    setIsOpen]    = useState(false);
+  const [dealingIn, setDealingIn] = useState<number | null>(null);
 
-  // Track previous count to trigger deal-in animation only on newly earned cards.
-  const prevCountRef = useRef(earnedComps.length);
-
+  // On mount (and whenever earnedComps.length changes): if there are more
+  // earned comps than the store has seen, the newest card is new and should
+  // animate. Using the store value (not a local ref) means this survives the
+  // component unmount that happens during the boss victory transition.
   useEffect(() => {
-    const prev = prevCountRef.current;
-    const curr = earnedComps.length;
-
-    if (curr > prev) {
-      // A new card was just earned — animate it in (index = curr - 1)
-      setDealingIn(curr - 1);
+    if (earnedComps.length > seenCompCount) {
+      setDealingIn(earnedComps.length - 1);
     }
-
-    prevCountRef.current = curr;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [earnedComps.length]);
 
   // Nothing to show yet.
@@ -129,56 +88,20 @@ export const CompCardFan: React.FC = () => {
               zIndex: isOpen ? earnedComps.length - i : i + 1,
             }}
             onAnimationEnd={() => {
-              if (dealingIn === i) setDealingIn(null);
+              if (dealingIn === i) {
+                setDealingIn(null);
+                markCompsAnimated(earnedComps.length);
+              }
             }}
           >
-            {/* ── Accent strip (floor colour) ────────────────────────────── */}
-            <div
-              className="w-full h-[5px] flex-none"
-              style={{ background: comp.accentColor }}
+            <CompCard
+              variant="fan"
+              name={comp.name}
+              icon={comp.icon}
+              effect={comp.effect}
+              accentColor={comp.accentColor}
+              showTooltip={isOpen}
             />
-
-            {/* ── Icon ──────────────────────────────────────────────────── */}
-            <div className="text-[20px] leading-none mt-1">{comp.icon}</div>
-
-            {/* ── COMP stamp ─────────────────────────────────────────────── */}
-            <div
-              className="font-pixel text-[4px] tracking-widest mt-0.5 leading-none"
-              style={{ color: 'rgba(0,0,0,0.35)' }}
-            >
-              COMP
-            </div>
-
-            {/* ── Card name ──────────────────────────────────────────────── */}
-            <div
-              className="font-pixel text-[5px] text-center leading-tight px-0.5 mt-0.5"
-              style={{ color: 'rgba(0,0,0,0.75)' }}
-            >
-              {comp.name}
-            </div>
-
-            {/* ── Tooltip (visible only when fan is open, on hover/tap) ─── */}
-            {isOpen && (
-              <div
-                className="
-                  absolute left-full ml-2 top-0
-                  w-36 px-2 py-1.5 rounded
-                  font-mono text-[8px] text-white/90 leading-snug
-                  bg-black/90 border border-white/20
-                  pointer-events-none z-50
-                  opacity-0 group-hover:opacity-100
-                  transition-opacity duration-150
-                "
-              >
-                <div
-                  className="font-pixel text-[5px] mb-1 tracking-widest"
-                  style={{ color: comp.accentColor }}
-                >
-                  {comp.name.toUpperCase()}
-                </div>
-                {comp.effect}
-              </div>
-            )}
           </div>
         ))}
 

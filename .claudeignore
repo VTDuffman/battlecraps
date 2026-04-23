@@ -79,3 +79,6 @@ docs/floors.md
 
 # ── Claude internal memory (not project source) ───────────────────────────────
 .claude/
+
+# ── Auto-generated release artifacts ──────────────────────────────────────────
+apps/web/src/lib/releaseNotes.json

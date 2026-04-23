@@ -30,3 +30,6 @@ Thumbs.db
 
 # Vite
 .vite/
+
+# Auto-generated artifacts
+apps/web/src/lib/releaseNotes.json

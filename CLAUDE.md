@@ -60,7 +60,7 @@ apps/web/src/                 # React SPA
   lib/floorThemes.ts          # Three floor theme objects (gritty / elegant / electric)
 ```
 
-**Audio system (`useCrowdAudio`):** Fully synthesized via Web Audio API — no asset files. `AudioContext` is lazy-created on first flash event (satisfies browser autoplay policy). Mute state persisted to `localStorage` (`bc_muted`). Current stings: crowd cheer (win flash), crowd groan (lose flash). Pending: dice roll rattle on throw (FB-009).
+**Audio system (`useCrowdAudio`):** Fully synthesized via Web Audio API — no asset files. `AudioContext` is lazy-created on first flash event (satisfies browser autoplay policy). Mute state persisted to `localStorage` (`bc_muted`). Current stings: crowd cheer (win flash), crowd groan (lose flash), dice rattle on throw.
 
 ```
 ```
@@ -115,7 +115,7 @@ This project uses strict TypeScript. Whenever you write or modify TypeScript cod
 ## Docs Structure
 
 ```
-docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–013), tutorial-user-journey.md, vibe-ideas.md
+docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–019), tutorial-user-journey.md, vibe-ideas.md
 docs/frameworks/      # crew_framework.md (30 crew — 15 Starter + 15 unlock-gated), floor_design.md, boss_framework.md
 docs/design/          # crew-sprites-tdd.md (asset spec), crew-implementation-design.md (FB-012 TDD), transition_framework TDD, boss-mechanic-technical-design.md, title-screen-technical-design.md, tutorial-technical-design.md (FB-007 TDD), CODE_REVIEW.md*
 docs/testing/         # known_issues.md (open defects), test plans + results (alpha cycle — archived)
@@ -127,7 +127,7 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 
 ## Current State
 
-**Status:** Beta. All 9 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped. Boss mechanic framework (FB-010) fully implemented. Title lobby screen (FB-011) live. Crew Expansion & Unlock System (FB-012) live — 30-crew roster, unlock gating, real-time unlock notifications. Tutorial & How to Play system (FB-007) live. Dice Roll Sound Effect (FB-009) live.
+**Status:** Beta. All 9 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped. Boss mechanic framework (FB-010) fully implemented. Title lobby screen (FB-011) live. Crew Expansion & Unlock System (FB-012) live — 30-crew roster, unlock gating, real-time unlock notifications. Tutorial & How to Play system (FB-007) live. Dice Roll Sound Effect (FB-009) live. Versioning & Release Notes (FB-019) live — automated SemVer via build script, in-game release notes modal, "New" indicator with localStorage dismissal.
 
 **Active development:** 
 
@@ -138,5 +138,4 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 
 **Not yet implemented:**
 - Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md` — 64×64 SNES-style PNGs)
-- Dice roll sound effect — synthesized rattle on throw (backlog: FB-009)
 - Cinematic crew unlock experience (backlog: FB-013)

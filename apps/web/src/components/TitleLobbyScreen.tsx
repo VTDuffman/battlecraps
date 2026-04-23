@@ -17,6 +17,7 @@
 import React, { useState }    from 'react';
 import { getFloorTheme }      from '../lib/floorThemes.js';
 import { HowToPlayScreen }    from './tutorial/HowToPlayScreen.js';
+import { VersionDisplay }     from './VersionDisplay.js';
 
 const theme = getFloorTheme(0);
 
@@ -196,6 +197,11 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
         >
           ? HOW TO PLAY
         </button>
+      </div>
+
+      {/* Version display — bottom-right, above accent bar */}
+      <div className="absolute bottom-3 right-4">
+        <VersionDisplay />
       </div>
 
       {/* Bottom accent bar */}

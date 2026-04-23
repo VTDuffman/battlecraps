@@ -918,7 +918,59 @@ An in-game feedback modal accessible from the Title Lobby.
 
 ---
 
+## FB-019 — Versioning and Release Notes
 
+**Type:** Feature / Infrastructure
+**Area:** Build Pipeline / UI / `TitleLobbyScreen`
+**Status:** Implemented
+
+### Summary
+
+Establish an automated Beta versioning system and an in-game Release Notes UI. This will help playtesters track updates, understand what new features or fixes have been deployed, and provide accurate version numbers when submitting bug reports, bridging the gap between Git history and the player experience.
+
+### Design Requirements
+
+**1. Automated Semantic Versioning (SemVer)**
+* The game is currently in Beta, utilizing the `v0.MINOR.PATCH` structure.
+* **Patch Increments (`v0.X.+1`):** Any production push containing only `fix`, `chore`, or `KI-xxx` commit messages increments the Patch version (e.g., `v0.2.5` → `v0.2.6`).
+* **Minor Increments (`v0.+1.0`):** Any push containing `feat` or `FB-xxx` increments the Minor version and resets the Patch version to zero (e.g., `v0.2.6` → `v0.3.0`).
+
+**2. Title Screen UI & "New" Indicator**
+* The current version (e.g., `v0.3.0`) is displayed on the `TitleLobbyScreen` as a clickable text button.
+* **"New" Badge:** The system checks the browser's `localStorage` for the last seen version. If the active game version is newer, a prominent "NEW" badge or dot appears next to the version number.
+* Clicking the version number updates `localStorage` (dismissing the badge for future sessions) and opens the Release Notes Modal.
+
+**3. Release Notes Modal**
+* **Header:** Displays the current version prominently.
+* **Current Push:** Lists the formatted commit messages, features, and fixes included in the most recent deployment.
+* **History:** A scrollable timeline showing previous versions and their respective changelogs.
+
+### Technical Implementation
+
+**1. Build Pipeline Script (`scripts/generate-release-notes.js`)**
+* Create a Node script that runs during the build step (`npm run build`).
+* The script parses the `git log`, applies the SemVer math based on commit message prefixes since the last baseline, and generates a static `apps/web/src/lib/releaseNotes.json` file.
+
+**2. State Management (`localStorage`)**
+* Introduce a `battlecraps_last_seen_version` key in the browser's `localStorage`.
+* On mount of `TitleLobbyScreen`, compare this value against `releaseNotes[0].version` to determine if the "New" indicator should render.
+
+**3. Frontend Components**
+* **`VersionDisplay.tsx`:** The clickable trigger component for the title screen.
+* **`ReleaseNotesModal.tsx`:** The modal UI that maps over the imported `releaseNotes.json` to render the scrollable history.
+
+### Files Affected
+
+| File | Action |
+|---|---|
+| `package.json` | Add pre-build script hook |
+| `scripts/generate-release-notes.js` | Create: Git parsing and JSON generation logic |
+| `apps/web/src/components/TitleLobbyScreen.tsx` | Integrate `VersionDisplay` component |
+| `apps/web/src/components/VersionDisplay.tsx` | Create: Render version text and "New" badge |
+| `apps/web/src/components/ReleaseNotesModal.tsx` | Create: Scrollable modal reading from JSON |
+| `apps/web/src/lib/releaseNotes.json` | Auto-generated target (add to `.gitignore` and `.claudeignore`) |
+
+---
 
 
 

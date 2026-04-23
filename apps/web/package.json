@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "predev": "node ../../scripts/generate-release-notes.js",
+    "prebuild": "node ../../scripts/generate-release-notes.js",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",

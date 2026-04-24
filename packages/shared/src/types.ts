@@ -549,3 +549,40 @@ export interface GameState {
   /** See TurnContext.pointPhaseBlankStreak. */
   pointPhaseBlankStreak: number;
 }
+
+// ---------------------------------------------------------------------------
+// LEADERBOARD TYPES (FB-014)
+// ---------------------------------------------------------------------------
+
+/** A single row returned by GET /api/v1/leaderboard, enriched for display. */
+export interface LeaderboardEntry {
+  id:                        string;  // uuid
+  runId:                     string;  // uuid
+  userId:                    string;  // uuid
+  /** Player's alias / Clerk username. Never a legal name. */
+  displayName:               string;
+  /** Real first name — stored for internal auditing; not shown in public UI. */
+  firstName:                 string | null;
+  /** Real last name — stored for internal auditing; not shown in public UI. */
+  lastName:                  string | null;
+  finalBankrollCents:        number;
+  highestRollAmplifiedCents: number;
+  highestMarkerIndex:        number;  // 0–8 for non-winners; 9 for winners
+  shootersRemaining:         number;
+  crewLayout:                ({ id: number; name: string } | null)[];  // 5 elements
+  didWinRun:                 boolean;
+  createdAt:                 string;  // ISO 8601
+}
+
+/** Response shape for GET /api/v1/leaderboard?view=global */
+export interface GlobalLeaderboardResponse {
+  winners:    LeaderboardEntry[];  // Top 25, ORDER BY finalBankrollCents DESC, shootersRemaining DESC
+  nonWinners: LeaderboardEntry[];  // Top 25, ORDER BY highestMarkerIndex DESC, finalBankrollCents DESC
+}
+
+/** Response shape for GET /api/v1/leaderboard?view=personal (requires auth) */
+export interface PersonalLeaderboardResponse {
+  entries: LeaderboardEntry[];  // Top 25 for the authenticated user, ORDER BY finalBankrollCents DESC
+}
+
+export type LeaderboardResponse = GlobalLeaderboardResponse | PersonalLeaderboardResponse;

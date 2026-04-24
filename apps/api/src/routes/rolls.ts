@@ -53,6 +53,7 @@ import { hydrateCrewMember } from '../lib/crewRegistry.js';
 import { evaluateUnlocks } from '../lib/unlocks.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
+import { submitLeaderboardEntry } from './leaderboard.js';
 
 // ---------------------------------------------------------------------------
 // Marker targets (gauntlet cash goals, in cents)
@@ -377,6 +378,11 @@ async function rollHandler(
       return reply.status(409).send({ error: 'Conflict: run was modified by another request. Please retry.' });
     }
 
+    // Leaderboard: submit entry for this instant-loss GAME_OVER (fire-and-forget).
+    void submitLeaderboardEntry(user as UserRow, lossRun[0]).catch((err: unknown) => {
+      request.log.error({ err }, '[leaderboard] submission error (instant-loss)');
+    });
+
     const io = getIO();
     const lossPayload: WsTurnSettledPayload = {
       runId,
@@ -437,6 +443,12 @@ async function rollHandler(
   const newBankroll = run.bankrollCents - betDelta + payout;
   const bankrollDelta = newBankroll - run.bankrollCents;
 
+  const rollAmplifiedProfit = payout - finalContext.baseStakeReturned;
+  const newHighestRollAmplifiedCents = Math.max(
+    run.highestRollAmplifiedCents,
+    rollAmplifiedProfit,
+  );
+
   // Build the QA receipt (net delta computed internally from TurnContext).
   const receipt = buildRollReceipt(finalContext);
 
@@ -493,6 +505,7 @@ async function rollHandler(
       previousRollTotal:     nextState.previousRollTotal,
       shooterRollCount:      nextState.shooterRollCount,
       pointPhaseBlankStreak: nextState.pointPhaseBlankStreak,
+      highestRollAmplifiedCents: newHighestRollAmplifiedCents,
       updatedAt:             new Date(),
     })
     .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
@@ -518,7 +531,15 @@ async function rollHandler(
     request.log.error({ err }, '[unlocks] evaluation error');
   });
 
-  // ── 12c. Update personal-best bankroll (fire-and-forget) ──────────────────
+  // ── 12c. Leaderboard submission (fire-and-forget) ─────────────────────────
+  // submitLeaderboardEntry is idempotent via ON CONFLICT (run_id) DO NOTHING.
+  if (nextState.status === 'GAME_OVER') {
+    void submitLeaderboardEntry(user as UserRow, persistedRun).catch((err: unknown) => {
+      request.log.error({ err }, '[leaderboard] submission error');
+    });
+  }
+
+  // ── 12d. Update personal-best bankroll (fire-and-forget) ──────────────────
   // Conditional update: the WHERE clause ensures this only writes to the DB
   // when newBankroll actually exceeds the stored max. On most rolls this is a
   // no-op (0 rows matched). Fire-and-forget so it doesn't add latency to the

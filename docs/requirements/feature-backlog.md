@@ -678,7 +678,7 @@ The unlock event should feel like a cinematic reward moment:
 
 **Type:** Feature  
 **Area:** Leaderboard / Title Screen / `apps/api/src/`  
-**Status:** Pending Implementation  
+**Status:** Implemented  
 
 ### Summary  
 Add a comprehensive high-score and run-history system accessible from the Title Lobby. This provides meta-progression and global competition, allowing players to compare their best builds and record-breaking rolls.  

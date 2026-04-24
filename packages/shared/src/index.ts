@@ -49,6 +49,10 @@ export type {
   RollReceiptLineKind,
   RollReceiptLine,
   RollReceipt,
+  LeaderboardEntry,
+  GlobalLeaderboardResponse,
+  PersonalLeaderboardResponse,
+  LeaderboardResponse,
 } from './types.js';
 
 // Core craps resolution engine

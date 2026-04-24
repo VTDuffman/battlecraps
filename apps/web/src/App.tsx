@@ -107,8 +107,9 @@ const AuthenticatedApp: React.FC = () => {
 
     try {
       // ── 1. Ensure our DB has a user record for this Clerk identity ────────
+      // displayName is the player's public alias — Clerk username preferred,
+      // never the real legal name (firstName/lastName).
       const displayName =
-        [user.firstName, user.lastName].filter(Boolean).join(' ') ||
         user.username ||
         user.primaryEmailAddress?.emailAddress?.split('@')[0] ||
         'Player';
@@ -123,6 +124,8 @@ const AuthenticatedApp: React.FC = () => {
         body: JSON.stringify({
           email:       user.primaryEmailAddress?.emailAddress ?? '',
           displayName,
+          firstName:   user.firstName ?? null,
+          lastName:    user.lastName ?? null,
         }),
       });
 

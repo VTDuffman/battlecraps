@@ -23,6 +23,8 @@ const PG_UNIQUE_VIOLATION = '23505';
 interface ProvisionBody {
   email:       string;
   displayName: string;
+  firstName:   string | null;
+  lastName:    string | null;
 }
 
 interface ProvisionResponse {
@@ -42,6 +44,8 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
           properties: {
             email:       { type: 'string', minLength: 1 },
             displayName: { type: 'string', minLength: 1 },
+            firstName:   { type: ['string', 'null'] },
+            lastName:    { type: ['string', 'null'] },
           },
           additionalProperties: false,
         },
@@ -50,7 +54,7 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
     async (req, reply): Promise<void> => {
       // clerkId is verified by requireClerkAuth — read from JWT, not body.
       const clerkId = req.clerkId;
-      const { email, displayName } = req.body;
+      const { email, displayName, firstName = null, lastName = null } = req.body;
 
       // ── 1. Check for existing user by clerkId ────────────────────────────
       const existing = await db.query.users.findFirst({
@@ -76,6 +80,8 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
             clerkId,
             email,
             username:     displayName,
+            firstName,
+            lastName,
             passwordHash: null, // unused — auth is via Clerk
           })
           .onConflictDoNothing({ target: users.clerkId })

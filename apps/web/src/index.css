@@ -481,3 +481,46 @@
 }
 
 .animate-puck-slide-in { animation: puck-slide-in 420ms ease-out forwards; }
+
+/* ── Vegas Marquee — pulsating neon border & glowing text ───────────────────
+   .vegas-marquee-border  — solid 1px border that cycles gold → pink → cyan
+                            with a soft neon box-shadow glow on each colour.
+   .vegas-marquee-text    — text-shadow cycles gold → pink → cyan with a
+                            layered triple-halo for a genuine neon sign feel.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@keyframes vegas-border-glow {
+  0%, 100% { border-color: #FFD700; box-shadow: 0 0 6px rgba(255,215,0,0.7), 0 0 14px rgba(255,215,0,0.3); }
+  33%       { border-color: #FF1493; box-shadow: 0 0 6px rgba(255,20,147,0.7), 0 0 14px rgba(255,20,147,0.3); }
+  66%       { border-color: #00FFFF; box-shadow: 0 0 6px rgba(0,255,255,0.7),  0 0 14px rgba(0,255,255,0.3); }
+}
+
+@keyframes vegas-text-glow {
+  0%, 100% {
+    text-shadow:
+      0 0  5px rgba(255, 215,   0, 1.0),
+      0 0 16px rgba(255, 215,   0, 0.65),
+      0 0 30px rgba(255, 215,   0, 0.25);
+  }
+  33% {
+    text-shadow:
+      0 0  5px rgba(255,  20, 147, 1.0),
+      0 0 16px rgba(255,  20, 147, 0.65),
+      0 0 30px rgba(255,  20, 147, 0.25);
+  }
+  66% {
+    text-shadow:
+      0 0  5px rgba(  0, 255, 255, 1.0),
+      0 0 16px rgba(  0, 255, 255, 0.65),
+      0 0 30px rgba(  0, 255, 255, 0.25);
+  }
+}
+
+.vegas-marquee-border {
+  border: 1px solid;
+  animation: vegas-border-glow 2.4s ease-in-out infinite;
+}
+
+.vegas-marquee-text {
+  animation: vegas-text-glow 2.4s ease-in-out infinite;
+}

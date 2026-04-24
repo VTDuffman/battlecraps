@@ -18,6 +18,7 @@ import React, { useState }    from 'react';
 import { getFloorTheme }      from '../lib/floorThemes.js';
 import { HowToPlayScreen }    from './tutorial/HowToPlayScreen.js';
 import { VersionDisplay }     from './VersionDisplay.js';
+import { LeaderboardScreen }  from './LeaderboardScreen.js';
 
 const theme = getFloorTheme(0);
 
@@ -35,8 +36,9 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
   onContinue,
   onNewRun,
 }) => {
-  const [confirming,   setConfirming]   = useState(false);
+  const [confirming,    setConfirming]    = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const handleNewRunClick = () => {
     if (hasActiveRun) {
@@ -51,6 +53,10 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
     return (
       <HowToPlayScreen onBack={() => setShowHowToPlay(false)} />
     );
+  }
+
+  if (showLeaderboard) {
+    return <LeaderboardScreen onBack={() => setShowLeaderboard(false)} />;
   }
 
   return (
@@ -196,6 +202,24 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
           }}
         >
           ? HOW TO PLAY
+        </button>
+
+        {/* High Roller's Club — marquee border + cycling neon glow */}
+        <button
+          type="button"
+          onClick={() => setShowLeaderboard(true)}
+          className="
+            vegas-marquee-border vegas-marquee-text
+            w-full py-2 rounded
+            font-pixel text-[8px] tracking-widest
+            transition-all duration-150 active:scale-95
+          "
+          style={{
+            backgroundColor: 'rgba(5,5,5,0.9)',
+            color:           theme.accentBright,
+          }}
+        >
+          ★ HIGH ROLLER'S CLUB
         </button>
       </div>
 

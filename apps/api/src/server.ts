@@ -190,6 +190,13 @@ await db.execute(sql`
 `);
 app.log.info('[migrate] first_name / last_name audit columns ensured');
 
+// KI-030: alias_chosen flag — tracks whether user has explicitly set their public handle.
+// All existing users default to false so they are prompted to choose on next sign-in.
+await db.execute(sql`
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS alias_chosen boolean NOT NULL DEFAULT false
+`);
+app.log.info('[migrate] alias_chosen ensured');
+
 // ---------------------------------------------------------------------------
 // Start listening
 // ---------------------------------------------------------------------------

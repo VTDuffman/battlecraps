@@ -179,6 +179,15 @@ export const users = pgTable(
      */
     tutorialCompleted: boolean('tutorial_completed').notNull().default(false),
 
+    /**
+     * True once the player has explicitly chosen their public alias via the
+     * in-game alias picker. False for all accounts until they pick.
+     * When true, provision skips overwriting username so the chosen alias is preserved.
+     *
+     * Migration: server.ts startup block (alias_chosen)
+     */
+    aliasChosen: boolean('alias_chosen').notNull().default(false),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

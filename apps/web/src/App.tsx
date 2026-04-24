@@ -24,6 +24,7 @@ import { TitleLobbyScreen }            from './components/TitleLobbyScreen.js';
 import { UnlockNotification }          from './components/UnlockNotification.js';
 import { KnowledgeGate }              from './components/tutorial/KnowledgeGate.js';
 import { TutorialOverlay }            from './components/tutorial/TutorialOverlay.js';
+import { AliasPickerModal }            from './components/AliasPickerModal.js';
 import type { StoredCrewSlots }        from './store/useGameStore.js';
 import type { Bets }                   from '@battlecraps/shared';
 
@@ -94,6 +95,47 @@ const AuthenticatedApp: React.FC = () => {
   const [tutorialPath,         setTutorialPath]         = useState<'FULL' | 'BC_ONLY' | null>(null);
   // T-004: true while the TutorialOverlay is rendering beats.
   const [tutorialActive,       setTutorialActive]       = useState(false);
+  // KI-030: alias picker — shown once when aliasChosen is false.
+  // Default true avoids a modal flash for users who already have a chosen alias.
+  const [aliasChosen,          setAliasChosen]          = useState(true);
+  // Stores the forceNew flag from the lobby click that triggered alias check,
+  // so bootstrap can resume after alias is confirmed.
+  const [pendingForceNew,      setPendingForceNew]      = useState<boolean | null>(null);
+
+  // ── Mount-time alias check ────────────────────────────────────────────────
+  // Call provision on mount so the alias picker appears immediately if needed,
+  // before the player clicks any button. Non-critical — errors are ignored.
+  useEffect(() => {
+    if (!user) return;
+    const check = async () => {
+      try {
+        const displayName =
+          user.username ||
+          user.primaryEmailAddress?.emailAddress?.split('@')[0] ||
+          'Player';
+        const token = await getToken();
+        const res = await fetch(`${API_BASE}/api/v1/auth/provision`, {
+          method:  'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${token ?? ''}`,
+          },
+          body: JSON.stringify({
+            email:       user.primaryEmailAddress?.emailAddress ?? '',
+            displayName,
+            firstName:   user.firstName ?? null,
+            lastName:    user.lastName ?? null,
+          }),
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { aliasChosen?: boolean; tutorialCompleted?: boolean };
+        if (data.aliasChosen === false)       setAliasChosen(false);
+        if (data.tutorialCompleted === false) setTutorialCompleted(false);
+      } catch { /* non-critical */ }
+    };
+    void check();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount — user/getToken are stable after Clerk resolves
 
   const bootstrap = React.useCallback(async (forceNew = false) => {
     if (!user) return;
@@ -133,9 +175,18 @@ const AuthenticatedApp: React.FC = () => {
         throw new Error(`Provision failed: ${provRes.status} ${provRes.statusText}`);
       }
 
-      const provData = (await provRes.json()) as { userId: string; tutorialCompleted?: boolean };
+      const provData = (await provRes.json()) as { userId: string; tutorialCompleted?: boolean; aliasChosen?: boolean };
       if (provData.tutorialCompleted === false) {
         setTutorialCompleted(false);
+      }
+
+      // If alias not yet chosen, surface the picker and halt run creation.
+      if (provData.aliasChosen === false) {
+        setAliasChosen(false);
+        setPendingForceNew(forceNew);
+        setShowTitleLobby(true);
+        setLoading(false);
+        return;
       }
 
       // ── 2. Try to restore cached run ─────────────────────────────────────
@@ -211,6 +262,17 @@ const AuthenticatedApp: React.FC = () => {
     }
   }, [user, connectToRun, getToken]);
 
+  // Called by AliasPickerModal on successful alias submission. Resumes any
+  // bootstrap that was halted waiting for the alias to be chosen.
+  const handleAliasConfirmed = useCallback(() => {
+    setAliasChosen(true);
+    if (pendingForceNew !== null) {
+      const fn = pendingForceNew;
+      setPendingForceNew(null);
+      void bootstrap(fn);
+    }
+  }, [pendingForceNew, bootstrap]);
+
   // Fire-and-forget — marks tutorial complete in DB on skip or beat completion.
   const markTutorialComplete = React.useCallback(async () => {
     try {
@@ -285,6 +347,12 @@ const AuthenticatedApp: React.FC = () => {
           onContinue={handleContinue}
           onNewRun={handleNewRun}
         />
+        {!aliasChosen && (
+          <AliasPickerModal
+            onConfirmed={handleAliasConfirmed}
+            getToken={getToken}
+          />
+        )}
       </main>
     );
   }

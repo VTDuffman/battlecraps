@@ -3,9 +3,8 @@
 // apps/api/src/routes/auth.ts
 //
 // POST /api/v1/auth/provision
-//
-// Called by the frontend after a successful Clerk sign-in. Creates or upserts
-// the user record in our DB, returning our internal UUID.
+// POST /api/v1/auth/tutorial-complete
+// POST /api/v1/auth/set-alias
 //
 // clerkId is read from the verified JWT payload (via requireClerkAuth), never
 // from the request body.
@@ -14,7 +13,7 @@
 import type { FastifyInstance } from 'fastify';
 import { eq }                   from 'drizzle-orm';
 import { db }                   from '../db/client.js';
-import { users }                from '../db/schema.js';
+import { users, leaderboardEntries } from '../db/schema.js';
 import { requireClerkAuth }     from '../lib/clerkAuth.js';
 
 // Postgres error code for unique constraint violations (23505).
@@ -30,6 +29,7 @@ interface ProvisionBody {
 interface ProvisionResponse {
   userId:            string;
   tutorialCompleted: boolean;
+  aliasChosen:       boolean;
 }
 
 export async function authPlugin(app: FastifyInstance): Promise<void> {
@@ -52,7 +52,6 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
       },
     },
     async (req, reply): Promise<void> => {
-      // clerkId is verified by requireClerkAuth — read from JWT, not body.
       const clerkId = req.clerkId;
       const { email, displayName, firstName = null, lastName = null } = req.body;
 
@@ -62,15 +61,29 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
       });
 
       if (existing) {
-        const body: ProvisionResponse = { userId: existing.id, tutorialCompleted: existing.tutorialCompleted };
+        // Only sync alias fields when the player hasn't chosen their own handle.
+        // Once aliasChosen = true, the username is owned by the player — never
+        // overwrite it with data from Clerk.
+        if (!existing.aliasChosen) {
+          try {
+            await db
+              .update(users)
+              .set({ username: displayName, firstName, lastName })
+              .where(eq(users.clerkId, clerkId));
+          } catch (updateErr) {
+            if (!isUsernameConflict(updateErr)) throw updateErr;
+            app.log.warn(`[auth] username "${displayName}" already claimed; keeping stored alias for clerk_id ${clerkId}`);
+          }
+        }
+        const body: ProvisionResponse = {
+          userId:            existing.id,
+          tutorialCompleted: existing.tutorialCompleted,
+          aliasChosen:       existing.aliasChosen,
+        };
         return reply.send(body);
       }
 
       // ── 2. Insert new user ───────────────────────────────────────────────
-      // Uses ON CONFLICT DO NOTHING targeted to clerk_id so that concurrent
-      // race conditions on the same Clerk user are handled silently.
-      // Non-clerk_id constraint violations (e.g. email) are surfaced and
-      // handled explicitly below.
       let user: typeof users.$inferSelect | undefined;
 
       try {
@@ -82,15 +95,13 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
             username:     displayName,
             firstName,
             lastName,
-            passwordHash: null, // unused — auth is via Clerk
+            passwordHash: null,
           })
           .onConflictDoNothing({ target: users.clerkId })
           .returning();
 
         user = inserted[0];
 
-        // If INSERT was a no-op (concurrent request won the race on clerkId),
-        // re-fetch the row the other request inserted.
         if (user === undefined) {
           user = await db.query.users.findFirst({
             where: eq(users.clerkId, clerkId),
@@ -98,14 +109,11 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
         }
       } catch (err) {
         // ── 3. Email conflict — re-associate the legacy record ──────────────
-        // A user row already exists with this email but a different (legacy)
-        // clerk_id, created before Clerk auth was introduced. Update the
-        // clerk_id in place so the account is claimed by the real Clerk identity.
         if (isEmailConflict(err)) {
           app.log.info(`[auth] Re-associating legacy account for ${email} with clerk_id ${clerkId}`);
           await db
             .update(users)
-            .set({ clerkId })
+            .set({ clerkId, username: displayName, firstName, lastName })
             .where(eq(users.email, email));
 
           user = await db.query.users.findFirst({
@@ -121,15 +129,16 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
       }
 
       app.log.info(`[auth] Provisioned user ${user.id} for clerk_id ${clerkId}`);
-      const body: ProvisionResponse = { userId: user.id, tutorialCompleted: user.tutorialCompleted };
+      const body: ProvisionResponse = {
+        userId:            user.id,
+        tutorialCompleted: user.tutorialCompleted,
+        aliasChosen:       user.aliasChosen,
+      };
       return reply.status(201).send(body);
     },
   );
 
   // ── POST /auth/tutorial-complete ─────────────────────────────────────────
-  // Marks the authenticated user's tutorial as completed. Called by the client
-  // on tutorial skip or on completion of all beats. Idempotent — safe to call
-  // multiple times (true→true is a no-op in Postgres).
   app.post(
     '/auth/tutorial-complete',
     { preHandler: [requireClerkAuth] },
@@ -143,27 +152,87 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
       return reply.status(200).send({ ok: true });
     },
   );
+
+  // ── POST /auth/set-alias ──────────────────────────────────────────────────
+  // Called once when the player picks their public handle via the alias picker.
+  // Sets aliasChosen = true so provision never overwrites this alias again.
+  // Also back-fills any existing leaderboard_entries for this user so their
+  // historical runs show the chosen handle.
+  app.post<{ Body: { alias: string } }>(
+    '/auth/set-alias',
+    {
+      preHandler: [requireClerkAuth],
+      schema: {
+        body: {
+          type: 'object',
+          required: ['alias'],
+          properties: {
+            alias: {
+              type:      'string',
+              minLength: 2,
+              maxLength: 20,
+              pattern:   '^[a-zA-Z0-9_-]+$',
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (req, reply): Promise<void> => {
+      const { alias } = req.body;
+
+      const user = await db.query.users.findFirst({
+        where: eq(users.clerkId, req.clerkId),
+      });
+
+      if (!user) {
+        return reply.status(404).send({ error: 'User not found.' });
+      }
+
+      try {
+        await db
+          .update(users)
+          .set({ username: alias, aliasChosen: true })
+          .where(eq(users.id, user.id));
+      } catch (err) {
+        if (isUsernameConflict(err)) {
+          return reply.status(409).send({ error: 'ALIAS_TAKEN' });
+        }
+        throw err;
+      }
+
+      // Back-fill display_name on historical leaderboard entries so they
+      // show the chosen handle rather than the old Clerk-derived name.
+      await db
+        .update(leaderboardEntries)
+        .set({ displayName: alias })
+        .where(eq(leaderboardEntries.userId, user.id));
+
+      app.log.info(`[auth] alias "${alias}" set for user ${user.id}`);
+      return reply.status(200).send({ ok: true });
+    },
+  );
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Returns true when the thrown DB error is a Postgres unique-constraint
- * violation (code 23505) specifically on the users.email column.
- *
- * A username conflict is intentionally NOT matched here — that would indicate
- * two genuinely different users chose the same display name, which is a
- * different problem from a legacy-account re-association.
- */
 function isEmailConflict(err: unknown): boolean {
+  return isUniqueViolation(err, 'users_email_idx');
+}
+
+function isUsernameConflict(err: unknown): boolean {
+  return isUniqueViolation(err, 'users_username_idx');
+}
+
+function isUniqueViolation(err: unknown, constraintName: string): boolean {
   return (
     typeof err === 'object' &&
     err !== null &&
     'code' in err &&
     (err as { code: unknown }).code === PG_UNIQUE_VIOLATION &&
     'constraint_name' in err &&
-    (err as { constraint_name: unknown }).constraint_name === 'users_email_idx'
+    (err as { constraint_name: unknown }).constraint_name === constraintName
   );
 }

@@ -256,3 +256,19 @@ Implement a "Re-roll" or "Flip" animation state in the `DiceZone` component that
 3. **Juice:** Add a subtle "tink" sound effect or a small puff of "chalk dust" particles at the dice coordinates when the flip occurs to emphasize the Professor's "correction."
 
 **File:** `apps/web/src/components/DiceZone.tsx`
+
+---
+
+## KI-030 — User alias/username incorrectly populated with First + Last Name
+
+**Area:** `apps/api/src/routes/auth.ts`, `apps/web/src/App.tsx`
+**Severity:** Medium
+**Status:** Fixed
+
+**Issue:**
+Google OAuth users never have a Clerk `username` populated — Clerk only provides `firstName`/`lastName`. The provision route wrote `[firstName, lastName].join(' ')` to `users.username`, resulting in leaderboard entries showing "Mike Groff" instead of a chosen game handle.
+
+**Fix applied:**
+Added `alias_chosen boolean DEFAULT false` column to `users`. New `POST /auth/set-alias` endpoint validates the chosen handle (2–20 chars, `[a-zA-Z0-9_-]`) and sets `alias_chosen = true`, back-filling all `leaderboard_entries.display_name` for the user. `AliasPickerModal` component renders as a fixed overlay on the TitleLobbyScreen and fires on mount for any account with `aliasChosen = false`. Provision no longer overwrites `username` once `alias_chosen = true`.
+
+**Files:** `apps/api/src/db/schema.ts`, `apps/api/src/server.ts`, `apps/api/src/routes/auth.ts`, `apps/web/src/components/AliasPickerModal.tsx`, `apps/web/src/App.tsx`

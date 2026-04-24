@@ -211,3 +211,48 @@ Likely causes:
 
 **Proposed fix:**
 Inspect the dice bounce animation keyframes and the boss banner's CSS for any transition properties on `background`, `opacity`, `border-color`, or `box-shadow` that could produce a white flash. Isolate the banner element with `isolation: isolate` or `will-change: transform` to prevent compositing side-effects from the dice animation. If the flash is caused by a CSS `transition` on the banner itself, removing or scoping that transition to specific properties should resolve it.
+
+---
+
+## KI-028 — Physics Professor "nudge" does not update global dice state
+
+**Crew:** The Physics Prof (ID: 2)
+**Severity:** High
+**Status:** Open
+**Source:** QA Observation
+
+**Issue:**
+When The Physics Prof triggers on a paired roll, he correctly calculates the "nudged" dice (e.g., shifting `[3,3]` to `[4,4]` to hit a point of 8). However, while his `execute()` function returns a `TurnContext` containing these `newDice`, the change is not being propagated back to the master resolution engine. Subsequent crew members in the cascade and the final `settleTurn()` call still see the original, pre-nudge dice values. This results in the portrait animating and the bark-line firing, but with zero impact on the actual game outcome or bankroll.
+
+**Proposed fix:**
+The issue likely resides in the cascade loop (likely in `packages/shared/src/cascade.ts` or the API's roll route). The orchestrator must be updated to treat the `TurnContext` returned by a crew member as the new "source of truth" for the remainder of the cascade.
+
+1. **Context Propagation:** Ensure the cascade loop overwrites the local `ctx` variable with the `context` returned by each crew member's `execute()` call.
+2. **Re-classification:** If a crew member modifies `ctx.dice`, the orchestrator should verify that `ctx.rollResult` and all `basePayout` fields in the context have been updated (which `physicsProfessor.ts` already attempts to do via `calculateBasePayouts`).
+3. **Engine Sync:** Ensure the final `settleTurn(finalCtx)` call at the end of the route uses the modified context from the end of the cascade, not a cached version of the initial roll.
+
+**File:** `packages/shared/src/crew/physicsProfessor.ts` (Logic verification), `packages/shared/src/cascade.ts` (Orchestration fix)
+
+---
+
+## KI-029 — Physics Professor nudge lacks physical dice animation
+
+**Area:** `apps/web/src/components/DiceZone.tsx`, `packages/shared/src/crew/physicsProfessor.ts`
+**Severity:** Low (Enhancement)
+**Status:** Open
+**Source:** QA Observation
+
+**Issue:**
+When The Physics Prof triggers his "nudge" ability, the dice values on the table board update instantly without any visual transition. While the portrait animates and the bark-line fires, the "nudge" feels like a data swap rather than a physical manipulation. To match the thematic "physics" of the crew member, the dice should literally flip or rotate to their new faces during the cascade.
+
+**Proposed fix:**
+Implement a "Re-roll" or "Flip" animation state in the `DiceZone` component that can be triggered mid-cascade.
+
+1. **New Cascade Event:** Add a `dice:nudge` or similar event to the cascade socket payload. This event should include the `targetDice` values.
+2. **DiceZone Update:** In `DiceZone.tsx`, listen for this nudge event. When triggered:
+    * Apply a quick 3D rotation animation (e.g., using Framer Motion's `animate` prop) to the existing dice elements.
+    * The animation should simulate a "flip" (90 or 180-degree rotation) toward the new face value.
+    * Coordinate the timing so the dice flip completes just as the `TurnContext` payouts are updated in the UI.
+3. **Juice:** Add a subtle "tink" sound effect or a small puff of "chalk dust" particles at the dice coordinates when the flip occurs to emphasize the Professor's "correction."
+
+**File:** `apps/web/src/components/DiceZone.tsx`

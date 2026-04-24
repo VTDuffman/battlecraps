@@ -22,6 +22,7 @@ import { crewPlugin }       from './routes/crew.js';
 import { mechanicPlugin }   from './routes/mechanic.js';
 import { authPlugin }       from './routes/auth.js';
 import { crewRosterPlugin } from './routes/crewRoster.js';
+import { leaderboardPlugin } from './routes/leaderboard.js';
 
 const PORT = Number(process.env['PORT'] ?? 3001);
 
@@ -67,6 +68,7 @@ await app.register(crewPlugin,       { prefix: '/api/v1' });
 await app.register(mechanicPlugin,   { prefix: '/api/v1' });
 await app.register(authPlugin,       { prefix: '/api/v1' });
 await app.register(crewRosterPlugin, { prefix: '/api/v1' });
+await app.register(leaderboardPlugin, { prefix: '/api/v1' });
 
 // Health check — Render health check path (healthCheckPath: /health in render.yaml).
 // Returns 200 so Render considers the deployment healthy and stops the redeploy loop.
@@ -130,6 +132,63 @@ await db.execute(sql`
     AND created_at < '2026-04-14 00:00:00+00'::timestamptz
 `);
 app.log.info('[migrate] tutorial_completed ensured');
+
+// FB-014: highest_roll_amplified_cents on runs.
+await db.execute(sql`
+  ALTER TABLE runs ADD COLUMN IF NOT EXISTS highest_roll_amplified_cents integer NOT NULL DEFAULT 0
+`);
+app.log.info('[migrate] highest_roll_amplified_cents ensured');
+
+// FB-014: leaderboard_entries table + indices.
+await db.execute(sql`
+  CREATE TABLE IF NOT EXISTS leaderboard_entries (
+    id                           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id                      uuid        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    run_id                       uuid        NOT NULL REFERENCES runs(id)  ON DELETE CASCADE,
+    display_name                 text        NOT NULL,
+    final_bankroll_cents         integer     NOT NULL,
+    highest_roll_amplified_cents integer     NOT NULL DEFAULT 0,
+    highest_marker_index         smallint    NOT NULL,
+    shooters_remaining           smallint    NOT NULL,
+    crew_layout                  jsonb       NOT NULL,
+    did_win_run                  boolean     NOT NULL,
+    created_at                   timestamptz NOT NULL DEFAULT now()
+  )
+`);
+await db.execute(sql`
+  CREATE UNIQUE INDEX IF NOT EXISTS leaderboard_entries_run_id_idx
+    ON leaderboard_entries (run_id)
+`);
+await db.execute(sql`
+  CREATE INDEX IF NOT EXISTS leaderboard_entries_winners_idx
+    ON leaderboard_entries (final_bankroll_cents DESC, shooters_remaining DESC)
+    WHERE did_win_run = true
+`);
+await db.execute(sql`
+  CREATE INDEX IF NOT EXISTS leaderboard_entries_nonwinners_idx
+    ON leaderboard_entries (highest_marker_index DESC, final_bankroll_cents DESC)
+    WHERE did_win_run = false
+`);
+await db.execute(sql`
+  CREATE INDEX IF NOT EXISTS leaderboard_entries_user_bankroll_idx
+    ON leaderboard_entries (user_id, final_bankroll_cents DESC)
+`);
+app.log.info('[migrate] leaderboard_entries table ensured');
+
+// FB-014: first_name / last_name audit columns on users and leaderboard_entries.
+await db.execute(sql`
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name text
+`);
+await db.execute(sql`
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name text
+`);
+await db.execute(sql`
+  ALTER TABLE leaderboard_entries ADD COLUMN IF NOT EXISTS first_name text
+`);
+await db.execute(sql`
+  ALTER TABLE leaderboard_entries ADD COLUMN IF NOT EXISTS last_name text
+`);
+app.log.info('[migrate] first_name / last_name audit columns ensured');
 
 // ---------------------------------------------------------------------------
 // Start listening

@@ -46,3 +46,15 @@ Clicking the component should `setItem` the latest version to `localStorage`, cl
 
 **Prompt:**
 Update `@apps/web/src/components/TitleLobbyScreen.tsx`. Import `<VersionDisplay />` and place it cleanly in the UI (like a bottom corner). Ensure it does not overlap the existing "Press Any Button to Play" prompt or other lobby controls. Ensure the styling blends with the existing screen aesthetic.
+
+## Step 3.1: Enhance "New Version" Indicator
+**Goal:** Make the new version alert highly prominent by increasing its size, altering the text, and adding a glowing pulse animation.
+**Files:**
+- `@apps/web/src/components/VersionDisplay.tsx`
+
+**Prompt:**
+Update `@apps/web/src/components/VersionDisplay.tsx`. Modify the rendering logic for when a new version is detected. Remove the separate "NEW" dot/badge. Instead:
+1. Change the button text to prepend "New - " before the version string (e.g., "New - v1.0.0").
+2. Apply conditional Tailwind classes so the entire clickable element is 50% larger when a new version is active. You can achieve this cleanly by applying `scale-150` (be sure to set the correct transform origin, e.g., `origin-bottom-right`, so it doesn't scale off-screen).
+3. Add a continuous glowing and pulsating effect using Tailwind's `animate-pulse` and an arbitrary text-shadow class (e.g., `[text-shadow:_0_0_12px_currentColor]`). 
+Ensure that once clicked and the `localStorage` state updates, the component smoothly drops the text prefix, scale, and animation classes, reverting to the standard subtle version display.

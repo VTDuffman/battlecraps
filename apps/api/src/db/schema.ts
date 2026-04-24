@@ -93,8 +93,19 @@ export const users = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
 
-    /** Unique login handle. Displayed in-game as the "player name". */
+    /** Unique login handle / alias. Stored from Clerk username at provision time. */
     username: text('username').notNull(),
+
+    /**
+     * Player's real first name from Clerk. Nullable — Clerk usernames may not
+     * have a given name. Internal auditing only; never surfaced publicly.
+     */
+    firstName: text('first_name'),
+
+    /**
+     * Player's real last name from Clerk. Nullable. Internal auditing only.
+     */
+    lastName: text('last_name'),
 
     /** Used for auth. Never returned to the client. */
     email: text('email').notNull(),
@@ -362,6 +373,17 @@ export const runs = pgTable(
 
     /** True once the final GAME_OVER rewards have been written to users.lifetime_earnings_cents. */
     rewardsFinalised: boolean('rewards_finalised').notNull().default(false),
+
+    /**
+     * The largest single-roll amplified profit earned during this run, in cents.
+     * Computed as: settleTurn(ctx) - ctx.baseStakeReturned
+     * Updated on every winning roll via fire-and-forget (same pattern as maxBankrollCents).
+     * Stored here so it can be read once at GAME_OVER for leaderboard submission without
+     * requiring a separate max-aggregation query over roll history.
+     *
+     * Migration: server.ts startup block (highest_roll_amplified_cents)
+     */
+    highestRollAmplifiedCents: integer('highest_roll_amplified_cents').notNull().default(0),
   },
   (t) => ({
     userIdIdx: index('runs_user_id_idx').on(t.userId),
@@ -376,13 +398,18 @@ export const runs = pgTable(
 // ---------------------------------------------------------------------------
 
 export const usersRelations = relations(users, ({ many }) => ({
-  runs: many(runs),
+  runs:               many(runs),
+  leaderboardEntries: many(leaderboardEntries),
 }));
 
 export const runsRelations = relations(runs, ({ one }) => ({
   user: one(users, {
     fields:     [runs.userId],
     references: [users.id],
+  }),
+  leaderboardEntry: one(leaderboardEntries, {
+    fields:     [runs.id],
+    references: [leaderboardEntries.runId],
   }),
 }));
 
@@ -464,6 +491,102 @@ export const crewDefinitions = pgTable('crew_definitions', {
 
 export type CrewDefinitionRow = typeof crewDefinitions.$inferSelect;
 export type NewCrewDefinition  = typeof crewDefinitions.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// LEADERBOARD ENTRIES TABLE (FB-014)
+// One row per run that reached GAME_OVER. Written by submitLeaderboardEntry()
+// in apps/api/src/routes/leaderboard.ts. Read by GET /api/v1/leaderboard.
+// ---------------------------------------------------------------------------
+
+export const leaderboardEntries = pgTable(
+  'leaderboard_entries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => runs.id, { onDelete: 'cascade' }),
+
+    /**
+     * Denormalized from users.username at submission time — the player's alias,
+     * never their legal name. Avoids N+1 Clerk API calls when rendering Top 25.
+     */
+    displayName: text('display_name').notNull(),
+
+    /**
+     * Player's real first name at run-end time, for internal auditing.
+     * Denormalized from users.first_name. Never surfaced in public API responses.
+     */
+    firstName: text('first_name'),
+
+    /**
+     * Player's real last name at run-end time, for internal auditing.
+     * Denormalized from users.last_name. Never surfaced in public API responses.
+     */
+    lastName: text('last_name'),
+
+    /** Final bankroll at GAME_OVER, in cents. Primary sort key. */
+    finalBankrollCents: integer('final_bankroll_cents').notNull(),
+
+    /**
+     * Largest single-roll amplified profit from runs.highest_roll_amplified_cents.
+     * Formula: settleTurn(ctx) - ctx.baseStakeReturned
+     * Displayed as "Highest Single Roll Win" in the leaderboard entry.
+     */
+    highestRollAmplifiedCents: integer('highest_roll_amplified_cents').notNull().default(0),
+
+    /**
+     * Index into GAUNTLET (0–8) at the time of GAME_OVER.
+     * For winners: value is 9 (GAUNTLET.length — past the last valid index).
+     * For non-winners: 0–8, indicating how far they progressed.
+     * Used to sort the "Gone but not Forgotten" section.
+     */
+    highestMarkerIndex: smallint('highest_marker_index').notNull(),
+
+    /** Shooter lives remaining at GAME_OVER. Tie-breaker within identical bankrolls. */
+    shootersRemaining: smallint('shooters_remaining').notNull(),
+
+    /**
+     * Crew slot arrangement at GAME_OVER.
+     * Array of 5 elements: { id: number; name: string } | null.
+     * Names are denormalized at submission time to avoid a join on every read.
+     */
+    crewLayout: jsonb('crew_layout')
+      .$type<({ id: number; name: string } | null)[]>()
+      .notNull(),
+
+    /**
+     * True if the player cleared the final gauntlet marker (Executive defeated).
+     * Determines which section of the Global tab this entry belongs to.
+     */
+    didWinRun: boolean('did_win_run').notNull(),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    runIdUniq: uniqueIndex('leaderboard_entries_run_id_idx').on(t.runId),
+    winnersIdx: index('leaderboard_entries_winners_idx')
+      .on(t.finalBankrollCents, t.shootersRemaining)
+      .where(sql`did_win_run = true`),
+    nonWinnersIdx: index('leaderboard_entries_nonwinners_idx')
+      .on(t.highestMarkerIndex, t.finalBankrollCents)
+      .where(sql`did_win_run = false`),
+    userBankrollIdx: index('leaderboard_entries_user_bankroll_idx')
+      .on(t.userId, t.finalBankrollCents),
+  }),
+);
+
+export type LeaderboardEntryRow = typeof leaderboardEntries.$inferSelect;
+export type NewLeaderboardEntry  = typeof leaderboardEntries.$inferInsert;
+
+export const leaderboardEntriesRelations = relations(leaderboardEntries, ({ one }) => ({
+  user: one(users, { fields: [leaderboardEntries.userId], references: [users.id] }),
+  run:  one(runs,  { fields: [leaderboardEntries.runId],  references: [runs.id]  }),
+}));
 
 // ---------------------------------------------------------------------------
 // INFERRED TYPES (handy for controller layer)

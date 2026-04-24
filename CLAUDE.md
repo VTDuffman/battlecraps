@@ -33,31 +33,50 @@ No lint or format config (no .eslintrc, no .prettierrc).
 
 ```
 packages/shared/src/          # Pure-function game engine — zero runtime deps
-  types.ts                    # Source of truth: GamePhase, RollResult, TurnContext, CrewMember, Bets
+  types.ts                    # Source of truth: GamePhase, RollResult, TurnContext, CrewMember, Bets, LeaderboardEntry
   crapsEngine.ts              # classifyRoll(), settleTurn(), payout calculators
   cascade.ts                  # resolveCascade() — sequential crew execute() calls, emits CascadeEvents
   config.ts                   # GAUNTLET[9], boss rules, comp perks, getMaxBet(), getMinBet()
+  floors.ts                   # FloorConfig, FLOORS registry, TransitionType, CelebrationSnapshot — floor narrative/display data
   crew/                       # 30 execute() implementations + index.ts registry (IDs 1–15 unlock-gated; 16–30 Starter)
+  bossRules/                  # Boss rule hook implementations: disableCrew.ts, foursInstantLoss.ts, risingMinBets.ts, types.ts
 
 apps/api/src/                 # Fastify backend
   server.ts                   # Fastify + Socket.io setup, route registration
+  routes/auth.ts              # POST /auth/provision (upsert Clerk user), POST /auth/tutorial-complete
   routes/rolls.ts             # POST /runs/:id/roll — main game loop (RNG → cascade → settle → persist → emit → unlock eval)
   routes/recruit.ts           # POST /runs/:id/recruit (unlock-gated)
   routes/mechanic.ts          # POST /runs/:id/mechanic-freeze
   routes/runs.ts              # GET/POST /runs/:id — full run state (page refresh recovery) + create
   routes/crew.ts              # GET /crew
   routes/crewRoster.ts        # GET /crew-roster — availability-filtered 30-crew roster per user
-  db/schema.ts                # Drizzle schema: users, runs (JSONB bets + crew_slots), crewDefinitions
+  routes/leaderboard.ts       # GET /leaderboard?view=global|personal + internal submitLeaderboardEntry()
+  db/schema.ts                # Drizzle schema: users, runs (JSONB bets + crew_slots), crewDefinitions, leaderboardEntries
+  lib/clerkAuth.ts            # Clerk JWT verification middleware
+  lib/crewRegistry.ts         # Maps crew IDs → live CrewMember objects (with execute()); used to hydrate stored slots
+  lib/io.ts                   # Shared Socket.io instance accessor
+  lib/resolveUser.ts          # Resolves Clerk JWT → DB user row (shared across routes)
   lib/rng.ts                  # Crypto RNG with rejection sampling (no modulo bias)
   lib/unlocks.ts              # evaluateUnlocks() — all 15 unlock conditions, emits unlocks:granted
 
 apps/web/src/                 # React SPA
   store/useGameStore.ts       # Zustand: all game state + socket listeners + cascade queue
-  App.tsx                     # Router: TitleLobbyScreen | TableBoard | TransitionOrchestrator | PubScreen | GameOverScreen
-  components/                 # TableBoard, BettingGrid, DiceZone, CrewPortrait, RollLog, ChipRain, CompCardFan
-  transitions/phases/         # 9 cinematic phases: Title, MarkerIntro, FloorReveal, Boss*, Victory*, GameOver
-  hooks/                      # useAnimatedCounter, useFloorTheme, useCrowdAudio
+  App.tsx                     # Auth shell → TitleLobbyScreen → KnowledgeGate → TutorialOverlay → TransitionOrchestrator (wraps TableBoard)
+  contexts/TutorialContext.tsx # Tutorial state machine context (beat index, spotlight target, path)
+  global.d.ts                 # Window.Clerk global type declaration
+  components/                 # TableBoard, BettingGrid, DiceZone, CrewPortrait, RollLog, ChipRain, CompCardFan,
+                              #   BossEntryModal, BossRoomHeader, BossVictoryModal, CompCard, FloorEmblem,
+                              #   TitleLobbyScreen, UnlockNotification, VersionDisplay, ReleaseNotesModal,
+                              #   LeaderboardScreen, LeaderboardEntry,
+                              #   GameOverScreen, PubScreen + tutorial/ subtree (TutorialOverlay, KnowledgeGate,
+                              #   SalDialog, SalPortrait, SpotlightMask, HowToPlayScreen + 3 section components)
+  transitions/phases/         # 12 cinematic phases: TitleScreen, MarkerIntro, MarkerCelebration, FloorReveal,
+                              #   FloorRevealConfirm, BossEntry, BossEntryDread, BossVictory, BossVictoryComp,
+                              #   VictoryExplosion, VictoryRecap, VictorySendoff
+  hooks/                      # useAnimatedCounter, useFloorTheme, useCrowdAudio, useTutorialSpotlight
   lib/floorThemes.ts          # Three floor theme objects (gritty / elegant / electric)
+  lib/socket.ts               # Socket.io client singleton
+  lib/tutorialBeats.ts        # Tutorial beat definitions (step data for TutorialOverlay)
 ```
 
 **Audio system (`useCrowdAudio`):** Fully synthesized via Web Audio API — no asset files. `AudioContext` is lazy-created on first flash event (satisfies browser autoplay policy). Mute state persisted to `localStorage` (`bc_muted`). Current stings: crowd cheer (win flash), crowd groan (lose flash), dice rattle on throw.
@@ -115,10 +134,17 @@ This project uses strict TypeScript. Whenever you write or modify TypeScript cod
 ## Docs Structure
 
 ```
-docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–019), tutorial-user-journey.md, vibe-ideas.md
-docs/frameworks/      # crew_framework.md (30 crew — 15 Starter + 15 unlock-gated), floor_design.md, boss_framework.md
-docs/design/          # crew-sprites-tdd.md (asset spec), crew-implementation-design.md (FB-012 TDD), transition_framework TDD, boss-mechanic-technical-design.md, title-screen-technical-design.md, tutorial-technical-design.md (FB-007 TDD), CODE_REVIEW.md*
+docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–019), tutorial-user-journey.md,
+                      #   vibe-ideas.md, floor-aesthetics.md
+docs/frameworks/      # crew_framework.md (30 crew — 15 Starter + 15 unlock-gated), floors.md, boss_framework.md
+docs/design/          # crew-sprites-tdd.md (asset spec), crew-implementation-design.md (FB-012 TDD),
+                      #   transition_framework TDD, boss-mechanic-technical-design.md,
+                      #   title-screen-technical-design.md, tutorial-technical-design.md (FB-007 TDD),
+                      #   fb-014-high-rollers-club-tdd.md (FB-014 TDD),
+                      #   fb-016-mobile-ui-technical-design.md, session-management-technical-design.md,
+                      #   CODE_REVIEW.md*
 docs/testing/         # known_issues.md (open defects), test plans + results (alpha cycle — archived)
+docs/manifests/       # manifest-instruction-prompt.md, implemented/ (FB-009, FB-014, FB-019, tutorial-path-b)
 ```
 
 `*` CODE_REVIEW.md and alpha test results in `docs/testing/` reflect the **alpha build** — issues documented there are resolved. Treat as historical context only.
@@ -127,9 +153,9 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 
 ## Current State
 
-**Status:** Beta. All 9 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped. Boss mechanic framework (FB-010) fully implemented. Title lobby screen (FB-011) live. Crew Expansion & Unlock System (FB-012) live — 30-crew roster, unlock gating, real-time unlock notifications. Tutorial & How to Play system (FB-007) live. Dice Roll Sound Effect (FB-009) live. Versioning & Release Notes (FB-019) live — automated SemVer via build script, in-game release notes modal, "New" indicator with localStorage dismissal.
+**Status:** Beta. All 12 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped. Boss mechanic framework (FB-010) fully implemented. Title lobby screen (FB-011) live. Crew Expansion & Unlock System (FB-012) live — 30-crew roster, unlock gating, real-time unlock notifications. Tutorial & How to Play system (FB-007) live. Dice Roll Sound Effect (FB-009) live. Versioning & Release Notes (FB-019) live — automated SemVer via build script, in-game release notes modal, "New" indicator with localStorage dismissal. High Roller's Club & Leaderboards (FB-014) live — `leaderboard_entries` table, `GET /api/v1/leaderboard` (global/personal), per-run `highestRollAmplifiedCents` tracking, `LeaderboardScreen` + `LeaderboardEntry` components accessible from TitleLobbyScreen.
 
-**Active development:** 
+**Active development:** None currently.
 
 **Open defects:** See `docs/testing/known_issues.md` for full list. Current open issues:
 - KI-002: Roll delta popup confusing on marker-clear rolls (Low)
@@ -139,3 +165,6 @@ docs/testing/         # known_issues.md (open defects), test plans + results (al
 **Not yet implemented:**
 - Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md` — 64×64 SNES-style PNGs)
 - Cinematic crew unlock experience (backlog: FB-013)
+- Mobile-First UI/UX & Readability Overhaul (backlog: FB-016 — HD-Retro typography, Roll Log bottom sheet, high-contrast panels)
+- Tutorial Replay & State Reset (backlog: FB-017 — replay button in HowToPlayScreen, backend tutorial-reset endpoint)
+- Playtester Feedback System (backlog: FB-018 — in-game feedback modal with deep context payload)

@@ -972,6 +972,111 @@ Establish an automated Beta versioning system and an in-game Release Notes UI. T
 
 ---
 
+## FB-020 — 3D Physics Dice Animation (Three.js + cannon-es)
+
+**Type:** Quality of Life / Polish
+**Area:** `apps/web/src/components/DiceZone.tsx`, `apps/web/src/index.css`
+**Status:** Pending Implementation
+
+### Problem
+
+The current dice are 2D flat `<div>` elements animated with CSS keyframes. The "3D" effect is an illusion created by oscillating `rotateX`/`rotateY` values baked into keyframe percentages. While functional, it lacks the visceral physicality that makes rolling dice satisfying — there is no real depth, no true tumble, no sense of weight.
+
+The reference implementation (Three.js + cannon-es) renders actual 3D geometry in a WebGL canvas with lighting, shadows, and rigid-body physics. The dice have mass, bounce off surfaces with real restitution, and spin in ways that can't be replicated with CSS transforms.
+
+### Core Engineering Challenge: Guided Physics
+
+In the reference implementation, physics determines the dice outcome — random initial conditions produce a random result. BattleCraps is the inverse: **the server determines the outcome via crypto RNG**, and the animation is purely decorative. The physics simulation cannot be the source of truth.
+
+This requires a "guided physics" approach: run the real cannon-es simulation for visual drama, then correct the final resting orientation to match the server-determined result before the player can read the face. Three strategies exist:
+
+| Strategy | Mechanism | Tradeoff |
+|---|---|---|
+| **Re-simulation** | Re-run with new random initial conditions until the physics naturally produces the correct face | Unpredictable timing; may loop many times for rare faces |
+| **Lookup table** | Pre-compute per-face initial throw vectors that reliably produce each value | Looks repetitive after a few rolls; fragile if physics params change |
+| **Late snap** (recommended) | Run real physics; in the final ~100ms as velocity approaches zero, lerp the die rotation to the correct face orientation | Imperceptible if timed well; one-time calibration effort |
+
+The late-snap approach is recommended: it preserves the organic drama of the throw, and the correction window is invisible because the die is nearly still when it fires.
+
+### What Needs to Be Built
+
+**1. New dependencies**
+
+```
+three          ~170KB gzipped   3D WebGL renderer
+cannon-es      ~50KB gzipped    Rigid-body physics engine (maintained cannon.js fork)
+```
+
+Total bundle impact: ~220KB addition. Acceptable for a game client; worth noting.
+
+**2. `DiceZone.tsx` — primary rewrite target**
+
+The dice rendering section (the two `Die` `<div>` components and their container) is replaced with a `<canvas>` element managed by a new `useDicePhysics` hook or inline ref logic. The `throwPhase` state machine concept is preserved but drives physics initial conditions instead of CSS class toggles:
+
+- `idle` → canvas shows static dice at rest
+- `throwing` → apply random throw impulse + spin torque to cannon-es bodies; start render loop
+- `tumbling` → physics simulation running; Three.js render loop syncs mesh transforms from physics bodies each frame
+- `landing` → velocity threshold crossed; late-snap lerp fires; render loop slows to idle
+
+The `<canvas>` replaces the dice `<div>`s in the JSX. Everything outside the dice display box (roll button, result popup overlay, delta flash, wall flash trigger, `--dice-travel` measurement) is unchanged.
+
+Three.js scene requirements:
+- `WebGLRenderer` targeting the canvas element; `antialias: true`; transparent background so the felt shows through
+- `BoxGeometry(1, 1, 1)` per die with a `MeshStandardMaterial` per face (pip textures or programmatic dot geometry)
+- `DirectionalLight` + `AmbientLight` matching the current floor theme colors (readable from `useFloorTheme`)
+- `PlaneGeometry` floor and back-wall collision planes in the cannon-es world; invisible in Three.js
+
+cannon-es world requirements:
+- `Body` per die with mass ~0.1, `linearDamping: 0.3`, `angularDamping: 0.4`
+- `Plane` floor body at y=0; `Plane` back-wall body at the appropriate z depth
+- Fixed-timestep world step (`world.step(1/60, delta, 3)`) called in the render loop for frame-rate-independent behavior
+- Throw impulse applied at `throwPhase='throwing'`: upward + forward velocity vector + random angular velocity
+
+Face-up detection (needed for the late-snap correction):
+```typescript
+// For each die body, test which face normal is most aligned with world up (0,1,0)
+const faceNormals = [
+  new Vec3(1,0,0), new Vec3(-1,0,0),  // 1, 6
+  new Vec3(0,1,0), new Vec3(0,-1,0),  // 2, 5
+  new Vec3(0,0,1), new Vec3(0,0,-1),  // 3, 4
+];
+// bodyQuaternion.vmult(normal) → world-space normal; argmax(dot(n, up))
+```
+
+Late-snap trigger: when `body.velocity.length() < SNAP_THRESHOLD` (empirically ~0.05), compute target quaternion for the correct face from `lastDice`, then `slerp` the body quaternion over ~80ms.
+
+**3. `apps/web/src/index.css`**
+
+Remove the three main dice animation keyframes: `dice-throw`, `dice-tumble`, `dice-land`. The `dice-converge`, `dice-gold-glow`, `point-ring-set`, `point-ring-hit`, result popup, and all other animations are untouched — they remain CSS-driven and apply on top of the canvas.
+
+**4. Zustand store — no changes**
+
+`lastDice`, `pendingSettlement`, `applyPendingSettlement`, the cascade queue, and all socket event handlers are identical. The physics renderer consumes the same `lastDice` selector it does today.
+
+### What Stays Identical
+
+- All server-side game logic (RNG, payout, cascade, settlement)
+- The `useGameStore` state shape and all socket event handling
+- The roll button, min-bet label, and disabled-state logic in `DiceZone.tsx`
+- Result popup (NATURAL, POINT HIT, etc.), wall flash, delta flash, point ring
+- Crew portrait cascade timing and `applyPendingSettlement` gating
+- All other components — `TableBoard`, `BettingGrid`, `CrewPortrait`, etc.
+
+### Risks
+
+- **Late-snap visibility:** If the die is still moving perceptibly when the snap fires, the correction is noticeable. Requires empirical tuning of `SNAP_THRESHOLD` and lerp duration.
+- **Performance:** A cannon-es + Three.js render loop adds CPU/GPU load. Should be profiled on low-end mobile (relevant to FB-016 goals).
+- **Floor theme lighting:** The Three.js scene lights should respond to floor theme changes to avoid the dice looking visually detached from the table felt.
+- **`DiePlaceholder` parity:** The current initial state (no dice shown) uses placeholder `<div>`s. The canvas equivalent needs a matching idle state.
+
+### Files Affected
+
+| File | Action |
+|---|---|
+| `apps/web/src/components/DiceZone.tsx` | Replace `Die`/`DiePlaceholder` divs with `<canvas>`; rewrite throw animation to drive cannon-es physics; add face-up detection + late-snap correction |
+| `apps/web/src/index.css` | Remove `dice-throw`, `dice-tumble`, `dice-land` keyframes |
+| `apps/web/package.json` | Add `three` and `cannon-es` dependencies |
+
 
 
 

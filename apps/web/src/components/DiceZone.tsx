@@ -108,6 +108,7 @@ export const DiceZone: React.FC = () => {
   const currentMarkerIndex  = useGameStore((s) => s.currentMarkerIndex);
   const bossPointHits       = useGameStore((s) => s.bossPointHits);
   const celebrationSnapshot = useGameStore((s) => s.celebrationSnapshot);
+  const dreadDice           = useGameStore((s) => s.dreadDice);
 
   // ── Throw animation state ─────────────────────────────────────────────────
   const [throwPhase, setThrowPhase]   = useState<ThrowPhase>('idle');
@@ -118,6 +119,23 @@ export const DiceZone: React.FC = () => {
   const flipInterval  = useRef<ReturnType<typeof setInterval> | null>(null);
   const phaseRef      = useRef<ThrowPhase>('idle'); // always mirrors throwPhase for use in closures
   const dicePairRef   = useRef<HTMLDivElement>(null);
+
+  // ── Lefty McGuffin dread→relief cinematic ────────────────────────────────
+  // dreadDiceRef mirrors the store value so onLandEnd (a callback) can read it
+  // without requiring it to be in the dependency array.
+  const dreadDiceRef  = useRef<[number, number] | null>(null);
+  const prevDreadRef  = useRef<[number, number] | null>(null);
+  const [showSaveFlash, setShowSaveFlash] = useState(false);
+  useEffect(() => { dreadDiceRef.current = dreadDice; }, [dreadDice]);
+  // Detect the dreadDice non-null → null transition to trigger the save flash.
+  useEffect(() => {
+    if (prevDreadRef.current !== null && dreadDice === null) {
+      setShowSaveFlash(true);
+      const t = setTimeout(() => setShowSaveFlash(false), 1500);
+      return () => clearTimeout(t);
+    }
+    prevDreadRef.current = dreadDice;
+  }, [dreadDice]);
 
   function setPhase(p: ThrowPhase) {
     phaseRef.current = p;
@@ -148,6 +166,24 @@ export const DiceZone: React.FC = () => {
     }
     setPhase('landing');
   }
+
+  // ── Re-throw trigger (Lefty McGuffin save) ──────────────────────────────
+  // After the 1500ms dread window, the store increments _reRollKey and sets
+  // lastDice to the saved result. This effect fires BEFORE the lastDice effect
+  // (declaration order) so phaseRef.current is already 'throwing' when the
+  // lastDice effect runs, making it buffer pendingDice instead of instant-flip.
+  const _reRollKey   = useGameStore((s) => s._reRollKey);
+  const reRollKeyRef = useRef(0);
+  useEffect(() => {
+    if (_reRollKey === reRollKeyRef.current) return;
+    reRollKeyRef.current = _reRollKey;
+    if (_reRollKey === 0) return; // connectToRun reset — skip
+    pendingDice.current   = null;
+    pendingResult.current = null;
+    setPhase('throwing');
+    startFlip();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [_reRollKey]);
 
   // ── Watch lastDice for server result ──────────────────────────────────────
   // `lastDice` updates when `turn:settled` arrives. Buffer the values and,
@@ -210,6 +246,17 @@ export const DiceZone: React.FC = () => {
 
   const onLandEnd = useCallback(() => {
     const result = pendingResult.current ?? lastResult;
+
+    // Dread phase: dice landed on the intercepted 7. Skip the popup — DiceZone
+    // will show the "SEVEN OUT?" overlay while applyPendingSettlement holds for
+    // 1500ms before revealing Lefty's saved result.
+    if (dreadDiceRef.current !== null) {
+      applyPendingSettlement();
+      setPhase('idle');
+      pendingDice.current   = null;
+      pendingResult.current = null;
+      return;
+    }
 
     // Fire dice micro-animation + point puck ring at the landing moment
     if (result === 'POINT_SET') {
@@ -378,8 +425,8 @@ export const DiceZone: React.FC = () => {
             />
           )}
 
-        {/* Small persistent result label */}
-        {throwPhase === 'idle' && lastResult && lastResult !== 'NO_RESOLUTION' && (
+        {/* Small persistent result label — hidden during dread phase */}
+        {throwPhase === 'idle' && lastResult && lastResult !== 'NO_RESOLUTION' && dreadDice === null && (
           <span
             className={[
               'absolute bottom-0 left-1/2 -translate-x-1/2',
@@ -389,6 +436,22 @@ export const DiceZone: React.FC = () => {
           >
             {ROLL_RESULT_LABELS[lastResult] ?? lastResult}
           </span>
+        )}
+
+        {/* Lefty McGuffin dread phase — "SEVEN OUT?" pulsing warning */}
+        {throwPhase === 'idle' && dreadDice !== null && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+            <span className="font-pixel text-[9px] text-red-400 animate-pulse tracking-widest">
+              SEVEN OUT?
+            </span>
+          </div>
+        )}
+
+        {/* Lefty McGuffin save flash — shown when dreadDice clears */}
+        {showSaveFlash && (
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 font-pixel text-[11px] animate-bark-rise pointer-events-none text-green-400 tracking-widest z-20">
+            SAVED!
+          </div>
         )}
 
         {/* Post-roll WIN flash */}

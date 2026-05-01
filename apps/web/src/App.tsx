@@ -441,7 +441,7 @@ const AuthenticatedApp: React.FC = () => {
   return (
     <main className="h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
       <TransitionOrchestrator onPlayAgain={() => void bootstrap(true)}>
-        <TableBoard />
+        <TableBoard onNewRun={() => void bootstrap(true)} />
       </TransitionOrchestrator>
       <UnlockNotification />
     </main>

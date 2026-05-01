@@ -136,6 +136,8 @@ interface TurnSettledPayload {
   newConsecutivePointHits: number;
   newBossPointHits:        number;
   payoutBreakdown:         { passLine: number; odds: number; hardways: number };
+  /** Present when Lefty McGuffin blocked a seven-out — the original 7 dice before re-roll. */
+  originalDice?:           [number, number];
 }
 
 // ---------------------------------------------------------------------------
@@ -212,6 +214,13 @@ export interface GameState {
   lastDice:       [number, number] | null;
   lastRollResult: RollResult | null;
   lastDelta:      number | null;        // signed cents — net bankroll change after roll
+
+  /**
+   * Set to the original 7-dice when Lefty McGuffin fires his save, cleared once
+   * the dread→relief cinematic completes. Non-null triggers the two-phase
+   * applyPendingSettlement delay and the "SEVEN OUT?" overlay in DiceZone.
+   */
+  dreadDice: [number, number] | null;
 
   // ── Bet placement animation ───────────────────────────────────────────────
   /**
@@ -417,6 +426,13 @@ export interface GameState {
 
   /** Increments on every rollDice() call — React key to re-fire dice animations. */
   _rollKey: number;
+
+  /**
+   * Increments each time a Lefty save ends the 1500ms dread window.
+   * DiceZone watches this to restart the full throw animation so the player
+   * sees the saved dice tumble in rather than an instant static flip.
+   */
+  _reRollKey: number;
 
   // ── Tutorial ──────────────────────────────────────────────────────────────
   /**
@@ -688,6 +704,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   lastDice:       null,
   lastRollResult: null,
   lastDelta:      null,
+  dreadDice:      null,
   lastBetDelta:   null,
   _betDeltaKey:   0,
   isRolling:          false,
@@ -719,6 +736,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   victoryComplete:  false,
   _seqCounter:    0,
   _rollKey:       0,
+  _reRollKey:     0,
   rollHistory:    [],
   socketStatus:   'disconnected',
   getToken:       null,
@@ -761,6 +779,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastDice:          null,
       lastRollResult:    null,
       lastDelta:         null,
+      dreadDice:         null,
       lastBetDelta:      null,
       isRolling:         false,
       pendingSettlement: null,
@@ -772,6 +791,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _popsKey:          0,
       pointRingType:     null,
       _pointRingKey:     0,
+      _reRollKey:        0,
       // Reset bets to zero so a new run never inherits a live bet from the
       // previous run. initialState.bets (present when reloading an existing
       // run via /runs/:id) will override this via the spread below.
@@ -848,9 +868,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // parsing fails or is otherwise skipped.
       set((state) => {
         if (state.pendingSettlement !== null) return {};
+        const isLeftySave = payload.originalDice !== undefined;
         return {
-          lastDice:          payload.dice,
+          lastDice:          isLeftySave ? payload.originalDice! : payload.dice,
           lastRollResult:    payload.rollResult,
+          dreadDice:         isLeftySave ? payload.originalDice! : null,
           pendingSettlement: payload,
         };
       });
@@ -925,6 +947,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _flashKey:           0,
       payoutPops:          null,
       _popsKey:            0,
+      _reRollKey:          0,
       pendingCascadeQueue:       [],
       cascadeQueue:              [],
       pendingTransition:         false,
@@ -1039,9 +1062,39 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     } = get();
     if (!p) return;
 
+    // ── Dread phase (Lefty McGuffin save) ─────────────────────────────────────
+    // On first call after a Lefty save: dice are showing the original 7.
+    // Flush the cascade so Lefty's portrait fires, hold for 1500ms so the
+    // player experiences dread, then signal DiceZone to throw the dice again.
+    // The second throw lands on the saved result; onLandEnd calls
+    // applyPendingSettlement() as normal to complete settlement.
+    if (p.originalDice !== undefined && get().dreadDice !== null) {
+      set({
+        cascadeQueue:        pendingCascadeQueue,
+        pendingCascadeQueue: [],
+        // isRolling intentionally stays true — prevents re-roll during dread window
+      });
+      setTimeout(() => {
+        const cur = get().pendingSettlement;
+        if (!cur) return; // guard: run was reset (NEW RUN) during the dread window
+        set((s) => ({
+          lastDice:       cur.dice,
+          lastRollResult: cur.rollResult,
+          dreadDice:      null,
+          // Increment to tell DiceZone to start a full re-throw animation.
+          // applyPendingSettlement() will be called by onLandEnd after that throw.
+          _reRollKey:     s._reRollKey + 1,
+        }));
+      }, 1500);
+      return;
+    }
+
+    // Lose results always take priority. Win fires for canonical win results AND
+    // any roll where the player nets money (e.g. NO_RESOLUTION with a hardway
+    // payout or a crew flat bonus — KI-019 / KI-021).
     const flashType: 'win' | 'lose' | null =
-      p.rollResult === 'NATURAL'   || p.rollResult === 'POINT_HIT'  ? 'win'  :
       p.rollResult === 'SEVEN_OUT' || p.rollResult === 'CRAPS_OUT'  ? 'lose' :
+      p.rollResult === 'NATURAL'   || p.rollResult === 'POINT_HIT' || p.bankrollDelta > 0 ? 'win' :
       null;
 
     // Derive which hardway zone gets the pop from the dice.
@@ -1279,6 +1332,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           resolvedBets:    Bets;
           payoutBreakdown: { passLine: number; odds: number; hardways: number };
           mechanicFreeze:  { lockedValue: number; rollsRemaining: number } | null;
+          originalDice?:   [number, number];
         };
       };
 
@@ -1301,11 +1355,17 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         newConsecutivePointHits: data.run.consecutivePointHits,
         newBossPointHits:        data.run.bossPointHits,
         payoutBreakdown:         data.roll.payoutBreakdown,
+        ...(data.roll.originalDice !== undefined && { originalDice: data.roll.originalDice }),
       };
 
+      const isLeftySave = settlement.originalDice !== undefined;
       set((state) => ({
-        lastDice:          settlement.dice,
+        // When Lefty saves, show the original 7-dice so the animation lands on
+        // the intercepted roll. dreadDice being non-null tells DiceZone and
+        // applyPendingSettlement to run the two-phase cinematic.
+        lastDice:          isLeftySave ? settlement.originalDice! : settlement.dice,
         lastRollResult:    settlement.rollResult,
+        dreadDice:         isLeftySave ? settlement.originalDice! : null,
         pendingSettlement: settlement,
         mechanicFreeze:    data.roll.mechanicFreeze ?? null,
         ...(data.roll.receipt && {

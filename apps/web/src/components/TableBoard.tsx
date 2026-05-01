@@ -20,7 +20,7 @@
 // calls `dequeueEvent()` to advance to the next crew in the sequence.
 // =============================================================================
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { MARKER_TARGETS, getMaxBet, isBossMarker } from '@battlecraps/shared';
 import { HowToPlayScreen } from './tutorial/HowToPlayScreen.js';
 import {
@@ -47,7 +47,7 @@ import { useTutorialContext }  from '../contexts/TutorialContext.js';
 const selectFlash    = (s: GameState) => ({ flashType: s.flashType, _flashKey: s._flashKey });
 const selectWallFlash = (s: GameState) => ({ wallFlash: s.wallFlash, _wallFlashKey: s._wallFlashKey });
 
-export const TableBoard: React.FC = () => {
+export const TableBoard: React.FC<{ onNewRun?: () => void }> = ({ onNewRun }) => {
   const crewSlots    = useGameStore((s) => s.crewSlots);
   const activeSlot   = useGameStore(selectActiveSlot);
   const activeBark   = useGameStore(selectActiveBark);
@@ -65,6 +65,14 @@ export const TableBoard: React.FC = () => {
   const theme = useFloorTheme();
 
   const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const [abandonConfirm, setAbandonConfirm] = useState(false);
+
+  // Auto-dismiss the abandon confirmation after 5 s to prevent stale prompts.
+  useEffect(() => {
+    if (!abandonConfirm) return;
+    const id = setTimeout(() => setAbandonConfirm(false), 5000);
+    return () => clearTimeout(id);
+  }, [abandonConfirm]);
 
   // Table shake — triggered by ChipRain when a TORRENT payout lands
   const [isShaking, setIsShaking] = useState(false);
@@ -138,6 +146,41 @@ export const TableBoard: React.FC = () => {
       >
         ?
       </button>
+
+      {/* ── New Run button — abandon current run and start fresh ──────────── */}
+      {onNewRun && (
+        abandonConfirm ? (
+          <div className="absolute top-2 left-16 z-10 flex items-center gap-1">
+            <span className="font-pixel text-[6px] text-red-400/70">END?</span>
+            <button
+              type="button"
+              onClick={() => { setAbandonConfirm(false); onNewRun(); }}
+              className="px-1 py-0.5 rounded font-pixel text-[7px] bg-red-900/70 text-red-300 border border-red-700/50 hover:bg-red-800/90 transition-colors"
+              aria-label="Confirm new run"
+            >
+              YES
+            </button>
+            <button
+              type="button"
+              onClick={() => setAbandonConfirm(false)}
+              className="px-1 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/40 border border-white/10 hover:text-white/70 transition-colors"
+              aria-label="Cancel"
+            >
+              NO
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAbandonConfirm(true)}
+            disabled={isRolling}
+            className="absolute top-2 left-16 z-10 px-1.5 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors tracking-widest"
+            aria-label="Start a new run"
+          >
+            NEW RUN
+          </button>
+        )
+      )}
 
       {/* ── Comp Card Fan — boss-defeat rewards, top-left corner ─────────── */}
       <CompCardFan />
@@ -423,17 +466,21 @@ const GameStatus: React.FC = () => {
           <div className="text-center">
             <div className="font-pixel text-[6px] text-white/40 mb-0.5">SHOOTERS</div>
             <div className="flex gap-1 justify-center">
-              {Array.from({ length: Math.max(5, shooters) }, (_, i) => (
-                <div
-                  key={i}
-                  className={[
-                    'w-2 h-2 rounded-full border',
-                    i < shooters
-                      ? 'bg-gold border-gold/80'
-                      : 'bg-transparent border-white/20',
-                  ].join(' ')}
-                />
-              ))}
+              {(() => {
+                const hasExtraShooterComp = currentMarkerIndex > 2; // Sarge is Marker 2
+                const shooterCapacity = hasExtraShooterComp ? 6 : 5;
+                return Array.from({ length: shooterCapacity }, (_, i) => (
+                  <div
+                    key={i}
+                    className={[
+                      'w-2 h-2 rounded-full border',
+                      i < shooters
+                        ? 'bg-gold border-gold/80'
+                        : 'bg-transparent border-white/20',
+                    ].join(' ')}
+                  />
+                ));
+              })()}
             </div>
           </div>
         </div>

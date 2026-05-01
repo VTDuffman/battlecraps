@@ -320,7 +320,7 @@ The visual feedback when a crew member's ability fires (during the roll cascade)
 
 **Area:** `apps/web/src/store/useGameStore.ts` (`applyPendingSettlement`)
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed
 **Source:** Testing session observation
 
 **Issue:**
@@ -356,7 +356,7 @@ const flashType: 'win' | 'lose' | null =
 
 **Area:** `apps/web/src/components/TableBoard.tsx` (`GameStatus` component)
 **Severity:** Low
-**Status:** Open
+**Status:** Fixed
 **Source:** Testing session observation
 
 **Issue:**
@@ -396,7 +396,7 @@ const shooterCapacity = hasExtraShooterComp ? 6 : 5;
 
 **Area:** `apps/web/src/store/useGameStore.ts` (`applyPendingSettlement`)
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed
 **Source:** Testing session observation
 
 **Issue:**
@@ -420,25 +420,22 @@ const flashType: 'win' | 'lose' | null =
 
   ---
 
-## KI-022 — Lefty McGuffin's "Seven-Out Save" lacks cinematic dread and payoff
+## KI-022 — Lefty McGuffin’s "Seven-Out Save" lacks cinematic dread and payoff
 
 **Area:** `packages/shared/src/crew/lefty.ts`, `apps/web/src/store/useGameStore.ts`, `apps/web/src/components/DiceZone.tsx`
 **Severity:** Medium (UX/Juice)
-**Status:** Open
+**Status:** Fixed
 **Source:** Testing session observation
 
 **Issue:**
-Currently, when "Lefty" McGuffin (ID: 1) saves a shooter from a Seven-Out, the game logic immediately substitutes the dice result server-side. The client only receives the final "saved" result in the `turn:settled` payload. This means the player never actually sees the "7" land; the dice simply tumble and land on a safe number, and Lefty's portrait flashes as a post-hoc explanation. This misses the intended emotional arc of "dread followed by relief."
+Currently, when "Lefty" McGuffin (ID: 1) saves a shooter from a Seven-Out, the game logic immediately substitutes the dice result server-side. The client only receives the final "saved" result in the `turn:settled` payload. This means the player never actually sees the "7" land; the dice simply tumble and land on a safe number, and Lefty’s portrait flashes as a post-hoc explanation. This misses the intended emotional arc of "dread followed by relief."
 
-**Proposed fix:**
-Implement a two-stage reveal for saved rolls to "scare" the player before showing the save.
-1.  **Server-Side Update:** Modify the roll resolution logic and the `TurnSettledPayload` to include an `originalDice` field when `ctx.flags.sevenOutBlocked` is true.
-2.  **Store Orchestration:** Update `useGameStore.ts` to hold `originalDice`. The `applyPendingSettlement` logic should be split: if `originalDice` exists, the UI should first "settle" on those dice without applying the financial state changes yet.
-3.  **UI Animation Sequence:** * **Phase 1 (Dread):** `DiceZone.tsx` receives the `originalDice` (the 7) and plays the landing animation. The game briefly displays a "SEVEN OUT?" warning label.
-    * **Phase 2 (The Save):** Lefty’s `cascade:trigger` event fires. Following the improvements in KI-018, his portrait should expand significantly as he "intervenes."
-    * **Phase 3 (Relief):** Upon Lefty's activation, trigger a second "re-roll" animation in `DiceZone` that transitions the dice from the 7 to the final `lastDice` result.
-    * **Phase 4 (Settlement):** Finally, apply the bankroll and phase updates as normal.
-    * 
+**Fix applied:**
+Two-stage dread→relief cinematic implemented:
+1. **Server (`apps/api/src/routes/rolls.ts`):** `WsTurnSettledPayload` and HTTP roll response now include `originalDice?: [number, number]` when `finalContext.flags.sevenOutBlocked` is true.
+2. **Store (`apps/web/src/store/useGameStore.ts`):** `dreadDice` state added. When Lefty saves, `lastDice` is set to `originalDice` (the 7) so the throw animation lands on the correct dice. `applyPendingSettlement()` detects `originalDice !== undefined && dreadDice !== null` on the first call, flushes the cascade queue (fires Lefty’s portrait), holds the pending settlement for 1500ms, then sets `lastDice` to the saved dice, clears `dreadDice`, and calls `applyPendingSettlement()` a second time for normal settlement. `isRolling` stays `true` throughout, preventing re-rolls.
+3. **UI (`apps/web/src/components/DiceZone.tsx`):** `onLandEnd` detects `dreadDiceRef.current !== null` and skips the result popup, going straight to `applyPendingSettlement()` + idle. A pulsing "SEVEN OUT?" overlay renders while `dreadDice !== null` (the 1500ms window). When `dreadDice` clears, a "SAVED!" bark-rise flash appears and the dice update to the saved result. The idle result label is also suppressed during the dread window.
+4. **HTTP parser fix (`apps/web/src/store/useGameStore.ts`):** The `data.roll` type in `rollDice()` now includes `originalDice?: [number, number]`, and the constructed `settlement` object spreads it in when present. Previously the field was sent by the server but never included in the typed parse, so `isLeftySave` was always `false` and the dread path never triggered via the HTTP response (only the WebSocket path, which is skipped when HTTP already populated `pendingSettlement`).
 
 ---
 
@@ -470,18 +467,16 @@ Implement a "Hype Particle" system that sends visual energy (e.g., fire/spark pa
 
 **Area:** `apps/web/src/components/TableBoard.tsx` / `apps/web/src/components/GameOverScreen.tsx`
 **Severity:** High
-**Status:** Open
+**Status:** Fixed
 **Source:** Testing session observation
 
 **Issue:**
-The "New Run" button has disappeared from the main gameplay table area. Previously, this button provided a clear path for players to reset their progress or start a fresh gauntlet run without navigating through multiple menus. Its absence prevents players from easily restarting if they find themselves in an unfavorable state or if they simply wish to begin again. 
+The "New Run" button had never been implemented in the `TableBoard` component. The `GameOverScreen` has a "PLAY AGAIN" button but there was no mid-run abandon path for players who wanted to restart without reaching game over.
 
-This may be related to the viewport clipping issues identified in KI-011, where critical buttons on full-screen components were being cut off on mobile devices, or it could be a state-driven rendering bug where the button is not being un-hidden after a specific transition (like returning from the Pub).
+**Fix applied:**
+Added an `onNewRun?: () => void` prop to `TableBoard`. When supplied, a small **NEW** button renders in the top bar (`absolute top-2 left-16`) alongside the mute toggle and How-To-Play button. Clicking it triggers a two-stage inline confirm ("END? YES / NO") to prevent accidental presses. The confirm prompt auto-dismisses after 5 seconds. The button is disabled while a roll is in flight (`isRolling`). In `App.tsx`, `onNewRun={() => void bootstrap(true)}` is passed to `<TableBoard />` only in the main game screen render — tutorial and knowledge-gate overlays intentionally do not receive it.
 
-**Proposed fix:**
-1. **Relocate and Standardize:** Ensure the "New Run" button is part of a persistent "Game Menu" or "Settings" overlay reachable from the `TableBoard` (e.g., adjacent to the "How To Play" button) rather than floating as a stand-alone element.
-2. **State Audit:** Check `useGameStore.ts` to ensure the `status` or `activeTransition` flags are not inadvertently hiding the button during valid gameplay states.
-3. **Responsive Verification:** Apply the `min-h-[100dvh]` fix suggested in KI-011 to the container holding the "New Run" button to ensure it isn't simply pushed off-screen by the browser's dynamic toolbar on mobile.
+The mobile viewport audit (KI-011 linkage) found no `h-screen` or `height: 100vh` usages; all full-screen containers already use `dvh` units, so no viewport fix was needed here.
 
 ---
 
@@ -577,20 +572,22 @@ useEffect(() => {
 
 **Crew:** The Physics Prof (ID: 2)
 **Severity:** High
-**Status:** Open
+**Status:** Fixed
 **Source:** QA Observation
 
 **Issue:**
 When The Physics Prof triggers on a paired roll, he correctly calculates the "nudged" dice (e.g., shifting `[3,3]` to `[4,4]` to hit a point of 8). However, while his `execute()` function returns a `TurnContext` containing these `newDice`, the change is not being propagated back to the master resolution engine. Subsequent crew members in the cascade and the final `settleTurn()` call still see the original, pre-nudge dice values. This results in the portrait animating and the bark-line firing, but with zero impact on the actual game outcome or bankroll.
 
-**Proposed fix:**
-The issue likely resides in the cascade loop (likely in `packages/shared/src/cascade.ts` or the API's roll route). The orchestrator must be updated to treat the `TurnContext` returned by a crew member as the new "source of truth" for the remainder of the cascade.
+**Fix verified:**
+Audited `packages/shared/src/cascade.ts` and `apps/api/src/routes/rolls.ts` during the KI-022 fix pass.
 
-1. **Context Propagation:** Ensure the cascade loop overwrites the local `ctx` variable with the `context` returned by each crew member's `execute()` call.
-2. **Re-classification:** If a crew member modifies `ctx.dice`, the orchestrator should verify that `ctx.rollResult` and all `basePayout` fields in the context have been updated (which `physicsProfessor.ts` already attempts to do via `calculateBasePayouts`).
-3. **Engine Sync:** Ensure the final `settleTurn(finalCtx)` call at the end of the route uses the modified context from the end of the cascade, not a cached version of the initial roll.
+1. **Context propagation** in `cascade.ts`: The loop already does `ctx = result.context` after every `execute()` call (line 254). Each subsequent crew member receives the fully modified context from all prior crew — including updated `dice`, `diceTotal`, `rollResult`, `basePassLinePayout`, `baseOddsPayout`, `baseHardwaysPayout`, `baseStakeReturned`, and `resolvedBets`.
+2. **Physics Prof's `execute()`** in `physicsProfessor.ts`: Returns a complete spread of the incoming context with all payout fields recalculated via `calculateBasePayouts()` and the new `rollResult` via `classifyDiceOutcome()`. No field is missing.
+3. **Engine sync** in `rolls.ts`: `settleTurn(finalContext)` and `computeNextState(run, finalContext, ...)` both receive `finalContext` destructured from `resolveCascade(...)`'s return value — the fully-modified end-of-cascade context. No stale initial-roll snapshot is used.
 
-**File:** `packages/shared/src/crew/physicsProfessor.ts` (Logic verification), `packages/shared/src/cascade.ts` (Orchestration fix)
+The original reproduction may have been against an earlier version of the cascade loop. No code changes were required.
+
+**File:** `packages/shared/src/cascade.ts`, `packages/shared/src/crew/physicsProfessor.ts`
 
 ---
 

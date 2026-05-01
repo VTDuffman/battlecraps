@@ -167,6 +167,12 @@ interface WsTurnSettledPayload {
    * All three are 0 on a losing roll.
    */
   payoutBreakdown:  { passLine: number; odds: number; hardways: number };
+  /**
+   * Present only when Lefty McGuffin blocked a seven-out.
+   * The dice the player actually rolled (summing to 7) before the re-roll.
+   * The client uses this for the two-stage dread→relief cinematic.
+   */
+  originalDice?: [number, number];
 }
 
 // ---------------------------------------------------------------------------
@@ -598,6 +604,7 @@ async function rollHandler(
     newConsecutivePointHits: nextState.consecutivePointHits,
     newBossPointHits:        nextState.bossPointHits,
     payoutBreakdown,
+    ...(finalContext.flags.sevenOutBlocked && { originalDice: dice }),
   };
   io.to(runRoom).emit('turn:settled', settledPayload);
 
@@ -620,6 +627,7 @@ async function rollHandler(
       payoutBreakdown,
       // Updated freeze state so the client knows how many rolls remain.
       mechanicFreeze:  nextMechanicFreeze,
+      ...(finalContext.flags.sevenOutBlocked && { originalDice: dice }),
     },
   });
 }

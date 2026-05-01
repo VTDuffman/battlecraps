@@ -782,7 +782,7 @@ For a floor to be marked as **Implemented**, the following components must be co
 
 **Type:** UX/UI / Accessibility  
 **Area:** Global Typography / `RollLog` / Modals / Layout  
-**Status:** Pending Implementation  
+**Status:** Stashed in Feature Branch - Pending Heavy Re-Work 
 
 ### Summary  
 A global UI overhaul to address severe readability issues, particularly on mobile viewports. The current reliance on sub-12px pixel fonts and low-opacity text over textured backgrounds causes eye strain. This feature introduces an "HD-Retro" typography stack, enforces strict minimum font sizes, replaces translucent text with high-contrast alternatives, and repositions the Roll Log into a mobile-friendly Bottom Sheet.

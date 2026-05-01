@@ -614,3 +614,54 @@ Implement a "Re-roll" or "Flip" animation state in the `DiceZone` component that
 **File:** `apps/web/src/components/DiceZone.tsx`
 
 ---
+
+## KI-030 — User alias/username is incorrectly populated with First + Last Name
+
+**Area:** `apps/api/src/routes/auth.ts` (`authPlugin`), `apps/api/src/db/schema.ts`
+**Severity:** Medium
+**Status:** Implemented
+**Source:** QA Observation after FB-014 implementation
+
+**Issue:**
+The intended "alias" (Clerk username) is not being correctly persisted to the `users.username` column. Instead, the UI is showing "First Name + Last Name" as the username. Although FB-014 added explicit `first_name` and `last_name` columns to the `users` table to separate legal names from game aliases, the `/auth/provision` route is failing to properly distinguish between these values or is receiving incorrect mappings from the frontend. 
+
+Specifically:
+1. In `authPlugin`, the `username` field in the database is filled by `req.body.displayName`. If the frontend passes the full name in this field, the alias is lost.
+2. The `firstName` and `lastName` columns in the database remain `null` for new users because they are not being effectively captured or updated during the provisioning or legacy re-association flow.
+3. This propagates to the leaderboard, where `displayName` (denormalized from `users.username`) shows the full name instead of the player's chosen handle.
+
+**Proposed fix:**
+The backend provisioning logic needs to be stricter about how it handles the data sent by the frontend during the Clerk sync.
+
+1. **Update Provisioning Logic:** In `apps/api/src/routes/auth.ts`, ensure that the `insert` and `update` (for legacy users) calls explicitly map the Clerk `username` property to `users.username` and the Clerk `first_name`/`last_name` properties to our new database columns.
+2. **Frontend Audit:** Ensure the frontend's call to `/auth/provision` is actually sending the Clerk `username` field as the `displayName` property in the request body.
+3. **Retroactive Fix:** Create a one-time migration or script to update existing `users.username` values using the `firstName` and `lastName` columns (if populated) or re-syncing from the Clerk API to move the "Real Name" data into the correct columns and restore the Clerk `username` to the `username` column.
+4. **Leaderboard Update:** Since the leaderboard denormalizes the `username` into `display_name` at submission, any fix to the `users` table will only affect *new* leaderboard entries. A manual update of the `leaderboard_entries` table may be required to sync existing entries with the corrected user aliases.
+
+**File:** `apps/api/src/routes/auth.ts`, `apps/api/src/db/schema.ts`
+
+---
+
+## KI-031 — Roll Log overlaps crew rail on mobile viewports
+
+**Area:** `apps/web/src/components/RollLog.tsx`, `apps/web/src/components/TableBoard.tsx`
+**Severity:** Medium
+**Status:** Open
+**Source:** Playtester observation
+
+**Issue:**
+On mobile devices, the current positioning of the Roll Log overlay obstructs the gameplay UI. Specifically, the log covers the rightmost three crew members in the rail (slots 2, 3, and 4), preventing the player from seeing their cooldown states or "firing" animations. The current implementation lacks a dedicated space in the layout, competing with the crew portraits for screen real estate.
+
+**Proposed fix:**
+Re-engineer the Roll Log as a bottom-sheet drawer with a persistent tab affordance.
+
+1.  **Relocate to Bottom Tab:** Move the Roll Log trigger to a "tab" element positioned globally at the bottom of the screen, below the `CrewPortrait` rail.
+2.  **Drawer Implementation:** Transform the Roll Log into an expandable/collapsible drawer. 
+    * Clicking the bottom tab should animate the drawer upward to cover a portion of the table.
+    * The drawer must be scrollable to allow review of long roll histories.
+3.  **Dismissal Affordance:** Integrate the fix from KI-016 by ensuring the expanded drawer has a clear "Close" or "Collapse" handle to return it to the tab state.
+4.  **Layout Adjustment:** In `TableBoard.tsx`, ensure the main container has sufficient bottom padding to accommodate the persistent "Log Tab" so it does not overlap the crew pictures when collapsed.
+
+**File:** `apps/web/src/components/RollLog.tsx`, `apps/web/src/components/TableBoard.tsx`
+
+---

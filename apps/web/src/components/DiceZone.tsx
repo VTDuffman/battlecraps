@@ -11,7 +11,6 @@
 // =============================================================================
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { useGameStore, selectHypeTier } from '../store/useGameStore.js';
 import { useParticleEmitter } from '../hooks/useParticleEmitter.js';
 import { isBossMarker, getBossMinBet, getMinBet } from '@battlecraps/shared';
@@ -122,8 +121,8 @@ export const DiceZone: React.FC = () => {
   const flipInterval  = useRef<ReturnType<typeof setInterval> | null>(null);
   const phaseRef      = useRef<ThrowPhase>('idle'); // always mirrors throwPhase for use in closures
   const dicePairRef   = useRef<HTMLDivElement>(null);
-  const particleActive    = hypeTier >= 2 && throwPhase !== 'idle';
-  const particleCanvasRef = useParticleEmitter(dicePairRef, particleActive, hypeTier);
+  const particleActive  = hypeTier >= 2 && throwPhase !== 'idle';
+  const particleCanvas  = useParticleEmitter(dicePairRef, particleActive, hypeTier);
 
   // ── Lefty McGuffin dread→relief cinematic ────────────────────────────────
   // dreadDiceRef mirrors the store value so onLandEnd (a callback) can read it
@@ -430,13 +429,7 @@ export const DiceZone: React.FC = () => {
   return (
     <div className="relative flex flex-row items-center gap-4 px-4 py-3 [perspective:500px]">
 
-      {createPortal(
-        <canvas
-          ref={particleCanvasRef}
-          className="fixed inset-0 z-40 pointer-events-none"
-        />,
-        document.body
-      )}
+      {particleCanvas}
 
       {/* ── LEFT: dice display + overlays ───────────────────────────────── */}
       <div className="relative flex-1 flex items-center justify-center" style={{ minHeight: 'clamp(44px,6dvh,64px)' }}>
@@ -452,7 +445,7 @@ export const DiceZone: React.FC = () => {
             else if (throwPhase === 'landing') onLandEnd();
           }}
         >
-          <div className={['flex gap-4 items-center', diceFilterClass(), isNudging ? 'animate-dice-nudge' : ''].join(' ')}>
+          <div className={['relative z-10 flex gap-4 items-center', diceFilterClass(), isNudging ? 'animate-dice-nudge' : ''].join(' ')}>
             {showingDice ? (
               <>
                 <Die value={showingDice[0]} locked={mechanicFreeze !== null} hypeTier={hypeTier} />

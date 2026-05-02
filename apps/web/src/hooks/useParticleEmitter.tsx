@@ -1,4 +1,5 @@
-import { useRef, useEffect, type RefObject } from 'react';
+import { useRef, useEffect } from 'react';
+import type { RefObject } from 'react';
 
 interface Particle {
   x: number;
@@ -15,7 +16,7 @@ export function useParticleEmitter(
   diceRef: RefObject<HTMLDivElement | null>,
   active: boolean,
   tier: number
-): RefObject<HTMLCanvasElement> {
+) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
 
@@ -86,18 +87,6 @@ export function useParticleEmitter(
       // WRITE
       ctx!.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Clip the dice bounding box so particles don't obscure pip faces.
-      // Evenodd fill rule: full-canvas rect XOR dice rect → draw everywhere except
-      // inside the dice. Particles become visible the moment they rise above the top
-      // edge of the dice, creating a "flames/radiation rising from the dice" look.
-      ctx!.save();
-      if (diceRect) {
-        ctx!.beginPath();
-        ctx!.rect(0, 0, canvas.width, canvas.height);
-        ctx!.rect(diceRect.left, diceRect.top, diceRect.width, diceRect.height);
-        ctx!.clip('evenodd');
-      }
-
       for (const p of particlesRef.current) {
         if (p.isSmoke) {
           ctx!.globalCompositeOperation = 'source-over';
@@ -112,8 +101,9 @@ export function useParticleEmitter(
         ctx!.fill();
       }
 
-      // restore resets clip region, composite operation, and alpha in one call
-      ctx!.restore();
+      // Reset composite state so the next tick's clearRect is unaffected
+      ctx!.globalCompositeOperation = 'source-over';
+      ctx!.globalAlpha = 1;
 
       animFrameId = requestAnimationFrame(tick);
     };
@@ -122,5 +112,7 @@ export function useParticleEmitter(
     return () => cancelAnimationFrame(animFrameId);
   }, [active, tier, diceRef]);
 
-  return canvasRef;
+  // Canvas sits at z-0 (below the z-10 dice container). position:fixed keeps it
+  // full-viewport without escaping stacking contexts the way a portal would.
+  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" />;
 }

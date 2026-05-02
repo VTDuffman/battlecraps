@@ -297,6 +297,10 @@ export const TableBoard: React.FC<{ onNewRun?: () => void }> = ({ onNewRun }) =>
         </div>
       </section>
 
+      {/* ── Roll Log spacer — reserves 40 px so the collapsed tab never      */}
+      {/* ── covers the crew portraits.  The flex-1 dice zone absorbs this.   */}
+      <div className="flex-none h-10" aria-hidden="true" />
+
       {/* ── Back-wall flash (dice hit the far wall at the top) ───────────── */}
       {wallFlash && (
         <div

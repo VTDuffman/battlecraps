@@ -645,22 +645,20 @@ The backend provisioning logic needs to be stricter about how it handles the dat
 
 **Area:** `apps/web/src/components/RollLog.tsx`, `apps/web/src/components/TableBoard.tsx`
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed
 **Source:** Playtester observation
 
 **Issue:**
-On mobile devices, the current positioning of the Roll Log overlay obstructs the gameplay UI. Specifically, the log covers the rightmost three crew members in the rail (slots 2, 3, and 4), preventing the player from seeing their cooldown states or "firing" animations. The current implementation lacks a dedicated space in the layout, competing with the crew portraits for screen real estate.
+On mobile devices, the current positioning of the Roll Log overlay obstructs the gameplay UI. Specifically, the log covered the rightmost three crew members in the rail (slots 2, 3, and 4), preventing the player from seeing their cooldown states or "firing" animations. The current implementation lacked a dedicated space in the layout, competing with the crew portraits for screen real estate.
 
-**Proposed fix:**
-Re-engineer the Roll Log as a bottom-sheet drawer with a persistent tab affordance.
+**Fix applied (also resolves KI-016):**
 
-1.  **Relocate to Bottom Tab:** Move the Roll Log trigger to a "tab" element positioned globally at the bottom of the screen, below the `CrewPortrait` rail.
-2.  **Drawer Implementation:** Transform the Roll Log into an expandable/collapsible drawer. 
-    * Clicking the bottom tab should animate the drawer upward to cover a portion of the table.
-    * The drawer must be scrollable to allow review of long roll histories.
-3.  **Dismissal Affordance:** Integrate the fix from KI-016 by ensuring the expanded drawer has a clear "Close" or "Collapse" handle to return it to the tab state.
-4.  **Layout Adjustment:** In `TableBoard.tsx`, ensure the main container has sufficient bottom padding to accommodate the persistent "Log Tab" so it does not overlap the crew pictures when collapsed.
+1. **Bottom-sheet drawer (`RollLog.tsx`):** Replaced the `fixed bottom-4 right-4 w-56` floating box with a `fixed bottom-0 left-0 right-0 max-w-lg mx-auto` full-width drawer. Animation strategy: the sheet is always `50dvh` tall in the DOM. When collapsed, `translateY(calc(100% - 40px))` slides it below the viewport leaving only the 40 px tab visible; when expanded, `translateY(0)` reveals the full sheet. CSS `transition-transform duration-300 ease-in-out` handles the slide.
 
-**File:** `apps/web/src/components/RollLog.tsx`, `apps/web/src/components/TableBoard.tsx`
+2. **Persistent tab affordance (KI-016):** The 40 px handle is always visible and shows a grab pill, "ROLL LOG (N)" count badge, and a chevron (▲ collapsed / ▼ expanded). Tapping the handle or the background scrim collapses the drawer.
+
+3. **Layout spacer (`TableBoard.tsx`):** A `flex-none h-10` spacer div was added after the Crew Rail section inside the flex column. Because the container is `h-[100dvh] flex flex-col`, this spacer is absorbed by the `flex-1` dice-zone, reserving 40 px at the very bottom of the layout so the collapsed tab never overlaps crew portraits.
+
+**Files:** `apps/web/src/components/RollLog.tsx`, `apps/web/src/components/TableBoard.tsx`
 
 ---

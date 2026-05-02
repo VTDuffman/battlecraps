@@ -2,28 +2,23 @@
 // BATTLECRAPS — ROLL LOG
 // apps/web/src/components/RollLog.tsx
 //
-// QA Transaction Log — a fixed, scrollable overlay panel in the bottom-right
-// corner that displays the last 50 roll receipts, newest at the top.
+// QA Transaction Log — a full-width bottom-sheet drawer that slides up from
+// the bottom of the screen.  In the collapsed state only a 40 px "tab" handle
+// is visible; tapping it expands the sheet to 50dvh.
 //
 // Colour coding:
 //   'roll'  → white/gray  — dice result headline
 //   'win'   → green       — payout line
 //   'loss'  → red         — cleared / lost bet
 //   'info'  → yellow      — modifier note (Hype, crew bonus)
-//
-// The panel is always visible during play. Scroll to audit older rolls.
 // =============================================================================
 
 import React, { useState } from 'react';
 import type { RollReceipt, RollReceiptLine, RollReceiptLineKind } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
 
-const CloseIcon: React.FC = () => (
-  <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <line x1="1.5" y1="1.5" x2="9.5" y2="9.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
-    <line x1="9.5" y1="1.5" x2="1.5" y2="9.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
-  </svg>
-);
+// Height of the persistent collapsed handle, in pixels.
+export const ROLL_LOG_TAB_H = 40;
 
 // ---------------------------------------------------------------------------
 // Line colour map
@@ -59,7 +54,6 @@ const ReceiptEntry: React.FC<{ receipt: RollReceipt }> = ({ receipt }) => {
     ? `-$${(Math.abs(receipt.netDelta) / 100).toFixed(2)}`
     : '—';
 
-  // Display time as HH:MM:SS
   const time = new Date(receipt.timestamp).toLocaleTimeString([], {
     hour:   '2-digit',
     minute: '2-digit',
@@ -69,15 +63,10 @@ const ReceiptEntry: React.FC<{ receipt: RollReceipt }> = ({ receipt }) => {
 
   return (
     <div className="py-1.5 border-b border-white/10 last:border-0">
-      {/* Timestamp */}
       <div className="text-[8px] text-white/30 mb-0.5 font-mono">{time}</div>
-
-      {/* Receipt lines */}
       {receipt.lines.map((line, i) => (
         <ReceiptLine key={i} line={line} />
       ))}
-
-      {/* Net delta */}
       <div className={`mt-0.5 font-semibold ${deltaColour}`}>
         Net: {deltaStr}
       </div>
@@ -86,20 +75,25 @@ const ReceiptEntry: React.FC<{ receipt: RollReceipt }> = ({ receipt }) => {
 };
 
 // ---------------------------------------------------------------------------
-// Main panel
+// Main panel — bottom-sheet drawer
+//
+// Animation strategy: the entire sheet (tab + content) is 50dvh tall and
+// position:fixed.  When collapsed, translateY(calc(100% - 40px)) pushes
+// it below the viewport leaving only the 40px tab visible.  When expanded,
+// translateY(0) reveals the full sheet.  CSS transition handles the slide.
 // ---------------------------------------------------------------------------
 
 export const RollLog: React.FC = () => {
   const rollHistory = useGameStore((s) => s.rollHistory);
-  const [collapsed, setCollapsed] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
-  const open  = () => setCollapsed(false);
-  const close = () => setCollapsed(true);
+  const toggle = () => setExpanded((e) => !e);
+  const close  = () => setExpanded(false);
 
   return (
     <>
       {/* ── Background scrim (tap to close) ─────────────────────────────── */}
-      {!collapsed && (
+      {expanded && (
         <div
           className="fixed inset-0 z-40 bg-black/30"
           onClick={close}
@@ -107,73 +101,64 @@ export const RollLog: React.FC = () => {
         />
       )}
 
+      {/* ── Bottom-sheet drawer ─────────────────────────────────────────── */}
       <div
-        className="
-          fixed bottom-4 right-4 z-50
-          w-56
-          bg-black/75 backdrop-blur-sm
-          border border-gold/30
-          rounded
-          text-[9px] font-mono
-          shadow-lg shadow-black/60
-          select-none
-        "
+        className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto z-50 transition-transform duration-300 ease-in-out"
+        style={{
+          transform: expanded
+            ? 'translateY(0)'
+            : `translateY(calc(100% - ${ROLL_LOG_TAB_H}px))`,
+        }}
       >
-        {/* ── Grab handle (open state only) ───────────────────────────────── */}
-        {!collapsed && (
-          <div className="flex justify-center pt-2 pb-0.5">
-            <div className="w-12 h-1.5 bg-white/20 rounded-full" />
-          </div>
-        )}
+        {/* ── Tab / handle — always visible, acts as the toggle trigger ──── */}
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={expanded}
+          aria-label={expanded ? 'Collapse roll log' : 'Expand roll log'}
+          className="
+            w-full flex items-center justify-between gap-2 px-3
+            bg-black/80 backdrop-blur-sm
+            border-t border-x border-gold/30
+            rounded-t select-none cursor-pointer
+          "
+          style={{ height: ROLL_LOG_TAB_H }}
+        >
+          {/* Grab pill — visual affordance for a pull-up sheet */}
+          <div className="w-10 h-1 bg-white/20 rounded-full flex-none" />
 
-        {/* ── Header ──────────────────────────────────────────────────────── */}
-        <div className="w-full flex items-center justify-between px-2 py-1 border-b border-gold/20">
-          <button
-            type="button"
-            onClick={() => setCollapsed((c) => !c)}
-            className="
-              font-pixel text-[7px] text-gold/70 tracking-widest
-              hover:text-gold transition-colors
-              cursor-pointer
-            "
-          >
-            ROLL LOG
-          </button>
+          <span className="font-pixel text-[7px] text-gold/70 tracking-widest">
+            ROLL LOG{rollHistory.length > 0 ? ` (${rollHistory.length})` : ''}
+          </span>
 
-          {/* Close (×) when open; expand (▲) when collapsed */}
-          <button
-            type="button"
-            onClick={collapsed ? open : close}
-            aria-label={collapsed ? 'Open roll log' : 'Close roll log'}
-            className="
-              flex items-center justify-center
-              min-w-[44px] min-h-[44px]
-              -mr-2 -my-1
-              text-white/40 hover:text-white transition-colors
-              cursor-pointer
-            "
-          >
-            {collapsed
-              ? <span className="text-[8px]">▲</span>
-              : <CloseIcon />
-            }
-          </button>
-        </div>
+          {/* Chevron — ▲ = expand, ▼ = collapse */}
+          <span className="text-white/40 text-[10px] flex-none w-5 text-right">
+            {expanded ? '▼' : '▲'}
+          </span>
+        </button>
 
         {/* ── Scrollable receipt list ──────────────────────────────────────── */}
-        {!collapsed && (
-          <div className="max-h-[30dvh] overflow-y-auto overscroll-contain px-2">
-            {rollHistory.length === 0 ? (
-              <div className="py-3 text-center text-white/30 italic">
-                No rolls yet.
-              </div>
-            ) : (
-              rollHistory.map((receipt) => (
+        <div
+          className="
+            bg-black/80 backdrop-blur-sm
+            border-x border-b border-gold/30
+            overflow-y-auto overscroll-contain
+            px-2
+          "
+          style={{ height: `calc(50dvh - ${ROLL_LOG_TAB_H}px)` }}
+        >
+          {rollHistory.length === 0 ? (
+            <div className="py-3 text-center text-white/30 text-[9px] font-mono italic">
+              No rolls yet.
+            </div>
+          ) : (
+            <div className="text-[9px] font-mono">
+              {rollHistory.map((receipt) => (
                 <ReceiptEntry key={receipt.timestamp} receipt={receipt} />
-              ))
-            )}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </>
   );

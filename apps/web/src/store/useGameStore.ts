@@ -266,6 +266,12 @@ export interface GameState {
    */
   _flashKey: number;
 
+  // ── Hype flash ────────────────────────────────────────────────────────────
+  /** Hype streak tier to animate: 'heating-up' (2–3 hits) | 'on-fire' (4+) | null. */
+  hypeFlash: 'heating-up' | 'on-fire' | null;
+  /** Increments each time a hype flash is triggered — React key to re-fire. */
+  _hypeFlashKey: number;
+
   // ── Payout pops ───────────────────────────────────────────────────────────
   /**
    * Per-zone win amounts (cents) to display as floating "+$X.XX" pops.
@@ -590,6 +596,9 @@ export interface GameActions {
    */
   clearUnlockNotification(): void;
 
+  /** Clear the hype flash after the animation completes. */
+  clearHypeFlash(): void;
+
   /**
    * Record that the BOSS_ENTRY transition has been shown for the given marker.
    * Prevents the modal from re-triggering on every render while in a boss fight.
@@ -713,6 +722,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   _wallFlashKey:      0,
   flashType:          null,
   _flashKey:          0,
+  hypeFlash:          null,
+  _hypeFlashKey:      0,
   payoutPops:         null,
   _popsKey:           0,
   pointRingType:      null,
@@ -787,6 +798,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _wallFlashKey:     0,
       flashType:         null,
       _flashKey:         0,
+      hypeFlash:         null,
+      _hypeFlashKey:     0,
       payoutPops:        null,
       _popsKey:          0,
       pointRingType:     null,
@@ -945,6 +958,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       pendingSettlement:   null,
       flashType:           null,
       _flashKey:           0,
+      hypeFlash:           null,
+      _hypeFlashKey:       0,
       payoutPops:          null,
       _popsKey:            0,
       _reRollKey:          0,
@@ -1056,6 +1071,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const {
       pendingSettlement: p,
       _flashKey,
+      _hypeFlashKey,
       _popsKey,
       pendingCascadeQueue,
       status: currentStatus,
@@ -1141,6 +1157,16 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         }
       : null;
 
+    const oldHype = get().hype;
+    const newHype = p.newHype;
+    let flashTier: 'heating-up' | 'on-fire' | null = null;
+
+    if (oldHype < 2.5 && newHype >= 2.5) {
+      flashTier = 'on-fire';
+    } else if (oldHype < 1.5 && newHype >= 1.5) {
+      flashTier = 'heating-up';
+    }
+
     set({
       bankroll:             p.newBankroll,
       bets:                 p.newBets,
@@ -1171,6 +1197,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       pendingSettlement:    null,
       flashType,
       _flashKey:            flashType !== null ? _flashKey + 1 : _flashKey,
+      hypeFlash:            flashTier,
+      _hypeFlashKey:        flashTier !== null ? _hypeFlashKey + 1 : _hypeFlashKey,
       payoutPops,
       _popsKey:             hasPops ? _popsKey + 1 : _popsKey,
       // Flush buffered cascade events at the reveal moment — portrait
@@ -1513,6 +1541,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({ unlockNotification: null });
   },
 
+  clearHypeFlash() {
+    set({ hypeFlash: null });
+  },
+
   setGetToken(fn) {
     set({ getToken: fn });
   },
@@ -1561,3 +1593,6 @@ export const selectDisplayMarkerIndex = (s: GameState): number =>
   (s.pendingTransition || s.activeTransition !== null) && s.celebrationSnapshot !== null
     ? s.celebrationSnapshot.markerIndex
     : s.currentMarkerIndex;
+
+export const selectHypeTier = (s: GameState): 0 | 2 | 3 =>
+  s.hype >= 2.5 ? 3 : s.hype >= 1.5 ? 2 : 0;

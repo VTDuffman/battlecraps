@@ -41,6 +41,7 @@ import { useAnimatedCounter }  from '../hooks/useAnimatedCounter.js';
 import { useFloorTheme }       from '../hooks/useFloorTheme.js';
 import { ChipRain }            from './ChipRain.js';
 import { CompCardFan }         from './CompCardFan.js';
+import { HypeFlash }           from './HypeFlash.js';
 import { FloorEmblem }         from './FloorEmblem.js';
 import { useTutorialContext }  from '../contexts/TutorialContext.js';
 
@@ -82,6 +83,15 @@ export const TableBoard: React.FC<{ onNewRun?: () => void }> = ({ onNewRun }) =>
   }, []);
 
   const triggerChipRainComplete = useGameStore((s) => s.triggerChipRainComplete);
+  const hypeFlash      = useGameStore((s) => s.hypeFlash);
+  const _hypeFlashKey  = useGameStore((s) => s._hypeFlashKey);
+  const clearHypeFlash = useGameStore((s) => s.clearHypeFlash);
+
+  useEffect(() => {
+    if (!hypeFlash) return;
+    const id = setTimeout(() => clearHypeFlash(), 1600);
+    return () => clearTimeout(id);
+  }, [hypeFlash, clearHypeFlash]);
 
   const feltClass =
     streak >= 3 || hype >= 2.0 ? 'animate-felt-hot'  :
@@ -290,6 +300,9 @@ export const TableBoard: React.FC<{ onNewRun?: () => void }> = ({ onNewRun }) =>
           style={{ background: `radial-gradient(ellipse at top, ${theme.accentBright}66 0%, transparent 70%)` }}
         />
       )}
+
+      {/* ── Hype flash overlay ───────────────────────────────────────────── */}
+      {hypeFlash !== null && <HypeFlash key={_hypeFlashKey} tier={hypeFlash} />}
 
       {/* ── Screen flash overlay ──────────────────────────────────────────── */}
       {flashType && (

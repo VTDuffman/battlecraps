@@ -348,17 +348,24 @@ async function rollHandler(
     pointPhaseBlankStreak: run.pointPhaseBlankStreak,
   });
 
-  // ── 7b. Base-game Point Streak Hype tick ───────────────────────────────────
+  // ── 7b. Base-game Hype tick ────────────────────────────────────────────────
   //
-  // On a POINT_HIT, the crowd's excitement escalates before any crew fire.
-  // The tick is applied to initialCtx.hype BEFORE resolveCascade so Holly and
-  // other HYPE crew layer their bonuses on top of the already-seeded excitement.
-  //   Streak entering → tick: 0→+0.05, 1→+0.10, 2→+0.15, 3+→+0.20 (cap)
-  const baseHypeTick = initialCtx.rollResult === 'POINT_HIT'
-    ? getBaseHypeTick(run.consecutivePointHits)
+  // Applied to initialCtx.hype BEFORE resolveCascade so crew HYPE bonuses
+  // stack on top of the already-seeded excitement.
+  //   POINT_HIT  → +0.25 (flat)
+  //   NATURAL    → +0.10
+  //   CRAPS_OUT  → −0.05 (floored at 1.0)
+  const baseHypeTick =
+    initialCtx.rollResult === 'POINT_HIT'  ?  0.25
+    : initialCtx.rollResult === 'NATURAL'  ?  0.10
+    : initialCtx.rollResult === 'CRAPS_OUT' ? -0.05
     : 0;
-  const seededCtx = baseHypeTick > 0
-    ? { ...initialCtx, hype: Math.round((initialCtx.hype + baseHypeTick) * 10_000) / 10_000 }
+  const seededHype = Math.max(
+    1.0,
+    Math.round((initialCtx.hype + baseHypeTick) * 10_000) / 10_000,
+  );
+  const seededCtx = baseHypeTick !== 0
+    ? { ...initialCtx, hype: seededHype }
     : initialCtx;
 
   // ── 7c. Boss outcome modifier (e.g. The Executive: 4s set instantLoss) ────

@@ -976,7 +976,7 @@ Establish an automated Beta versioning system and an in-game Release Notes UI. T
 
 **Type:** Quality of Life / Polish
 **Area:** `apps/web/src/components/DiceZone.tsx`, `apps/web/src/index.css`
-**Status:** Pending Implementation
+**Status:** Attempted to Implement - Total Shitshow - Stashed in Feature Branch
 
 ### Problem
 
@@ -1079,46 +1079,47 @@ Remove the three main dice animation keyframes: `dice-throw`, `dice-tumble`, `di
 
 ---
 
-## FB-021 — "NBA Jam" Style Dice Hype Visualization (3D Particle Effects)
+## FB-021 — "NBA Jam" Style Dice Hype Visualization (2D CSS & Canvas Hybrid)
 
 **Type:** Feature / Polish
-**Area:** 3D Dice Rendering / `DiceZone.tsx` / UI Overlays
+**Area:** Dice Rendering / `DiceZone.tsx` / `useGameStore.ts`
 **Status:** Pending Implementation
-**Dependencies:** Blocked by FB-020 (3D Physics Dice Animation)
+**Dependencies:** None (Decoupled from 3D physics rewrite)
 
 ### Summary
 
-Introduce an "NBA Jam" style visual indicator for the Hype multiplier to give players a visceral, non-UI read on their current momentum. As the Hype multiplier climbs, the 3D dice physically "heat up," emit smoke, and eventually catch fire. This feature builds directly on top of the Three.js WebGL canvas introduced in FB-020.
+Introduce an "NBA Jam" style visual indicator for the Hype multiplier to give players a visceral, non-UI read on their current momentum. As the Hype multiplier climbs, the CSS dice "heat up," emit smoke, and eventually catch fire. This feature overlays retro 2D particle effects and CSS filters onto the existing DOM-based dice animations, avoiding the overhead of a full 3D physics engine.
 
 ### Design Requirements
 
 **1. Hype Thresholds & Visual Tiers**
-The dice materials and particle emitters transition through three distinct phases based on the current Hype multiplier:
-* **Tier 1: Base (Hype < 1.5x)** — Standard 3D dice. No particle effects.
-* **Tier 2: Heating Up (Hype 1.5x – 2.5x)** — Dice material transitions to a reddish-orange hue. A faint, dark smoke particle trail follows the dice through the air during the throw phase.
-* **Tier 3: On Fire (Hype > 2.5x)** — Dice material becomes highly emissive (glowing bright gold/orange). A vibrant fire trail and heavy smoke particles emit from the dice during the throw.
+The dice visuals transition through three distinct phases based on the current Hype multiplier:
+* **Tier 1: Base (Hype < 1.5x)** — Standard dice. No effects.
+* **Tier 2: Heating Up (Hype 1.5x – 2.5x)** — Dice faces take on a reddish-orange tint. A faint, dark smoke particle trail follows the dice through the air during the `dice-throw` and `dice-tumble` phases.
+* **Tier 3: On Fire (Hype > 2.5x)** — Dice take on a glowing gold/orange tint. A vibrant fire trail and heavy smoke particles emit from the dice during the throw.
 
 **2. Idle State & Pulsating Glow**
 When the dice are resting in the `DiceZone` waiting for the player to roll:
 * The dice emit a subtle, slow-rising smoke to remind the player they are currently "hot."
-* The emissive property of the dice material **pulsates**. The frequency (speed) of this pulse scales dynamically with the exact Hype multiplier level (e.g., faster throbbing at 3.5x than at 2.6x).
+* The dice container emits a glowing aura (via CSS `drop-shadow`). This glow **pulsates**, and the frequency of the pulse scales dynamically with the exact Hype multiplier level (e.g., faster throbbing at 3.5x than at 2.6x).
 
 **3. Arcade UI Flashes**
-Crossing a tier threshold triggers a localized, retro arcade-style text flash over the table to hype up the player:
+Crossing a tier threshold triggers a localized, retro arcade-style text flash over the table:
 * Crossing 1.5x triggers: **"HEATING UP!"**
 * Crossing 2.5x triggers: **"ON FIRE!"**
 
-*(Note: Audio stingers for these thresholds are deferred to a future ticket.)*
-
 ### Technical Implementation
 
-**1. Three.js Particle System (`DiceZone.tsx`)**
-* Attach a lightweight particle emitter to each cannon-es rigid body.
-* The emitter's spawn rate is tied to the current phase: high emission during `throwing` and `tumbling`, reduced to a subtle upward drift during `idle`.
+**1. CSS Styling & Pulsation**
+* Use CSS `filter: sepia(1) saturate(5) hue-rotate(-30deg)` (or similar combinations) dynamically applied to the Die `<div>` to tint them without needing new sprite assets.
+* Drive the idle pulsation by passing a CSS variable to the dice container: `style={{ '--pulse-speed': `${calculatePulse(hypeMultiplier)}s` }}`.
+* Create a new `@keyframes hype-pulse` in `index.css` that utilizes this variable to animate a `drop-shadow` filter.
 
-**2. Material Animation Loop**
-* Modify the `MeshStandardMaterial` of the dice in the Three.js render loop.
-* Drive the idle pulsation using a sine wave function tied to the elapsed time and the current Hype multiplier: `emissiveIntensity = base + Math.sin(time * hype) * amplitude`.
+**2. 2D Canvas Particle Emitter (`DiceZone.tsx`)**
+* Insert a `pointer-events-none` full-width/height `<canvas>` element absolutely positioned exactly behind the dice container.
+* Create a `useParticleTrail` hook containing a `requestAnimationFrame` loop.
+* **Tracking:** During a roll, the loop uses `getBoundingClientRect()` (or reads the computed transform matrix) of the two dice `<div>`s to find their current screen X/Y coordinates.
+* **Emission:** The canvas draws simple 2D primitives (circles/squares) fading out over time at those coordinates, simulating fire and smoke trails matching the CSS trajectory.
 
 **3. UI Flash Triggers (`useGameStore.ts`)**
 * Introduce logic during `settleTurn` to detect if the newly calculated Hype multiplier crosses the 1.5x or 2.5x boundaries compared to the previous turn.
@@ -1128,10 +1129,10 @@ Crossing a tier threshold triggers a localized, retro arcade-style text flash ov
 
 | File | Action |
 |---|---|
-| `apps/web/src/components/DiceZone.tsx` | Add particle emitters to rigid bodies; update render loop for dynamic emissive pulsation and color tinting based on Hype state |
+| `apps/web/src/components/DiceZone.tsx` | Add background `<canvas>` layer; wire up `requestAnimationFrame` coordinate tracking; apply dynamic CSS inline variables for tint/pulse |
+| `apps/web/src/index.css` | Add `@keyframes hype-pulse` and related utility classes |
 | `apps/web/src/components/HypeFlash.tsx` | Create: CSS-animated retro text popup for "HEATING UP" and "ON FIRE" |
 | `apps/web/src/store/useGameStore.ts` | Add threshold detection logic in settlement; add flash trigger state |
-
 
 
 

@@ -73,7 +73,7 @@ apps/web/src/                 # React SPA
   transitions/phases/         # 12 cinematic phases: TitleScreen, MarkerIntro, MarkerCelebration, FloorReveal,
                               #   FloorRevealConfirm, BossEntry, BossEntryDread, BossVictory, BossVictoryComp,
                               #   VictoryExplosion, VictoryRecap, VictorySendoff
-  hooks/                      # useAnimatedCounter, useFloorTheme, useCrowdAudio, useTutorialSpotlight
+  hooks/                      # useAnimatedCounter, useFloorTheme, useCrowdAudio, useTutorialSpotlight, useParticleEmitter
   lib/floorThemes.ts          # Three floor theme objects (gritty / elegant / electric)
   lib/socket.ts               # Socket.io client singleton
   lib/tutorialBeats.ts        # Tutorial beat definitions (step data for TutorialOverlay)
@@ -89,6 +89,8 @@ apps/web/src/                 # React SPA
 - Crew cascade is immutable: each `execute()` receives and returns a full `TurnContext` copy
 - All game logic (RNG, payouts, cascade) is server-side only — client never sees pre-settlement state
 - WebSocket (`cascade:trigger`, `turn:settled`, `unlocks:granted`) drives UI animation sequencing and unlock notifications
+- **Particle canvas** (`useParticleEmitter`) must be rendered **unconditionally via `createPortal` to `document.body`** in DiceZone — never gate it on hypeTier. Conditional unmounting breaks the `canvasRef` and kills the rAF loop.
+- **DiePlaceholder** components must be **explicitly rendered** in the false branch of the `showingDice` conditional in DiceZone. The `showingDice` variable falls back to `displayDice` (never null), so the false branch is currently unreachable — but it must remain in place for correctness if that invariant ever changes.
 
 **Payout formula:** `FinalPayout = baseStakeReturned + floor((GrossProfit + additives) × hype × ∏multipliers)`
 
@@ -127,7 +129,7 @@ This project uses strict TypeScript. Whenever you write or modify TypeScript cod
 **Odds:** 4/10 → 3× max, 2:1 | 5/9 → 4× max, 3:2 | 6/8 → 5× max, 6:5
 **Hardways:** 4/10 = 7:1 | 6/8 = 9:1
 **Bet max:** 10% of marker target
-**Hype ticks:** +0.05 / +0.10 / +0.15 / +0.20 per consecutive point hit; resets to 1.0× on seven-out
+**Hype ticks:** POINT_HIT +0.25 | NATURAL +0.10 | CRAPS_OUT −0.05 (floor 1.0); resets to 1.0× on seven-out. Tier thresholds: ≥1.5× = Heating Up, ≥2.5× = On Fire.
 
 ---
 
@@ -153,7 +155,7 @@ docs/manifests/       # manifest-instruction-prompt.md, implemented/ (FB-009, FB
 
 ## Current State
 
-**Status:** Beta. All 12 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped. Boss mechanic framework (FB-010) fully implemented. Title lobby screen (FB-011) live. Crew Expansion & Unlock System (FB-012) live — 30-crew roster, unlock gating, real-time unlock notifications. Tutorial & How to Play system (FB-007) live. Dice Roll Sound Effect (FB-009) live. Versioning & Release Notes (FB-019) live — automated SemVer via build script, in-game release notes modal, "New" indicator with localStorage dismissal. High Roller's Club & Leaderboards (FB-014) live — `leaderboard_entries` table, `GET /api/v1/leaderboard` (global/personal), per-run `highestRollAmplifiedCents` tracking, `LeaderboardScreen` + `LeaderboardEntry` components accessible from TitleLobbyScreen.
+**Status:** Beta. All 12 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped. Boss mechanic framework (FB-010) fully implemented. Title lobby screen (FB-011) live. Crew Expansion & Unlock System (FB-012) live — 30-crew roster, unlock gating, real-time unlock notifications. Tutorial & How to Play system (FB-007) live. Dice Roll Sound Effect (FB-009) live. Versioning & Release Notes (FB-019) live — automated SemVer via build script, in-game release notes modal, "New" indicator with localStorage dismissal. High Roller's Club & Leaderboards (FB-014) live — `leaderboard_entries` table, `GET /api/v1/leaderboard` (global/personal), per-run `highestRollAmplifiedCents` tracking, `LeaderboardScreen` + `LeaderboardEntry` components accessible from TitleLobbyScreen. **NBA Jam Dice Hype Effects (FB-021) live** — three-tier hype visual system: Tier 0 (default ivory dice), Tier 2 / Heating Up (yellow dice + orange heat-glow CSS animation + smoke particle emitter), Tier 3 / On Fire (red dice + chaotic fire-glow CSS animation + fire particle emitter with additive blending); particle canvas portaled to `document.body` via `createPortal`. **Hype Multiplier Rebalance (FB-022) live** — hype now ticks on all roll results (POINT_HIT +0.25, NATURAL +0.10, CRAPS_OUT −0.05 floored at 1.0); `selectHypeTier` and `hypeFlash` trigger both key off `s.hype` thresholds (≥1.5 / ≥2.5) instead of `consecutivePointHits`.
 
 **Active development:** None currently.
 

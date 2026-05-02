@@ -524,3 +524,79 @@
 .vegas-marquee-text {
   animation: vegas-text-glow 2.4s ease-in-out infinite;
 }
+
+/* ── Dice hype-state filter animations ───────────────────────────────────────
+   dice-heat  — orange drop-shadow pulse as the dice "warm up" (e.g. hot streak)
+   dice-fire  — rapid irregular red/yellow flicker simulating full combustion
+   hype-flash — hype multiplier badge entrance: scale-in overshoot → hold → shrink-fade
+   ────────────────────────────────────────────────────────────────────────── */
+
+@keyframes dice-heat {
+  0%, 100% {
+    filter: drop-shadow(0 0  3px rgba(251, 146,  60, 0.30))
+            brightness(1.00)
+            saturate(1.00);
+    transform: scale(1.0);
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(251, 146,  60, 0.85))
+            brightness(1.12)
+            saturate(1.30);
+    transform: scale(1.08);
+  }
+}
+
+@keyframes dice-fire {
+  0%   {
+    filter: drop-shadow(0 0  6px rgba(255, 200,  30, 0.90))
+            brightness(1.20)
+            contrast(1.15)
+            saturate(1.50);
+    transform: scale(1.0);
+  }
+  20%  {
+    filter: drop-shadow(0 0 14px rgba(255,  60,   0, 1.00))
+            brightness(1.35)
+            contrast(1.30)
+            saturate(1.80);
+  }
+  30%  { transform: scale(1.06); }
+  42%  {
+    filter: drop-shadow(0 0  8px rgba(255, 180,   0, 0.95))
+            brightness(1.10)
+            contrast(1.10)
+            saturate(1.40);
+  }
+  55%  { transform: scale(1.12); }
+  63%  {
+    filter: drop-shadow(0 0 18px rgba(220,  30,   0, 1.00))
+            brightness(1.45)
+            contrast(1.40)
+            saturate(2.00);
+  }
+  80%  { transform: scale(1.05); }
+  82%  {
+    filter: drop-shadow(0 0 10px rgba(255, 140,  20, 0.90))
+            brightness(1.25)
+            contrast(1.20)
+            saturate(1.60);
+  }
+  100% {
+    filter: drop-shadow(0 0  6px rgba(255, 200,  30, 0.90))
+            brightness(1.20)
+            contrast(1.15)
+            saturate(1.50);
+    transform: scale(1.0);
+  }
+}
+
+@keyframes hype-flash-enter {
+  0%   { transform: scale(1.12); opacity: 1;   filter: blur(2px); }
+  22%  { transform: scale(1.00); opacity: 1;   filter: blur(0px); }
+  65%  { transform: scale(1.00); opacity: 1;   filter: blur(0px); }
+  100% { transform: scale(0.90); opacity: 0;   filter: blur(1px); }
+}
+
+.animate-dice-heat  { animation: dice-heat        1200ms ease-in-out             infinite; }
+.animate-dice-fire  { animation: dice-fire          560ms linear                 infinite; }
+.animate-hype-flash { animation: hype-flash-enter  1600ms cubic-bezier(0.22,1,0.36,1) forwards; }

@@ -11,7 +11,9 @@
 // =============================================================================
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useGameStore } from '../store/useGameStore.js';
+import { createPortal } from 'react-dom';
+import { useGameStore, selectHypeTier } from '../store/useGameStore.js';
+import { useParticleEmitter } from '../hooks/useParticleEmitter.js';
 import { isBossMarker, getBossMinBet, getMinBet } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
@@ -109,6 +111,7 @@ export const DiceZone: React.FC = () => {
   const bossPointHits       = useGameStore((s) => s.bossPointHits);
   const celebrationSnapshot = useGameStore((s) => s.celebrationSnapshot);
   const dreadDice           = useGameStore((s) => s.dreadDice);
+  const hypeTier            = useGameStore(selectHypeTier);
 
   // ── Throw animation state ─────────────────────────────────────────────────
   const [throwPhase, setThrowPhase]   = useState<ThrowPhase>('idle');
@@ -119,6 +122,8 @@ export const DiceZone: React.FC = () => {
   const flipInterval  = useRef<ReturnType<typeof setInterval> | null>(null);
   const phaseRef      = useRef<ThrowPhase>('idle'); // always mirrors throwPhase for use in closures
   const dicePairRef   = useRef<HTMLDivElement>(null);
+  const particleActive    = hypeTier >= 2 && throwPhase !== 'idle';
+  const particleCanvasRef = useParticleEmitter(dicePairRef, particleActive, hypeTier);
 
   // ── Lefty McGuffin dread→relief cinematic ────────────────────────────────
   // dreadDiceRef mirrors the store value so onLandEnd (a callback) can read it
@@ -380,12 +385,27 @@ export const DiceZone: React.FC = () => {
     }
   }
 
-  const showingDice = throwPhase === 'idle' ? (lastDice ?? null) : displayDice;
+  function diceFilterClass(): string {
+    if (!showingDice) return '';
+    if (hypeTier === 3) return 'animate-dice-fire';
+    if (hypeTier === 2) return 'animate-dice-heat';
+    return '';
+  }
+
+  const showingDice = throwPhase === 'idle' ? (lastDice ?? displayDice) : displayDice;
   const popupResult = pendingResult.current ?? lastResult;
   const popupTotal  = showingDice ? showingDice[0] + showingDice[1] : 0;
 
   return (
     <div className="relative flex flex-row items-center gap-4 px-4 py-3 [perspective:500px]">
+
+      {createPortal(
+        <canvas
+          ref={particleCanvasRef}
+          className="fixed inset-0 z-40 pointer-events-none"
+        />,
+        document.body
+      )}
 
       {/* ── LEFT: dice display + overlays ───────────────────────────────── */}
       <div className="relative flex-1 flex items-center justify-center" style={{ minHeight: 'clamp(44px,6dvh,64px)' }}>
@@ -393,7 +413,7 @@ export const DiceZone: React.FC = () => {
         {/* Animated dice pair */}
         <div
           ref={dicePairRef}
-          className={['flex gap-4 items-center', diceAnimClass(), diceExtraClass, throwPhase !== 'idle' ? 'relative z-10' : ''].join(' ')}
+          className={['', diceAnimClass(), throwPhase !== 'idle' ? 'relative z-10' : ''].join(' ')}
           onAnimationEnd={(e) => {
             if (e.currentTarget !== e.target) return;
             if (throwPhase === 'throwing') onThrowEnd();
@@ -401,17 +421,19 @@ export const DiceZone: React.FC = () => {
             else if (throwPhase === 'landing') onLandEnd();
           }}
         >
-          {showingDice ? (
-            <>
-              <Die value={showingDice[0]} locked={mechanicFreeze !== null} />
-              <Die value={showingDice[1]} />
-            </>
-          ) : (
-            <>
-              <DiePlaceholder />
-              <DiePlaceholder />
-            </>
-          )}
+          <div className={['flex gap-4 items-center', diceFilterClass()].join(' ')}>
+            {showingDice ? (
+              <>
+                <Die value={showingDice[0]} locked={mechanicFreeze !== null} hypeTier={hypeTier} />
+                <Die value={showingDice[1]} hypeTier={hypeTier} />
+              </>
+            ) : (
+              <>
+                <DiePlaceholder />
+                <DiePlaceholder />
+              </>
+            )}
+          </div>
         </div>
 
         {/* Result popup — overlaid over the dice column */}
@@ -521,21 +543,30 @@ const DOT_POSITIONS: Record<number, [number, number][]> = {
   6: [[25, 20], [75, 20], [25, 50], [75, 50], [25, 80], [75, 80]],
 };
 
-const Die: React.FC<{ value: number; locked?: boolean }> = ({ value, locked = false }) => {
+const Die: React.FC<{ value: number; locked?: boolean; extraClass?: string; hypeTier?: number }> = ({ value, locked = false, extraClass = '', hypeTier = 0 }) => {
   const dots = DOT_POSITIONS[value] ?? [];
+  const faceCls = locked
+    ? 'bg-[#b0b0b0] border-[#666] shadow-[3px_3px_0px_#555]'
+    : hypeTier === 3
+      ? 'bg-red-600 border-red-900 shadow-[3px_3px_0px_#7f1d1d]'
+      : hypeTier === 2
+        ? 'bg-yellow-400 border-yellow-700 shadow-[3px_3px_0px_#a16207]'
+        : 'bg-[#e8dcc8] border-[#2a1a0a] shadow-[3px_3px_0px_#2a1a0a]';
+  const pipCls = locked
+    ? 'bg-[#444]'
+    : hypeTier === 3
+      ? 'bg-yellow-400'
+      : hypeTier === 2
+        ? 'bg-black'
+        : 'bg-[#1a0a00]';
   return (
     <div
-      className={[
-        'relative w-12 h-12 rounded-lg border-2 shadow-[3px_3px_0px_#2a1a0a]',
-        locked
-          ? 'bg-[#b0b0b0] border-[#666] shadow-[3px_3px_0px_#555]'
-          : 'bg-[#e8dcc8] border-[#2a1a0a]',
-      ].join(' ')}
+      className={['relative w-12 h-12 rounded-lg border-2', faceCls, extraClass].join(' ')}
     >
       {dots.map(([x, y], i) => (
         <div
           key={i}
-          className={['absolute w-2.5 h-2.5 rounded-full', locked ? 'bg-[#444]' : 'bg-[#1a0a00]'].join(' ')}
+          className={['absolute w-2.5 h-2.5 rounded-full', pipCls].join(' ')}
           style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }}
         />
       ))}

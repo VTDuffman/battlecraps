@@ -31,6 +31,7 @@ import {
   MARKER_TARGETS,
   GAUNTLET,
   BOSS_RULE_HOOKS,
+  COMP_PERK_IDS,
   getMaxBet,
   getMinBet,
   isBossMarker,
@@ -466,7 +467,8 @@ async function rollHandler(
   const receipt = buildRollReceipt(finalContext);
 
   // ── 11. Advance state machine ─────────────────────────────────────────────
-  const nextState = computeNextState(run, finalContext, newBankroll, incomingBets);
+  const hasSeaLegs = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
+  const nextState = computeNextState(run, finalContext, newBankroll, incomingBets, hasSeaLegs);
 
   // ── 11b. Old Pro — +1 shooter on marker clear ─────────────────────────────
   // The Old Pro's execute() is a no-op; his ability is a meta-progression
@@ -667,6 +669,7 @@ function computeNextState(
   finalCtx:     ReturnType<typeof resolveRoll>,
   newBankroll:  number,
   incomingBets: Bets,
+  hasSeaLegs:   boolean = false,
 ): {
   status:               RunRow['status'];
   phase:                RunRow['phase'];
@@ -858,13 +861,22 @@ function computeNextState(
         }
       }
 
+      // Preserve any hype the crew injected during this cascade (e.g. Holly
+      // firing on a Seven-Out gives the next shooter a head start).
+      // Sea Legs (Floor 2 boss comp) preserves half the accumulated hype above 1.0
+      // so a high-hype run isn't completely reset on seven-out.
+      // cascadeHypeDelta captures crew head-start above pre-roll level and stacks on top.
+      const cascadeHypeDelta = Math.max(0, finalCtx.hype - run.hype);
+      const seaLegsBaseline = hasSeaLegs ? 1.0 + (run.hype - 1.0) / 2 : 1.0;
+      const nextHype = Math.max(isLuckyCharmSolo ? 2.0 : 1.0, seaLegsBaseline + cascadeHypeDelta);
+
       return {
         status:               nextStatus,
         phase:                'COME_OUT',
         bankrollCents:        newBankroll,
         shooters:             Math.max(0, newShooters),
         currentPoint:         null,
-        hype:                 isLuckyCharmSolo ? 2.0 : 1.0,  // SEVEN_OUT resets Hype; Lucky Charm re-floors to 2.0 if solo
+        hype:                 nextHype,
         bets:                 clearedBets,
         currentMarkerIndex:   nextMarkerIndex,
         consecutivePointHits:  0,  // Seven Out kills the streak

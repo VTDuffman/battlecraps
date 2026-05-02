@@ -267,10 +267,24 @@ export interface GameState {
   _flashKey: number;
 
   // ── Hype flash ────────────────────────────────────────────────────────────
-  /** Hype streak tier to animate: 'heating-up' (2–3 hits) | 'on-fire' (4+) | null. */
-  hypeFlash: 'heating-up' | 'on-fire' | null;
+  /** Hype streak tier to animate: 'heating-up' (≥1.5×) | 'on-fire' (≥2.5×) | 'nuclear' (≥5.0×) | null. */
+  hypeFlash: 'heating-up' | 'on-fire' | 'nuclear' | null;
   /** Increments each time a hype flash is triggered — React key to re-fire. */
   _hypeFlashKey: number;
+
+  // ── Hype particle flow ────────────────────────────────────────────────────
+  /**
+   * Source of the most recent hype increase for the particle flow animation.
+   * 'dice' = caused by a roll result (POINT_HIT / NATURAL).
+   * number = slotIndex of the crew member whose ability caused the boost.
+   * null  = no hype increase on the last roll, or not yet set.
+   */
+  lastHypeSource: number | 'dice' | null;
+  /**
+   * Increments each time hype increases. React key for the HypeFlow particle
+   * system — each increment spawns a new spark that flies from source to meter.
+   */
+  _hypeKey: number;
 
   // ── Payout pops ───────────────────────────────────────────────────────────
   /**
@@ -426,6 +440,15 @@ export interface GameState {
    * Resets to false on connectToRun.
    */
   victoryComplete: boolean;
+
+  /**
+   * Unix timestamp (ms) set by connectToRun() on every load or resume.
+   * TransitionOrchestrator includes this in its dependency array so the
+   * transition-detection effect re-runs immediately on hydration — even
+   * when currentMarkerIndex and status haven't changed relative to the
+   * previous render snapshot.
+   */
+  lastHydratedAt: number;
 
   /** Monotonically increasing counter used to generate `seq` values. */
   _seqCounter: number;
@@ -724,6 +747,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   _flashKey:          0,
   hypeFlash:          null,
   _hypeFlashKey:      0,
+  lastHypeSource:     null,
+  _hypeKey:           0,
   payoutPops:         null,
   _popsKey:           0,
   pointRingType:      null,
@@ -745,6 +770,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   unlockNotification:   null,
   victoryShown:     false,
   victoryComplete:  false,
+  lastHydratedAt: 0,
   _seqCounter:    0,
   _rollKey:       0,
   _reRollKey:     0,
@@ -770,6 +796,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({
       runId,
       socketStatus:        'connecting',
+      lastHydratedAt:      Date.now(),
       ...(isNewRun && { rollHistory: [], seenCompCount: 0 }),
       pendingCascadeQueue:       [],
       cascadeQueue:              [],
@@ -800,6 +827,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _flashKey:         0,
       hypeFlash:         null,
       _hypeFlashKey:     0,
+      lastHypeSource:    null,
+      _hypeKey:          0,
       payoutPops:        null,
       _popsKey:          0,
       pointRingType:     null,
@@ -960,6 +989,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _flashKey:           0,
       hypeFlash:           null,
       _hypeFlashKey:       0,
+      lastHypeSource:      null,
+      _hypeKey:            0,
       payoutPops:          null,
       _popsKey:            0,
       _reRollKey:          0,
@@ -1072,6 +1103,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       pendingSettlement: p,
       _flashKey,
       _hypeFlashKey,
+      _hypeKey,
       _popsKey,
       pendingCascadeQueue,
       status: currentStatus,
@@ -1159,9 +1191,27 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
     const oldHype = get().hype;
     const newHype = p.newHype;
-    let flashTier: 'heating-up' | 'on-fire' | null = null;
 
-    if (oldHype < 2.5 && newHype >= 2.5) {
+    // Hype particle source detection.
+    // POINT_HIT and NATURAL are the only roll results that tick hype from the
+    // dice outcome itself — everything else must have been crew-driven.
+    let hypeSource: number | 'dice' | null = null;
+    if (newHype > oldHype) {
+      if (p.rollResult === 'POINT_HIT' || p.rollResult === 'NATURAL') {
+        hypeSource = 'dice';
+      } else {
+        const firstCrew = pendingCascadeQueue[0];
+        if (firstCrew !== undefined) {
+          hypeSource = firstCrew.slotIndex;
+        }
+      }
+    }
+
+    let flashTier: 'heating-up' | 'on-fire' | 'nuclear' | null = null;
+
+    if (oldHype < 5.0 && newHype >= 5.0) {
+      flashTier = 'nuclear';
+    } else if (oldHype < 2.5 && newHype >= 2.5) {
       flashTier = 'on-fire';
     } else if (oldHype < 1.5 && newHype >= 1.5) {
       flashTier = 'heating-up';
@@ -1199,6 +1249,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _flashKey:            flashType !== null ? _flashKey + 1 : _flashKey,
       hypeFlash:            flashTier,
       _hypeFlashKey:        flashTier !== null ? _hypeFlashKey + 1 : _hypeFlashKey,
+      lastHypeSource:       hypeSource,
+      _hypeKey:             hypeSource !== null ? _hypeKey + 1 : _hypeKey,
       payoutPops,
       _popsKey:             hasPops ? _popsKey + 1 : _popsKey,
       // Flush buffered cascade events at the reveal moment — portrait
@@ -1594,5 +1646,5 @@ export const selectDisplayMarkerIndex = (s: GameState): number =>
     ? s.celebrationSnapshot.markerIndex
     : s.currentMarkerIndex;
 
-export const selectHypeTier = (s: GameState): 0 | 2 | 3 =>
-  s.hype >= 2.5 ? 3 : s.hype >= 1.5 ? 2 : 0;
+export const selectHypeTier = (s: GameState): 0 | 2 | 3 | 4 =>
+  s.hype >= 5.0 ? 4 : s.hype >= 2.5 ? 3 : s.hype >= 1.5 ? 2 : 0;

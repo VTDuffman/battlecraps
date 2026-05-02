@@ -40,6 +40,7 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
   onPlayAgain,
 }) => {
   const status             = useGameStore((s) => s.status);
+  const lastHydratedAt     = useGameStore((s) => s.lastHydratedAt);
   const pendingTransition  = useGameStore((s) => s.pendingTransition);
   const activeTransition   = useGameStore((s) => s.activeTransition);
   const transitionPhaseIdx = useGameStore((s) => s.transitionPhaseIndex);
@@ -144,6 +145,7 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
     floorRevealShownFor,
     victoryShown,
     markerIntroShownFor,
+    lastHydratedAt,
     setActiveTransition,
     setBossEntryShownFor,
     setFloorRevealShownFor,

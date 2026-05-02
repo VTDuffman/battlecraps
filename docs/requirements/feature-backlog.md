@@ -1083,7 +1083,7 @@ Remove the three main dice animation keyframes: `dice-throw`, `dice-tumble`, `di
 
 **Type:** Feature / Polish
 **Area:** Dice Rendering / `DiceZone.tsx` / `useGameStore.ts`
-**Status:** Pending Implementation
+**Status:** Implemented
 **Dependencies:** None (Decoupled from 3D physics rewrite)
 
 ### Summary

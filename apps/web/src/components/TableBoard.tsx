@@ -21,6 +21,7 @@
 // =============================================================================
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { MARKER_TARGETS, getMaxBet, isBossMarker } from '@battlecraps/shared';
 import { HowToPlayScreen } from './tutorial/HowToPlayScreen.js';
 import {
@@ -130,6 +131,9 @@ export const TableBoard: React.FC<{ onNewRun?: () => void }> = ({ onNewRun }) =>
 
       {/* ── Chip Rain particle system ─────────────────────────────────────── */}
       <ChipRain onTorrent={handleTorrent} onComplete={triggerChipRainComplete} />
+
+      {/* ── Hype particle flow — spark from source to hype meter ─────────── */}
+      <HypeFlow />
 
       {/* ── Boss Room Header — self-hides when not in a boss marker ──────── */}
       <BossRoomHeader />
@@ -270,24 +274,25 @@ export const TableBoard: React.FC<{ onNewRun?: () => void }> = ({ onNewRun }) =>
         {/* Five portrait slots */}
         <div className="flex justify-around items-end gap-1">
           {crewSlots.map((slot, i) => (
-            <CrewPortrait
-              key={i}
-              slotIndex={i}
-              crewId={slot?.crewId ?? null}
-              crewName={crewNameFromId(slot?.crewId ?? null)}
-              visualId={crewVisualIdFromId(slot?.crewId ?? null)}
-              cooldownState={slot?.cooldownState ?? 0}
-              isTriggering={activeSlot === i}
-              barkSeq={activeSlot === i ? (activeBark?.seq ?? null) : null}
-              onAnimationEnd={handleAnimationEnd}
-              onFire={!isRolling && slot !== null ? () => { void fireCrew(i); } : undefined}
-              onSetFreeze={
-                slot?.crewId === 3 && !isRolling && slot.cooldownState === 0 && !mechanicFreeze
-                  ? (v) => { void setMechanicFreeze(v); }
-                  : undefined
-              }
-              freezeState={slot?.crewId === 3 ? mechanicFreeze : null}
-            />
+            <div key={i} data-slot-index={i}>
+              <CrewPortrait
+                slotIndex={i}
+                crewId={slot?.crewId ?? null}
+                crewName={crewNameFromId(slot?.crewId ?? null)}
+                visualId={crewVisualIdFromId(slot?.crewId ?? null)}
+                cooldownState={slot?.cooldownState ?? 0}
+                isTriggering={activeSlot === i}
+                barkSeq={activeSlot === i ? (activeBark?.seq ?? null) : null}
+                onAnimationEnd={handleAnimationEnd}
+                onFire={!isRolling && slot !== null ? () => { void fireCrew(i); } : undefined}
+                onSetFreeze={
+                  slot?.crewId === 3 && !isRolling && slot.cooldownState === 0 && !mechanicFreeze
+                    ? (v) => { void setMechanicFreeze(v); }
+                    : undefined
+                }
+                freezeState={slot?.crewId === 3 ? mechanicFreeze : null}
+              />
+            </div>
           ))}
         </div>
       </section>
@@ -336,7 +341,17 @@ const GameStatus: React.FC = () => {
   const bankroll            = useGameStore((s) => s.bankroll);
   const currentMarkerIndex  = useGameStore((s) => s.currentMarkerIndex);
   const displayMarkerIndex  = useGameStore(selectDisplayMarkerIndex);
+  const _hypeKey            = useGameStore((s) => s._hypeKey);
   const theme               = useFloorTheme();
+
+  // Brief scale-pop on the thermometer when the hype particle arrives (~600ms after roll).
+  const [impactActive, setImpactActive] = useState(false);
+  useEffect(() => {
+    if (_hypeKey === 0) return;
+    const show  = setTimeout(() => setImpactActive(true),  600);
+    const reset = setTimeout(() => setImpactActive(false), 900);
+    return () => { clearTimeout(show); clearTimeout(reset); };
+  }, [_hypeKey]);
 
   const { display: bankrollDisplay, direction: bankrollDir } = useAnimatedCounter(bankroll);
   const bankrollStr = `$${(bankrollDisplay / 100).toFixed(2)}`;
@@ -461,7 +476,12 @@ const GameStatus: React.FC = () => {
               {/* Thermometer bar */}
               <div
                 className="relative w-[7px] rounded-full overflow-hidden bg-black/50 border border-white/10 flex-none"
-                style={{ height: 'clamp(34px, 4dvh, 46px)', boxShadow: barGlow }}
+                style={{
+                  height: 'clamp(34px, 4dvh, 46px)',
+                  boxShadow: barGlow,
+                  transform: impactActive ? 'scale(1.25)' : 'scale(1)',
+                  transition: 'transform 0.15s ease-out',
+                }}
               >
                 <div
                   className={`absolute bottom-0 left-0 right-0 rounded-full transition-all duration-500 ${boilClass}`}
@@ -657,6 +677,104 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => (
     {status.toUpperCase()}
   </div>
 );
+
+// ---------------------------------------------------------------------------
+// Hype particle flow — a glowing spark flies from the source to the meter
+// ---------------------------------------------------------------------------
+
+interface HypeParticleData {
+  id: number;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}
+
+/**
+ * Single particle element.  Uses a requestAnimationFrame tick so the CSS
+ * transition fires on the second paint (start → end), giving a smooth fly-in.
+ * Coordinate math: getBoundingClientRect() returns viewport-relative values.
+ * The element is `position:fixed` at (0,0); `transform:translate(X,Y)` places
+ * its top-left corner.  We subtract half the element size to centre it on the
+ * source/target midpoints.
+ */
+const HypeParticleEl: React.FC<HypeParticleData> = ({ startX, startY, endX, endY }) => {
+  const SIZE = 8;
+  const [arrived, setArrived] = useState(false);
+
+  useEffect(() => {
+    const rafId = requestAnimationFrame(() => setArrived(true));
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
+  const x = (arrived ? endX : startX) - SIZE / 2;
+  const y = (arrived ? endY : startY) - SIZE / 2;
+
+  return (
+    <div
+      style={{
+        position:     'fixed',
+        left:         0,
+        top:          0,
+        width:        SIZE,
+        height:       SIZE,
+        borderRadius: '50%',
+        background:   'radial-gradient(circle, #fef9c3 0%, #f97316 55%, transparent 100%)',
+        boxShadow:    '0 0 10px 4px rgba(249,115,22,0.75), 0 0 20px 8px rgba(250,204,21,0.3)',
+        transform:    `translate(${x}px, ${y}px)`,
+        transition:   'transform 600ms ease-in-out',
+        pointerEvents:'none',
+        zIndex:       9999,
+      }}
+    />
+  );
+};
+
+/**
+ * Renders a single hype-particle each time _hypeKey increments.
+ * Queries the DOM for the source element (dice-zone or crew slot) and the
+ * hype meter using data attributes, then portals a particle to document.body
+ * so it can fly across the full viewport without clipping.
+ */
+const HypeFlow: React.FC = () => {
+  const lastHypeSource = useGameStore((s) => s.lastHypeSource);
+  const _hypeKey       = useGameStore((s) => s._hypeKey);
+  const [particle, setParticle] = useState<HypeParticleData | null>(null);
+
+  useEffect(() => {
+    if (_hypeKey === 0 || lastHypeSource === null) return;
+
+    let sourceEl: Element | null = null;
+    if (lastHypeSource === 'dice') {
+      sourceEl = document.querySelector('[data-tutorial-zone="dice-zone"]');
+    } else {
+      sourceEl = document.querySelector(`[data-slot-index="${lastHypeSource}"]`);
+    }
+    const targetEl = document.querySelector('[data-tutorial-zone="hype-meter"]');
+    if (!sourceEl || !targetEl) return;
+
+    const sr = sourceEl.getBoundingClientRect();
+    const tr = targetEl.getBoundingClientRect();
+
+    setParticle({
+      id:     _hypeKey,
+      startX: sr.left + sr.width  / 2,
+      startY: sr.top  + sr.height / 2,
+      endX:   tr.left + tr.width  / 2,
+      endY:   tr.top  + tr.height / 2,
+    });
+
+    const timer = setTimeout(() => setParticle(null), 850);
+    return () => clearTimeout(timer);
+  }, [_hypeKey, lastHypeSource]);
+
+  if (!particle) return null;
+
+  return createPortal(
+    <HypeParticleEl key={particle.id} {...particle} />,
+    document.body,
+  );
+};
 
 // ---------------------------------------------------------------------------
 // Crew name lookup (mirrors the crew IDs in the shared package)

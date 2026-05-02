@@ -443,23 +443,22 @@ Two-stage dread→relief cinematic implemented:
 
 **Area:** `apps/web/src/store/useGameStore.ts`, `apps/web/src/components/TableBoard.tsx`
 **Severity:** Low (Enhancement)
-**Status:** Open
+**Status:** Fixed
 **Source:** Testing session observation
 
 **Issue:**
-Currently, when Hype increases—whether from a Point Hit or a Crew Member's ability (e.g., Holly)—the change is purely reflected by the numerical readout updating and the thermometer filling. There is no "physical" visual connection between the source of the hype and the meter itself. This makes the increase feel disconnected from the action, whereas a visual "flow" (similar to the chip rain for bankroll) would emphasize the reward.
+Hype increases were reflected only by the thermometer filling and the numeric readout updating — no visual connection existed between the source of the increase and the meter.
 
-**Proposed fix:**
-Implement a "Hype Particle" system that sends visual energy (e.g., fire/spark particles) from the triggering source directly into the Hype Meter.
+**Fix applied:**
+Implemented a DOM-query–based hype particle system requiring zero ref-forwarding:
 
-1.  **Coordinate Tracking:** In `TableBoard.tsx`, use a context or refs to track the screen coordinates of the `DiceZone` (for Point Hits) and each `CrewPortrait` slot.
-2.  **Triggering the Flow:** Update `useGameStore.ts` to include a `lastHypeSource` field (either a slot index or 'dice') and a `_hypeKey` to trigger animations.
-    * In `applyPendingSettlement`, if `p.newHype > oldHype` due to a Point Hit, set the source to `'dice'`.
-    * In the cascade logic, when a Hype-category crew member (ID: 11) fires, set the source to their `slotIndex`.
-3.  **Animation Component:** Create a `HypeFlow` component in `TableBoard.tsx` that renders on top of the felt. When `_hypeKey` increments, it should:
-    * Spawn a burst of particles at the source coordinate.
-    * Animate those particles in an arc toward the `hype-meter` tutorial zone.
-4.  **Impact Feedback:** Add a "Hype Pop" animation to the thermometer in `GameStatus`. When particles arrive, the meter should briefly scale up (`scale: 1.1`) and trigger the `boilClass` animations more intensely to signify it is "heating up".
+1. **Store (`useGameStore.ts`):** Added `lastHypeSource: number | 'dice' | null` and `_hypeKey: number` to `GameState`. In `applyPendingSettlement`, when `newHype > oldHype`, the source is set to `'dice'` for `POINT_HIT` / `NATURAL` roll results, or to the `slotIndex` of the first crew in `pendingCascadeQueue` for crew-driven increases. `_hypeKey` increments on each sourced increase, acting as the animation trigger key.
+
+2. **Coordinate strategy:** No ref-forwarding needed. `HypeFlow` calls `document.querySelector('[data-tutorial-zone="dice-zone"]')` for dice sources and `document.querySelector('[data-slot-index="N"]')` for crew sources. The crew slot wrapper divs in the TableBoard rail received `data-slot-index={i}` attributes. The hype meter already had `data-tutorial-zone="hype-meter"`. `getBoundingClientRect()` returns viewport-relative coordinates which map directly to `position:fixed` CSS values.
+
+3. **`HypeFlow` + `HypeParticleEl` (`TableBoard.tsx`):** When `_hypeKey` increments, `HypeFlow` queries the source and target elements, captures their centre-point coordinates, and portals a `HypeParticleEl` to `document.body`. The particle uses `transform:translate(X,Y)` (GPU-composited, no layout recalc) starting at the source centre. A `requestAnimationFrame` tick on mount then updates the transform to the target centre, triggering a 600ms `ease-in-out` CSS transition — the "fly from source to meter" arc.
+
+4. **Impact pop (`GameStatus`):** `GameStatus` watches `_hypeKey` independently. A 600ms `setTimeout` (matching particle travel time) flips `impactActive → true`; a 900ms timer resets it. While active, the thermometer wrapper gets `transform:scale(1.25)` with a 150ms `ease-out` transition — a tight "pop" that coincides with the particle's arrival.
 
 ---
 
@@ -482,22 +481,32 @@ The mobile viewport audit (KI-011 linkage) found no `h-screen` or `height: 100vh
 
 ## KI-025 — Crew Hype bonuses are wiped by Seven-Out reset
 
-**Area:** `packages/shared/src/crapsEngine.ts` / Server-side Roll Resolution
+**Area:** `apps/api/src/routes/rolls.ts` (`computeNextState` — `SEVEN_OUT` case)
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed
 **Source:** Testing session observation
 
 **Issue:**
-When a "Seven-Out" occurs, the global Hype multiplier is intended to reset to 1.0x for the next shooter. However, if a crew member with a Hype-boosting ability fires during that same roll (e.g., to give the player a "head start" on the next run), their bonus is currently applied to the *pre-reset* Hype value. When the server later enforces the Seven-Out reset, it overwrites the `ctx.hype` value with a hardcoded `1.0`, effectively deleting the crew member's contribution.
+When a "Seven-Out" occurred, the SEVEN_OUT branch in `computeNextState` hardcoded `hype: isLuckyCharmSolo ? 2.0 : 1.0`, discarding any hype crew members injected during the cascade. Holly's "head-start" ability (and any other crew that boosts hype on a Seven-Out) was silently wasted.
 
-As noted in `types.ts`, the server persists `ctx.hype` back to the state *or* resets it to 1.0 on Seven-Out. If the reset happens last, the crew's power is wasted.
+**Fix applied (`apps/api/src/routes/rolls.ts`):**
 
-**Proposed fix:**
-The Hype reset logic should be moved into the initial `resolveRoll` or the beginning of the cascade for Seven-Out results, allowing subsequent crew interactions to build upon the new baseline.
+Resetting hype *before* the cascade would break Lefty McGuffin's save (the player survives but loses their entire hype build-up). Instead, the fix is applied *after* the cascade, in `computeNextState`:
 
-1. In the server-side roll handler (likely `apps/api/src/routes/rolls.ts`), detect a `SEVEN_OUT` result before executing the cascade.
-2. If a `SEVEN_OUT` is detected, initialize the `TurnContext.hype` at `1.0` regardless of the previous `GameState.hype`.
-3. Allow the cascade to proceed as normal. Crew members who fire on a Seven-Out (like "Lucky Charm" or "Holly") will now be adding their `+0.1x` or `+0.5x` to the `1.0` baseline, resulting in a `1.1x` or `1.5x` carried over to the next shooter, preserving the "dread then relief" and "head start" mechanics.
+```typescript
+const cascadeHypeDelta = Math.max(0, finalCtx.hype - run.hype);
+const nextHype = Math.max(isLuckyCharmSolo ? 2.0 : 1.0, 1.0 + cascadeHypeDelta);
+```
+
+- `cascadeHypeDelta` = positive hype added by crew during this cascade (clamped to 0 so crew that could reduce hype don't produce a negative delta).
+- `nextHype` = `1.0 + cascadeHypeDelta` (crew head-start on the reset baseline), floored by Lucky Charm's 2.0 when she is the sole crew member.
+- `TurnSettledPayload` and the DB update already source `hype` from `nextState.hype`, so no additional changes were needed downstream.
+
+**Examples:**
+- No crew hype boost → `cascadeHypeDelta = 0` → `nextHype = 1.0` (unchanged from before)
+- Holly adds +0.5 on Seven-Out → `nextHype = 1.5` (next shooter starts warm)
+- Lucky Charm solo, no other boost → `nextHype = max(2.0, 1.0) = 2.0` (Lucky Charm floor preserved)
+- Lucky Charm solo + Holly +1.5 → `nextHype = max(2.0, 2.5) = 2.5` (crew delta exceeds floor)
 
 ---
 
@@ -505,35 +514,33 @@ The Hype reset logic should be moved into the initial `resolveRoll` or the begin
 
 **Area:** `apps/api/src/routes/rolls.ts` (`computeNextState`)
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed
 **Source:** Testing session observation
 
 **Issue:**
-The "Sea Legs" Comp (rewarded for defeating Mme. Le Prix) is intended to soften the blow of a Seven-Out by resetting Hype to a higher value than the standard 1.0x. However, the current proposed logic of "resetting to 50% of total Hype" makes the perk effectively meaningless at lower Hype levels (e.g., a 2.0x Hype resets to 1.0x, which is the standard baseline). 
+The "Sea Legs" Comp (rewarded for defeating Mme. Le Prix) is intended to soften the blow of a Seven-Out by resetting Hype to a higher value than the standard 1.0x. However, the proposed logic of "resetting to 50% of total Hype" made the perk effectively meaningless at lower Hype levels (e.g., a 2.0x Hype resets to 1.0x, which is the standard baseline). The fix preserves 50% of the *accumulated* Hype (the "juice" above 1.0x) rather than 50% of the absolute total.
 
-To remain a high-tier reward, the math should preserve 50% of the *accumulated* Hype (the "juice" above 1.0x) rather than 50% of the absolute total.
+**Fix applied (`apps/api/src/routes/rolls.ts`):**
 
-**Proposed fix:**
-Update the Hype reset logic in the `SEVEN_OUT` case within `computeNextState` to check for the `SEA_LEGS` comp and apply the "Half of Added" formula.
-
-1.  Modify `computeNextState` to accept the player's `compPerkIds` as an argument.
-2.  In the `SEVEN_OUT` case, calculate the new Hype baseline:
-    * **Standard:** `1.0`
-    * **Sea Legs:** `1.0 + (finalCtx.hype - 1.0) / 2`
-3.  Ensure that `isLuckyCharmSolo` (the 2.0x floor) still takes precedence if it results in a higher value.
+`hasSeaLegs` is derived from `user.compPerkIds` (already loaded from the DB at the top of `rollHandler`), then passed as an optional boolean parameter to `computeNextState`. In the `SEVEN_OUT` branch, the hype reset combines the Sea Legs baseline with the KI-025 cascade delta:
 
 ```typescript
-// apps/api/src/routes/rolls.ts
+const cascadeHypeDelta = Math.max(0, finalCtx.hype - run.hype);
+const seaLegsBaseline = hasSeaLegs ? 1.0 + (run.hype - 1.0) / 2 : 1.0;
+const nextHype = Math.max(isLuckyCharmSolo ? 2.0 : 1.0, seaLegsBaseline + cascadeHypeDelta);
+```
 
-// Current logic:
-hype: isLuckyCharmSolo ? 2.0 : 1.0
+- `seaLegsBaseline` = `1.0` (standard) or `1.0 + accumulated_hype / 2` (Sea Legs)
+- `cascadeHypeDelta` = any positive hype added by crew during the cascade (e.g., Holly's head-start), stacked on top of the baseline
+- `Lucky Charm` solo floor (2.0) still takes precedence via the outer `Math.max`
 
-// Proposed logic:
-const hasSeaLegs = userCompPerkIds.includes(COMP_PERK_IDS.SEA_LEGS);
-const seaLegsBaseline = hasSeaLegs ? 1.0 + (finalCtx.hype - 1.0) / 2 : 1.0;
+`COMP_PERK_IDS` is now imported from `@battlecraps/shared` in `rolls.ts`. No schema changes required — `compPerkIds` was already persisted on the `users` table and returned by `resolveUserByClerkId`.
 
-// Apply the highest available floor
-hype: Math.max(seaLegsBaseline, isLuckyCharmSolo ? 2.0 : 0)```
+**Examples:**
+- No Sea Legs, no crew boost → `seaLegsBaseline = 1.0`, `nextHype = 1.0`
+- Sea Legs, run.hype = 3.0 → `seaLegsBaseline = 2.0`, `nextHype = 2.0` (kept 50% of 2.0 accumulated)
+- Sea Legs + Holly +0.5, run.hype = 3.0 → `nextHype = 2.5`
+- Lucky Charm solo, Sea Legs, run.hype = 1.5 → `nextHype = max(2.0, 1.25) = 2.0`
 
 ---
 
@@ -541,29 +548,18 @@ hype: Math.max(seaLegsBaseline, isLuckyCharmSolo ? 2.0 : 0)```
 
 **Area:** `apps/web/src/transitions/TransitionOrchestrator.tsx` / `apps/web/src/store/useGameStore.ts`
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed
 **Source:** Testing session observation
 
 **Issue:**
 When resuming an existing run from the title screen, the "Floor Reveal" or "Marker Intro" transitions do not play immediately upon entering the table. Instead, they trigger only *after* the first roll has been resolved. This is disorienting because the player has already seen the table and made a bet, only to be interrupted by a "New Floor" cinematic once the dice land.
 
-The root cause lies in the `TransitionOrchestrator`'s reliance on store updates to trigger its `useEffect` hooks. While `connectToRun` resets the "Shown" flags (e.g., `markerIntroShownForMarker`) to `null`, the orchestrator's effects may not be firing on the initial mount of the `TableBoard` because the `currentMarkerIndex` or `floor` hasn't changed relative to the hydrated state. The first roll resolution forces a state update via `applyPendingSettlement`, which "wakes up" the orchestrator.
+The root cause: `connectToRun` resets the "Shown" flags (e.g., `markerIntroShownForMarker`) to `null`, but React's dependency-array diffing sees no *value change* in `currentMarkerIndex` or `status` between renders — they match the hydrated values already in the store. So the detection `useEffect` in `TransitionOrchestrator` never re-fires on mount. Only the first `applyPendingSettlement` call (post-roll) produces a new state write that wakes the effect.
 
-**Proposed fix:**
-1. **Immediate Evaluation:** Update the `useEffect` hooks in `TransitionOrchestrator.tsx` that handle `BOSS_ENTRY`, `MARKER_INTRO`, and `FLOOR_REVEAL` to ensure they run immediately upon mounting if the corresponding "Shown" flag in the store is `null`.
-2. **Phase Priority:** Ensure that if a transition is required on mount, the `TransitionOrchestrator` sets the `activeTransition` before the `TableBoard` completes its first render cycle. 
-3. **State Sync:** In `useGameStore.ts`, consider adding a `lastHydratedAt` timestamp during `connectToRun`. The orchestrator can use this as a dependency to ensure it re-evaluates intro requirements specifically after a "Continue" action.
+**Fix applied:**
 
-```typescript
-// apps/web/src/transitions/TransitionOrchestrator.tsx
-
-// Potential Fix: Ensure the effect isn't just watching index changes, 
-// but also checking for the 'null' (not shown) state on mount.
-useEffect(() => {
-  if (status === 'IDLE_TABLE' && markerIntroShownForMarker === null) {
-    setActiveTransition('MARKER_INTRO');
-  }
-}, [status, markerIntroShownForMarker, setActiveTransition]);```
+1. **Store (`useGameStore.ts`):** Added `lastHydratedAt: number` (initial `0`) to `GameState`. `connectToRun` now writes `lastHydratedAt: Date.now()` on every invocation — fresh run or resume.
+2. **Orchestrator (`TransitionOrchestrator.tsx`):** Subscribes to `lastHydratedAt` and includes it in the main transition-detection `useEffect`'s dependency array. Because `Date.now()` always produces a new value, React sees a changed dependency and immediately re-runs the effect after hydration — before the player can interact. The existing priority chain (`TITLE → BOSS_ENTRY → FLOOR_REVEAL → VICTORY → MARKER_INTRO`) then fires the correct transition right on mount.
 
 ---
 

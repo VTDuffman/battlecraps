@@ -387,6 +387,7 @@ export const DiceZone: React.FC = () => {
 
   function diceFilterClass(): string {
     if (!showingDice) return '';
+    if (hypeTier === 4) return 'animate-dice-nuclear';
     if (hypeTier === 3) return 'animate-dice-fire';
     if (hypeTier === 2) return 'animate-dice-heat';
     return '';
@@ -547,18 +548,22 @@ const Die: React.FC<{ value: number; locked?: boolean; extraClass?: string; hype
   const dots = DOT_POSITIONS[value] ?? [];
   const faceCls = locked
     ? 'bg-[#b0b0b0] border-[#666] shadow-[3px_3px_0px_#555]'
-    : hypeTier === 3
-      ? 'bg-red-600 border-red-900 shadow-[3px_3px_0px_#7f1d1d]'
-      : hypeTier === 2
-        ? 'bg-yellow-400 border-yellow-700 shadow-[3px_3px_0px_#a16207]'
-        : 'bg-[#e8dcc8] border-[#2a1a0a] shadow-[3px_3px_0px_#2a1a0a]';
+    : hypeTier === 4
+      ? 'bg-[#0a2810] border-[#39ff14] shadow-[3px_3px_0px_#1a5c1a]'
+      : hypeTier === 3
+        ? 'bg-red-600 border-red-900 shadow-[3px_3px_0px_#7f1d1d]'
+        : hypeTier === 2
+          ? 'bg-yellow-400 border-yellow-700 shadow-[3px_3px_0px_#a16207]'
+          : 'bg-[#e8dcc8] border-[#2a1a0a] shadow-[3px_3px_0px_#2a1a0a]';
   const pipCls = locked
     ? 'bg-[#444]'
-    : hypeTier === 3
+    : hypeTier === 4
       ? 'bg-yellow-400'
-      : hypeTier === 2
-        ? 'bg-black'
-        : 'bg-[#1a0a00]';
+      : hypeTier === 3
+        ? 'bg-white'
+        : hypeTier === 2
+          ? 'bg-black'
+          : 'bg-[#1a0a00]';
   return (
     <div
       className={['relative w-12 h-12 rounded-lg border-2', faceCls, extraClass].join(' ')}

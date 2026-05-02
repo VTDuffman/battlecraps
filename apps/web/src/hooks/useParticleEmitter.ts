@@ -37,6 +37,7 @@ export function useParticleEmitter(
 
     function emit(x: number, y: number, currentTier: number) {
       const isSmoke = currentTier === 2;
+      const isNuclear = currentTier === 4;
       particlesRef.current.push({
         x,
         y,
@@ -44,7 +45,8 @@ export function useParticleEmitter(
         vy: -(Math.random() * 2 + 1),
         size: isSmoke ? (5 + Math.random() * 5) : (3 + Math.random() * 3),
         life: 1.0,
-        hue: Math.random() * 60 + 20,
+        // Nuclear uses green hue range (100–140); fire/heat use warm orange (20–80)
+        hue: isNuclear ? (Math.random() * 40 + 100) : (Math.random() * 60 + 20),
         isSmoke,
       });
     }
@@ -54,14 +56,15 @@ export function useParticleEmitter(
       lastTime = now;
 
       // READ — before any canvas writes
-      const rect = active ? diceRef.current?.getBoundingClientRect() : undefined;
+      const diceRect = diceRef.current?.getBoundingClientRect();
+      const rect = active ? diceRect : undefined;
 
       // SPAWN — particles per die at the 25% and 75% horizontal marks
       if (active && rect) {
         const cx1 = rect.left + rect.width * 0.25;
         const cx2 = rect.left + rect.width * 0.75;
         const cy = rect.top + rect.height * 0.5;
-        const count = tier === 3 ? 4 : 2;
+        const count = tier === 4 ? 6 : tier === 3 ? 4 : 2;
         for (let i = 0; i < count; i++) {
           emit(cx1, cy, tier);
           emit(cx2, cy, tier);
@@ -82,6 +85,19 @@ export function useParticleEmitter(
 
       // WRITE
       ctx!.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Clip the dice bounding box so particles don't obscure pip faces.
+      // Evenodd fill rule: full-canvas rect XOR dice rect → draw everywhere except
+      // inside the dice. Particles become visible the moment they rise above the top
+      // edge of the dice, creating a "flames/radiation rising from the dice" look.
+      ctx!.save();
+      if (diceRect) {
+        ctx!.beginPath();
+        ctx!.rect(0, 0, canvas.width, canvas.height);
+        ctx!.rect(diceRect.left, diceRect.top, diceRect.width, diceRect.height);
+        ctx!.clip('evenodd');
+      }
+
       for (const p of particlesRef.current) {
         if (p.isSmoke) {
           ctx!.globalCompositeOperation = 'source-over';
@@ -95,8 +111,9 @@ export function useParticleEmitter(
         ctx!.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx!.fill();
       }
-      ctx!.globalCompositeOperation = 'source-over';
-      ctx!.globalAlpha = 1;
+
+      // restore resets clip region, composite operation, and alpha in one call
+      ctx!.restore();
 
       animFrameId = requestAnimationFrame(tick);
     };

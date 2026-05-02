@@ -14,7 +14,7 @@ Please update `@apps/web/src/index.css` to include the following animation keyfr
    - `.animate-dice-fire` (animation: dice-fire 560ms linear infinite)
    - `.animate-hype-flash` (animation: hype-flash-enter 1600ms cubic-bezier(0.22,1,0.36,1) forwards)
 
----
+--- Implemented --- 
 
 ## Step 2: Store State & Hype Tier Logic
 **Goal:** Track the ephemeral HypeFlash state, trigger it at the exact moment of roll reveal, and expose a tier selector.
@@ -31,7 +31,7 @@ Please update `@apps/web/src/store/useGameStore.ts`:
 7. At the very bottom of the file, export a new selector:
    `export const selectHypeTier = (s: GameState): 0 | 2 | 3 => s.consecutivePointHits >= 4 ? 3 : s.consecutivePointHits >= 2 ? 2 : 0;`
 
----
+--- Implemented ---
 
 ## Step 3: High-Performance Particle Emitter
 **Goal:** Create a hook to manage an HTML Canvas 2D particle system that tracks the DOM position of the animated dice in real-time.
@@ -51,7 +51,7 @@ Requirements:
    - UPDATE: Apply gravity (upward drift), horizontal velocity, and decay to `p.life`. Filter out dead particles (`life <= 0`).
    - WRITE: `clearRect`, set `ctx.globalCompositeOperation = 'lighter'`, and draw overlapping `arc`s based on `p.x, p.y, p.size, p.life, p.hue`.
 
----
+--- Implemented ---
 
 ## Step 4: The HypeFlash UI Component
 **Goal:** Build the stateless retro overlay component that flashes across the screen when crossing a tier.
@@ -67,7 +67,7 @@ Requirements:
 4. If tier is `'on-fire'`, render "ON FIRE!" with larger text (`text-[clamp(20px,4dvw,28px)]`), `text-red-400`, and a heavy red drop-shadow.
 5. If tier is `'heating-up'`, render "HEATING UP!" with slightly smaller text (`text-[clamp(16px,3.2dvw,22px)]`), `text-orange-400`, and an orange drop-shadow.
 
----
+--- Implemented ---
 
 ## Step 5: Integrating HypeFlash into the Table Board
 **Goal:** Mount the HypeFlash at the board level so it persists correctly over the dice zone and clears itself automatically.
@@ -80,7 +80,7 @@ Update `@apps/web/src/components/TableBoard.tsx` to integrate the new HypeFlash 
 3. Add a `useEffect` that checks if `hypeFlash` is truthy. If it is, set a `setTimeout` to call `clearHypeFlash()` after `1600ms`. Ensure the timeout is cleared on cleanup.
 4. In the JSX return, render `{hypeFlash !== null && <HypeFlash key={_hypeFlashKey} tier={hypeFlash} />}` as a top-level child of the main container (e.g., alongside the existing screen-flash div).
 
----
+--- Implemented ---
 
 ## Step 6: Upgrading the DiceZone with Visual Tiers
 **Goal:** Apply the CSS filters and mount the Canvas particle overlay to the actual dice.
@@ -96,3 +96,5 @@ Update `@apps/web/src/components/DiceZone.tsx` to wire up the new hype visuals:
 6. In the JSX, add `diceFilterClass()` to the `className` array of the `div` referencing `dicePairRef`.
 7. Move `diceExtraClass` out of that `dicePairRef` wrapper div and instead pass it directly to the child `<Die>` components (to prevent CSS `filter` collision between the heat effect and the gold glow).
 8. Render the particle canvas inside the root `relative` container div, positioned behind everything else: `{hypeTier === 3 && <canvas ref={particleCanvasRef} className="fixed inset-0 z-40 pointer-events-none" style={{ mixBlendMode: 'screen' }} />}`.
+
+--- Implemented ---

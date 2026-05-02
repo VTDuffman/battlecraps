@@ -137,6 +137,13 @@ export interface TurnContextFlags {
    * transitions the run directly to GAME_OVER regardless of bankroll or shooters.
    */
   instantLoss: boolean;
+
+  /**
+   * Set by The Physics Professor when he nudges paired dice toward the active
+   * point. Records the pre-nudge dice values so the client can animate a
+   * physical flip from the original face to the corrected face.
+   */
+  nudgedFrom?: [number, number];
 }
 
 /**

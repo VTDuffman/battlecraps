@@ -591,23 +591,26 @@ The original reproduction may have been against an earlier version of the cascad
 
 **Area:** `apps/web/src/components/DiceZone.tsx`, `packages/shared/src/crew/physicsProfessor.ts`
 **Severity:** Low (Enhancement)
-**Status:** Open
+**Status:** Fixed
 **Source:** QA Observation
 
 **Issue:**
-When The Physics Prof triggers his "nudge" ability, the dice values on the table board update instantly without any visual transition. While the portrait animates and the bark-line fires, the "nudge" feels like a data swap rather than a physical manipulation. To match the thematic "physics" of the crew member, the dice should literally flip or rotate to their new faces during the cascade.
+When The Physics Prof triggers his "nudge" ability, the dice values on the table board update instantly without any visual transition. While the portrait animates and the bark-line fires, the "nudge" feels like a data swap rather than a physical manipulation.
 
-**Proposed fix:**
-Implement a "Re-roll" or "Flip" animation state in the `DiceZone` component that can be triggered mid-cascade.
+**Fix applied:**
+Implemented a two-phase reveal cinematic mirroring the Lefty McGuffin dread→relief pattern:
 
-1. **New Cascade Event:** Add a `dice:nudge` or similar event to the cascade socket payload. This event should include the `targetDice` values.
-2. **DiceZone Update:** In `DiceZone.tsx`, listen for this nudge event. When triggered:
-    * Apply a quick 3D rotation animation (e.g., using Framer Motion's `animate` prop) to the existing dice elements.
-    * The animation should simulate a "flip" (90 or 180-degree rotation) toward the new face value.
-    * Coordinate the timing so the dice flip completes just as the `TurnContext` payouts are updated in the UI.
-3. **Juice:** Add a subtle "tink" sound effect or a small puff of "chalk dust" particles at the dice coordinates when the flip occurs to emphasize the Professor's "correction."
+1. **Engine (`packages/shared/src/types.ts`, `physicsProfessor.ts`):** Added `nudgedFrom?: [number, number]` to `TurnContextFlags`. `physicsProfessor.ts` records `ctx.dice` into `flags.nudgedFrom` before spreading the new dice into the returned context.
 
-**File:** `apps/web/src/components/DiceZone.tsx`
+2. **Server (`apps/api/src/routes/rolls.ts`):** Added `nudgedFrom?: [number, number]` to `WsTurnSettledPayload`. When `finalContext.flags.nudgedFrom` is set, both the WebSocket `turn:settled` emission and the HTTP response `roll` object include the field.
+
+3. **Store (`apps/web/src/store/useGameStore.ts`):** Added `nudgeDice: [number, number] | null` and `_nudgeKey: number` to `GameState`. When a roll response includes `nudgedFrom`, `lastDice` is set to the pre-nudge values (so the throw animation lands on the original paired dice) and `nudgeDice` is populated. `applyPendingSettlement()` gains a Professor Phase: if `p.nudgedFrom !== undefined && nudgeDice !== null`, the cascade queue is flushed (Professor portrait fires), settlement holds for 1000ms, then `lastDice` is updated to the final dice, `nudgeDice` is cleared, `_nudgeKey` increments, and `applyPendingSettlement()` is called again for normal settlement.
+
+4. **UI (`apps/web/src/components/DiceZone.tsx`):** `onLandEnd` detects `nudgeDiceRef.current !== null` and skips the result popup, handing off to `applyPendingSettlement()` (same pattern as the Lefty dread check). A `_nudgeKey` effect sets local `isNudging = true` for 400ms when the key increments. The `animate-dice-nudge` class is applied to the dice flex container while `isNudging` is true.
+
+5. **CSS (`apps/web/src/index.css`):** Added `@keyframes dice-nudge` (scale 1→1.2→1, full 360° rotateX/Y) and `.animate-dice-nudge { animation: dice-nudge 400ms ease-in-out; }`.
+
+**Files:** `packages/shared/src/types.ts`, `packages/shared/src/crew/physicsProfessor.ts`, `apps/api/src/routes/rolls.ts`, `apps/web/src/store/useGameStore.ts`, `apps/web/src/components/DiceZone.tsx`, `apps/web/src/index.css`
 
 ---
 

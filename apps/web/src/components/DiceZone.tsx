@@ -132,6 +132,25 @@ export const DiceZone: React.FC = () => {
   const prevDreadRef  = useRef<[number, number] | null>(null);
   const [showSaveFlash, setShowSaveFlash] = useState(false);
   useEffect(() => { dreadDiceRef.current = dreadDice; }, [dreadDice]);
+
+  // ── Physics Professor nudge cinematic ─────────────────────────────────────
+  // nudgeDiceRef mirrors store.nudgeDice so onLandEnd can read it in a closure.
+  // _nudgeKey increments when the store flips the dice to their final values;
+  // isNudging drives the CSS flip animation class on the dice containers.
+  const nudgeDice    = useGameStore((s) => s.nudgeDice);
+  const _nudgeKey    = useGameStore((s) => s._nudgeKey);
+  const nudgeDiceRef = useRef<[number, number] | null>(null);
+  const nudgeKeyRef  = useRef(0);
+  const [isNudging, setIsNudging] = useState(false);
+  useEffect(() => { nudgeDiceRef.current = nudgeDice; }, [nudgeDice]);
+  useEffect(() => {
+    if (_nudgeKey === nudgeKeyRef.current) return;
+    nudgeKeyRef.current = _nudgeKey;
+    if (_nudgeKey === 0) return; // connectToRun reset — skip
+    setIsNudging(true);
+    const t = setTimeout(() => setIsNudging(false), 400);
+    return () => clearTimeout(t);
+  }, [_nudgeKey]);
   // Detect the dreadDice non-null → null transition to trigger the save flash.
   useEffect(() => {
     if (prevDreadRef.current !== null && dreadDice === null) {
@@ -256,6 +275,17 @@ export const DiceZone: React.FC = () => {
     // will show the "SEVEN OUT?" overlay while applyPendingSettlement holds for
     // 1500ms before revealing Lefty's saved result.
     if (dreadDiceRef.current !== null) {
+      applyPendingSettlement();
+      setPhase('idle');
+      pendingDice.current   = null;
+      pendingResult.current = null;
+      return;
+    }
+
+    // Professor phase: dice landed on the pre-nudge values. Skip the popup;
+    // applyPendingSettlement will fire the portrait for 1000ms then flip the
+    // dice to their corrected values via the _nudgeKey CSS animation.
+    if (nudgeDiceRef.current !== null) {
       applyPendingSettlement();
       setPhase('idle');
       pendingDice.current   = null;
@@ -422,7 +452,7 @@ export const DiceZone: React.FC = () => {
             else if (throwPhase === 'landing') onLandEnd();
           }}
         >
-          <div className={['flex gap-4 items-center', diceFilterClass()].join(' ')}>
+          <div className={['flex gap-4 items-center', diceFilterClass(), isNudging ? 'animate-dice-nudge' : ''].join(' ')}>
             {showingDice ? (
               <>
                 <Die value={showingDice[0]} locked={mechanicFreeze !== null} hypeTier={hypeTier} />

@@ -138,6 +138,8 @@ interface TurnSettledPayload {
   payoutBreakdown:         { passLine: number; odds: number; hardways: number };
   /** Present when Lefty McGuffin blocked a seven-out — the original 7 dice before re-roll. */
   originalDice?:           [number, number];
+  /** Present when The Physics Professor nudged the dice — the paired dice before the nudge. */
+  nudgedFrom?:             [number, number];
 }
 
 // ---------------------------------------------------------------------------
@@ -221,6 +223,19 @@ export interface GameState {
    * applyPendingSettlement delay and the "SEVEN OUT?" overlay in DiceZone.
    */
   dreadDice: [number, number] | null;
+
+  /**
+   * Set to the pre-nudge dice when The Physics Professor fires his nudge ability.
+   * Non-null while the professor phase in applyPendingSettlement is holding for
+   * the 1000ms portrait animation window. Cleared when _nudgeKey increments.
+   */
+  nudgeDice: [number, number] | null;
+
+  /**
+   * Increments each time The Physics Professor completes his nudge sequence.
+   * DiceZone watches this as the trigger key for the dice-flip animation.
+   */
+  _nudgeKey: number;
 
   // ── Bet placement animation ───────────────────────────────────────────────
   /**
@@ -737,6 +752,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   lastRollResult: null,
   lastDelta:      null,
   dreadDice:      null,
+  nudgeDice:      null,
+  _nudgeKey:      0,
   lastBetDelta:   null,
   _betDeltaKey:   0,
   isRolling:          false,
@@ -818,6 +835,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastRollResult:    null,
       lastDelta:         null,
       dreadDice:         null,
+      nudgeDice:         null,
+      _nudgeKey:         0,
       lastBetDelta:      null,
       isRolling:         false,
       pendingSettlement: null,
@@ -911,10 +930,14 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       set((state) => {
         if (state.pendingSettlement !== null) return {};
         const isLeftySave = payload.originalDice !== undefined;
+        const isNudge     = payload.nudgedFrom   !== undefined;
         return {
-          lastDice:          isLeftySave ? payload.originalDice! : payload.dice,
+          lastDice:          isLeftySave ? payload.originalDice!
+                             : isNudge   ? payload.nudgedFrom!
+                             : payload.dice,
           lastRollResult:    payload.rollResult,
           dreadDice:         isLeftySave ? payload.originalDice! : null,
+          nudgeDice:         isNudge     ? payload.nudgedFrom!   : null,
           pendingSettlement: payload,
         };
       });
@@ -981,6 +1004,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastDice:            null,
       lastRollResult:      null,
       lastDelta:           null,
+      dreadDice:           null,
+      nudgeDice:           null,
+      _nudgeKey:           0,
       lastBetDelta:        null,
       _betDeltaKey:        0,
       isRolling:           false,
@@ -1134,6 +1160,31 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           _reRollKey:     s._reRollKey + 1,
         }));
       }, 1500);
+      return;
+    }
+
+    // ── Professor phase (Physics Professor nudge) ─────────────────────────────
+    // On first call: dice have landed on pre-nudge values (nudgeDice is set).
+    // Flush the cascade so the Professor's portrait fires. Hold for 1000ms so
+    // the player sees the portrait animation, then flip the dice to their final
+    // values (incrementing _nudgeKey triggers the CSS flip animation in DiceZone)
+    // and call applyPendingSettlement() again for normal settlement.
+    if (p.nudgedFrom !== undefined && get().nudgeDice !== null) {
+      set({
+        cascadeQueue:        pendingCascadeQueue,
+        pendingCascadeQueue: [],
+        // isRolling stays true — prevents re-roll during portrait window
+      });
+      setTimeout(() => {
+        const cur = get().pendingSettlement;
+        if (!cur) return; // guard: run was reset during the professor window
+        set((s) => ({
+          lastDice:  cur.dice,
+          nudgeDice: null,
+          _nudgeKey: s._nudgeKey + 1,
+        }));
+        get().applyPendingSettlement();
+      }, 1000);
       return;
     }
 
@@ -1413,6 +1464,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           payoutBreakdown: { passLine: number; odds: number; hardways: number };
           mechanicFreeze:  { lockedValue: number; rollsRemaining: number } | null;
           originalDice?:   [number, number];
+          nudgedFrom?:     [number, number];
         };
       };
 
@@ -1436,16 +1488,20 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         newBossPointHits:        data.run.bossPointHits,
         payoutBreakdown:         data.roll.payoutBreakdown,
         ...(data.roll.originalDice !== undefined && { originalDice: data.roll.originalDice }),
+        ...(data.roll.nudgedFrom   !== undefined && { nudgedFrom:   data.roll.nudgedFrom   }),
       };
 
       const isLeftySave = settlement.originalDice !== undefined;
+      const isNudge     = settlement.nudgedFrom   !== undefined;
       set((state) => ({
-        // When Lefty saves, show the original 7-dice so the animation lands on
-        // the intercepted roll. dreadDice being non-null tells DiceZone and
-        // applyPendingSettlement to run the two-phase cinematic.
-        lastDice:          isLeftySave ? settlement.originalDice! : settlement.dice,
+        // Lefty save: land on original 7. Physics Prof nudge: land on pre-nudge dice.
+        // Both use a two-phase reveal so the player sees the intercepted values first.
+        lastDice:          isLeftySave ? settlement.originalDice!
+                           : isNudge   ? settlement.nudgedFrom!
+                           : settlement.dice,
         lastRollResult:    settlement.rollResult,
         dreadDice:         isLeftySave ? settlement.originalDice! : null,
+        nudgeDice:         isNudge     ? settlement.nudgedFrom!   : null,
         pendingSettlement: settlement,
         mechanicFreeze:    data.roll.mechanicFreeze ?? null,
         ...(data.roll.receipt && {

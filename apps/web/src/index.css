@@ -601,6 +601,21 @@
 .animate-dice-fire  { animation: dice-fire          560ms linear                 infinite; }
 .animate-hype-flash { animation: hype-flash-enter  1600ms cubic-bezier(0.22,1,0.36,1) forwards; }
 
+/* ── Physics Professor dice-nudge flip ────────────────────────────────────────
+   Snappy 3-D rotation used when the Professor corrects the dice mid-cascade.
+   Both dice rotate a full 360° (visually returning to 0°) while briefly scaling
+   up at the apex to sell the "physical manipulation" feel. The parent div has
+   perspective:500px so rotateX/Y produce genuine depth.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@keyframes dice-nudge {
+  0%   { transform: scale(1.00) rotateX(  0deg) rotateY(  0deg); }
+  50%  { transform: scale(1.20) rotateX(180deg) rotateY(180deg); }
+  100% { transform: scale(1.00) rotateX(360deg) rotateY(360deg); }
+}
+
+.animate-dice-nudge { animation: dice-nudge 400ms ease-in-out; }
+
 @keyframes dice-nuclear {
   0%, 100% {
     filter: drop-shadow(0 0  4px rgba( 57, 255,  20, 0.60))

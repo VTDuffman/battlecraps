@@ -174,6 +174,12 @@ interface WsTurnSettledPayload {
    * The client uses this for the two-stage dread→relief cinematic.
    */
   originalDice?: [number, number];
+  /**
+   * Present only when The Physics Professor nudged the dice.
+   * The paired dice values before the nudge so the client can animate a
+   * physical flip from original face to corrected face.
+   */
+  nudgedFrom?: [number, number];
 }
 
 // ---------------------------------------------------------------------------
@@ -614,6 +620,7 @@ async function rollHandler(
     newBossPointHits:        nextState.bossPointHits,
     payoutBreakdown,
     ...(finalContext.flags.sevenOutBlocked && { originalDice: dice }),
+    ...(finalContext.flags.nudgedFrom !== undefined && { nudgedFrom: finalContext.flags.nudgedFrom }),
   };
   io.to(runRoom).emit('turn:settled', settledPayload);
 
@@ -637,6 +644,7 @@ async function rollHandler(
       // Updated freeze state so the client knows how many rolls remain.
       mechanicFreeze:  nextMechanicFreeze,
       ...(finalContext.flags.sevenOutBlocked && { originalDice: dice }),
+      ...(finalContext.flags.nudgedFrom !== undefined && { nudgedFrom: finalContext.flags.nudgedFrom }),
     },
   });
 }

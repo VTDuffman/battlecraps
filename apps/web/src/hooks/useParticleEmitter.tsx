@@ -23,8 +23,9 @@ export function useParticleEmitter(
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const { width, height } = canvas.getBoundingClientRect();
+    canvas.width = Math.round(width);
+    canvas.height = Math.round(height);
   }, []);
 
   useEffect(() => {
@@ -56,15 +57,26 @@ export function useParticleEmitter(
       const dt = Math.min(now - lastTime, 50);
       lastTime = now;
 
-      // READ — before any canvas writes
+      // READ — sync buffer to CSS layout (handles resize), then read positions.
+      // Both rects are in viewport space; subtracting the canvas origin converts
+      // dice coords into canvas-local coords, sidestepping any CSS transform trap.
+      const canvasRect = canvas.getBoundingClientRect();
+      const cw = Math.round(canvasRect.width);
+      const ch = Math.round(canvasRect.height);
+      if (canvas.width !== cw || canvas.height !== ch) {
+        canvas.width = cw;
+        canvas.height = ch;
+      }
       const diceRect = diceRef.current?.getBoundingClientRect();
       const rect = active ? diceRect : undefined;
 
-      // SPAWN — particles per die at the 25% and 75% horizontal marks
+      // SPAWN — emission coords local to the canvas, not the viewport
       if (active && rect) {
-        const cx1 = rect.left + rect.width * 0.25;
-        const cx2 = rect.left + rect.width * 0.75;
-        const cy = rect.top + rect.height * 0.5;
+        const localX = rect.left - canvasRect.left;
+        const localY = rect.top - canvasRect.top;
+        const cx1 = localX + rect.width * 0.25;
+        const cx2 = localX + rect.width * 0.75;
+        const cy = localY + rect.height * 0.5;
         const count = tier === 4 ? 6 : tier === 3 ? 4 : 2;
         for (let i = 0; i < count; i++) {
           emit(cx1, cy, tier);
@@ -112,7 +124,8 @@ export function useParticleEmitter(
     return () => cancelAnimationFrame(animFrameId);
   }, [active, tier, diceRef]);
 
-  // Canvas sits at z-0 (below the z-10 dice container). position:fixed keeps it
-  // full-viewport without escaping stacking contexts the way a portal would.
-  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" />;
+  // Absolute so it stays inside the relative DiceZone container (no CSS-transform
+  // trap). Negative insets give particles room to rise above/beside the dice
+  // before fading out. z-0 keeps it below the z-10 dice flex container.
+  return <canvas ref={canvasRef} className="absolute -top-32 -bottom-10 -left-16 -right-16 pointer-events-none z-0" />;
 }

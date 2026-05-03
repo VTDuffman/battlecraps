@@ -120,6 +120,7 @@ export const DiceZone: React.FC = () => {
   const pendingResult = useRef<string | null>(null);
   const flipInterval  = useRef<ReturnType<typeof setInterval> | null>(null);
   const phaseRef      = useRef<ThrowPhase>('idle'); // always mirrors throwPhase for use in closures
+  const containerRef  = useRef<HTMLDivElement>(null);
   const dicePairRef   = useRef<HTMLDivElement>(null);
   const particleActive  = hypeTier >= 2 && throwPhase !== 'idle';
   const particleCanvas  = useParticleEmitter(dicePairRef, particleActive, hypeTier);
@@ -427,9 +428,10 @@ export const DiceZone: React.FC = () => {
   const popupTotal  = showingDice ? showingDice[0] + showingDice[1] : 0;
 
   return (
-    <div className="relative flex flex-row items-center gap-4 px-4 py-3 [perspective:500px]">
-
+    <div ref={containerRef} className="relative">
       {particleCanvas}
+
+      <div className="flex flex-row items-center gap-4 px-4 py-3 [perspective:500px]">
 
       {/* ── LEFT: dice display + overlays ───────────────────────────────── */}
       <div className="relative flex-1 flex items-center justify-center" style={{ minHeight: 'clamp(44px,6dvh,64px)' }}>
@@ -550,6 +552,7 @@ export const DiceZone: React.FC = () => {
           </span>
         )}
       </button>
+      </div>
     </div>
   );
 };

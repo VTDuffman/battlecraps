@@ -57,13 +57,13 @@ export function useParticleEmitter(
       const dt = Math.min(now - lastTime, 50);
       lastTime = now;
 
-      // READ — sync buffer to CSS layout (handles resize), then read positions.
-      // Both rects are in viewport space; subtracting the canvas origin converts
-      // dice coords into canvas-local coords, sidestepping any CSS transform trap.
+      // READ — sync buffer to CSS layout. Use a 2px deadband so sub-pixel
+      // rounding noise never triggers a width/height assignment (which clears
+      // the drawing buffer and kills all live particles mid-frame).
       const canvasRect = canvas.getBoundingClientRect();
-      const cw = Math.round(canvasRect.width);
-      const ch = Math.round(canvasRect.height);
-      if (canvas.width !== cw || canvas.height !== ch) {
+      const cw = Math.ceil(canvasRect.width);
+      const ch = Math.ceil(canvasRect.height);
+      if (Math.abs(canvas.width - cw) > 2 || Math.abs(canvas.height - ch) > 2) {
         canvas.width = cw;
         canvas.height = ch;
       }
@@ -124,8 +124,9 @@ export function useParticleEmitter(
     return () => cancelAnimationFrame(animFrameId);
   }, [active, tier, diceRef]);
 
-  // Absolute so it stays inside the relative DiceZone container (no CSS-transform
-  // trap). Negative insets give particles room to rise above/beside the dice
-  // before fading out. z-0 keeps it below the z-10 dice flex container.
-  return <canvas ref={canvasRef} className="absolute -top-32 -bottom-10 -left-16 -right-16 pointer-events-none z-0" />;
+  // No explicit z-index — keeps this in the same paint step (z-auto, step 6) as
+  // the sibling perspective flex div. DOM order puts the canvas first and the
+  // dice container second, so dice paint on top without any z-index tricks.
+  // -top-[50vh] gives enough headroom to track the dice through the full throw arc.
+  return <canvas ref={canvasRef} className="absolute -top-[50vh] -bottom-8 -left-16 -right-16 pointer-events-none" />;
 }

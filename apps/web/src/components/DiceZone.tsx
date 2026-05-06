@@ -11,6 +11,7 @@
 // =============================================================================
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useGameStore, selectHypeTier } from '../store/useGameStore.js';
 import { useParticleEmitter } from '../hooks/useParticleEmitter.js';
 import { isBossMarker, getBossMinBet, getMinBet } from '@battlecraps/shared';
@@ -122,8 +123,8 @@ export const DiceZone: React.FC = () => {
   const phaseRef      = useRef<ThrowPhase>('idle'); // always mirrors throwPhase for use in closures
   const containerRef  = useRef<HTMLDivElement>(null);
   const dicePairRef   = useRef<HTMLDivElement>(null);
-  const particleActive  = hypeTier >= 2 && throwPhase !== 'idle';
-  const particleCanvas  = useParticleEmitter(dicePairRef, particleActive, hypeTier);
+  const particleActive    = hypeTier >= 2 && throwPhase !== 'idle';
+  const particleCanvasRef = useParticleEmitter(dicePairRef, particleActive, hypeTier);
 
   // ── Lefty McGuffin dread→relief cinematic ────────────────────────────────
   // dreadDiceRef mirrors the store value so onLandEnd (a callback) can read it
@@ -428,8 +429,11 @@ export const DiceZone: React.FC = () => {
   const popupTotal  = showingDice ? showingDice[0] + showingDice[1] : 0;
 
   return (
-    <div ref={containerRef} className="relative">
-      {particleCanvas}
+    <div ref={containerRef} className="relative z-[2]">
+      {createPortal(
+        <canvas ref={particleCanvasRef} className="fixed inset-0 z-[1] pointer-events-none" />,
+        document.body
+      )}
 
       <div className="flex flex-row items-center gap-4 px-4 py-3 [perspective:500px]">
 

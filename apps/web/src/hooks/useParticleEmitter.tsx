@@ -16,16 +16,15 @@ export function useParticleEmitter(
   diceRef: RefObject<HTMLDivElement | null>,
   active: boolean,
   tier: number
-) {
+): RefObject<HTMLCanvasElement> {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const { width, height } = canvas.getBoundingClientRect();
-    canvas.width = Math.round(width);
-    canvas.height = Math.round(height);
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
   }, []);
 
   useEffect(() => {
@@ -57,26 +56,16 @@ export function useParticleEmitter(
       const dt = Math.min(now - lastTime, 50);
       lastTime = now;
 
-      // READ — sync buffer to CSS layout. Use a 2px deadband so sub-pixel
-      // rounding noise never triggers a width/height assignment (which clears
-      // the drawing buffer and kills all live particles mid-frame).
-      const canvasRect = canvas.getBoundingClientRect();
-      const cw = Math.ceil(canvasRect.width);
-      const ch = Math.ceil(canvasRect.height);
-      if (Math.abs(canvas.width - cw) > 2 || Math.abs(canvas.height - ch) > 2) {
-        canvas.width = cw;
-        canvas.height = ch;
-      }
+      // READ — before any canvas writes
       const diceRect = diceRef.current?.getBoundingClientRect();
       const rect = active ? diceRect : undefined;
 
-      // SPAWN — emission coords local to the canvas, not the viewport
+      // SPAWN — particles per die at the 25% and 75% horizontal marks.
+      // Canvas is fixed full-viewport so viewport coords map directly.
       if (active && rect) {
-        const localX = rect.left - canvasRect.left;
-        const localY = rect.top - canvasRect.top;
-        const cx1 = localX + rect.width * 0.25;
-        const cx2 = localX + rect.width * 0.75;
-        const cy = localY + rect.height * 0.5;
+        const cx1 = rect.left + rect.width * 0.25;
+        const cx2 = rect.left + rect.width * 0.75;
+        const cy = rect.top + rect.height * 0.5;
         const count = tier === 4 ? 6 : tier === 3 ? 4 : 2;
         for (let i = 0; i < count; i++) {
           emit(cx1, cy, tier);
@@ -124,9 +113,5 @@ export function useParticleEmitter(
     return () => cancelAnimationFrame(animFrameId);
   }, [active, tier, diceRef]);
 
-  // No explicit z-index — keeps this in the same paint step (z-auto, step 6) as
-  // the sibling perspective flex div. DOM order puts the canvas first and the
-  // dice container second, so dice paint on top without any z-index tricks.
-  // -top-[50vh] gives enough headroom to track the dice through the full throw arc.
-  return <canvas ref={canvasRef} className="absolute -top-[50vh] -bottom-8 -left-16 -right-16 pointer-events-none" />;
+  return canvasRef;
 }

@@ -23,6 +23,7 @@ import { mechanicPlugin }   from './routes/mechanic.js';
 import { authPlugin }       from './routes/auth.js';
 import { crewRosterPlugin } from './routes/crewRoster.js';
 import { leaderboardPlugin } from './routes/leaderboard.js';
+import { reorderPlugin }     from './routes/reorder.js';
 
 const PORT = Number(process.env['PORT'] ?? 3001);
 
@@ -69,6 +70,7 @@ await app.register(mechanicPlugin,   { prefix: '/api/v1' });
 await app.register(authPlugin,       { prefix: '/api/v1' });
 await app.register(crewRosterPlugin, { prefix: '/api/v1' });
 await app.register(leaderboardPlugin, { prefix: '/api/v1' });
+await app.register(reorderPlugin,    { prefix: '/api/v1' });
 
 // Health check — Render health check path (healthCheckPath: /health in render.yaml).
 // Returns 200 so Render considers the deployment healthy and stops the redeploy loop.

@@ -19,10 +19,13 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useGameStore } from '../store/useGameStore.js';
 
 interface CrewPortraitProps {
   slotIndex:      number;
+  sortableId:     string;
   crewId:         number | null;
   crewName:       string | null;
   visualId:       string | null;
@@ -174,6 +177,7 @@ const DIE_FACES = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
 
 export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   slotIndex,
+  sortableId,
   crewId,
   crewName,
   visualId,
@@ -187,6 +191,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
 }) => {
   const portraitRef = useRef<HTMLDivElement>(null);
   const hype        = useGameStore((s) => s.hype);
+  const isRolling   = useGameStore((s) => s.isRolling);
 
   // ── Emoji pulse tier — scales with hype, suppressed while triggering/cooldown
   const onCooldownNow = cooldownState > 0;
@@ -269,6 +274,30 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   const isEmpty  = crewId === null;
   const onCooldown = cooldownState > 0;
 
+  // ── Drag-and-drop sortable ─────────────────────────────────────────────────
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: sortableId, disabled: isEmpty || isRolling });
+
+  const style: React.CSSProperties = {
+    transform:   CSS.Transform.toString(transform),
+    transition,
+    opacity:     isDragging ? 0.4 : 1,
+    zIndex:      isDragging ? 50  : undefined,
+    touchAction: 'none',
+  };
+
+  // Cancel any in-progress hold-to-fire the moment a drag begins — otherwise
+  // the FIRE countdown can complete mid-drag and fire the crew unexpectedly.
+  useEffect(() => {
+    if (isDragging) cancelHold();
+  }, [isDragging, cancelHold]);
+
   // Anchor tooltip to the near viewport edge when in an end slot so it doesn't
   // clip. Slot 0 aligns left (extends rightward); slot 4 aligns right (extends
   // leftward); middle slots center normally.
@@ -279,10 +308,15 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
 
   return (
     <div
+      ref={setNodeRef}
+      style={style}
       className={[
         'group relative flex flex-col items-center gap-1 select-none outline-none',
         isTriggering ? 'z-[60]' : '',
+        isDragging ? 'cursor-grabbing' : isEmpty ? '' : 'cursor-grab',
       ].join(' ')}
+      {...attributes}
+      {...listeners}
       tabIndex={onFire ? 0 : -1}
     >
       {/* ── Bark bubble (floats above the portrait while animating) ───────── */}

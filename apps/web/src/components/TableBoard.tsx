@@ -22,6 +22,15 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { MARKER_TARGETS, getMaxBet, isBossMarker } from '@battlecraps/shared';
 import { HowToPlayScreen } from './tutorial/HowToPlayScreen.js';
 import {
@@ -30,6 +39,7 @@ import {
   selectActiveBark,
   selectHypeDisplay,
   selectDisplayMarkerIndex,
+  selectIsCascading,
   type GameState,
 } from '../store/useGameStore.js';
 import { BettingGrid, ChipSelector } from './BettingGrid.js';
@@ -63,6 +73,9 @@ export const TableBoard: React.FC<{ onNewRun?: () => void }> = ({ onNewRun }) =>
   const { wallFlash, _wallFlashKey }       = useGameStore(selectWallFlash);
   const streak       = useGameStore((s) => s.consecutivePointHits);
   const hype         = useGameStore((s) => s.hype);
+  const reorderCrew  = useGameStore((s) => s.reorderCrew);
+  const slotIds      = useGameStore((s) => s.slotIds);
+  const isCascading  = useGameStore(selectIsCascading);
   const { muted, toggleMute } = useCrowdAudio();
   const theme = useFloorTheme();
 
@@ -104,6 +117,20 @@ export const TableBoard: React.FC<{ onNewRun?: () => void }> = ({ onNewRun }) =>
   const handleAnimationEnd = useCallback(() => {
     dequeueEvent();
   }, [dequeueEvent]);
+
+  // DnD sensors — 150 ms activation delay prevents accidental drags from taps.
+  // Both sensors are emptied while rolling or cascading so the rail is locked.
+  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { delay: 150, tolerance: 5 } });
+  const touchSensor   = useSensor(TouchSensor,   { activationConstraint: { delay: 150, tolerance: 5 } });
+  const sensors = useSensors(...(isRolling || isCascading ? [] : [pointerSensor, touchSensor]));
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = slotIds.indexOf(active.id as string);
+    const newIndex = slotIds.indexOf(over.id   as string);
+    void reorderCrew(oldIndex, newIndex);
+  }, [slotIds, reorderCrew]);
 
   return (
     <div
@@ -272,29 +299,34 @@ export const TableBoard: React.FC<{ onNewRun?: () => void }> = ({ onNewRun }) =>
         </div>
 
         {/* Five portrait slots */}
-        <div className="flex justify-around items-end gap-1">
-          {crewSlots.map((slot, i) => (
-            <div key={i} data-slot-index={i}>
-              <CrewPortrait
-                slotIndex={i}
-                crewId={slot?.crewId ?? null}
-                crewName={crewNameFromId(slot?.crewId ?? null)}
-                visualId={crewVisualIdFromId(slot?.crewId ?? null)}
-                cooldownState={slot?.cooldownState ?? 0}
-                isTriggering={activeSlot === i}
-                barkSeq={activeSlot === i ? (activeBark?.seq ?? null) : null}
-                onAnimationEnd={handleAnimationEnd}
-                onFire={!isRolling && slot !== null ? () => { void fireCrew(i); } : undefined}
-                onSetFreeze={
-                  slot?.crewId === 3 && !isRolling && slot.cooldownState === 0 && !mechanicFreeze
-                    ? (v) => { void setMechanicFreeze(v); }
-                    : undefined
-                }
-                freezeState={slot?.crewId === 3 ? mechanicFreeze : null}
-              />
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <SortableContext items={slotIds} strategy={horizontalListSortingStrategy}>
+            <div className="flex justify-around items-end gap-1">
+              {crewSlots.map((slot, i) => (
+                <div key={slotIds[i] ?? `slot-${i}`} data-slot-index={i}>
+                  <CrewPortrait
+                    sortableId={slotIds[i] ?? `slot-${i}`}
+                    slotIndex={i}
+                    crewId={slot?.crewId ?? null}
+                    crewName={crewNameFromId(slot?.crewId ?? null)}
+                    visualId={crewVisualIdFromId(slot?.crewId ?? null)}
+                    cooldownState={slot?.cooldownState ?? 0}
+                    isTriggering={activeSlot === i}
+                    barkSeq={activeSlot === i ? (activeBark?.seq ?? null) : null}
+                    onAnimationEnd={handleAnimationEnd}
+                    onFire={!isRolling && slot !== null ? () => { void fireCrew(i); } : undefined}
+                    onSetFreeze={
+                      slot?.crewId === 3 && !isRolling && slot.cooldownState === 0 && !mechanicFreeze
+                        ? (v) => { void setMechanicFreeze(v); }
+                        : undefined
+                    }
+                    freezeState={slot?.crewId === 3 ? mechanicFreeze : null}
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </SortableContext>
+        </DndContext>
       </section>
 
       {/* ── Roll Log spacer — reserves 40 px so the collapsed tab never      */}

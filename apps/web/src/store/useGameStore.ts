@@ -18,6 +18,7 @@
 // =============================================================================
 
 import { create } from 'zustand';
+import { arrayMove } from '@dnd-kit/sortable';
 import { socket } from '../lib/socket.js';
 
 const API_BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? '';
@@ -513,6 +514,14 @@ export interface GameState {
    * Resets to 0 only on a new run (not on reconnect to the same run).
    */
   seenCompCount: number;
+
+  /**
+   * Stable dnd-kit item IDs for the five crew slots, in display order.
+   * Mirrors crewSlots length (always 5). Reordered in sync with crewSlots
+   * so SortableContext reflects the player's current arrangement.
+   * Reset to positional defaults on every new/resumed run.
+   */
+  slotIds: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -713,6 +722,13 @@ export interface GameActions {
    * Called by CompCardFan after the newest card's animation ends.
    */
   markCompsAnimated(count: number): void;
+
+  /**
+   * Reorder the crew rail by moving the slot at `oldIndex` to `newIndex`.
+   * Applies an optimistic UI update immediately, then syncs to the server.
+   * Reverts both `crewSlots` and `slotIds` on any network or server error.
+   */
+  reorderCrew(oldIndex: number, newIndex: number): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -796,6 +812,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   getToken:       null,
   tutorialCheatDice: null,
   seenCompCount:     0,
+  slotIds: ['slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4'],
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -815,6 +832,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       socketStatus:        'connecting',
       lastHydratedAt:      Date.now(),
       ...(isNewRun && { rollHistory: [], seenCompCount: 0 }),
+      slotIds: ['slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4'],
       pendingCascadeQueue:       [],
       cascadeQueue:              [],
       pendingTransition:         false,
@@ -1679,6 +1697,53 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   markCompsAnimated(count) {
     set({ seenCompCount: count });
+  },
+
+  async reorderCrew(oldIndex, newIndex) {
+    const { runId, crewSlots, slotIds } = get();
+    if (!runId) return;
+
+    const newSlots   = arrayMove(crewSlots, oldIndex, newIndex) as StoredCrewSlots;
+    const newSlotIds = arrayMove(slotIds,   oldIndex, newIndex);
+
+    const previousSlots   = crewSlots;
+    const previousSlotIds = slotIds;
+
+    // Optimistic update — UI reflects the new order immediately.
+    set({ crewSlots: newSlots, slotIds: newSlotIds });
+
+    // Derive the permutation the server expects: slotOrder[newPosition] = oldPosition.
+    // Computed mathematically from arrayMove semantics to avoid reference-equality
+    // bugs with null slots (null === null returns the wrong index for every empty slot).
+    const slotOrder = Array.from({ length: 5 }, (_, newPos): number => {
+      if (newPos === newIndex) return oldIndex;
+      if (oldIndex < newIndex && newPos >= oldIndex && newPos < newIndex) return newPos + 1;
+      if (oldIndex > newIndex && newPos > newIndex && newPos <= oldIndex) return newPos - 1;
+      return newPos;
+    });
+
+    try {
+      const token = await get().getToken?.();
+      const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/crew/reorder`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token ?? ''}`,
+        },
+        body: JSON.stringify({ slotOrder }),
+      });
+
+      if (!res.ok) throw new Error(`Reorder failed: ${res.status}`);
+
+      // Sync crewSlots from the authoritative server response.
+      // slotIds remain as already set — the server does not track them.
+      const data = (await res.json()) as { crewSlots: StoredCrewSlots };
+      set({ crewSlots: data.crewSlots });
+
+    } catch {
+      // Rollback both arrays so the UI stays consistent with server state.
+      set({ crewSlots: previousSlots, slotIds: previousSlotIds });
+    }
   },
 }));
 

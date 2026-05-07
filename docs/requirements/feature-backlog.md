@@ -1140,7 +1140,8 @@ Crossing a tier threshold triggers a localized, retro arcade-style text flash ov
 
 **Type:** Feature / UX
 **Area:** Crew System / `TableBoard.tsx`, `CrewPortrait.tsx`, `useGameStore.ts`
-**Status:** Pending Implementation
+**Status:** Implemented
+**Technical design:** `docs/design/fb-022-crew-rail-dnd-tdd.md`
 
 ### Summary
 
@@ -1160,27 +1161,27 @@ The crew system currently dictates the cascade order automatically. Because casc
 ### Technical Implementation
 
 **1. React Drag-and-Drop Library**
-* Introduce `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities` to the frontend. It is the modern industry standard, highly modular, handles accessibility out-of-the-box, and supports the exact 150ms sensor delays we need for mobile safety.
+`@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities` added to the frontend. `PointerSensor` + `TouchSensor` with a 150ms activation constraint prevent accidental drags on the betting grid.
 
-**2. Frontend Wiring (`apps/web/src/`)**
-* **Container:** Wrap the rail mapping container (likely inside `TableBoard.tsx` or a dedicated `CrewRail` component) with `<DndContext>` and `<SortableContext>`. 
-* **Item:** Wrap `CrewPortrait.tsx` with the `useSortable` hook. Apply the transform CSS to allow picking up and moving the portrait.
-* **Store (`useGameStore.ts`):** Add a `reorderCrew(activeId, overId)` action. This reorders the local `activeCrew` array and immediately emits a new WebSocket event (e.g., `crew:reorder`) with the sorted ID array.
+**2. HTTP over WebSocket**
+Reorder persists via `POST /api/v1/runs/:id/crew/reorder` (not WebSocket — all mutations are HTTP per the architectural contract). Body: `{ slotOrder: number[] }` where `slotOrder[newPos] = oldPos`. Server remaps `crewSlots`, writes with an optimistic lock on `updatedAt`, returns `{ crewSlots }`. `rolls.ts` required no changes — it already iterates `crewSlots` in index order.
 
-**3. Backend Wiring (`apps/api/src/`)**
-* Implement the listener for the `crew:reorder` WebSocket event (likely in `lib/io.ts` or wherever socket events are bound).
-* Persist the new array order to the active run's state so the engine's `computeNextState` executes the cascade in the user's defined order.
+**3. Frontend Wiring**
+`DndContext` + `SortableContext` wrap the crew rail in `TableBoard.tsx`. `slotIds: string[]` (`["slot-0"…"slot-4"]`) is stored in Zustand and passed to `SortableContext` — React keys and `useSortable` IDs key off these stable strings. `handleDragEnd` resolves indices via `slotIds.indexOf()`. The `useSortable` hook in `CrewPortrait.tsx` is `disabled` when `isEmpty || isRolling`. Sensors are emptied (`[]`) when `isRolling || isCascading` to lock the rail during rolls and cascade animations. A `useEffect` on `isDragging` calls `cancelHold()` to prevent the FIRE countdown completing mid-drag.
 
-### Files Affected (Estimated)
+**4. `slotOrder` Permutation Bug Fix**
+The initial `findIndex`-based permutation derivation (`previousSlots.findIndex(s => s === newSlots[newPos])`) produced duplicate indices when multiple slots were `null` (all `null === null` comparisons resolved to the first null's index). The server's duplicate-check rejected these as 422, triggering rollback and a visible snap-back. Fixed by computing the inverse permutation mathematically from `oldIndex`/`newIndex` directly.
+
+### Files Changed
 
 | File | Action |
 |---|---|
-| `apps/web/package.json` | Add `@dnd-kit` dependencies |
-| `apps/web/src/components/TableBoard.tsx` | Wrap crew map in `DndContext` and `SortableContext` |
-| `apps/web/src/components/CrewPortrait.tsx` | Implement `useSortable` and drag listeners |
-| `apps/web/src/store/useGameStore.ts` | Add `reorderCrew` action and socket emit |
-| `apps/api/src/lib/io.ts` | Add socket listener for `crew:reorder` |
-| `apps/api/src/routes/rolls.ts` | Ensure cascade iterates over the updated layout order |
+| `apps/web/package.json` | Added `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities` |
+| `apps/api/src/routes/reorder.ts` | **New** — `POST /runs/:id/crew/reorder` handler |
+| `apps/api/src/server.ts` | Registered `reorderPlugin` |
+| `apps/web/src/store/useGameStore.ts` | Added `slotIds` state + `reorderCrew` action |
+| `apps/web/src/components/TableBoard.tsx` | `DndContext` + `SortableContext` + `handleDragEnd` |
+| `apps/web/src/components/CrewPortrait.tsx` | `useSortable` hook wiring + `cancelHold` on drag |
 
 
 

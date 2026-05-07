@@ -667,7 +667,7 @@ On mobile devices, the current positioning of the Roll Log overlay obstructs the
 
 **Area:** `apps/web/src/store/useGameStore.ts` (`applyPendingSettlement`), `apps/web/src/components/DiceZone.tsx`
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed.
 **Source:** Playtester observation
 
 **Issue:**

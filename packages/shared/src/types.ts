@@ -352,6 +352,10 @@ export interface RollReceipt {
   lines: RollReceiptLine[];
   /** Net bankroll change in cents (positive = net gain, negative = net loss, 0 = no resolution). */
   netDelta: number;
+  /** Present when Lefty McGuffin blocked a seven-out — the original 7 dice before re-roll. */
+  originalDice?: [number, number];
+  /** Present when The Physics Professor nudged the dice — the paired dice before the nudge. */
+  nudgedFrom?: [number, number];
 }
 
 // ---------------------------------------------------------------------------

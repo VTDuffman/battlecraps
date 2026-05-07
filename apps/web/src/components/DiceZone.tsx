@@ -120,6 +120,7 @@ export const DiceZone: React.FC = () => {
   const pendingDice   = useRef<[number, number] | null>(null);
   const pendingResult = useRef<string | null>(null);
   const flipInterval  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const failsafeRef   = useRef<ReturnType<typeof setTimeout>  | null>(null);
   const phaseRef      = useRef<ThrowPhase>('idle'); // always mirrors throwPhase for use in closures
   const containerRef  = useRef<HTMLDivElement>(null);
   const dicePairRef   = useRef<HTMLDivElement>(null);
@@ -141,7 +142,9 @@ export const DiceZone: React.FC = () => {
   const nudgeDice    = useGameStore((s) => s.nudgeDice);
   const _nudgeKey    = useGameStore((s) => s._nudgeKey);
   const nudgeDiceRef = useRef<[number, number] | null>(null);
-  const nudgeKeyRef  = useRef(0);
+  // Initialize to current store value so a remount after a Professor nudge
+  // doesn't see a stale 0 → N "change" and spuriously restart the animation.
+  const nudgeKeyRef  = useRef(_nudgeKey);
   const [isNudging, setIsNudging] = useState(false);
   useEffect(() => { nudgeDiceRef.current = nudgeDice; }, [nudgeDice]);
   useEffect(() => {
@@ -175,6 +178,14 @@ export const DiceZone: React.FC = () => {
     }
   }
 
+  // Cancel the roll fail-safe timer (called on normal settlement or unmount)
+  function clearFailsafe() {
+    if (failsafeRef.current) {
+      clearTimeout(failsafeRef.current);
+      failsafeRef.current = null;
+    }
+  }
+
   // Start rapid face-flipping
   function startFlip() {
     clearFlip();
@@ -198,7 +209,9 @@ export const DiceZone: React.FC = () => {
   // (declaration order) so phaseRef.current is already 'throwing' when the
   // lastDice effect runs, making it buffer pendingDice instead of instant-flip.
   const _reRollKey   = useGameStore((s) => s._reRollKey);
-  const reRollKeyRef = useRef(0);
+  // Initialize to current store value so a remount after a Lefty save doesn't
+  // see a stale 0 → N "change" and spuriously restart the throw animation.
+  const reRollKeyRef = useRef(_reRollKey);
   useEffect(() => {
     if (_reRollKey === reRollKeyRef.current) return;
     reRollKeyRef.current = _reRollKey;
@@ -270,6 +283,7 @@ export const DiceZone: React.FC = () => {
   }, []);
 
   const onLandEnd = useCallback(() => {
+    clearFailsafe(); // dice have landed — the fail-safe is no longer needed
     const result = pendingResult.current ?? lastResult;
 
     // Dread phase: dice landed on the intercepted 7. Skip the popup — DiceZone
@@ -377,13 +391,27 @@ export const DiceZone: React.FC = () => {
       // Server rejected the roll — abort the animation before it gets stuck
       // in 'tumbling' waiting for a result that will never arrive.
       clearFlip();
+      clearFailsafe();
       setPhase('idle');
+      return;
     }
+
+    // Fail-safe: if onLandEnd never fires (e.g. component remounts mid-animation
+    // after a floor transition), force-settle after 4 s so isRolling never
+    // locks the game permanently. Cleared by clearFailsafe() in onLandEnd on
+    // the happy path and on unmount.
+    clearFailsafe();
+    failsafeRef.current = setTimeout(() => {
+      failsafeRef.current = null;
+      clearFlip();
+      setPhase('idle');
+      applyPendingSettlement();
+    }, 4000);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canRoll, rollDice]);
+  }, [canRoll, rollDice, applyPendingSettlement]);
 
   // Cleanup on unmount
-  useEffect(() => () => clearFlip(), []);
+  useEffect(() => () => { clearFlip(); clearFailsafe(); }, []);
 
   // ── Post-roll WIN flash ───────────────────────────────────────────────────
   const [showDelta, setShowDelta] = useState(false);

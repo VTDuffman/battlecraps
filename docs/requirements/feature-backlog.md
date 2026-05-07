@@ -1134,7 +1134,53 @@ Crossing a tier threshold triggers a localized, retro arcade-style text flash ov
 | `apps/web/src/components/HypeFlash.tsx` | Create: CSS-animated retro text popup for "HEATING UP" and "ON FIRE" |
 | `apps/web/src/store/useGameStore.ts` | Add threshold detection logic in settlement; add flash trigger state |
 
+---
 
+## FB-022 — Drag-and-Drop Crew Rail Sorting
+
+**Type:** Feature / UX
+**Area:** Crew System / `TableBoard.tsx`, `CrewPortrait.tsx`, `useGameStore.ts`
+**Status:** Pending Implementation
+
+### Summary
+
+The crew system currently dictates the cascade order automatically. Because cascade sequence deeply impacts hype multipliers and specific ability synergies, allowing players to manually reorder their active crew members elevates the system from a passive collection mechanic into an active deck-building/puzzle mechanic. This feature implements smooth, inline drag-and-drop sorting on the crew rail.
+
+### Design Requirements
+
+**1. Inline Sorting & Safety Constraints**
+* **Fluid Reordering:** Players should be able to drag a `CrewPortrait` directly on the rail, with the other portraits smoothly shifting out of the way. No separate "Edit Mode" button is required.
+* **Drag-Delay (Mobile Safety):** Because the portraits sit near the active betting grid, dragging must require a short hold (e.g., 150ms activation constraint). This prevents normal taps or scrolls from accidentally picking up a crew member.
+* **Timing & Lockout:** The entire rail must lock down (disable dragging) the instant `isRolling` becomes true. It remains locked through the roll resolution and cascade phase, unlocking only after `turn:settled` animations complete.
+
+**2. State Syncing**
+* Reordering must feel instant on the client (optimistic UI update).
+* Once a drop is completed, the new layout must sync with the server so the next roll's cascade executes in the correct order.
+
+### Technical Implementation
+
+**1. React Drag-and-Drop Library**
+* Introduce `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities` to the frontend. It is the modern industry standard, highly modular, handles accessibility out-of-the-box, and supports the exact 150ms sensor delays we need for mobile safety.
+
+**2. Frontend Wiring (`apps/web/src/`)**
+* **Container:** Wrap the rail mapping container (likely inside `TableBoard.tsx` or a dedicated `CrewRail` component) with `<DndContext>` and `<SortableContext>`. 
+* **Item:** Wrap `CrewPortrait.tsx` with the `useSortable` hook. Apply the transform CSS to allow picking up and moving the portrait.
+* **Store (`useGameStore.ts`):** Add a `reorderCrew(activeId, overId)` action. This reorders the local `activeCrew` array and immediately emits a new WebSocket event (e.g., `crew:reorder`) with the sorted ID array.
+
+**3. Backend Wiring (`apps/api/src/`)**
+* Implement the listener for the `crew:reorder` WebSocket event (likely in `lib/io.ts` or wherever socket events are bound).
+* Persist the new array order to the active run's state so the engine's `computeNextState` executes the cascade in the user's defined order.
+
+### Files Affected (Estimated)
+
+| File | Action |
+|---|---|
+| `apps/web/package.json` | Add `@dnd-kit` dependencies |
+| `apps/web/src/components/TableBoard.tsx` | Wrap crew map in `DndContext` and `SortableContext` |
+| `apps/web/src/components/CrewPortrait.tsx` | Implement `useSortable` and drag listeners |
+| `apps/web/src/store/useGameStore.ts` | Add `reorderCrew` action and socket emit |
+| `apps/api/src/lib/io.ts` | Add socket listener for `crew:reorder` |
+| `apps/api/src/routes/rolls.ts` | Ensure cascade iterates over the updated layout order |
 
 
 

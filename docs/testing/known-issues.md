@@ -662,3 +662,61 @@ On mobile devices, the current positioning of the Roll Log overlay obstructs the
 **Files:** `apps/web/src/components/RollLog.tsx`, `apps/web/src/components/TableBoard.tsx`
 
 ---
+
+## KI-032 — Crew ability animations overlap when multiple dice-altering powers fire in sequence
+
+**Area:** `apps/web/src/store/useGameStore.ts` (`applyPendingSettlement`), `apps/web/src/components/DiceZone.tsx`
+**Severity:** Medium
+**Status:** Open
+**Source:** Playtester observation
+
+**Issue:**
+When Lefty McGuffin (ID: 1) saves a 7-out and the resulting "saved" roll is a pair, The Physics Prof (ID: 2) triggers immediately. The client logic for these two cinematic sequences (`dreadDice` delay for Lefty, and `nudgeDice` delay for the Professor) is overlapping. The Physics Prof's portrait and bark line fire before the dice physically land and resolve Lefty's "saved" result, breaking the intended sequence of "dread → relief → nudge".
+
+**Proposed fix:**
+Refactor the cinematic sequence handling in `applyPendingSettlement()` to act as a proper queue or state machine rather than independent `setTimeout` evaluations. If a settlement payload contains both `originalDice` (Lefty) and `nudgedFrom` (Prof), the UI must hold the `nudgeDice` state and the Professor's cascade flush until *after* the `dreadDice` timer clears and the first set of substituted dice have landed on the table.
+
+---
+
+## KI-033 — Roll Log does not display pre-altered dice from crew powers
+
+**Area:** `apps/web/src/components/RollLog.tsx`
+**Severity:** Low (Enhancement)
+**Status:** Fixed
+**Source:** Playtester observation
+
+**Issue:**
+When a crew member alters the physical dice (e.g., Lefty McGuffin substituting a 7, Physics Prof nudging a pair), the Roll Log only shows the final, post-alteration dice result. The player loses the historical context of the original roll and the specific crew intervention that saved or boosted them, which makes it harder to read the turn history.
+
+**Proposed fix:**
+Update `RollLog.tsx` to utilize the `originalDice` and `nudgedFrom` properties that were added to the turn settlement payload during the fixes for KI-022 and KI-029. If these properties exist on a log entry, render a multi-stage item row: e.g., `[Original Dice] → [Crew Emoji/Name] → [Final Dice]`. Use visual cues like dimming or strikethroughs on the pre-altered dice to make the crew intervention clear.
+
+---
+
+## KI-034 — Physics Professor fails to nudge [6,6] down toward active point
+
+**Crew:** The Physics Prof (ID: 2)
+**Severity:** Medium
+**Status:** Fixed
+**Source:** QA Observation
+
+**Issue:**
+On a roll of 12 (`[6,6]`) with an active point of 9, the Physics Professor's ability triggered but failed to alter the dice. It should have shifted the pair down one increment to `[5,5]=10` (distance of 1 from the point of 9, compared to 12 which is a distance of 3). The ability effectively did nothing. The current mathematical logic appears to be failing on the upper bound edge case (`[6,6]`) or incorrectly calculating the delta when deciding whether to increment or decrement the face value.
+
+**Proposed fix:**
+Audit the target selection math in `packages/shared/src/crew/physicsProfessor.ts`. Ensure the nudge calculation correctly evaluates both `face - 1` (valid if face > 1) and `face + 1` (valid if face < 6). It needs to calculate the total dice sum for both valid directions, compare their absolute distance to `ctx.activePoint`, and correctly assign the `newDice` array to the path that yields the smaller distance.
+
+## KI-035 — Dice get stuck mid-roll after floor transition to Riverboat
+
+**Area:** `apps/web/src/components/DiceZone.tsx`, `apps/web/src/store/useGameStore.ts`
+**Severity:** High
+**Status:** Fixed
+**Source:** Playtester observation
+
+**Issue:**
+After defeating Sarge and progressing to the first marker on the Riverboat floor, initiating a roll causes the dice to animate and then get physically "stuck" in the middle of the table. The roll never resolves, the game state remains locked (`isRolling = true` or equivalent), and the user is forced to refresh the page to continue. This suggests an issue with how the `DiceZone` component handles its animation state or physics loop after a major floor transition and unmount/remount cycle. The physics engine's sleep threshold or the `onLandEnd` event is likely failing to fire because of a lost reference during the transition sequence.
+
+**Proposed fix:**
+1. **Check Transition Cleanup:** Ensure that when the `TableBoard` remounts after the `FLOOR_REVEAL` and `MARKER_INTRO` transitions, the dice physics engine is properly completely re-initialized and no stale `isRolling` state persists in `useGameStore`.
+2. **Animation/Physics Bindings:** Audit `DiceZone.tsx` to verify that physics body collision events or animation-end listeners are correctly attached on mount and explicitly cleaned up on unmount. If the dice use CSS animations instead of physics, ensure the `onAnimationEnd` synthetic events are properly firing.
+3. **Fail-safe Timeout:** Implement a fallback timeout (e.g., 3000ms - 4000ms) within the `rollDice` action or `DiceZone` component that forcibly resets the `isRolling` flag and resolves the pending settlement if the dice fail to report a settled state. This will prevent the hard UI soft-lock and allow the game to proceed even if the visual animation glitches.

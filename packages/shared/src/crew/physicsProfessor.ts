@@ -30,6 +30,11 @@ export const physicsProfessor: CrewMember = {
       return { context: ctx, newCooldown: 0 };
     }
 
+    // No effect when the roll already hits the point — don't alter a winner.
+    if (ctx.diceTotal === ctx.activePoint) {
+      return { context: ctx, newCooldown: 0 };
+    }
+
     // Only activates on paired dice (both dice showing the same face).
     // isHardway covers 4/6/8/10 pairs; we also handle [1,1] and [6,6].
     if (ctx.dice[0] !== ctx.dice[1]) {
@@ -38,23 +43,11 @@ export const physicsProfessor: CrewMember = {
 
     const currentValue = ctx.dice[0];
 
-    // Determine optimal shift direction: try to land on the active point.
-    let shift: 1 | -1;
-    const targetTotal = ctx.activePoint;
-
-    if (targetTotal !== null && ctx.diceTotal + 2 === targetTotal && currentValue < 6) {
-      // Shifting +1 to both dice (+2 to total) would hit the point exactly.
-      shift = 1;
-    } else if (targetTotal !== null && ctx.diceTotal - 2 === targetTotal && currentValue > 1) {
-      // Shifting -1 to both dice (-2 to total) would hit the point exactly.
-      shift = -1;
-    } else if (currentValue >= 6) {
-      // Can't go higher — must shift down.
-      shift = -1;
-    } else {
-      // Default: shift up (increases hardway diversity, nudges toward higher-value points).
-      shift = 1;
-    }
+    // Distance-based shift: step one increment in whichever direction closes
+    // the gap between the nudged total and the active point.
+    const distUp   = currentValue === 6 ? Infinity : Math.abs((currentValue + 1) * 2 - ctx.activePoint);
+    const distDown = currentValue === 1 ? Infinity : Math.abs((currentValue - 1) * 2 - ctx.activePoint);
+    const shift: 1 | -1 = distUp < distDown ? 1 : -1;
 
     const newValue = currentValue + shift;
 

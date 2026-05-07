@@ -1143,16 +1143,21 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     // The second throw lands on the saved result; onLandEnd calls
     // applyPendingSettlement() as normal to complete settlement.
     if (p.originalDice !== undefined && get().dreadDice !== null) {
+      // Partition: only Lefty's own events animate now; Prof (and any other crew)
+      // stay buffered so they don't fire prematurely during the dread window.
+      const leftyEvents     = pendingCascadeQueue.filter((e) => e.crewId === 1);
+      const remainingEvents = pendingCascadeQueue.filter((e) => e.crewId !== 1);
       set({
-        cascadeQueue:        pendingCascadeQueue,
-        pendingCascadeQueue: [],
+        cascadeQueue:        leftyEvents,
+        pendingCascadeQueue: remainingEvents,
         // isRolling intentionally stays true — prevents re-roll during dread window
       });
       setTimeout(() => {
         const cur = get().pendingSettlement;
         if (!cur) return; // guard: run was reset (NEW RUN) during the dread window
         set((s) => ({
-          lastDice:       cur.dice,
+          // Land on pre-nudge dice when the Prof also fired; otherwise final dice.
+          lastDice:       cur.nudgedFrom !== undefined ? cur.nudgedFrom : cur.dice,
           lastRollResult: cur.rollResult,
           dreadDice:      null,
           // Increment to tell DiceZone to start a full re-throw animation.
@@ -1362,6 +1367,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         payoutPops:           null,
         flashType:            null,
         _flashKey:            0,
+        // Safety: clear any stale in-flight roll state so a DiceZone remount
+        // after the floor transition doesn't inherit a locked isRolling flag.
+        isRolling:            false,
+        pendingSettlement:    null,
       });
       // Pre-fetch the roster so PubScreen data is ready (or nearly so) on mount.
       void get().fetchCrewRoster();
@@ -1505,7 +1514,14 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         pendingSettlement: settlement,
         mechanicFreeze:    data.roll.mechanicFreeze ?? null,
         ...(data.roll.receipt && {
-          rollHistory: [data.roll.receipt, ...state.rollHistory].slice(0, 50),
+          rollHistory: [
+            {
+              ...data.roll.receipt,
+              ...(data.roll.originalDice !== undefined && { originalDice: data.roll.originalDice }),
+              ...(data.roll.nudgedFrom   !== undefined && { nudgedFrom:   data.roll.nudgedFrom   }),
+            },
+            ...state.rollHistory,
+          ].slice(0, 50),
         }),
       }));
       // isRolling stays true — cleared in applyPendingSettlement() after the

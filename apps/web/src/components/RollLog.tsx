@@ -35,11 +35,31 @@ const LINE_COLOUR: Record<RollReceiptLineKind, string> = {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-const ReceiptLine: React.FC<{ line: RollReceiptLine }> = ({ line }) => (
+interface ReceiptLineProps {
+  line:         RollReceiptLine;
+  originalDice?: [number, number];
+  nudgedFrom?:   [number, number];
+}
+
+const ReceiptLine: React.FC<ReceiptLineProps> = ({ line, originalDice, nudgedFrom }) => (
   <div className={`leading-tight ${LINE_COLOUR[line.kind]}`}>
     {line.kind === 'win'  && <span className="mr-1 select-none">+</span>}
     {line.kind === 'loss' && <span className="mr-1 select-none">−</span>}
-    {line.text}
+    {line.kind === 'roll' && originalDice !== undefined ? (
+      <>
+        <span className="line-through opacity-40 mr-1">[{originalDice.join(',')}]</span>
+        <span className="opacity-60 mr-1">➔ Lefty ➔</span>
+        {line.text}
+      </>
+    ) : line.kind === 'roll' && nudgedFrom !== undefined ? (
+      <>
+        <span className="line-through opacity-40 mr-1">[{nudgedFrom.join(',')}]</span>
+        <span className="opacity-60 mr-1">➔ Prof ➔</span>
+        {line.text}
+      </>
+    ) : (
+      line.text
+    )}
   </div>
 );
 
@@ -65,7 +85,12 @@ const ReceiptEntry: React.FC<{ receipt: RollReceipt }> = ({ receipt }) => {
     <div className="py-1.5 border-b border-white/10 last:border-0">
       <div className="text-[8px] text-white/30 mb-0.5 font-mono">{time}</div>
       {receipt.lines.map((line, i) => (
-        <ReceiptLine key={i} line={line} />
+        <ReceiptLine
+          key={i}
+          line={line}
+          originalDice={line.kind === 'roll' ? receipt.originalDice : undefined}
+          nudgedFrom={line.kind === 'roll' ? receipt.nudgedFrom : undefined}
+        />
       ))}
       <div className={`mt-0.5 font-semibold ${deltaColour}`}>
         Net: {deltaStr}

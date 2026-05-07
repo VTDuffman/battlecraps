@@ -51,6 +51,7 @@ apps/api/src/                 # Fastify backend
   routes/crew.ts              # GET /crew
   routes/crewRoster.ts        # GET /crew-roster — availability-filtered 30-crew roster per user
   routes/leaderboard.ts       # GET /leaderboard?view=global|personal + internal submitLeaderboardEntry()
+  routes/reorder.ts           # POST /runs/:id/crew/reorder — crew rail drag-and-drop persistence
   db/schema.ts                # Drizzle schema: users, runs (JSONB bets + crew_slots), crewDefinitions, leaderboardEntries
   lib/clerkAuth.ts            # Clerk JWT verification middleware
   lib/crewRegistry.ts         # Maps crew IDs → live CrewMember objects (with execute()); used to hydrate stored slots
@@ -89,6 +90,7 @@ apps/web/src/                 # React SPA
 - Crew cascade is immutable: each `execute()` receives and returns a full `TurnContext` copy
 - All game logic (RNG, payouts, cascade) is server-side only — client never sees pre-settlement state
 - WebSocket (`cascade:trigger`, `turn:settled`, `unlocks:granted`) drives UI animation sequencing and unlock notifications
+- **Crew rail DnD** — `sensors=[]` (empty) when `isRolling || isCascading`; `useSortable` is `disabled` on empty slots. `slotIds` in Zustand tracks visual order for `SortableContext`; `reorderCrew` derives the server permutation mathematically (not via `findIndex`) to avoid null-equality collisions on empty slots.
 - **Particle canvas** (`useParticleEmitter`) must be rendered **unconditionally via `createPortal` to `document.body`** in DiceZone — never gate it on hypeTier. Conditional unmounting breaks the `canvasRef` and kills the rAF loop.
 - **DiePlaceholder** components must be **explicitly rendered** in the false branch of the `showingDice` conditional in DiceZone. The `showingDice` variable falls back to `displayDice` (never null), so the false branch is currently unreachable — but it must remain in place for correctness if that invariant ever changes.
 
@@ -136,7 +138,7 @@ This project uses strict TypeScript. Whenever you write or modify TypeScript cod
 ## Docs Structure
 
 ```
-docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–019), tutorial-user-journey.md,
+docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–022), tutorial-user-journey.md,
                       #   vibe-ideas.md, floor-aesthetics.md
 docs/frameworks/      # crew_framework.md (30 crew — 15 Starter + 15 unlock-gated), floors.md, boss_framework.md
 docs/design/          # crew-sprites-tdd.md (asset spec), crew-implementation-design.md (FB-012 TDD),
@@ -144,9 +146,9 @@ docs/design/          # crew-sprites-tdd.md (asset spec), crew-implementation-de
                       #   title-screen-technical-design.md, tutorial-technical-design.md (FB-007 TDD),
                       #   fb-014-high-rollers-club-tdd.md (FB-014 TDD),
                       #   fb-016-mobile-ui-technical-design.md, session-management-technical-design.md,
-                      #   CODE_REVIEW.md*
+                      #   fb-022-crew-rail-dnd-tdd.md (FB-022 TDD), CODE_REVIEW.md*
 docs/testing/         # known_issues.md (open defects), test plans + results (alpha cycle — archived)
-docs/manifests/       # manifest-instruction-prompt.md, implemented/ (FB-009, FB-014, FB-019, tutorial-path-b)
+docs/manifests/       # manifest-instruction-prompt.md, implemented/ (FB-009, FB-014, FB-019, FB-022, tutorial-path-b)
 ```
 
 `*` CODE_REVIEW.md and alpha test results in `docs/testing/` reflect the **alpha build** — issues documented there are resolved. Treat as historical context only.
@@ -155,7 +157,7 @@ docs/manifests/       # manifest-instruction-prompt.md, implemented/ (FB-009, FB
 
 ## Current State
 
-**Status:** Beta. All 12 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped. Boss mechanic framework (FB-010) fully implemented. Title lobby screen (FB-011) live. Crew Expansion & Unlock System (FB-012) live — 30-crew roster, unlock gating, real-time unlock notifications. Tutorial & How to Play system (FB-007) live. Dice Roll Sound Effect (FB-009) live. Versioning & Release Notes (FB-019) live — automated SemVer via build script, in-game release notes modal, "New" indicator with localStorage dismissal. High Roller's Club & Leaderboards (FB-014) live — `leaderboard_entries` table, `GET /api/v1/leaderboard` (global/personal), per-run `highestRollAmplifiedCents` tracking, `LeaderboardScreen` + `LeaderboardEntry` components accessible from TitleLobbyScreen. **NBA Jam Dice Hype Effects (FB-021) live** — three-tier hype visual system: Tier 0 (default ivory dice), Tier 2 / Heating Up (yellow dice + orange heat-glow CSS animation + smoke particle emitter), Tier 3 / On Fire (red dice + chaotic fire-glow CSS animation + fire particle emitter with additive blending); particle canvas portaled to `document.body` via `createPortal`. **Hype Multiplier Rebalance (FB-022) live** — hype now ticks on all roll results (POINT_HIT +0.25, NATURAL +0.10, CRAPS_OUT −0.05 floored at 1.0); `selectHypeTier` and `hypeFlash` trigger both key off `s.hype` thresholds (≥1.5 / ≥2.5) instead of `consecutivePointHits`.
+**Status:** Beta. All 12 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped. Boss mechanic framework (FB-010) fully implemented. Title lobby screen (FB-011) live. Crew Expansion & Unlock System (FB-012) live — 30-crew roster, unlock gating, real-time unlock notifications. Tutorial & How to Play system (FB-007) live. Dice Roll Sound Effect (FB-009) live. Versioning & Release Notes (FB-019) live — automated SemVer via build script, in-game release notes modal, "New" indicator with localStorage dismissal. High Roller's Club & Leaderboards (FB-014) live — `leaderboard_entries` table, `GET /api/v1/leaderboard` (global/personal), per-run `highestRollAmplifiedCents` tracking, `LeaderboardScreen` + `LeaderboardEntry` components accessible from TitleLobbyScreen. **NBA Jam Dice Hype Effects (FB-021) live** — three-tier hype visual system: Tier 0 (default ivory dice), Tier 2 / Heating Up (yellow dice + orange heat-glow CSS animation + smoke particle emitter), Tier 3 / On Fire (red dice + chaotic fire-glow CSS animation + fire particle emitter with additive blending); particle canvas portaled to `document.body` via `createPortal`; hype rebalance shipped alongside — ticks on all roll results (POINT_HIT +0.25, NATURAL +0.10, CRAPS_OUT −0.05 floored at 1.0), tier thresholds key off `s.hype` (≥1.5 / ≥2.5). **Drag-and-Drop Crew Rail Sorting (FB-022) live** — players reorder the 5-slot crew rail via drag-and-drop; `@dnd-kit/core` + `@dnd-kit/sortable`; 150ms activation delay prevents accidental drags; rail locked (`sensors=[]`) during rolls and cascade animations; optimistic UI with rollback on failure; `POST /api/v1/runs/:id/crew/reorder` persists the new slot order server-side with an optimistic lock on `updatedAt`.
 
 **Active development:** None currently.
 

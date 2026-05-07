@@ -24,6 +24,7 @@ import { authPlugin }       from './routes/auth.js';
 import { crewRosterPlugin } from './routes/crewRoster.js';
 import { leaderboardPlugin } from './routes/leaderboard.js';
 import { reorderPlugin }     from './routes/reorder.js';
+import { feedbackPlugin }    from './routes/feedback.js';
 
 const PORT = Number(process.env['PORT'] ?? 3001);
 
@@ -71,6 +72,7 @@ await app.register(authPlugin,       { prefix: '/api/v1' });
 await app.register(crewRosterPlugin, { prefix: '/api/v1' });
 await app.register(leaderboardPlugin, { prefix: '/api/v1' });
 await app.register(reorderPlugin,    { prefix: '/api/v1' });
+await app.register(feedbackPlugin,   { prefix: '/api/v1' });
 
 // Health check — Render health check path (healthCheckPath: /health in render.yaml).
 // Returns 200 so Render considers the deployment healthy and stops the redeploy loop.
@@ -191,6 +193,24 @@ await db.execute(sql`
   ALTER TABLE leaderboard_entries ADD COLUMN IF NOT EXISTS last_name text
 `);
 app.log.info('[migrate] first_name / last_name audit columns ensured');
+
+// FB-018: feedback_submissions table.
+await db.execute(sql`
+  CREATE TABLE IF NOT EXISTS feedback_submissions (
+    id           serial      PRIMARY KEY,
+    user_id      uuid        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type         text        NOT NULL CHECK (type IN ('bug', 'sentiment', 'idea')),
+    rating       integer     CHECK (rating BETWEEN 1 AND 5),
+    comment      text        NOT NULL,
+    context      jsonb,
+    submitted_at timestamptz NOT NULL DEFAULT now()
+  )
+`);
+await db.execute(sql`
+  CREATE INDEX IF NOT EXISTS feedback_submissions_user_idx
+    ON feedback_submissions (user_id, submitted_at DESC)
+`);
+app.log.info('[migrate] feedback_submissions table ensured');
 
 // KI-030: alias_chosen flag — tracks whether user has explicitly set their public handle.
 // All existing users default to false so they are prompted to choose on next sign-in.

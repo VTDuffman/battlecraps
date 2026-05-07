@@ -327,6 +327,11 @@ const AuthenticatedApp: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleReturnToTitle = useCallback(() => {
+    disconnect();
+    setShowTitleLobby(true);
+  }, [disconnect]);
+
   // ── Lobby action handlers ────────────────────────────────────────────────
   const handleContinue = () => {
     setShowTitleLobby(false);
@@ -441,7 +446,7 @@ const AuthenticatedApp: React.FC = () => {
   return (
     <main className="h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
       <TransitionOrchestrator onPlayAgain={() => void bootstrap(true)}>
-        <TableBoard onNewRun={() => void bootstrap(true)} />
+        <TableBoard onNewRun={() => void bootstrap(true)} onReturnToTitle={handleReturnToTitle} />
       </TransitionOrchestrator>
       <UnlockNotification />
     </main>

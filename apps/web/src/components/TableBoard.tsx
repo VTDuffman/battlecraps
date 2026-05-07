@@ -33,6 +33,7 @@ import {
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { MARKER_TARGETS, getMaxBet, isBossMarker } from '@battlecraps/shared';
 import { HowToPlayScreen } from './tutorial/HowToPlayScreen.js';
+import { FeedbackModal }   from './FeedbackModal.js';
 import {
   useGameStore,
   selectActiveSlot,
@@ -59,7 +60,7 @@ import { useTutorialContext }  from '../contexts/TutorialContext.js';
 const selectFlash    = (s: GameState) => ({ flashType: s.flashType, _flashKey: s._flashKey });
 const selectWallFlash = (s: GameState) => ({ wallFlash: s.wallFlash, _wallFlashKey: s._wallFlashKey });
 
-export const TableBoard: React.FC<{ onNewRun?: () => void }> = ({ onNewRun }) => {
+export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () => void }> = ({ onNewRun, onReturnToTitle }) => {
   const crewSlots    = useGameStore((s) => s.crewSlots);
   const activeSlot   = useGameStore(selectActiveSlot);
   const activeBark   = useGameStore(selectActiveBark);
@@ -79,8 +80,11 @@ export const TableBoard: React.FC<{ onNewRun?: () => void }> = ({ onNewRun }) =>
   const { muted, toggleMute } = useCrowdAudio();
   const theme = useFloorTheme();
 
+  const snapshotForFeedback = useGameStore((s) => s.snapshotForFeedback);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [abandonConfirm, setAbandonConfirm] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [returnConfirm, setReturnConfirm] = useState(false);
 
   // Auto-dismiss the abandon confirmation after 5 s to prevent stale prompts.
   useEffect(() => {
@@ -168,60 +172,109 @@ export const TableBoard: React.FC<{ onNewRun?: () => void }> = ({ onNewRun }) =>
       {/* ── Connection status badge ───────────────────────────────────────── */}
       <StatusBadge status={socketStatus} />
 
-      {/* ── Mute toggle ───────────────────────────────────────────────────── */}
-      <button
-        type="button"
-        onClick={toggleMute}
-        className="absolute top-2 left-2 z-10 px-1.5 py-0.5 rounded font-pixel text-[8px] bg-black/30 text-white/40 hover:text-white/70 transition-colors"
-        aria-label={muted ? 'Unmute crowd audio' : 'Mute crowd audio'}
-      >
-        {muted ? '🔇' : '🔊'}
-      </button>
+      {/* ── Top-left control bar — flex row so confirmations push siblings right */}
+      <div className="absolute top-2 left-2 z-10 flex items-center gap-1">
 
-      {/* ── How To Play button ────────────────────────────────────────────── */}
-      <button
-        type="button"
-        onClick={() => setShowHowToPlay(true)}
-        className="absolute top-2 left-10 z-10 px-1.5 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/40 hover:text-white/70 transition-colors tracking-widest"
-        aria-label="How To Play"
-      >
-        ?
-      </button>
-
-      {/* ── New Run button — abandon current run and start fresh ──────────── */}
-      {onNewRun && (
-        abandonConfirm ? (
-          <div className="absolute top-2 left-16 z-10 flex items-center gap-1">
-            <span className="font-pixel text-[6px] text-red-400/70">END?</span>
+        {/* Back to Title flow */}
+        {onReturnToTitle && (
+          returnConfirm ? (
+            <>
+              <span className="font-pixel text-[6px] text-red-400/70 whitespace-nowrap">RETURN TO TITLE SCREEN?</span>
+              <button
+                type="button"
+                onClick={() => { setReturnConfirm(false); onReturnToTitle(); }}
+                className="px-1 py-0.5 rounded font-pixel text-[7px] bg-red-900/70 text-red-300 border border-red-700/50 hover:bg-red-800/90 transition-colors"
+                aria-label="Confirm return to title"
+              >
+                YES
+              </button>
+              <button
+                type="button"
+                onClick={() => setReturnConfirm(false)}
+                className="px-1 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/40 border border-white/10 hover:text-white/70 transition-colors"
+                aria-label="Cancel"
+              >
+                NO
+              </button>
+            </>
+          ) : (
             <button
               type="button"
-              onClick={() => { setAbandonConfirm(false); onNewRun(); }}
-              className="px-1 py-0.5 rounded font-pixel text-[7px] bg-red-900/70 text-red-300 border border-red-700/50 hover:bg-red-800/90 transition-colors"
-              aria-label="Confirm new run"
+              onClick={() => setReturnConfirm(true)}
+              className="px-1.5 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/30 hover:text-white/60 transition-colors tracking-widest whitespace-nowrap"
+              aria-label="Return to title"
             >
-              YES
+              ← TITLE SCREEN
             </button>
+          )
+        )}
+
+        {/* Mute toggle */}
+        <button
+          type="button"
+          onClick={toggleMute}
+          className="px-1.5 py-0.5 rounded font-pixel text-[8px] bg-black/30 text-white/40 hover:text-white/70 transition-colors"
+          aria-label={muted ? 'Unmute crowd audio' : 'Mute crowd audio'}
+        >
+          {muted ? '🔇' : '🔊'}
+        </button>
+
+        {/* How To Play button */}
+        <button
+          type="button"
+          onClick={() => setShowHowToPlay(true)}
+          className="px-1.5 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/40 hover:text-white/70 transition-colors tracking-widest"
+          aria-label="How To Play"
+        >
+          ?
+        </button>
+
+        {/* New Run button — abandon current run and start fresh */}
+        {onNewRun && (
+          abandonConfirm ? (
+            <>
+              <span className="font-pixel text-[6px] text-red-400/70">END?</span>
+              <button
+                type="button"
+                onClick={() => { setAbandonConfirm(false); onNewRun(); }}
+                className="px-1 py-0.5 rounded font-pixel text-[7px] bg-red-900/70 text-red-300 border border-red-700/50 hover:bg-red-800/90 transition-colors"
+                aria-label="Confirm new run"
+              >
+                YES
+              </button>
+              <button
+                type="button"
+                onClick={() => setAbandonConfirm(false)}
+                className="px-1 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/40 border border-white/10 hover:text-white/70 transition-colors"
+                aria-label="Cancel"
+              >
+                NO
+              </button>
+            </>
+          ) : (
             <button
               type="button"
-              onClick={() => setAbandonConfirm(false)}
-              className="px-1 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/40 border border-white/10 hover:text-white/70 transition-colors"
-              aria-label="Cancel"
+              onClick={() => setAbandonConfirm(true)}
+              disabled={isRolling}
+              className="px-1.5 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors tracking-widest"
+              aria-label="Start a new run"
             >
-              NO
+              NEW RUN
             </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setAbandonConfirm(true)}
-            disabled={isRolling}
-            className="absolute top-2 left-16 z-10 px-1.5 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors tracking-widest"
-            aria-label="Start a new run"
-          >
-            NEW RUN
-          </button>
-        )
-      )}
+          )
+        )}
+
+      </div>
+
+      {/* ── Feedback bug button ───────────────────────────────────────────── */}
+      <button
+        type="button"
+        onClick={() => { snapshotForFeedback(); setFeedbackOpen(true); }}
+        className="absolute top-2 right-8 z-10 px-1.5 py-0.5 rounded font-pixel text-[8px] bg-black/30 text-white/30 hover:text-white/60 transition-colors"
+        aria-label="Send feedback"
+      >
+        ✉
+      </button>
 
       {/* ── Comp Card Fan — boss-defeat rewards, top-left corner ─────────── */}
       <CompCardFan />
@@ -362,6 +415,9 @@ export const TableBoard: React.FC<{ onNewRun?: () => void }> = ({ onNewRun }) =>
           <HowToPlayScreen onBack={() => setShowHowToPlay(false)} />
         </div>
       )}
+
+      {/* ── Feedback modal ────────────────────────────────────────────────── */}
+      <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </div>
   );
 };

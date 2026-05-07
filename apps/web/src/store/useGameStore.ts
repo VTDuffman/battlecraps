@@ -60,6 +60,21 @@ function withBetField(bets: Bets, field: BetField, value: number): Bets {
 }
 
 // ---------------------------------------------------------------------------
+// Feedback context snapshot — deep copy captured just before disconnect so
+// the FeedbackModal can include rich game context even after state is cleared.
+// ---------------------------------------------------------------------------
+
+export interface FeedbackContextSnapshot {
+  runId:               string | null;
+  currentMarkerIndex:  number;
+  bankroll:            number;
+  hype:                number;
+  crewSlots:           StoredCrewSlots;
+  rollHistory:         RollReceipt[];
+  capturedAt:          string;
+}
+
+// ---------------------------------------------------------------------------
 // Stored crew slot shape (mirrors apps/api/src/db/schema.ts)
 // Re-declared here so the web package has no hard dependency on the api package.
 // ---------------------------------------------------------------------------
@@ -522,6 +537,14 @@ export interface GameState {
    * Reset to positional defaults on every new/resumed run.
    */
   slotIds: string[];
+
+  /**
+   * Frozen snapshot of game context captured just before disconnect().
+   * Used by the feedback modal so rich state (crew, roll history, bankroll)
+   * is available even after the run state has been cleared.
+   * null until the first snapshotForFeedback() call.
+   */
+  feedbackContextSnapshot: FeedbackContextSnapshot | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -729,6 +752,18 @@ export interface GameActions {
    * Reverts both `crewSlots` and `slotIds` on any network or server error.
    */
   reorderCrew(oldIndex: number, newIndex: number): Promise<void>;
+
+  /**
+   * Capture a frozen snapshot of the current game context into
+   * feedbackContextSnapshot. Called automatically by disconnect() so the
+   * FeedbackModal can read rich state even after run state is cleared.
+   */
+  snapshotForFeedback(): void;
+
+  /**
+   * Clear the feedback context snapshot after the modal is dismissed.
+   */
+  clearFeedbackSnapshot(): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -813,6 +848,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   tutorialCheatDice: null,
   seenCompCount:     0,
   slotIds: ['slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4'],
+  feedbackContextSnapshot: null,
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -995,6 +1031,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   disconnect() {
+    get().snapshotForFeedback();
     socket.off('cascade:trigger');
     socket.off('turn:settled');
     socket.off('unlocks:granted');
@@ -1697,6 +1734,25 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   markCompsAnimated(count) {
     set({ seenCompCount: count });
+  },
+
+  snapshotForFeedback() {
+    const { runId, currentMarkerIndex, bankroll, hype, crewSlots, rollHistory } = get();
+    set({
+      feedbackContextSnapshot: {
+        runId,
+        currentMarkerIndex,
+        bankroll,
+        hype,
+        crewSlots,
+        rollHistory: rollHistory.slice(0, 10),
+        capturedAt:  new Date().toISOString(),
+      },
+    });
+  },
+
+  clearFeedbackSnapshot() {
+    set({ feedbackContextSnapshot: null });
   },
 
   async reorderCrew(oldIndex, newIndex) {

@@ -19,6 +19,7 @@ import { getFloorTheme }      from '../lib/floorThemes.js';
 import { HowToPlayScreen }    from './tutorial/HowToPlayScreen.js';
 import { VersionDisplay }     from './VersionDisplay.js';
 import { LeaderboardScreen }  from './LeaderboardScreen.js';
+import { FeedbackModal }      from './FeedbackModal.js';
 
 const theme = getFloorTheme(0);
 
@@ -39,6 +40,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
   const [confirming,    setConfirming]    = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [feedbackOpen,  setFeedbackOpen]  = useState(false);
 
   const handleNewRunClick = () => {
     if (hasActiveRun) {
@@ -223,8 +225,32 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
         </button>
       </div>
 
-      {/* Version display — bottom-right, above accent bar */}
-      <div className="absolute bottom-3 right-4">
+      {/* Version display + feedback — bottom row, above accent bar */}
+      <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setFeedbackOpen(true)}
+          className="font-pixel text-[6px] tracking-widest border px-2 py-1 rounded transition-all duration-150 active:scale-95"
+          style={{
+            color:       `${theme.accentPrimary}80`,
+            borderColor: `${theme.accentDim}50`,
+            background:  'rgba(255,255,255,0.03)',
+          }}
+          onMouseEnter={(e) => {
+            const b = e.currentTarget as HTMLButtonElement;
+            b.style.color       = `${theme.accentPrimary}cc`;
+            b.style.borderColor = `${theme.accentDim}90`;
+            b.style.background  = 'rgba(255,255,255,0.07)';
+          }}
+          onMouseLeave={(e) => {
+            const b = e.currentTarget as HTMLButtonElement;
+            b.style.color       = `${theme.accentPrimary}80`;
+            b.style.borderColor = `${theme.accentDim}50`;
+            b.style.background  = 'rgba(255,255,255,0.03)';
+          }}
+        >
+          SUBMIT FEEDBACK
+        </button>
         <VersionDisplay />
       </div>
 
@@ -233,6 +259,8 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
         className="absolute bottom-0 left-0 right-0 h-1"
         style={{ background: theme.pubAccentBar }}
       />
+
+      <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
       {/* Confirmation overlay — shown when player clicks "New Run" over an active run */}
       {confirming && (

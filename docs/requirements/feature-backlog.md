@@ -880,7 +880,7 @@ Allow players to manually trigger a replay of the interactive tutorial from the 
 
 **Type:** Research / QoL
 **Area:** UI / API / `TitleLobbyScreen`
-**Status:** Pending Implementation
+**Status:** Implemented
 
 ### Problem
 As the game enters Beta, there is no formal channel to capture bug reports, sentiment, or feature ideas from playtesters. Relying on manual messages results in "low-signal" feedback where the developer has to guess the game state during a bug.

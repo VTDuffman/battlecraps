@@ -27,6 +27,7 @@ import {
   pgEnum,
   index,
   uniqueIndex,
+  serial,
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 import type { Bets, RunStatus, GamePhase } from '@battlecraps/shared';
@@ -613,4 +614,35 @@ export type NewRun = typeof runs.$inferInsert;
 /** Shape for inserting a new user. */
 export type NewUser = typeof users.$inferInsert;
 
+// ---------------------------------------------------------------------------
+// FEEDBACK SUBMISSIONS TABLE (FB-018)
+// One row per playtester feedback submission. Written by POST /api/v1/feedback.
+// ---------------------------------------------------------------------------
 
+export const feedbackSubmissions = pgTable('feedback_submissions', {
+  id: serial('id').primaryKey(),
+
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+
+  /** Feedback category, e.g. 'bug', 'suggestion', 'general'. */
+  type: text('type').notNull(),
+
+  /** Optional 1–5 star rating provided by the player. */
+  rating: integer('rating'),
+
+  /** Free-text feedback body. Required. */
+  comment: text('comment').notNull(),
+
+  /**
+   * Deep context payload captured at submission time.
+   * Includes current run state snapshot, floor, phase, bankroll, crew, etc.
+   */
+  context: jsonb('context'),
+
+  submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type FeedbackSubmissionRow = typeof feedbackSubmissions.$inferSelect;
+export type NewFeedbackSubmission  = typeof feedbackSubmissions.$inferInsert;

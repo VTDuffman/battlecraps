@@ -720,3 +720,20 @@ After defeating Sarge and progressing to the first marker on the Riverboat floor
 1. **Check Transition Cleanup:** Ensure that when the `TableBoard` remounts after the `FLOOR_REVEAL` and `MARKER_INTRO` transitions, the dice physics engine is properly completely re-initialized and no stale `isRolling` state persists in `useGameStore`.
 2. **Animation/Physics Bindings:** Audit `DiceZone.tsx` to verify that physics body collision events or animation-end listeners are correctly attached on mount and explicitly cleaned up on unmount. If the dice use CSS animations instead of physics, ensure the `onAnimationEnd` synthetic events are properly firing.
 3. **Fail-safe Timeout:** Implement a fallback timeout (e.g., 3000ms - 4000ms) within the `rollDice` action or `DiceZone` component that forcibly resets the `isRolling` flag and resolves the pending settlement if the dice fail to report a settled state. This will prevent the hard UI soft-lock and allow the game to proceed even if the visual animation glitches.
+
+--- 
+
+## KI-036 — Top utility bar overlaps game board and lacks visibility
+
+**Area:** `apps/web/src/components/TableBoard.tsx`
+**Severity:** Medium (UX/UI)
+**Status:** Fixed
+**Source:** Testing session observation
+
+**Issue:**
+The utility "Bar of Buttons" across the top of the screen (containing actions like New Run, Mute, How-To-Play, and a "Subscribed" indicator) currently floats over the game board using absolute positioning. This causes the buttons to visually overlap with core game elements and become muddy or illegible, particularly on visually dense Boss level variants. Furthermore, the "Subscribed" connection status indicator occupies valuable screen real estate without providing actionable or meaningful gameplay feedback to the player.
+
+**Proposed fix:**
+1.  **Dedicated Header Space:** Remove absolute positioning (e.g., `absolute top-X`) from the top utility button container in `TableBoard.tsx`. Introduce a dedicated, fixed-height header `flex-row` at the very top of the main layout column, which will safely push the rest of the board content down and eliminate overlap.
+2.  **Improve Button Visibility:** Update the Tailwind utility classes on the buttons to ensure high contrast against all backgrounds (e.g., adding solid or semi-transparent background pills, stronger drop-shadows, or higher-contrast icon colors).
+3.  **Remove "Subscribed" Indicator:** Delete the socket "subscribed" status badge from the UI entirely, as it serves no player-facing purpose and contributes to clutter.

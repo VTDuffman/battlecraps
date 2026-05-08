@@ -628,49 +628,60 @@ Five of the new crew required three new cross-roll game state fields: `previousR
 ## FB-013 — Cinematic Crew Unlock Experience
 
 **Type:** Feature / Polish
-**Area:** `apps/web/src/components/UnlockNotification.tsx`, `apps/web/src/store/useGameStore.ts`, `apps/api/src/lib/unlocks.ts`
+**Area:** UI / Animation / Store / API (`apps/web/src/`, `apps/api/src/`)
 **Status:** Pending implementation
 
 ### Problem
 
-When a player unlocks a new crew member, they receive a small auto-dismissing toast notification with the crew member's name. This tells them *that* something happened but not *why* it happened or *who* they just unlocked. There is no flavor — it feels like a system message rather than a reward.
+When a player unlocks a new crew member, they currently receive a small, auto-dismissing toast notification with just the crew member's name. This tells them *that* something happened, but not *why* it happened or *who* they just unlocked. There is no flavor, and it feels like a sterile system message rather than a hard-earned reward. 
 
-The unlock system was designed with rich data per crew member (`unlockDescription`, `briefDescription`, `detailedDescription` already seeded in `crewDefinitions`) — none of this is surfaced in the current notification.
+Furthermore, the player has no immediate way to interact with their new reward, and if they miss the toast, they might not realize what they achieved until they dig through menus.
 
-### Desired behavior
+### Design Requirements
 
-The unlock event should feel like a cinematic reward moment:
+**1. The Cinematic "Drop" Modal (Immediate Interruption)**
+* **Trigger:** The exact moment the `unlocks:granted` socket event fires, a dedicated full-screen (or large centered) modal overlay overtakes the screen.
+* **Animation:** The modal should visually "drop" into the screen from above. When it hits the center, trigger a heavy screen shake (CSS or framer-motion) to give the unlock a sense of weight and impact.
+* **Content:** Prominently displays the Crew emoji, name, the **unlock flavor text** ("why they showed up"), and the **brief description** (what they do).
+* **CTA:** A single "Got It" button to dismiss the modal and resume gameplay.
 
-- A dedicated full-screen or large modal overlay replaces the dismissing toast
-- Shows the crew member's emoji and name prominently
-- Includes the **unlock flavor text** — *why* they showed up ("Word travels fast when a shooter goes on a run...")
-- Includes the crew member's **brief description** — what they actually do
-- Has a clear "Add to Roster" or "Got It" CTA to dismiss
-- The overlay should be visually distinct and celebratory — differentiated from the standard Pub UI
+**2. The "Next Pub" Guarantee**
+* To immediately pay off the reward without forcing mid-roll roster management, the newly unlocked crew member is **guaranteed** to appear as one of the 3 draft options on the player's *very next* visit to the Pub.
+* After this guaranteed appearance, the crew member enters the standard draft pool with normal rarity-based spawn odds.
 
-### What needs to be built
+**3. Persistent Unseen Queue**
+* If multiple unlocks occur, or if the player refreshes the browser *before* clicking "Got It", the cinematic drop must not be lost.
+* The system must track unacknowledged unlocks. The modal will continue to "drop" (re-queueing one by one) on page load until the player explicitly dismisses each one.
 
-1. **`UnlockModal` component** — full-screen overlay (or large centered modal). Displays:
-   - Crew emoji (large)
-   - Crew name
-   - Unlock flavor text (`unlockDescription` from `crewDefinitions`)
-   - Brief ability description (`briefDescription`)
-   - Dismiss button
+**4. End-of-Run Recap Celebration**
+* At the conclusion of a run (whether ending in a Boss Victory or a Game Over death), a new "Unlock Recap" phase occurs.
+* During this recap, the full crew card of every member unlocked *during that specific run* is dramatically "dealt" onto the screen, accompanied by a screen shake as each card lands.
+* A final "Continue" button closes this recap screen and transitions the player to start their next run.
 
-2. **`unlocks:granted` payload extension** — the WebSocket event currently emits crew IDs only. The API should enrich the payload with the crew definition data needed for the modal (name, emoji, `unlockDescription`, `briefDescription`) so the client doesn't need a separate fetch.
+### Technical Implementation
 
-3. **Store wiring** — replace the current `unlockNotification: string | null` (name-only) with a richer `UnlockNotification` object containing the full display data. Update `unlocks:granted` listener in `useGameStore.ts` accordingly.
+**1. Backend / API Updates**
+* **Payload Enrichment:** Modify `unlocks.ts` to enrich the `unlocks:granted` emit with the full `CrewDefinition` data (name, emoji, flavor text, etc.).
+* **Acknowledgment Endpoint:** Create a `POST /api/v1/crew/acknowledge-unlock` endpoint to clear the crew ID from an `unacknowledged_unlocks` list on the user's record, ensuring persistence across refreshes.
+* **Guaranteed Draft Logic:** Update `apps/api/src/routes/crewRoster.ts` to check if any crew were unlocked during the current marker phase, and if so, forcefully inject them into the 3-card draft array before filling the rest randomly.
 
-4. **Timing** — the modal should queue if multiple unlocks fire in the same session (unlikely but possible). Dismiss is player-gated (no auto-dismiss timer).
+**2. Frontend / UI Updates**
+* **`UnlockModal.tsx`:** Create the new drop-and-shake modal component.
+* **Store Wiring:** Replace the simple `unlockNotification: string | null` in `useGameStore.ts` with an `unacknowledgedUnlocks: UnlockPayload[]` queue.
+* **Recap Phase:** Create a `VictoryRecapPhase.tsx` (or inject into existing Game Over screens) that reads `crewUnlockedThisRun` and sequences the dramatic card-dealing animations.
 
-### Files (estimated)
+### Files Affected
 
 | File | Action |
 |---|---|
-| `apps/web/src/components/UnlockModal.tsx` | Create — replaces `UnlockNotification.tsx` |
-| `apps/web/src/components/UnlockNotification.tsx` | Delete or repurpose |
-| `apps/web/src/store/useGameStore.ts` | Enrich `unlockNotification` type; update WS listener |
-| `apps/api/src/lib/unlocks.ts` | Include crew definition fields in `unlocks:granted` emit |
+| `apps/web/src/components/UnlockModal.tsx` | Create: Drop-and-shake full-screen modal |
+| `apps/web/src/components/UnlockNotification.tsx` | Delete: Replaced by UnlockModal |
+| `apps/web/src/transitions/phases/VictoryRecapPhase.tsx` | Create/Update: Add card-dealing sequence for end of run |
+| `apps/web/src/components/GameOverScreen.tsx` | Update: Trigger Recap sequence before final dismissal |
+| `apps/web/src/store/useGameStore.ts` | Update: Handle persistent unlock queue and acknowledgment |
+| `apps/api/src/lib/unlocks.ts` | Update: Enrich payload and track run-specific unlocks |
+| `apps/api/src/routes/crew.ts` | New: Add `/acknowledge-unlock` endpoint |
+| `apps/api/src/routes/crewRoster.ts` | Update: Inject guaranteed unlocks into the draft pool |
 
 ---
 

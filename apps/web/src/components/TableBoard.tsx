@@ -69,7 +69,6 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
   const fireCrew         = useGameStore((s) => s.fireCrew);
   const mechanicFreeze   = useGameStore((s) => s.mechanicFreeze);
   const setMechanicFreeze = useGameStore((s) => s.setMechanicFreeze);
-  const socketStatus = useGameStore((s) => s.socketStatus);
   const { flashType, _flashKey }           = useGameStore(selectFlash);
   const { wallFlash, _wallFlashKey }       = useGameStore(selectWallFlash);
   const streak       = useGameStore((s) => s.consecutivePointHits);
@@ -166,115 +165,141 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
       {/* ── Hype particle flow — spark from source to hype meter ─────────── */}
       <HypeFlow />
 
-      {/* ── Boss Room Header — self-hides when not in a boss marker ──────── */}
-      <BossRoomHeader />
+      {/* ── Combined header bar — left controls + right icon tray ──────── */}
+      <div className="relative flex justify-between items-center w-full p-2 z-20 bg-black/60 border-b border-white/10">
 
-      {/* ── Connection status badge ───────────────────────────────────────── */}
-      <StatusBadge status={socketStatus} />
+        {/* Left — Title Screen + New Run */}
+        <div className="flex items-center gap-1">
 
-      {/* ── Top-left control bar — flex row so confirmations push siblings right */}
-      <div className="absolute top-2 left-2 z-10 flex items-center gap-1">
-
-        {/* Back to Title flow */}
-        {onReturnToTitle && (
-          returnConfirm ? (
-            <>
-              <span className="font-pixel text-[6px] text-red-400/70 whitespace-nowrap">RETURN TO TITLE SCREEN?</span>
+          {/* Back to Title flow */}
+          {onReturnToTitle && (
+            returnConfirm ? (
+              <>
+                <span className="font-pixel text-[6px] text-red-400/70 whitespace-nowrap">RETURN TO TITLE SCREEN?</span>
+                <button
+                  type="button"
+                  onClick={() => { setReturnConfirm(false); onReturnToTitle(); }}
+                  className="px-2 h-7 flex items-center rounded font-pixel text-[7px] bg-red-900/70 text-red-300 border border-red-700/50 hover:bg-red-800/90 transition-colors"
+                  aria-label="Confirm return to title"
+                >
+                  YES
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReturnConfirm(false)}
+                  className="px-2 h-7 flex items-center rounded font-pixel text-[7px] bg-black/80 text-gold border border-white/10 hover:text-gold-bright transition-colors shadow-md"
+                  aria-label="Cancel"
+                >
+                  NO
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
-                onClick={() => { setReturnConfirm(false); onReturnToTitle(); }}
-                className="px-1 py-0.5 rounded font-pixel text-[7px] bg-red-900/70 text-red-300 border border-red-700/50 hover:bg-red-800/90 transition-colors"
-                aria-label="Confirm return to title"
+                onClick={() => setReturnConfirm(true)}
+                className="flex items-center gap-1 px-1.5 h-7 rounded bg-black/80 text-gold hover:text-gold-bright transition-colors shadow-md whitespace-nowrap"
+                aria-label="Return to title"
               >
-                YES
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="19" y1="12" x2="5" y2="12" />
+                  <polyline points="12 19 5 12 12 5" />
+                </svg>
+                <span className="font-pixel text-[7px] tracking-widest">TITLE SCREEN</span>
               </button>
+            )
+          )}
+
+          {/* New Run button — abandon current run and start fresh */}
+          {onNewRun && (
+            abandonConfirm ? (
+              <>
+                <span className="font-pixel text-[6px] text-red-400/70">END?</span>
+                <button
+                  type="button"
+                  onClick={() => { setAbandonConfirm(false); onNewRun(); }}
+                  className="px-2 h-7 flex items-center rounded font-pixel text-[7px] bg-red-900/70 text-red-300 border border-red-700/50 hover:bg-red-800/90 transition-colors"
+                  aria-label="Confirm new run"
+                >
+                  YES
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAbandonConfirm(false)}
+                  className="px-2 h-7 flex items-center rounded font-pixel text-[7px] bg-black/80 text-gold border border-white/10 hover:text-gold-bright transition-colors shadow-md"
+                  aria-label="Cancel"
+                >
+                  NO
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
-                onClick={() => setReturnConfirm(false)}
-                className="px-1 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/40 border border-white/10 hover:text-white/70 transition-colors"
-                aria-label="Cancel"
+                onClick={() => setAbandonConfirm(true)}
+                disabled={isRolling}
+                className="px-1.5 h-7 flex items-center rounded font-pixel text-[7px] bg-black/80 text-gold hover:text-gold-bright disabled:opacity-20 transition-colors tracking-widest shadow-md"
+                aria-label="Start a new run"
               >
-                NO
+                NEW RUN
               </button>
-            </>
-          ) : (
+            )
+          )}
+
+        </div>
+
+        {/* Right — Feedback, Volume, Help */}
+        <div className="flex items-center gap-1">
+
+          {/* Feedback */}
+          <div className="relative group">
             <button
               type="button"
-              onClick={() => setReturnConfirm(true)}
-              className="px-1.5 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/30 hover:text-white/60 transition-colors tracking-widest whitespace-nowrap"
-              aria-label="Return to title"
+              onClick={() => { snapshotForFeedback(); setFeedbackOpen(true); }}
+              className="w-7 h-7 rounded flex items-center justify-center bg-black/80 text-gold hover:text-gold-bright transition-colors shadow-md"
+              aria-label="Send feedback"
             >
-              ← TITLE SCREEN
+              <span className="text-base leading-none">✉</span>
             </button>
-          )
-        )}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-[6px] text-gold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+              SUBMIT FEEDBACK
+            </div>
+          </div>
 
-        {/* Mute toggle */}
-        <button
-          type="button"
-          onClick={toggleMute}
-          className="px-1.5 py-0.5 rounded font-pixel text-[8px] bg-black/30 text-white/40 hover:text-white/70 transition-colors"
-          aria-label={muted ? 'Unmute crowd audio' : 'Mute crowd audio'}
-        >
-          {muted ? '🔇' : '🔊'}
-        </button>
-
-        {/* How To Play button */}
-        <button
-          type="button"
-          onClick={() => setShowHowToPlay(true)}
-          className="px-1.5 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/40 hover:text-white/70 transition-colors tracking-widest"
-          aria-label="How To Play"
-        >
-          ?
-        </button>
-
-        {/* New Run button — abandon current run and start fresh */}
-        {onNewRun && (
-          abandonConfirm ? (
-            <>
-              <span className="font-pixel text-[6px] text-red-400/70">END?</span>
-              <button
-                type="button"
-                onClick={() => { setAbandonConfirm(false); onNewRun(); }}
-                className="px-1 py-0.5 rounded font-pixel text-[7px] bg-red-900/70 text-red-300 border border-red-700/50 hover:bg-red-800/90 transition-colors"
-                aria-label="Confirm new run"
-              >
-                YES
-              </button>
-              <button
-                type="button"
-                onClick={() => setAbandonConfirm(false)}
-                className="px-1 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/40 border border-white/10 hover:text-white/70 transition-colors"
-                aria-label="Cancel"
-              >
-                NO
-              </button>
-            </>
-          ) : (
+          {/* Mute toggle */}
+          <div className="relative group">
             <button
               type="button"
-              onClick={() => setAbandonConfirm(true)}
-              disabled={isRolling}
-              className="px-1.5 py-0.5 rounded font-pixel text-[7px] bg-black/30 text-white/30 hover:text-white/60 disabled:opacity-20 transition-colors tracking-widest"
-              aria-label="Start a new run"
+              onClick={toggleMute}
+              className="w-7 h-7 rounded flex items-center justify-center bg-black/80 text-gold hover:text-gold-bright transition-colors shadow-md"
+              aria-label={muted ? 'Unmute crowd audio' : 'Mute crowd audio'}
             >
-              NEW RUN
+              <span className="text-base leading-none">{muted ? '🔇' : '🔊'}</span>
             </button>
-          )
-        )}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-[6px] text-gold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+              VOLUME
+            </div>
+          </div>
+
+          {/* How To Play */}
+          <div className="relative group">
+            <button
+              type="button"
+              onClick={() => setShowHowToPlay(true)}
+              className="w-7 h-7 rounded flex items-center justify-center bg-black/80 text-gold hover:text-gold-bright transition-colors shadow-md"
+              aria-label="How To Play"
+            >
+              <span className="font-pixel text-sm leading-none">?</span>
+            </button>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-[6px] text-gold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+              HELP
+            </div>
+          </div>
+
+        </div>
 
       </div>
 
-      {/* ── Feedback bug button ───────────────────────────────────────────── */}
-      <button
-        type="button"
-        onClick={() => { snapshotForFeedback(); setFeedbackOpen(true); }}
-        className="absolute top-2 right-8 z-10 px-1.5 py-0.5 rounded font-pixel text-[8px] bg-black/30 text-white/30 hover:text-white/60 transition-colors"
-        aria-label="Send feedback"
-      >
-        ✉
-      </button>
+      {/* ── Boss Room Header — self-hides when not in a boss marker ──────── */}
+      <BossRoomHeader />
 
       {/* ── Comp Card Fan — boss-defeat rewards, top-left corner ─────────── */}
       <CompCardFan />
@@ -735,40 +760,6 @@ const ChipRail: React.FC = () => {
     </section>
   );
 };
-
-// ---------------------------------------------------------------------------
-// Socket status badge
-// ---------------------------------------------------------------------------
-
-const STATUS_STYLES: Record<string, string> = {
-  disconnected: 'bg-red-900/80   text-red-300',
-  connecting:   'bg-yellow-900/80 text-yellow-300',
-  connected:    'bg-blue-900/80  text-blue-300',
-  subscribed:   'bg-green-900/80 text-green-300',
-  error:        'bg-red-900/80   text-red-300',
-};
-
-const StatusBadge: React.FC<{ status: string }> = ({ status }) => (
-  <div
-    className={[
-      'absolute top-2 right-2 z-10',
-      'flex items-center gap-1',
-      'px-1.5 py-0.5 rounded',
-      'font-pixel text-[5px]',
-      STATUS_STYLES[status] ?? 'bg-gray-900 text-gray-400',
-    ].join(' ')}
-  >
-    <div
-      className={[
-        'w-1.5 h-1.5 rounded-full',
-        status === 'subscribed' ? 'bg-green-400 animate-pulse' :
-        status === 'connecting' ? 'bg-yellow-400 animate-pulse' :
-        'bg-current',
-      ].join(' ')}
-    />
-    {status.toUpperCase()}
-  </div>
-);
 
 // ---------------------------------------------------------------------------
 // Hype particle flow — a glowing spark flies from the source to the meter

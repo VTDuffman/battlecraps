@@ -7,16 +7,19 @@
 //
 // Handles all 15 unlock conditions for original crew (IDs 1–15):
 //   Cross-run cumulative  IDs 5, 8  (seven-out / point-hit lifetime totals)
-//   Per-run counters      IDs 1, 2, 4, 6  (tracked in perRunUnlockCounters JSONB)
+//   Per-run counters      IDs 2, 4, 6  (tracked in perRunUnlockCounters JSONB)
+//   Per-segment counter   ID 1  (Lefty: ≥3 seven-outs within one segment + clear it — resets at each TRANSITION)
 //   One-time event flags  IDs 7, 10, 12  (stored as 0/1 in unlockProgress)
 //   Per-cascade event     ID 13 (Mimic)  (≥4 distinct crew fire in one cascade)
 //   Existing counter      IDs 3, 11  (consecutivePointHits)
-//   Per-run compound      ID 1  (Lefty: ≥3 seven-outs + clear marker)
-//   Per-run event         ID 15  (Lucky Charm: solo crew + clear marker)
+//   Per-segment event     ID 15  (Lucky Charm: solo crew + clear marker)
 //   Run achievements      IDs 9, 14  (bankroll peak / game cleared)
 // =============================================================================
 
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
+
+/** Embeds an integer array directly in SQL as ARRAY[...] — avoids postgres.js serialisation issues with number[] parameters. */
+const pgIntArray = (ids: number[]) => sql.raw(`ARRAY[${ids.join(',')}]::integer[]`);
 
 import {
   MIMIC_ID,
@@ -94,36 +97,71 @@ export async function evaluateUnlocks(
     newCounters.sevenOutsThisRun += 1;
   }
 
-  // ID 2 (Physics Prof): Any pair of identical dice faces
+  // ID 2 (Physics Prof): Consecutive streak — increment on pair, reset on any other roll.
+  // Old rows pre-dating this counter use undefined; treat as 0.
   if (dice[0] === dice[1]) {
-    newCounters.pairedRollsThisRun += 1;
+    newCounters.consecutivePairedStreak = (existingCounters.consecutivePairedStreak ?? 0) + 1;
+  } else {
+    newCounters.consecutivePairedStreak = 0;
   }
 
-  // ID 4 (Mathlete): Soft hardway loss — NO_RESOLUTION, hardway total, non-paired,
-  // and the corresponding hardway bet was placed before crew modification.
-  // We intentionally check finalCtx.bets (original bets), not resolvedBets.
-  if (
-    rollResult === 'NO_RESOLUTION' &&
-    dice[0] !== dice[1] &&
-    (diceTotal === 4 || diceTotal === 6 || diceTotal === 8 || diceTotal === 10)
-  ) {
-    const hwKey = `hard${diceTotal}` as keyof typeof finalCtx.bets.hardways;
-    if (finalCtx.bets.hardways[hwKey] > 0) {
-      newCounters.softHardwayLossesThisRun += 1;
+  // ID 3 (Mechanic): Consecutive identical unordered dice combo streak.
+  // Encode as min*10+max so {3,1} and {1,3} both map to 13 (range 11–66; 0 = none).
+  const currentCombo = Math.min(dice[0], dice[1]) * 10 + Math.max(dice[0], dice[1]);
+  const existingRef  = existingCounters.repeatingDiceRef ?? 0;
+  if (currentCombo === existingRef) {
+    newCounters.repeatingDiceStreak = (existingCounters.repeatingDiceStreak ?? 0) + 1;
+  } else {
+    newCounters.repeatingDiceStreak = 1;
+    newCounters.repeatingDiceRef    = currentCombo;
+  }
+
+  // IDs 4 + 7 (Mathlete / Big Spender): any hardway win this run.
+  if (baseHardwaysPayout > 0) {
+    newCounters.hardwayWinsThisRun = (existingCounters.hardwayWinsThisRun ?? 0) + 1;
+    // Bitmask of distinct hardway numbers won — bit 0=Hard4, bit 1=Hard6, bit 2=Hard8, bit 3=Hard10.
+    const hwBit: Record<number, number> = { 4: 1, 6: 2, 8: 4, 10: 8 };
+    const bit = hwBit[diceTotal] ?? 0;
+    if (bit !== 0) {
+      newCounters.hardwayWinBitsThisRun = (existingCounters.hardwayWinBitsThisRun ?? 0) | bit;
     }
   }
+
+  // ID 15 (Lucky Charm): solo-floor streak — track consecutive solo marker clears.
+  // Updated here (before countersToStore) so it persists correctly.
+  // Floor position = (clearedMarkerIdx) % 3: 0 = floor-start, 2 = floor-end.
+  // Cross-floor carries are prevented by resetting the streak at floor-start markers.
+  if (nextState.status === 'TRANSITION') {
+    const soloCount = (persistedRun.crewSlots as StoredCrewSlots).filter(Boolean).length;
+    const clearedMarkerIdx = nextState.currentMarkerIndex - 1;
+    const floorPos = clearedMarkerIdx % 3;
+    // Reset streak at the start of a new floor so Floor 1 solo can't carry into Floor 2.
+    const baseStreak = floorPos === 0 ? 0 : (existingCounters.soloMarkersConsecutive ?? 0);
+    newCounters.soloMarkersConsecutive = soloCount === 1 ? baseStreak + 1 : 0;
+  }
+
+  // Lefty (ID 1) tracks seven-outs per marker segment, not per run.
+  // Reset sevenOutsThisRun at TRANSITION so the next segment starts at zero.
+  // The unlock check below still uses newCounters (pre-reset) to evaluate this segment.
+  const countersToStore = nextState.status === 'TRANSITION'
+    ? { ...newCounters, sevenOutsThisRun: 0 }
+    : newCounters;
 
   // Persist counter updates (separate from the main optimistic-lock transaction
   // since these counters are not core game state — a lost update is acceptable).
   const countersChanged = (
-    newCounters.naturalsThisRun          !== existingCounters.naturalsThisRun          ||
-    newCounters.sevenOutsThisRun         !== existingCounters.sevenOutsThisRun         ||
-    newCounters.pairedRollsThisRun       !== existingCounters.pairedRollsThisRun       ||
-    newCounters.softHardwayLossesThisRun !== existingCounters.softHardwayLossesThisRun
+    countersToStore.naturalsThisRun             !== existingCounters.naturalsThisRun              ||
+    countersToStore.sevenOutsThisRun            !== existingCounters.sevenOutsThisRun             ||
+    countersToStore.consecutivePairedStreak     !== (existingCounters.consecutivePairedStreak ?? 0) ||
+    countersToStore.hardwayWinBitsThisRun       !== (existingCounters.hardwayWinBitsThisRun ?? 0)   ||
+    countersToStore.hardwayWinsThisRun          !== (existingCounters.hardwayWinsThisRun ?? 0)      ||
+    countersToStore.repeatingDiceStreak         !== (existingCounters.repeatingDiceStreak ?? 0)     ||
+    countersToStore.repeatingDiceRef            !== (existingCounters.repeatingDiceRef ?? 0)        ||
+    (countersToStore.soloMarkersConsecutive ?? 0) !== (existingCounters.soloMarkersConsecutive ?? 0)
   );
   if (countersChanged) {
     await db.update(runs)
-      .set({ perRunUnlockCounters: newCounters })
+      .set({ perRunUnlockCounters: countersToStore })
       .where(eq(runs.id, runId));
   }
 
@@ -149,31 +187,32 @@ export async function evaluateUnlocks(
     if (newCount >= 8) tryUnlock(5);
   }
 
-  // ID 8 (Shark): 10 Point Hits total across all runs
+  // ID 8 (Shark): 40 Point Hits total across all runs
   if (rollResult === 'POINT_HIT') {
     const newCount = (unlockProgress[8] ?? 0) + 1;
     newProgressUpdates[8] = newCount;
-    if (newCount >= 10) tryUnlock(8);
+    if (newCount >= 40) tryUnlock(8);
   }
 
-  // ── Per-run counters (IDs 2, 4, 6) ─────────────────────────────────────────
+  // ── Per-run counters (IDs 2, 3, 4, 6) ─────────────────────────────────────
 
   // ID 6 (Regular): 3 Naturals in a single run
   if (newCounters.naturalsThisRun >= 3) tryUnlock(6);
 
-  // ID 4 (Mathlete): 3 soft Hardway losses in a single run
-  if (newCounters.softHardwayLossesThisRun >= 3) tryUnlock(4);
+  // ID 4 (Mathlete): Hardway bets won on 3 or more distinct numbers in a single run
+  const hwBits = newCounters.hardwayWinBitsThisRun ?? 0;
+  if ([1, 2, 4, 8].filter(b => (hwBits & b) !== 0).length >= 3) tryUnlock(4);
 
-  // ID 2 (Physics Prof): 5 paired rolls in a single run
-  if (newCounters.pairedRollsThisRun >= 5) tryUnlock(2);
+  // ID 7 (Big Spender): 3 Hardway wins in a single run
+  if ((newCounters.hardwayWinsThisRun ?? 0) >= 3) tryUnlock(7);
+
+  // ID 2 (Physics Prof): 3 consecutive paired rolls
+  if (newCounters.consecutivePairedStreak >= 3) tryUnlock(2);
+
+  // ID 3 (Mechanic): 3 consecutive identical unordered dice combos
+  if (newCounters.repeatingDiceStreak >= 3) tryUnlock(3);
 
   // ── One-time event flags (IDs 7, 10, 12) ───────────────────────────────────
-
-  // ID 7 (Big Spender): Win a Hardway bet for the first time
-  if (baseHardwaysPayout > 0 && unlockProgress[7] !== 1) {
-    newProgressUpdates[7] = 1;
-    tryUnlock(7);
-  }
 
   // ID 10 (Nervous Intern): Natural on the shooter's very first come-out roll.
   // MVP heuristic: if the player has never triggered this before (unlockProgress[10]
@@ -188,8 +227,8 @@ export async function evaluateUnlocks(
     tryUnlock(10);
   }
 
-  // ID 12 (Drunk Uncle): Hype exceeds 2.0× at any point
-  if (hype > 2.0 && unlockProgress[12] !== 1) {
+  // ID 12 (Drunk Uncle): Hype reaches 3.0× at any point
+  if (hype >= 3.0 && unlockProgress[12] !== 1) {
     newProgressUpdates[12] = 1;
     tryUnlock(12);
   }
@@ -205,13 +244,9 @@ export async function evaluateUnlocks(
   );
   if (distinctFiringCrew.size >= 4) tryUnlock(13);
 
-  // ── consecutivePointHits piggyback (IDs 3, 11) ─────────────────────────────
+  // ── consecutivePointHits (ID 11) ──────────────────────────────────────────
 
-  // nextState.consecutivePointHits is already incremented on POINT_HIT, so
-  // the threshold comparisons directly reflect "N or more consecutive hits."
-
-  // ID 3 (Mechanic): 4 consecutive point hits within single shooter
-  if (rollResult === 'POINT_HIT' && nextState.consecutivePointHits >= 4) tryUnlock(3);
+  // nextState.consecutivePointHits is already incremented on POINT_HIT.
 
   // ID 11 (Hype-Train Holly): 3 consecutive point hits in single shooter
   if (rollResult === 'POINT_HIT' && nextState.consecutivePointHits >= 3) tryUnlock(11);
@@ -219,18 +254,20 @@ export async function evaluateUnlocks(
   // ── Per-run compound + per-run event (IDs 1, 15) — checked at TRANSITION ───
 
   if (nextState.status === 'TRANSITION') {
-    // ID 1 (Lefty): Lose ≥3 shooters to Seven Out AND still clear the floor marker
+    // ID 1 (Lefty): ≥3 seven-outs within THIS segment AND clear the marker.
+    // newCounters has the segment total; countersToStore already reset it to 0 for next segment.
     if (newCounters.sevenOutsThisRun >= 3) tryUnlock(1);
 
-    // ID 15 (Lucky Charm): Clear a marker with exactly 1 crew member in slots
-    const activeCrewCount = (persistedRun.crewSlots as StoredCrewSlots).filter(Boolean).length;
-    if (activeCrewCount === 1) tryUnlock(15);
+    // ID 15 (Lucky Charm): Clear all 3 markers of any floor with exactly 1 crew in slots.
+    // soloMarkersConsecutive is already updated above; floor-end = clearedMarkerIdx % 3 === 2.
+    const clearedMarkerIdx = nextState.currentMarkerIndex - 1;
+    if (clearedMarkerIdx % 3 === 2 && (newCounters.soloMarkersConsecutive ?? 0) >= 3) tryUnlock(15);
   }
 
   // ── Run achievements (IDs 9, 14) ───────────────────────────────────────────
 
-  // ID 9 (Whale): Reach $8,000 (800,000 cents) bankroll in a single run
-  if (persistedRun.bankrollCents >= 800_000) tryUnlock(9);
+  // ID 9 (Whale): Reach $20,000 (2,000,000 cents) bankroll in a single run
+  if (persistedRun.bankrollCents >= 2_000_000) tryUnlock(9);
 
   // ID 14 (Old Pro): Win the game — clear all 9 Gauntlet markers.
   // Detected when the run transitions to GAME_OVER and bankroll meets the last
@@ -246,16 +283,30 @@ export async function evaluateUnlocks(
   const hasNewUnlocks      = newUnlocks.length > 0;
 
   if (hasNewUnlocks || hasProgressUpdates) {
+    // Use PostgreSQL array concatenation (||) for all four array columns so that
+    // concurrent fire-and-forget evaluations never overwrite each other's additions.
+    // A snapshot-based [...old, ...new] spread would lose unlocks when two rolls
+    // complete fast enough that the second evaluation reads a stale run/user row.
     await db.update(users)
       .set({
         ...(hasNewUnlocks ? {
-          unlockedCrewIds: [...user.unlockedCrewIds, ...newUnlocks],
+          unlockedCrewIds:         sql`unlocked_crew_ids         || ${pgIntArray(newUnlocks)}`,
+          unacknowledgedUnlockIds: sql`unacknowledged_unlock_ids || ${pgIntArray(newUnlocks)}`,
         } : {}),
         ...(hasProgressUpdates ? {
           unlockProgress: { ...unlockProgress, ...newProgressUpdates },
         } : {}),
       })
       .where(eq(users.id, userId));
+
+    if (hasNewUnlocks) {
+      await db.update(runs)
+        .set({
+          guaranteedPubDraftIds: sql`guaranteed_pub_draft_ids || ${pgIntArray(newUnlocks)}`,
+          crewUnlockedThisRun:   sql`crew_unlocked_this_run   || ${pgIntArray(newUnlocks)}`,
+        })
+        .where(eq(runs.id, runId));
+    }
   }
 
   // ── 4. Emit unlocks:granted WebSocket event ─────────────────────────────────

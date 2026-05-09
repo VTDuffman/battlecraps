@@ -133,6 +133,14 @@ export const users = pgTable(
     unlockedCrewIds: integer('unlocked_crew_ids').array().notNull().default(sql`'{}'::integer[]`),
 
     /**
+     * Crew IDs that have been unlocked but not yet acknowledged by the client
+     * (i.e., the cinematic unlock experience has not played). Populated by
+     * evaluateUnlocks() on the roll handler; cleared when the client confirms
+     * it has displayed the unlock sequence.
+     */
+    unacknowledgedUnlockIds: integer('unacknowledged_unlock_ids').array().notNull().default(sql`'{}'::integer[]`),
+
+    /**
      * Cross-run progress counters keyed by crew ID.
      * Stores raw event counts for cumulative and one-time unlock conditions.
      * Example: { 5: 3, 8: 7 } → Floor Walker 3 seven-outs logged, Shark 7 point hits.
@@ -345,21 +353,57 @@ export const runs = pgTable(
 
     /**
      * Per-run unlock progress counters, reset each time a new run segment starts.
-     * Tracks raw event counts for per-run unlock conditions (IDs 1, 2, 4, 6).
-     * Shape: { naturalsThisRun, softHardwayLossesThisRun, pairedRollsThisRun,
-     *           sevenOutsThisRun }
+     * Tracks raw event counts for per-run unlock conditions (IDs 1, 2, 3, 4, 6, 7, 15).
+     * Shape: { naturalsThisRun, hardwayWinBitsThisRun, hardwayWinsThisRun,
+     *           consecutivePairedStreak, sevenOutsThisRun, repeatingDiceRef,
+     *           repeatingDiceStreak, soloMarkersConsecutive }
+     *
+     * hardwayWinBitsThisRun: bitmask of distinct hardway numbers won this run.
+     *   bit 0 (1) = Hard 4, bit 1 (2) = Hard 6, bit 2 (4) = Hard 8, bit 3 (8) = Hard 10.
+     *   Unlock fires when popcount >= 3 (ID 4, Mathlete).
+     *
+     * hardwayWinsThisRun: total hardway wins this run (any number, any repeat).
+     *   Unlock fires when count >= 3 (ID 7, Big Spender).
+     *
+     * repeatingDiceRef encodes the unordered combo being tracked as
+     * min(d1,d2)*10 + max(d1,d2) (valid range 11–66); 0 = no streak in progress.
+     *
+     * soloMarkersConsecutive: consecutive markers cleared with exactly 1 crew in slot.
+     *   Resets to 0 at the start of each floor (marker index % 3 === 0).
+     *   Unlock fires when count >= 3 at a floor-end marker (index % 3 === 2) (ID 15, Lucky Charm).
+     *   Optional on old rows — treated as 0 via ?? 0.
      *
      * Migration: migrate-crew-expansion.ts
      */
     perRunUnlockCounters: jsonb('per_run_unlock_counters')
       .$type<{
         naturalsThisRun:          number;
-        softHardwayLossesThisRun: number;
-        pairedRollsThisRun:       number;
+        hardwayWinBitsThisRun:    number;
+        hardwayWinsThisRun:       number;
+        consecutivePairedStreak:  number;
         sevenOutsThisRun:         number;
+        repeatingDiceRef:         number;
+        repeatingDiceStreak:      number;
+        soloMarkersConsecutive?:  number;
       }>()
       .notNull()
-      .default({ naturalsThisRun: 0, softHardwayLossesThisRun: 0, pairedRollsThisRun: 0, sevenOutsThisRun: 0 }),
+      .default({ naturalsThisRun: 0, hardwayWinBitsThisRun: 0, hardwayWinsThisRun: 0, consecutivePairedStreak: 0, sevenOutsThisRun: 0, repeatingDiceRef: 0, repeatingDiceStreak: 0 }),
+
+    /**
+     * Crew IDs guaranteed to appear in the next Pub draft for this run.
+     * Populated when a cinematic unlock fires mid-run so the newly unlocked
+     * crew member is surfaced to the player at the next recruitment screen.
+     * Cleared after the Pub draft is generated.
+     */
+    guaranteedPubDraftIds: integer('guaranteed_pub_draft_ids').array().notNull().default(sql`'{}'::integer[]`),
+
+    /**
+     * Crew IDs unlocked during this specific run (as opposed to all-time
+     * unlockedCrewIds on the user). Used to drive the cinematic unlock
+     * sequence and to populate guaranteedPubDraftIds without re-querying
+     * the user row. Reset to empty at the start of each new run.
+     */
+    crewUnlockedThisRun: integer('crew_unlocked_this_run').array().notNull().default(sql`'{}'::integer[]`),
 
     // ── Mechanic freeze — persisted across rolls ───────────────────────────
 
@@ -488,6 +532,15 @@ export const crewDefinitions = pgTable('crew_definitions', {
    * Migration: migrate-crew-expansion.ts
    */
   unlockDescription: text('unlock_description').notNull().default(''),
+
+  /**
+   * First-person character quote displayed in the cinematic unlock modal.
+   * Written in the crew member's voice, describing what drew them to the player.
+   * Null (and omitted from the modal) until authored and re-seeded.
+   *
+   * Migration: migrate-add-unlock-quote.ts
+   */
+  unlockQuote: text('unlock_quote'),
 
   /**
    * True for Starter crew (IDs 16–30) — always available without unlock.

@@ -51,11 +51,14 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
   const titleShown               = useGameStore((s) => s.titleShown);
   const victoryShown             = useGameStore((s) => s.victoryShown);
   const victoryComplete          = useGameStore((s) => s.victoryComplete);
+  const crewUnlockedThisRun      = useGameStore((s) => s.crewUnlockedThisRun);
+  const gameOverTransitionShown  = useGameStore((s) => s.gameOverTransitionShown);
   const setActiveTransition      = useGameStore((s) => s.setActiveTransition);
   const setBossEntryShownFor     = useGameStore((s) => s.setBossEntryShownForMarker);
   const setMarkerIntroShownFor   = useGameStore((s) => s.setMarkerIntroShownForMarker);
   const setFloorRevealShownFor   = useGameStore((s) => s.setFloorRevealShownForFloor);
   const setVictoryShown          = useGameStore((s) => s.setVictoryShown);
+  const setGameOverTransitionShown = useGameStore((s) => s.setGameOverTransitionShown);
   const advanceTransitionPhase   = useGameStore((s) => s.advanceTransitionPhase);
   const clearTransition          = useGameStore((s) => s.clearTransition);
 
@@ -127,6 +130,21 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
       return;
     }
 
+    // Priority 4.5 — Game over unlock recap (loss, at least one crew unlocked this run)
+    // Only fires when there are unlocks to show — runs with no unlocks skip straight
+    // to GameOverScreen. UnlockRecapPhase calls onAdvance() immediately if empty,
+    // but we avoid the transition entirely to prevent a one-frame black flash.
+    if (
+      status === 'GAME_OVER' &&
+      currentMarkerIndex < GAUNTLET.length &&
+      crewUnlockedThisRun.length > 0 &&
+      !gameOverTransitionShown
+    ) {
+      setGameOverTransitionShown();
+      setActiveTransition('GAME_OVER');
+      return;
+    }
+
     // Priority 5 — Marker intro (non-boss marker, not yet introduced)
     if (
       status === 'IDLE_TABLE' &&
@@ -145,12 +163,15 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
     floorRevealShownFor,
     victoryShown,
     markerIntroShownFor,
+    crewUnlockedThisRun,
+    gameOverTransitionShown,
     lastHydratedAt,
     setActiveTransition,
     setBossEntryShownFor,
     setFloorRevealShownFor,
     setMarkerIntroShownFor,
     setVictoryShown,
+    setGameOverTransitionShown,
   ]);
 
   // ── Victory complete → new run ──────────────────────────────────────────
@@ -205,6 +226,9 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
     // (victoryComplete = true, onPlayAgain() called, waiting for connectToRun).
     if (victoryComplete) return null;
     if (currentMarkerIndex >= GAUNTLET.length && !victoryShown) return null;
+    // Loss path: suppress GameOverScreen for the one-frame gap between status
+    // becoming GAME_OVER and the detection effect firing to set activeTransition.
+    if (crewUnlockedThisRun.length > 0 && !gameOverTransitionShown) return null;
     return <GameOverScreen onPlayAgain={onPlayAgain} />;
   }
 

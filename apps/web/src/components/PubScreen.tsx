@@ -22,7 +22,7 @@ import {
   GAUNTLET,
 } from '@battlecraps/shared';
 import { useGameStore, selectBankrollDisplay } from '../store/useGameStore.js';
-import type { CrewRosterEntry } from '../store/useGameStore.js';
+import type { CrewRosterEntry, PubDraftEntry } from '../store/useGameStore.js';
 import { useFloorTheme } from '../hooks/useFloorTheme.js';
 import { CREW_EMOJI } from './CrewPortrait.js';
 
@@ -78,15 +78,6 @@ const CREW_NAMES_FALLBACK: Record<number, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function pickRandom<T>(arr: T[], n: number): T[] {
-  const copy = [...arr];
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j]!, copy[i]!];
-  }
-  return copy.slice(0, n);
-}
-
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
@@ -96,7 +87,7 @@ function formatCents(cents: number): string {
 // ---------------------------------------------------------------------------
 
 interface CrewCardProps {
-  crew:       CrewRosterEntry;
+  crew:       PubDraftEntry;
   isSelected: boolean;
   canAfford:  boolean;
   onClick:    () => void;
@@ -341,34 +332,38 @@ export const PubScreen: React.FC = () => {
     && GAUNTLET[prevMarkerIndex]?.boss?.compReward === 'EXTRA_SHOOTER';
   const upcomingShooters = isComped ? 6 : 5;
 
-  // ── Stable 3-card draft ───────────────────────────────────────────────────
-  // Computed once when the roster first arrives; stable for the whole pub visit.
+  // ── Server-generated draft ────────────────────────────────────────────────
+  // Fetched once from GET /runs/:id/pub-draft. The server injects any crew
+  // unlocked this turn via guaranteedPubDraftIds so they always appear here.
 
-  const crewSlotsRef = useRef(crewSlots);
-  const [draft, setDraft] = useState<CrewRosterEntry[]>([]);
-  const draftInitialized  = useRef(false);
+  const pubDraft      = useGameStore((s) => s.pubDraft);
+  const fetchPubDraft = useGameStore((s) => s.fetchPubDraft);
+  const [draftLoading, setDraftLoading] = useState(true);
+
+  // Guard against React StrictMode's double-effect invocation: both calls would
+  // see pubDraft.length === 0 before either resolves, causing two concurrent
+  // server requests. The second would land after guaranteedPubDraftIds is cleared
+  // by the first, overwriting the guaranteed draft with a plain 3-item draft.
+  const draftFetchedRef = useRef(false);
 
   useEffect(() => {
-    if (!crewRoster || draftInitialized.current) return;
-    draftInitialized.current = true;
-    const existingIds = new Set(
-      crewSlotsRef.current.filter(Boolean).map((s) => s!.crewId),
-    );
-    const available = crewRoster.filter((c) => c.isAvailable && !existingIds.has(c.id));
-    setDraft(pickRandom(available, Math.min(3, available.length)));
-  }, [crewRoster]);
+    if (draftFetchedRef.current) return;
+    draftFetchedRef.current = true;
+    setDraftLoading(true);
+    void fetchPubDraft().finally(() => setDraftLoading(false));
+  }, []); // mount-only; fetchPubDraft is a stable Zustand action
 
   // Build a name lookup from the full roster (falls back to static map while loading).
   const crewNameMap: Record<number, string> = crewRoster
     ? Object.fromEntries(crewRoster.map((c) => [c.id, c.name]))
     : CREW_NAMES_FALLBACK;
 
-  const [selectedCrew,  setSelectedCrew]  = useState<CrewRosterEntry | null>(null);
+  const [selectedCrew,  setSelectedCrew]  = useState<PubDraftEntry | null>(null);
   const [selectedSlot,  setSelectedSlot]  = useState<number | null>(null);
   const [isLoading,     setIsLoading]     = useState(false);
   const [errorMsg,      setErrorMsg]      = useState<string | null>(null);
 
-  const handleCrewClick = useCallback((crew: CrewRosterEntry) => {
+  const handleCrewClick = useCallback((crew: PubDraftEntry) => {
     if (selectedCrew?.id === crew.id) {
       // Toggle off if already selected
       setSelectedCrew(null);
@@ -480,15 +475,15 @@ export const PubScreen: React.FC = () => {
         </div>
 
         {/* Loading state */}
-        {crewRoster === null && (
+        {draftLoading && (
           <div className="text-center font-mono text-[9px] text-amber-300/40 py-4 animate-pulse">
             Loading crew…
           </div>
         )}
 
-        {crewRoster !== null && (
+        {!draftLoading && (
           <div className="grid grid-cols-3 gap-2">
-            {draft.map((crew) => (
+            {pubDraft.map((crew) => (
               <CrewCard
                 key={crew.id}
                 crew={crew}
@@ -497,7 +492,7 @@ export const PubScreen: React.FC = () => {
                 onClick={() => handleCrewClick(crew)}
               />
             ))}
-            {draft.length === 0 && (
+            {pubDraft.length === 0 && (
               <div className="col-span-3 text-center font-mono text-[9px] text-amber-300/40 py-4">
                 No crew available to hire.
               </div>

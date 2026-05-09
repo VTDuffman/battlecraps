@@ -31,9 +31,9 @@ export const mathlete: CrewMember = {
   abilityCategory:  'TABLE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         12_000,  // $120.00
+  baseCost:         17_500,  // $175.00
   visualId:         'mathlete',
-  rarity:           'Uncommon',
+  rarity:           'Rare',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
     // Activates when: a soft roll of a hardway number would clear an active

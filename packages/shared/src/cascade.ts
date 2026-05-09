@@ -16,7 +16,6 @@ import type { CrewMember, RollDiceFn, TurnContext } from './types.js';
 import type { BossRuleHooks } from './bossRules/index.js';
 import type { BossRuleParams } from './config.js';
 import { MIMIC_ID } from './crew/mimic.js';
-import { LUCKY_CHARM_ID } from './crew/luckyCharm.js';
 
 // ---------------------------------------------------------------------------
 // CASCADE EVENT — Emitted over WebSocket for each crew trigger
@@ -185,15 +184,6 @@ export function resolveCascade(
   // Build a mutable copy of the slots array for updated cooldown states.
   const updatedCrewSlots: (CrewMember | null)[] = [...crewSlots];
 
-  // ── Pre-cascade: Wildcard special-case checks ────────────────────────────
-
-  // Lucky Charm solo check: is Lucky Charm the ONLY non-null crew member?
-  // Must be computed before the loop so we can inject the hype lock as her
-  // "event" at the correct slot position.
-  const activeCrew = crewSlots.filter((c): c is CrewMember => c != null);
-  const soloMember = activeCrew.length === 1 ? activeCrew[0] : undefined;
-  const isLuckyCharmSolo = soloMember?.id === LUCKY_CHARM_ID;
-
   // Mimic tracking: remember the last crew member whose execute() actually ran.
   // The Mimic (id=13) calls this crew's execute() instead of its own no-op.
   let lastFiredMember: CrewMember | null = null;
@@ -227,19 +217,6 @@ export function resolveCascade(
 
     // ── Snapshot context BEFORE any modification for this slot ──────────
     const prevCtx = ctx;
-
-    // ── Lucky Charm solo: inject hype floor ──────────────────────────────
-    // Her own execute() is a no-op; the cascade applies the 2.0× floor here
-    // so that the contextDelta picks it up and emits a proper WebSocket event.
-    // The snapshot must be taken BEFORE this mutation so the delta is non-empty.
-    //
-    // Formula: shift hype by +1.0 when below the 2.0× floor.
-    // This preserves any bonuses already accumulated above the 1.0× baseline
-    // rather than discarding them. E.g. 1.3× → 2.3× (not 2.0×).
-    // When hype is already ≥ 2.0× the floor is a no-op.
-    if (member.id === LUCKY_CHARM_ID && isLuckyCharmSolo) {
-      ctx = { ...ctx, hype: ctx.hype < 2.0 ? ctx.hype + 1.0 : ctx.hype };
-    }
 
     // ── Mimic: substitute the last-fired crew's execute() ────────────────
     // If Mimic is in slot i and a prior crew fired, we call the prior crew's

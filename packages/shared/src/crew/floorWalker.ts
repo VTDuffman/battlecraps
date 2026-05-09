@@ -22,9 +22,9 @@ export const floorWalker: CrewMember = {
   abilityCategory:  'TABLE',
   cooldownType:     'per_shooter',
   cooldownState:    0,
-  baseCost:         15_000,  // $150.00
+  baseCost:         12_500,  // $125.00
   visualId:         'floor_walker',
-  rarity:           'Rare',
+  rarity:           'Uncommon',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
     // Only activates on a Seven Out when there is a Pass Line bet to protect.

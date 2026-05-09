@@ -4,7 +4,7 @@
 //
 // Category:    HYPE
 // Ability:     33% chance each roll to fire. When he fires, it's either
-//              +0.5 Hype (good uncle) or −0.1 Hype (bad uncle). No cooldown.
+//              +0.5 Hype (good uncle) or −0.25 Hype (bad uncle). No cooldown.
 //
 // Activation uses d1 of a bonus dice roll:
 //   d1 = 1 or 2  → fires (≈33%)
@@ -21,6 +21,11 @@
 //
 // On a SEVEN_OUT, any hype boost is wiped by the server's post-roll hype
 // reset (GameState.hype → 1.0) — but that's very on-brand.
+//
+// INTENTIONAL: Uncle does NOT enforce a Hype floor of 1.0. A −0.25 fire
+// from low Hype can push below 1.0×, meaning the next win pays out LESS
+// than base value. This is a deliberate design choice — the double-edged
+// sword is the point. Do NOT add Math.max(1.0, newHype) here.
 // =============================================================================
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
@@ -31,9 +36,9 @@ export const drunkUncle: CrewMember = {
   abilityCategory:  'HYPE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         6_000,  // $60.00 — cheap, unreliable, loveable
+  baseCost:         15_000,  // $150.00
   visualId:         'drunk_uncle',
-  rarity:           'Common',
+  rarity:           'Rare',
 
   execute(ctx: TurnContext, rollDice: RollDiceFn): ExecuteResult {
     // Roll the bonus dice (server-side RNG, separate from main game dice).
@@ -44,8 +49,8 @@ export const drunkUncle: CrewMember = {
       return { context: ctx, newCooldown: 0 };
     }
 
-    // Direction: d2 odd → +0.5 Hype, d2 even → −0.1 Hype.
-    const delta = (d2 % 2 === 1) ? 0.5 : -0.1;
+    // Direction: d2 odd → +0.5 Hype, d2 even → −0.25 Hype.
+    const delta = (d2 % 2 === 1) ? 0.5 : -0.25;
 
     // Round to 4 decimal places (consistent with other HYPE crew).
     const newHype = Math.round((ctx.hype + delta) * 10_000) / 10_000;

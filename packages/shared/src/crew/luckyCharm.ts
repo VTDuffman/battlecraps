@@ -2,30 +2,35 @@
 // CREW: THE LUCKY CHARM
 // packages/shared/src/crew/luckyCharm.ts
 //
-// Category:    WILDCARD
-// Ability:     Locks Hype at 2.0× if they are your ONLY crew member.
-// Cooldown:    none (cascade handles the solo-crew detection)
+// Category:    HYPE
+// Ability:     On any SEVEN_OUT, fires a +1.0 Hype boost before the reset.
+// Cooldown:    none
 //
-// The Lucky Charm's ability has a unique activation condition: it requires
-// checking the entire crew slots array to determine if it's the only member.
-// Like The Mimic, this condition can't be evaluated from within execute()
-// alone, so the CASCADE (resolveCascade in cascade.ts) handles the special
-// case:
+// The hype reset on SEVEN_OUT normally drives hype back to 1.0×. Lucky Charm
+// fires DURING the cascade (before computeNextState) and injects +1.0 Hype.
+// The server's cascadeHypeDelta mechanism captures this delta and carries it
+// forward, so the next shooter starts at 1.0 + 1.0 = 2.0× Hype minimum.
 //
-//   if (isLuckyCharmSolo && member.id === LUCKY_CHARM_ID) {
-//     ctx = { ...ctx, hype: Math.max(ctx.hype, 2.0) };
-//   }
+// With Sea Legs (comp): seaLegsBaseline = 1.0 + (run.hype - 1.0) / 2.
+// Lucky Charm cascadeHypeDelta stacks on top — so at 2.0× pre-seven-out:
+//   seaLegsBaseline = 1.5, cascadeHypeDelta = 1.0 → nextHype = 2.5×.
 //
-// The Lucky Charm's own execute() is a no-op fallback for when it is NOT
-// the only crew (in which case the cascade does not inject the hype lock,
-// and Lucky Charm simply does nothing this roll).
+// DISTINCTNESS:
+//   - Lefty:     Prevents the seven-out from happening (re-rolls the dice).
+//   - Sea Legs:  Comp perk — retains 50% of accumulated Hype above 1.0.
+//   - Lucky Charm: Injects a flat +1.0 Hype boost; next shooter always at ≥2.0×.
 //
-// STRATEGIC NOTE:
-//   Playing with only The Lucky Charm means you have no Dice, Table, or
-//   other Payout crew — you're trading crew synergy for a guaranteed 2.0×
-//   Hype floor. This gives every payout a minimum 2× amplification, but
-//   you lose all the cascade effects that make wins truly astronomical.
-//   Best for a "beginner safety net" build.
+// UNIT TEST HINTS:
+//   // Should fire and boost Hype:
+//   const ctx = makeCtx({ rollResult: 'SEVEN_OUT', hype: 1.4 });
+//   const result = luckyCharm.execute(ctx, noRoll);
+//   assert(result.context.hype === 2.4);
+//   assert(result.newCooldown === 0);
+//
+//   // Should NOT fire on non-seven-out:
+//   const ctx2 = makeCtx({ rollResult: 'POINT_HIT', hype: 1.4 });
+//   const result2 = luckyCharm.execute(ctx2, noRoll);
+//   assert(result2.context === ctx2); // unchanged
 // =============================================================================
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
@@ -33,17 +38,23 @@ import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../type
 export const luckyCharm: CrewMember = {
   id:               15,
   name:             'The Lucky Charm',
-  abilityCategory:  'WILDCARD',
+  abilityCategory:  'HYPE',
   cooldownType:     'none',
   cooldownState:    0,
   baseCost:         20_000,  // $200.00
   visualId:         'lucky_charm',
   rarity:           'Rare',
 
-  // No-op: the cascade injects the hype lock before calling execute() when
-  // Lucky Charm is the sole crew. execute() itself doesn't need to do anything.
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
-    return { context: ctx, newCooldown: 0 };
+    if (ctx.rollResult !== 'SEVEN_OUT') {
+      return { context: ctx, newCooldown: 0 };
+    }
+    // Inject +1.0 Hype before the server reset. cascadeHypeDelta captures this
+    // so the next shooter starts at 2.0× (1.0 reset floor + 1.0 Lucky Charm delta).
+    return {
+      context: { ...ctx, hype: ctx.hype + 1.0 },
+      newCooldown: 0,
+    };
   },
 };
 

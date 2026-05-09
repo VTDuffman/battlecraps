@@ -108,9 +108,29 @@ export interface CrewRosterEntry {
   briefDescription:    string | null;
   detailedDescription: string | null;
   unlockDescription:   string;
+  unlockQuote:         string | null;
   isAvailable:         boolean;
   unlockProgress:      number | null;
   unlockThreshold:     number | null;
+}
+
+// ---------------------------------------------------------------------------
+// Pub draft entry shape (mirrors GET /api/v1/runs/:id/pub-draft response)
+// Re-declared here so the web package has no hard dependency on the api package.
+// ---------------------------------------------------------------------------
+
+export interface PubDraftEntry {
+  id:                  number;
+  name:                string;
+  abilityCategory:     string;
+  cooldownType:        string;
+  baseCostCents:       number;
+  visualId:            string;
+  rarity:              string;
+  briefDescription:    string | null;
+  detailedDescription: string | null;
+  unlockDescription:   string;
+  isGuaranteed:        boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -442,11 +462,31 @@ export interface GameState {
   unlockedCrewIds: number[];
 
   /**
-   * Pending unlock notification to show the player.
-   * Set by the `unlocks:granted` WebSocket listener. Cleared by clearUnlockNotification().
-   * null = no notification to show.
+   * Crew IDs that have been unlocked but not yet shown to the player via the
+   * cinematic unlock sequence. Populated by `unlocks:granted`. Drained one-by-one
+   * by `acknowledgeUnlock()` after each cinematic plays. Cleared on connectToRun.
    */
-  unlockNotification: { crewNames: string[] } | null;
+  unacknowledgedUnlocks: number[];
+
+  /**
+   * All crew IDs unlocked during this run (superset of unacknowledgedUnlocks).
+   * Used by the cinematic modal to replay the sequence for any unlocks earned
+   * this session. Cleared on connectToRun so it resets per run.
+   */
+  crewUnlockedThisRun: number[];
+
+  /**
+   * The Three-card draft returned by GET /runs/:id/pub-draft.
+   * Empty until fetchPubDraft() resolves. Cleared on connectToRun.
+   */
+  pubDraft: PubDraftEntry[];
+
+  /**
+   * True when there are unacknowledged unlocks AND no cascade animations are
+   * pending. The cinematic unlock modal mounts when this flips to true.
+   * Set by applyPendingSettlement(); cleared by acknowledgeUnlock().
+   */
+  unlockModalReady: boolean;
 
   /**
    * Full 30-crew roster with per-user unlock status.
@@ -471,6 +511,15 @@ export interface GameState {
    * Resets to false on connectToRun.
    */
   victoryComplete: boolean;
+
+  /**
+   * True once the GAME_OVER transition (UnlockRecapPhase) has been triggered
+   * for this run. Prevents the recap from re-triggering on re-renders.
+   * Only set when crewUnlockedThisRun is non-empty — runs with no unlocks
+   * skip the transition entirely and go straight to GameOverScreen.
+   * Resets to false on connectToRun (new run).
+   */
+  gameOverTransitionShown: boolean;
 
   /**
    * Unix timestamp (ms) set by connectToRun() on every load or resume.
@@ -661,10 +710,19 @@ export interface GameActions {
   fetchCrewRoster(): Promise<void>;
 
   /**
-   * Dismiss the current unlock notification. Called by UnlockNotification
-   * after the auto-dismiss timer fires or the player clicks close.
+   * Mark a single unlock as acknowledged. Removes `crewId` from
+   * `unacknowledgedUnlocks` and fires POST /user/acknowledge-unlock so the
+   * server clears it from users.unacknowledgedUnlockIds. Sets
+   * `unlockModalReady = false` immediately so the modal can close.
    */
-  clearUnlockNotification(): void;
+  acknowledgeUnlock(crewId: number): Promise<void>;
+
+  /**
+   * Fetch the pub draft from GET /runs/:id/pub-draft and store it in
+   * `pubDraft`. Called when the pub screen is about to mount. No-op when
+   * pubDraft is already populated or no runId is set.
+   */
+  fetchPubDraft(): Promise<void>;
 
   /** Clear the hype flash after the animation completes. */
   clearHypeFlash(): void;
@@ -692,6 +750,12 @@ export interface GameActions {
    * Prevents the 3-phase cinematic from re-triggering on re-renders.
    */
   setVictoryShown(): void;
+
+  /**
+   * Record that the GAME_OVER unlock-recap transition has been triggered.
+   * Prevents UnlockRecapPhase from re-firing on re-renders.
+   */
+  setGameOverTransitionShown(): void;
 
   /**
    * Called by ChipRain's onComplete callback when all chip animations finish.
@@ -833,11 +897,15 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   // titleShown persists across runs — read from localStorage once at init.
   titleShown: localStorage.getItem('bc_title_shown') === '1',
   maxBankrollCents: 0,
-  unlockedCrewIds:      [],
-  crewRoster:           null,
-  unlockNotification:   null,
-  victoryShown:     false,
-  victoryComplete:  false,
+  unlockedCrewIds:       [],
+  crewRoster:            null,
+  unacknowledgedUnlocks: [],
+  crewUnlockedThisRun:   [],
+  pubDraft:              [],
+  unlockModalReady:      false,
+  victoryShown:            false,
+  victoryComplete:         false,
+  gameOverTransitionShown: false,
   lastHydratedAt: 0,
   _seqCounter:    0,
   _rollKey:       0,
@@ -880,7 +948,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       floorRevealShownForFloor:  null,
       victoryShown:              false,
       victoryComplete:           false,
+      gameOverTransitionShown:   false,
       crewRoster:                null,
+      unacknowledgedUnlocks:     [],
+      crewUnlockedThisRun:       [],
+      pubDraft:                  [],
+      unlockModalReady:          false,
       // Explicitly clear all last-roll display state so a new run never
       // inherits stale dice, result labels, or delta animations from the
       // previous run. initialState may also set these, but we zero them
@@ -1005,11 +1078,14 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     // Also invalidates crewRoster so the next pub visit re-fetches fresh data.
     socket.on('unlocks:granted', (payload: { newUnlockIds: number[]; crewNames: string[] }) => {
       set((state) => ({
-        unlockedCrewIds:    [...new Set([...state.unlockedCrewIds, ...payload.newUnlockIds])],
-        unlockNotification: { crewNames: payload.crewNames },
+        unlockedCrewIds:       [...new Set([...state.unlockedCrewIds,       ...payload.newUnlockIds])],
+        unacknowledgedUnlocks: [...new Set([...state.unacknowledgedUnlocks, ...payload.newUnlockIds])],
+        crewUnlockedThisRun:   [...new Set([...state.crewUnlockedThisRun,   ...payload.newUnlockIds])],
         // Invalidate the cached roster — availability has changed.
-        crewRoster:         null,
+        crewRoster:            null,
       }));
+      // Pre-fetch roster so the cinematic modal has crew data ready.
+      void get().fetchCrewRoster();
     });
 
     // ── Connect ───────────────────────────────────────────────────────────
@@ -1086,8 +1162,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       floorRevealShownForFloor:  null,
       victoryShown:              false,
       victoryComplete:           false,
+      gameOverTransitionShown:   false,
       rollHistory:               [],
       socketStatus:              'disconnected',
+      unacknowledgedUnlocks:     [],
+      crewUnlockedThisRun:       [],
+      pubDraft:                  [],
+      unlockModalReady:          false,
     });
   },
 
@@ -1188,6 +1269,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _popsKey,
       pendingCascadeQueue,
       status: currentStatus,
+      unacknowledgedUnlocks,
     } = get();
     if (!p) return;
 
@@ -1371,6 +1453,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // Track personal best optimistically so the GameOverScreen can show it
       // immediately without waiting for the next page load.
       maxBankrollCents:     Math.max(oldMaxBankrollCents, p.newBankroll),
+      // Open the cinematic unlock modal only when the cascade queue will be
+      // empty after this flush — prevents mid-animation interruptions.
+      unlockModalReady:     unacknowledgedUnlocks.length > 0 && pendingCascadeQueue.length === 0,
     });
 
     if (isTransition) {
@@ -1426,6 +1511,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         // after the floor transition doesn't inherit a locked isRolling flag.
         isRolling:            false,
         pendingSettlement:    null,
+        // Invalidate any pub draft carried over from the previous pub visit so
+        // the next fetchPubDraft() always hits the server fresh and picks up
+        // guaranteedPubDraftIds for newly unlocked crew.
+        pubDraft:             [],
       });
       // Pre-fetch the roster so PubScreen data is ready (or nearly so) on mount.
       void get().fetchCrewRoster();
@@ -1464,6 +1553,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   setVictoryShown() {
     set({ victoryShown: true });
+  },
+
+  setGameOverTransitionShown() {
+    set({ gameOverTransitionShown: true });
   },
 
   triggerChipRainComplete() {
@@ -1716,8 +1809,48 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }
   },
 
-  clearUnlockNotification() {
-    set({ unlockNotification: null });
+  async acknowledgeUnlock(crewId) {
+    // Optimistically remove from the queue and close the modal immediately.
+    set((state) => ({
+      unacknowledgedUnlocks: state.unacknowledgedUnlocks.filter((id) => id !== crewId),
+      unlockModalReady:      false,
+    }));
+    // If more unlocks are queued, re-open the modal after a brief pause so
+    // each crew gets its own drop-in + shake moment.
+    setTimeout(() => {
+      if (get().unacknowledgedUnlocks.length > 0) {
+        set({ unlockModalReady: true });
+      }
+    }, 350);
+    try {
+      const token = await get().getToken?.();
+      await fetch(`${API_BASE}/api/v1/user/acknowledge-unlock`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token ?? ''}`,
+        },
+        body: JSON.stringify({ crewId }),
+      });
+    } catch {
+      // Non-fatal — server will re-deliver on next session load.
+    }
+  },
+
+  async fetchPubDraft() {
+    const { runId, pubDraft } = get();
+    if (!runId || pubDraft.length > 0) return;
+    try {
+      const token = await get().getToken?.();
+      const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/pub-draft`, {
+        headers: { Authorization: `Bearer ${token ?? ''}` },
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { draft: PubDraftEntry[] };
+      set({ pubDraft: data.draft });
+    } catch {
+      // Non-fatal — PubScreen handles empty draft gracefully.
+    }
   },
 
   clearHypeFlash() {

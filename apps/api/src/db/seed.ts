@@ -55,9 +55,9 @@ import { sql } from 'drizzle-orm';
 
 const RARITY: Record<number, string> = {
   1: 'Epic', 2: 'Rare', 3: 'Legendary',
-  4: 'Uncommon', 5: 'Rare', 6: 'Uncommon',
-  7: 'Common', 8: 'Rare', 9: 'Legendary',
-  10: 'Common', 11: 'Uncommon', 12: 'Common',
+  4: 'Rare', 5: 'Uncommon', 6: 'Uncommon',
+  7: 'Uncommon', 8: 'Rare', 9: 'Legendary',
+  10: 'Common', 11: 'Uncommon', 12: 'Rare',
   13: 'Epic', 14: 'Epic', 15: 'Rare',
   16: 'Starter', 17: 'Starter', 18: 'Starter',
   19: 'Starter', 20: 'Starter', 21: 'Starter', 22: 'Starter',
@@ -78,15 +78,15 @@ const BRIEF_DESCRIPTIONS: Record<number, string> = {
   4:  'Active Hardway bets survive a soft-number hit.',
   5:  'The first Seven Out of a shooter refunds your Pass Line bet.',
   6:  'Grants a free Odds bet equal to your Pass Line on a Natural.',
-  7:  'Adds a flat $100 bonus to every Hardway win.',
+  7:  'Adds a flat $50 bonus to every Hardway win.',
   8:  'Adds a flat $100 bonus to every Point Hit.',
   9:  'Multiplies all winning payouts by 1.2×.',
   10: 'Adds +0.2× Hype on every Natural.',
   11: 'Adds +0.3× Hype on every Point Hit.',
-  12: '33% chance per roll: +0.5× Hype or −0.1× Hype.',
+  12: '33% chance per roll: +0.5× Hype or −0.25× Hype.',
   13: 'Copies the ability of the last crew member that fired.',
-  14: 'Earn +1 Shooter life each time you clear a Marker.',
-  15: 'When alone on the rail, your Hype can\'t drop below 2.0×.',
+  14: 'Raises the table bet ceiling from 10% to 15% of the Marker target.',
+  15: 'On every SEVEN_OUT, injects +1.0 Hype before the reset — next shooter starts at 2.0×.',
   16: 'Adds Hype whenever a 6 appears on either die.',
   17: 'Adds a flat bonus whenever a 1 appears on either die.',
   18: 'Pays out whenever the dice show consecutive face values.',
@@ -116,15 +116,15 @@ const DETAILED_DESCRIPTIONS: Record<number, string> = {
   4:  'When a roll hits a hardway total (4, 6, 8, or 10) with unmatched dice — a soft result that would normally wipe your Hardway bet — the Mathlete cancels that loss and keeps the bet alive. Doesn\'t protect against a Seven Out, and doesn\'t interfere with hardway wins. Fires every qualifying roll; no cooldown.',
   5:  'When the shooter sevens out, the Floor Walker gets your Pass Line stake back instead of losing it. Your Odds bet is not covered. Protection is used once per shooter and resets when a new shooter takes the table.',
   6:  'Every time the come-out roll is a Natural (7 or 11), the Regular adds a bonus to your payout equal to your Pass Line bet — treated like an Odds win and amplified by Hype and any active multipliers. Fires on every Natural; no cooldown.',
-  7:  'Whenever a Hardway bet pays out, the Big Spender throws in an extra $100. That bonus enters the payout pool before Hype is applied, so it scales up with your multiplier stack. Fires on every Hardway win; no cooldown.',
+  7:  'Whenever a Hardway bet pays out, the Big Spender throws in an extra $50. That bonus enters the payout pool before Hype is applied, so it scales up with your multiplier stack. Fires on every Hardway win; no cooldown.',
   8:  'Every time the shooter hits their point, the Shark adds $100 to the payout pool. The bonus is applied before Hype and multipliers, so it gets amplified along with everything else. Fires on every Point Hit regardless of bet size; no cooldown.',
   9:  'On any roll that produces a winning payout, the Whale applies a 1.2× multiplier to the final result. Multiple multipliers from different crew stack by product — pair the Whale with the Mimic for a 1.44× combined boost. Does not fire on rolls where nothing wins.',
   10: 'Each come-out Natural (7 or 11) pumps global Hype up by 0.2×. Hype persists across rolls and amplifies every payout, so a steady stream of Naturals quietly compounds into a serious multiplier. No cooldown; fires on every Natural.',
   11: 'Every time the shooter hits their point, Holly adds 0.3× to global Hype. A run of consecutive Point Hits can stack Hype fast, turning every subsequent win into a bigger payout. No cooldown; fires on every Point Hit.',
-  12: 'Each roll, the Drunk Uncle secretly rolls his own dice. He fires roughly one roll in three — when he does, an odd second die means +0.5× Hype; an even second die means −0.1× Hype. The upside is big, the downside is small, but he\'s unpredictable.',
+  12: 'Each roll, the Drunk Uncle secretly rolls his own dice. He fires roughly one roll in three — when he does, an odd second die means +0.5× Hype; an even second die means −0.25× Hype. The upside is big, the downside is real, and he\'s unpredictable.',
   13: 'The Mimic repeats the exact action of whichever crew member fired immediately before it in the cascade. Place it after your most valuable crew to double that effect. In slot 0 the Mimic does nothing — there\'s no prior crew to copy. Slot 4 is the sweet spot.',
-  14: 'Each time you hit a Gauntlet Marker and advance to the next floor, the Old Pro grants an extra Shooter — so you enter the next stretch with one more life than normal. Fires at the Transition state between floors, not during rolls. No cooldown; applies every Marker you clear.',
-  15: 'If the Lucky Charm is the only crew member in your five slots, global Hype is prevented from falling below 2.0× — guaranteeing every payout is at least doubled. The moment any other crew occupies a slot, the floor effect is inactive. Hype can still rise above 2.0× from point streaks and other sources.',
+  14: 'The Old Pro raises your table bet ceiling from 10% to 15% of the Marker target — every roll, for the entire run. Bigger bets mean bigger payouts, and bigger payouts mean bigger records on the High Roller\'s Club leaderboard. No cooldown; the ceiling lift is always active while he\'s in your crew.',
+  15: 'Every time a shooter sevens out, the Lucky Charm fires a +1.0 Hype boost before the reset kicks in. The server captures that delta, so the next shooter always starts at 2.0× Hype minimum. Works in any crew configuration — no solo requirement. Stack with Sea Legs for an even softer landing.',
   16: 'The Lookout watches for the big number — any roll where at least one die lands on 6 generates +0.15 Hype. Fires on roughly 1 in 3 rolls, making it one of the most consistently active crew members. No conditions beyond the die face; no cooldown.',
   17: 'Snake eyes feel lucky now. Any roll where at least one die shows a 1 adds $50 to your payout pool. Fires on roughly 1 in 3 rolls regardless of game phase or outcome. Pairs with The Lookout to cover more than half of all rolls between them.',
   18: 'When dice land on adjacent values — [1,2], [2,3], [3,4], [4,5], or [5,6] in either order — the Close Call adds $100 to the payout pool. So close to a pair. Fires on roughly 1 in 4 rolls regardless of outcome or phase.',
@@ -143,26 +143,51 @@ const DETAILED_DESCRIPTIONS: Record<number, string> = {
 };
 
 // ---------------------------------------------------------------------------
+// Unlock quotes — IDs 1–15 only; shown in the cinematic unlock modal.
+// First-person voice of the crew member describing what attracted them to
+// the player's play. Leave as empty string '' until authored — the modal
+// skips the section when the string is empty.
+// ---------------------------------------------------------------------------
+
+const UNLOCK_QUOTES: Record<number, string> = {
+  1:  'Impressive, kid. I thought you were done for sure. But, you\'ve got something special. I can show you a special trick of mine to take care of that pesky seven out.',
+  2:  'Only a master of time and space could pull off a trick like that! I\'ve got some tricks of my own that could be of use to you.',
+  3:  'You have to be doing something to those dice to get them to land like that! If you show me yours, I\`ll show you mine.',
+  4:  'I\'ve got a special system that can prevent losing precious hardway bets to soft rolls. It\'s a bit of a gamble, but it could be worth it.',
+  5:  'Seven outs are a pain, I know how to soften that blow a bit.',
+  6:  'Is there anything better than a couple of naturals? I\'d pay to see those.',
+  7:  'If you like hardways, I have enough puns to last all night!',
+  8:  'You look like you\'re out for blood. I could smell it from miles away.',
+  9:  'Scared money don\'t make money. Let\'s make some money!',
+  10: 'Wait, sevens are good? I thought they were bad? I don\'t get this game, but I love watching you play!',
+  11: 'Let\'s go shooter! If you bring the points, I\'ll bring the hype!',
+  12: 'Listen...hersh the thingaboutcrapz. It all schtarted when I...forgot...are we in a casino?',
+  13: 'The best part about this game is the power of freindship! We all win together!',
+  14: 'I know a pro when I see one. Well done, I\'ll see you out there next time.',
+  15: 'Why do I only get lucky when there\'s no one else around to see it? Shenanigans!',
+};
+
+// ---------------------------------------------------------------------------
 // Unlock descriptions — IDs 1–15 only; Starter crew have no unlock condition.
 // Canonical copy from crew_framework.md.
 // ---------------------------------------------------------------------------
 
 const UNLOCK_DESCRIPTIONS: Record<number, string> = {
-  1:  'Lose 3 or more shooters to Seven Out in a single run and still clear the floor marker.',
-  2:  'Roll doubles (paired dice) 5 times in a single run.',
-  3:  'Hit the active point 4 consecutive times within a single shooter without a Seven Out.',
-  4:  'Lose 3 Hardway bets to soft rolls in a single run.',
+  1:  'Lose 3 or more shooters to Seven Out within a single marker segment and still clear it.',
+  2:  'Roll 3 doubles in a row — three consecutive paired rolls within a single run.',
+  3:  'Roll the exact same dice combination 3 times in a row.',
+  4:  'Win a Hardway bet on 3 different numbers in a single run.',
   5:  'Lose a shooter to Seven Out on 8 separate occasions across all runs (cumulative).',
-  6:  'Hit 3 Naturals in a single come-out sequence within one run.',
-  7:  'Win your first Hardway bet.',
-  8:  'Accumulate 10 total Point Hits across all runs.',
-  9:  'Reach a bankroll of $8,000 in a single run.',
+  6:  'Hit 3 Naturals in a single run.',
+  7:  'Win 3 Hardway bets in a single run.',
+  8:  'Accumulate 40 total Point Hits across all runs.',
+  9:  'Reach a bankroll of $20,000 in a single run.',
   10: 'Roll a Natural (7 or 11) on your very first come-out roll.',
-  11: 'Hit the same point 3 consecutive times within a single shooter\'s life.',
-  12: 'See Hype climb above 2.0× in any single run.',
+  11: 'Hit the point 3 consecutive times within a single shooter\'s run.',
+  12: 'See Hype reach 3.0× in any single run.',
   13: 'Have 4 or more distinct crew bonuses activate in a single cascade.',
   14: 'Clear all 9 Gauntlet markers in a single run (win the game once).',
-  15: 'Clear any Gauntlet marker with only 1 crew member filling your roster.',
+  15: 'Clear all 3 markers of any Gauntlet floor with only 1 crew member in your slots the entire time.',
 };
 
 // ---------------------------------------------------------------------------
@@ -207,6 +232,7 @@ async function seed(): Promise<void> {
     briefDescription:    BRIEF_DESCRIPTIONS[crew.id] ?? null,
     detailedDescription: DETAILED_DESCRIPTIONS[crew.id] ?? null,
     unlockDescription:   UNLOCK_DESCRIPTIONS[crew.id] ?? '',
+    unlockQuote:         UNLOCK_QUOTES[crew.id] ?? null,
     isStarterRoster:     (RARITY[crew.id] === 'Starter'),
   }));
 
@@ -227,6 +253,7 @@ async function seed(): Promise<void> {
         briefDescription:    sql`excluded.brief_description`,
         detailedDescription: sql`excluded.detailed_description`,
         unlockDescription:   sql`excluded.unlock_description`,
+        unlockQuote:         sql`excluded.unlock_quote`,
         isStarterRoster:     sql`excluded.is_starter_roster`,
       },
     });

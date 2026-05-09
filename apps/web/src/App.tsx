@@ -21,7 +21,7 @@ import { TableBoard }                  from './components/TableBoard.js';
 import { useGameStore }                from './store/useGameStore.js';
 import { TransitionOrchestrator }      from './transitions/TransitionOrchestrator.js';
 import { TitleLobbyScreen }            from './components/TitleLobbyScreen.js';
-import { UnlockNotification }          from './components/UnlockNotification.js';
+import { UnlockModal }                  from './components/UnlockModal.js';
 import { KnowledgeGate }              from './components/tutorial/KnowledgeGate.js';
 import { TutorialOverlay }            from './components/tutorial/TutorialOverlay.js';
 import { AliasPickerModal }            from './components/AliasPickerModal.js';
@@ -44,23 +44,32 @@ const LS_RUN_ID = 'bc_run_id';
 // API response shapes
 // ---------------------------------------------------------------------------
 
+interface UnacknowledgedUnlockData {
+  id:               number;
+  name:             string;
+  rarity:           string;
+  visualId:         string;
+  briefDescription: string | null;
+}
+
 interface RunStateData {
-  bankroll:           number;
-  shooters:           number;
-  hype:               number;
-  phase:              'COME_OUT' | 'POINT_ACTIVE';
-  status:             string;
-  point:              number | null;
-  crewSlots:          StoredCrewSlots;
-  currentMarkerIndex: number;
-  bets?:              Bets;
-  maxBankrollCents?:  number;
-  tutorialCompleted?: boolean;
+  bankroll:              number;
+  shooters:              number;
+  hype:                  number;
+  phase:                 'COME_OUT' | 'POINT_ACTIVE';
+  status:                string;
+  point:                 number | null;
+  crewSlots:             StoredCrewSlots;
+  currentMarkerIndex:    number;
+  bets?:                 Bets;
+  maxBankrollCents?:     number;
+  tutorialCompleted?:    boolean;
+  unacknowledgedUnlocks?: UnacknowledgedUnlockData[];
 }
 
 interface CreateRunResponse {
   runId: string;
-  run:   RunStateData & { tutorialCompleted?: boolean };
+  run:   RunStateData & { tutorialCompleted?: boolean; unacknowledgedUnlocks?: UnacknowledgedUnlockData[] };
 }
 
 // ---------------------------------------------------------------------------
@@ -204,16 +213,19 @@ const AuthenticatedApp: React.FC = () => {
             setTutorialCompleted(false);
           }
           connectToRun(runId, {
-            bankroll:           data.bankroll,
-            shooters:           data.shooters,
-            hype:               data.hype,
-            phase:              data.phase,
-            status:             data.status as never,
-            point:              data.point,
-            crewSlots:          data.crewSlots,
-            currentMarkerIndex: data.currentMarkerIndex,
+            bankroll:              data.bankroll,
+            shooters:              data.shooters,
+            hype:                  data.hype,
+            phase:                 data.phase,
+            status:                data.status as never,
+            point:                 data.point,
+            crewSlots:             data.crewSlots,
+            currentMarkerIndex:    data.currentMarkerIndex,
             ...(data.bets && { bets: data.bets }),
             ...(data.maxBankrollCents !== undefined && { maxBankrollCents: data.maxBankrollCents }),
+            ...(data.unacknowledgedUnlocks && {
+              unacknowledgedUnlocks: data.unacknowledgedUnlocks.map((u) => u.id),
+            }),
           });
           setLoading(false);
           return;
@@ -242,16 +254,19 @@ const AuthenticatedApp: React.FC = () => {
       }
 
       connectToRun(data.runId, {
-        bankroll:           data.run.bankroll,
-        shooters:           data.run.shooters,
-        hype:               data.run.hype,
-        phase:              data.run.phase,
-        status:             data.run.status as never,
-        point:              data.run.point,
-        crewSlots:          data.run.crewSlots,
-        currentMarkerIndex: data.run.currentMarkerIndex,
+        bankroll:              data.run.bankroll,
+        shooters:              data.run.shooters,
+        hype:                  data.run.hype,
+        phase:                 data.run.phase,
+        status:                data.run.status as never,
+        point:                 data.run.point,
+        crewSlots:             data.run.crewSlots,
+        currentMarkerIndex:    data.run.currentMarkerIndex,
         ...(data.run.bets && { bets: data.run.bets }),
         ...(data.run.maxBankrollCents !== undefined && { maxBankrollCents: data.run.maxBankrollCents }),
+        ...(data.run.unacknowledgedUnlocks && {
+          unacknowledgedUnlocks: data.run.unacknowledgedUnlocks.map((u) => u.id),
+        }),
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -448,7 +463,7 @@ const AuthenticatedApp: React.FC = () => {
       <TransitionOrchestrator onPlayAgain={() => void bootstrap(true)}>
         <TableBoard onNewRun={() => void bootstrap(true)} onReturnToTitle={handleReturnToTitle} />
       </TransitionOrchestrator>
-      <UnlockNotification />
+      <UnlockModal />
     </main>
   );
 };

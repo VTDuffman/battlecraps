@@ -35,6 +35,7 @@ import { TitleScreenPhase }         from './phases/TitleScreenPhase.js';
 import { VictoryExplosionPhase }    from './phases/VictoryExplosionPhase.js';
 import { VictoryRecapPhase }        from './phases/VictoryRecapPhase.js';
 import { VictorySendoffPhase }      from './phases/VictorySendoffPhase.js';
+import { UnlockRecapPhase }         from './phases/UnlockRecapPhase.js';
 
 // ---------------------------------------------------------------------------
 // Phase component registry
@@ -71,8 +72,8 @@ export const PHASE_COMPONENT_MAP: Record<string, React.ComponentType<PhaseCompon
   VictoryRecapPhase,
   VictorySendoffPhase,
 
-  // Phase 9
-  // GameOverPhase,
+  // Phase 7 — active
+  UnlockRecapPhase,
 };
 
 // ---------------------------------------------------------------------------
@@ -184,7 +185,8 @@ export const TRANSITION_REGISTRY: Record<TransitionType, TransitionPhase[]> = {
   // ── VICTORY — all 9 markers cleared ─────────────────────────────────────
   // Phase 1 (auto 3s + tap): "YOU WIN" explosion with floor badges
   // Phase 2 (gated):         final stats recap — markers, bankroll, personal best
-  // Phase 3 (gated):         emotional send-off → triggers new run via onPlayAgain
+  // Phase 3 (gated):         unlock recap — any crew unlocked this run (skips if none)
+  // Phase 4 (gated):         emotional send-off → triggers new run via onPlayAgain
   VICTORY: [
     {
       id:          'explosion',
@@ -198,11 +200,23 @@ export const TRANSITION_REGISTRY: Record<TransitionType, TransitionPhase[]> = {
       component:   'VictoryRecapPhase',
     },
     {
+      id:          'unlocks',
+      advanceMode: 'gated',
+      component:   'UnlockRecapPhase',
+    },
+    {
       id:          'sendoff',
       advanceMode: 'gated',
       component:   'VictorySendoffPhase',
     },
   ],
 
-  GAME_OVER: [],     // Phase 9 — progress recap + tone-calibrated message
+  // Phase 9 — progress recap + tone-calibrated message (not yet triggered by orchestrator)
+  GAME_OVER: [
+    {
+      id:          'unlocks',
+      advanceMode: 'gated',
+      component:   'UnlockRecapPhase',
+    },
+  ],
 };

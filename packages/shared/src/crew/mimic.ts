@@ -32,7 +32,7 @@ export const mimic: CrewMember = {
   abilityCategory:  'WILDCARD',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         22_000,  // $220.00
+  baseCost:         27_500,  // $275.00
   visualId:         'mimic',
   rarity:           'Epic',
 

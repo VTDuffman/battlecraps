@@ -3,22 +3,21 @@
 // packages/shared/src/crew/oldPro.ts
 //
 // Category:    WILDCARD
-// Ability:     +1 Shooter (extra life) when a Marker is reached.
+// Ability:     Raises the table bet ceiling from 10% to 15% of the marker target.
 // Cooldown:    none (per-roll execute() is a no-op)
 //
-// The Old Pro's ability is a meta-progression effect, not a per-roll effect.
-// His execute() method does nothing — the SERVER is responsible for detecting
-// his presence in crew slots during the TRANSITION state and awarding +1 shooter.
+// The Old Pro's ability is applied at bet-validation time, not per-roll.
+// His execute() method does nothing — the SERVER detects his presence in the
+// crew slots before enforcing the table maximum and passes 0.15 as the ceiling
+// fraction to getMaxBet() instead of the default 0.10.
 //
 // Server pseudocode (apps/api, roll route):
-//   if (newStatus === 'TRANSITION') {
-//     const hasOldPro = run.crewSlots.some(c => c?.id === OLD_PRO_ID);
-//     if (hasOldPro) run.shooters += 1;
-//   }
+//   const hasOldPro = (run.crewSlots as StoredCrewSlots).some(c => c?.crewId === OLD_PRO_ID);
+//   const maxBet = getMaxBet(run.currentMarkerIndex, run.bossPointHits, hasOldPro ? 0.15 : 0.10);
 //
-// The Old Pro is a late-game survivability pick. Each Marker grants +1 life,
-// effectively extending the run. Best combined with crew who accelerate
-// Marker progression (high Hype + multipliers).
+// This is a meta-metagame pick for High Roller's Club leaderboard chasers:
+// larger bets → larger payouts → higher amplified-roll records. The ceiling
+// lift applies to both pass-line and hardway bets every roll of the run.
 // =============================================================================
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
@@ -29,15 +28,15 @@ export const oldPro: CrewMember = {
   abilityCategory:  'WILDCARD',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         25_000,  // $250.00 — premium survivability crew
+  baseCost:         25_000,  // $250.00
   visualId:         'old_pro',
   rarity:           'Epic',
 
-  // No-op: ability is applied server-side during TRANSITION state handling.
+  // No-op: ability is applied server-side at bet-validation time.
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
     return { context: ctx, newCooldown: 0 };
   },
 };
 
-/** The crew ID used by the server to detect Old Pro during TRANSITION state. */
+/** The crew ID used by the server to detect Old Pro during bet validation. */
 export const OLD_PRO_ID = 14;

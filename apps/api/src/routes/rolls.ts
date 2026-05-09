@@ -37,7 +37,6 @@ import {
   isBossMarker,
   getBaseHypeTick,
   OLD_PRO_ID,
-  LUCKY_CHARM_ID,
   type CascadeEvent,
   type CrewMember,
   type Bets,
@@ -267,8 +266,9 @@ async function rollHandler(
     });
   }
 
-  // ── Table max: 10 % of marker target, floored at 5× boss min in boss rooms ─
-  const maxBet = getMaxBet(run.currentMarkerIndex, run.bossPointHits);
+  // ── Table max: 10 % of marker target (15 % with Old Pro), floored at 5× boss min ─
+  const hasOldPro = (run.crewSlots as StoredCrewSlots).some((c) => c?.crewId === OLD_PRO_ID);
+  const maxBet = getMaxBet(run.currentMarkerIndex, run.bossPointHits, hasOldPro ? 0.15 : 0.10);
 
   if (incomingBets.passLine > maxBet) {
     return reply.status(422).send({
@@ -476,17 +476,7 @@ async function rollHandler(
   const hasSeaLegs = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
   const nextState = computeNextState(run, finalContext, newBankroll, incomingBets, hasSeaLegs);
 
-  // ── 11b. Old Pro — +1 shooter on marker clear ─────────────────────────────
-  // The Old Pro's execute() is a no-op; his ability is a meta-progression
-  // effect applied here when the run transitions to a new marker segment.
-  if (nextState.status === 'TRANSITION') {
-    const hasOldPro = updatedCrewSlots.some((c) => c?.id === OLD_PRO_ID);
-    if (hasOldPro) {
-      nextState.shooters += 1;
-    }
-  }
-
-  // ── 11c. Mechanic freeze lifecycle ────────────────────────────────────────
+  // ── 11b. Mechanic freeze lifecycle ───────────────────────────────────────
   // If a freeze was applied this roll, decrement rollsRemaining.
   // Clear on seven-out (shooter ends) or when the count reaches 0.
   const currentFreeze = (run.mechanicFreeze as { lockedValue: number; rollsRemaining: number } | null | undefined) ?? null;
@@ -822,12 +812,6 @@ function computeNextState(
       // the dice). Floor Walker's passLineProtected only saves the bet —
       // the shooter still dies, hype still resets, point still clears.
 
-      // Lucky Charm solo check: if she is the only crew, her 2.0× floor
-      // must be re-applied AFTER the hype reset so it survives the seven-out.
-      const activeSlots = (run.crewSlots as StoredCrewSlots).filter(Boolean);
-      const isLuckyCharmSolo =
-        activeSlots.length === 1 && activeSlots[0]?.crewId === LUCKY_CHARM_ID;
-
       const shooterLost = !flags.sevenOutBlocked;
       const newShooters = shooterLost ? run.shooters - 1 : run.shooters;
 
@@ -876,7 +860,7 @@ function computeNextState(
       // cascadeHypeDelta captures crew head-start above pre-roll level and stacks on top.
       const cascadeHypeDelta = Math.max(0, finalCtx.hype - run.hype);
       const seaLegsBaseline = hasSeaLegs ? 1.0 + (run.hype - 1.0) / 2 : 1.0;
-      const nextHype = Math.max(isLuckyCharmSolo ? 2.0 : 1.0, seaLegsBaseline + cascadeHypeDelta);
+      const nextHype = Math.max(1.0, seaLegsBaseline + cascadeHypeDelta);
 
       return {
         status:               nextStatus,

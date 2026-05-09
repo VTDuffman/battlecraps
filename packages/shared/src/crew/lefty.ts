@@ -53,7 +53,7 @@ export const lefty: CrewMember = {
   abilityCategory:  'DICE',
   cooldownType:     'per_shooter',
   cooldownState:    0,
-  baseCost:         15_000,   // $150.00
+  baseCost:         20_000,   // $200.00
   visualId:         'lefty',
   rarity:           'Epic',
 

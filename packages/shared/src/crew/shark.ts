@@ -22,7 +22,7 @@ export const shark: CrewMember = {
   abilityCategory:  'PAYOUT',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         18_000,  // $180.00
+  baseCost:         20_000,  // $200.00
   visualId:         'shark',
   rarity:           'Rare',
 

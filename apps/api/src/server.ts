@@ -25,6 +25,8 @@ import { crewRosterPlugin } from './routes/crewRoster.js';
 import { leaderboardPlugin } from './routes/leaderboard.js';
 import { reorderPlugin }     from './routes/reorder.js';
 import { feedbackPlugin }    from './routes/feedback.js';
+import { unlockAckPlugin }   from './routes/unlockAck.js';
+import { pubDraftPlugin }    from './routes/pubDraft.js';
 
 const PORT = Number(process.env['PORT'] ?? 3001);
 
@@ -73,6 +75,8 @@ await app.register(crewRosterPlugin, { prefix: '/api/v1' });
 await app.register(leaderboardPlugin, { prefix: '/api/v1' });
 await app.register(reorderPlugin,    { prefix: '/api/v1' });
 await app.register(feedbackPlugin,   { prefix: '/api/v1' });
+await app.register(unlockAckPlugin,  { prefix: '/api/v1' });
+await app.register(pubDraftPlugin,   { prefix: '/api/v1' });
 
 // Health check — Render health check path (healthCheckPath: /health in render.yaml).
 // Returns 200 so Render considers the deployment healthy and stops the redeploy loop.
@@ -218,6 +222,27 @@ await db.execute(sql`
   ALTER TABLE users ADD COLUMN IF NOT EXISTS alias_chosen boolean NOT NULL DEFAULT false
 `);
 app.log.info('[migrate] alias_chosen ensured');
+
+// FB-012: unacknowledged_unlock_ids — crew IDs unlocked but not yet shown via cinematic.
+// Populated by evaluateUnlocks(); drained by POST /user/acknowledge-unlock.
+await db.execute(sql`
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS unacknowledged_unlock_ids integer[] NOT NULL DEFAULT '{}'::integer[]
+`);
+app.log.info('[migrate] unacknowledged_unlock_ids ensured');
+
+// FB-012: guaranteed_pub_draft_ids — crew IDs that must appear in the next Pub draft.
+// Populated by evaluateUnlocks() so newly unlocked crew surface at the next recruitment screen.
+await db.execute(sql`
+  ALTER TABLE runs ADD COLUMN IF NOT EXISTS guaranteed_pub_draft_ids integer[] NOT NULL DEFAULT '{}'::integer[]
+`);
+app.log.info('[migrate] guaranteed_pub_draft_ids ensured');
+
+// FB-012: crew_unlocked_this_run — crew IDs unlocked during the current run.
+// Drives the UnlockRecapPhase cinematic at run end. Reset to empty on new run creation.
+await db.execute(sql`
+  ALTER TABLE runs ADD COLUMN IF NOT EXISTS crew_unlocked_this_run integer[] NOT NULL DEFAULT '{}'::integer[]
+`);
+app.log.info('[migrate] crew_unlocked_this_run ensured');
 
 // ---------------------------------------------------------------------------
 // Start listening

@@ -27,7 +27,7 @@ export const hypeTrainHolly: CrewMember = {
   abilityCategory:  'HYPE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         10_000,
+  baseCost:         11_000,  // $110.00
   visualId:         'hype_train_holly',
   rarity:           'Uncommon',
 

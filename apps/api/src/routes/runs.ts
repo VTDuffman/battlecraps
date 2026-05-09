@@ -7,14 +7,41 @@
 // =============================================================================
 
 import type { FastifyInstance } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { runs } from '../db/schema.js';
+import { runs, crewDefinitions } from '../db/schema.js';
 import type { StoredCrewSlots, UserRow } from '../db/schema.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
 
 const EMPTY_CREW_SLOTS: StoredCrewSlots = [null, null, null, null, null];
+
+interface UnacknowledgedUnlock {
+  id:                  number;
+  name:                string;
+  rarity:              string;
+  visualId:            string;
+  briefDescription:    string | null;
+  detailedDescription: string | null;
+}
+
+async function fetchUnacknowledgedUnlocks(ids: number[]): Promise<UnacknowledgedUnlock[]> {
+  if (ids.length === 0) return [];
+  const defs = await db.select().from(crewDefinitions).where(inArray(crewDefinitions.id, ids));
+  const defMap = new Map(defs.map(d => [d.id, d]));
+  return ids.flatMap(id => {
+    const d = defMap.get(id);
+    if (!d) return [];
+    return [{
+      id:                  d.id,
+      name:                d.name,
+      rarity:              d.rarity,
+      visualId:            d.visualId,
+      briefDescription:    d.briefDescription,
+      detailedDescription: d.detailedDescription,
+    }];
+  });
+}
 
 interface CreateRunResponse {
   runId: string;
@@ -33,6 +60,8 @@ interface CreateRunResponse {
     unlockedCrewIds:    number[];
     /** True if this player has already completed or skipped the tutorial. */
     tutorialCompleted:  boolean;
+    /** Unlocks earned but not yet shown to the player via cinematic sequence. */
+    unacknowledgedUnlocks: UnacknowledgedUnlock[];
   };
 }
 
@@ -53,19 +82,23 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
       if (!run) return reply.status(404).send({ error: 'Not found' });
       if (run.userId !== userId) return reply.status(403).send({ error: 'Forbidden' });
 
+      const userRow = run.user as UserRow;
+      const unacknowledgedUnlocks = await fetchUnacknowledgedUnlocks(userRow.unacknowledgedUnlockIds);
+
       return reply.send({
-        bankroll:           run.bankrollCents,
-        shooters:           run.shooters,
-        hype:               run.hype,
-        phase:              run.phase,
-        status:             run.status,
-        point:              run.currentPoint ?? null,
-        crewSlots:          run.crewSlots,
-        currentMarkerIndex: run.currentMarkerIndex,
-        bets:               run.bets,
-        maxBankrollCents:   (run.user as UserRow).maxBankrollCents,
-        unlockedCrewIds:    (run.user as UserRow).unlockedCrewIds,
-        tutorialCompleted:  (run.user as UserRow).tutorialCompleted,
+        bankroll:              run.bankrollCents,
+        shooters:              run.shooters,
+        hype:                  run.hype,
+        phase:                 run.phase,
+        status:                run.status,
+        point:                 run.currentPoint ?? null,
+        crewSlots:             run.crewSlots,
+        currentMarkerIndex:    run.currentMarkerIndex,
+        bets:                  run.bets,
+        maxBankrollCents:      userRow.maxBankrollCents,
+        unlockedCrewIds:       userRow.unlockedCrewIds,
+        tutorialCompleted:     userRow.tutorialCompleted,
+        unacknowledgedUnlocks,
       });
     },
   );
@@ -102,20 +135,23 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
 
       app.log.info(`[runs] Created run ${run.id} for user ${user.id}`);
 
+      const unacknowledgedUnlocks = await fetchUnacknowledgedUnlocks(user.unacknowledgedUnlockIds);
+
       const body: CreateRunResponse = {
         runId:  run.id,
         run: {
-          bankroll:           run.bankrollCents,
-          shooters:           run.shooters,
-          hype:               run.hype,
-          phase:              run.phase,
-          status:             run.status,
-          point:              run.currentPoint ?? null,
-          crewSlots:          run.crewSlots as StoredCrewSlots,
-          currentMarkerIndex: run.currentMarkerIndex,
-          maxBankrollCents:   user.maxBankrollCents,
-          unlockedCrewIds:    user.unlockedCrewIds,
-          tutorialCompleted:  user.tutorialCompleted,
+          bankroll:              run.bankrollCents,
+          shooters:              run.shooters,
+          hype:                  run.hype,
+          phase:                 run.phase,
+          status:                run.status,
+          point:                 run.currentPoint ?? null,
+          crewSlots:             run.crewSlots as StoredCrewSlots,
+          currentMarkerIndex:    run.currentMarkerIndex,
+          maxBankrollCents:      user.maxBankrollCents,
+          unlockedCrewIds:       user.unlockedCrewIds,
+          tutorialCompleted:     user.tutorialCompleted,
+          unacknowledgedUnlocks,
         },
       };
 

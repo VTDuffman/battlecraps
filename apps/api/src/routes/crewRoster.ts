@@ -58,6 +58,7 @@ export interface CrewRosterEntry {
   briefDescription:    string | null;
   detailedDescription: string | null;
   unlockDescription:   string;
+  unlockQuote:         string | null;
   isAvailable:         boolean;
   unlockProgress:      number | null;
   unlockThreshold:     number | null;
@@ -107,6 +108,7 @@ export async function crewRosterPlugin(app: FastifyInstance): Promise<void> {
           briefDescription:    crew.briefDescription,
           detailedDescription: crew.detailedDescription,
           unlockDescription:   crew.unlockDescription,
+          unlockQuote:         crew.unlockQuote,
           isAvailable,
           unlockProgress:      progress,
           unlockThreshold:     threshold,

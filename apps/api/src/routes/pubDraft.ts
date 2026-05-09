@@ -98,6 +98,13 @@ export async function pubDraftPlugin(app: FastifyInstance): Promise<void> {
       // ── 2. Determine guaranteed crew ─────────────────────────────────────────
       const guaranteedIds = new Set(run.guaranteedPubDraftIds);
 
+      // ── 2b. Collect crew IDs already seated in the squad ─────────────────────
+      const occupiedIds = new Set(
+        run.crewSlots
+          .filter((s): s is NonNullable<typeof s> => s !== null)
+          .map(s => s.crewId),
+      );
+
       // ── 3. Load all crew definitions ─────────────────────────────────────────
       const allCrew = await db.select().from(crewDefinitions);
 
@@ -109,9 +116,10 @@ export async function pubDraftPlugin(app: FastifyInstance): Promise<void> {
         isStarterRoster || unlockedSet.has(crewId) || guaranteedIds.has(crewId);
 
       // ── 4. Partition into guaranteed and pool ────────────────────────────────
-      const guaranteedCrew = allCrew.filter(c => guaranteedIds.has(c.id));
+      // Exclude crew already in the squad from both lists to prevent duplicates.
+      const guaranteedCrew = allCrew.filter(c => guaranteedIds.has(c.id) && !occupiedIds.has(c.id));
       const poolCrew       = allCrew.filter(
-        c => !guaranteedIds.has(c.id) && isAvailable(c.id, c.isStarterRoster),
+        c => !guaranteedIds.has(c.id) && !occupiedIds.has(c.id) && isAvailable(c.id, c.isStarterRoster),
       );
 
       // ── 5. Build draft ───────────────────────────────────────────────────────

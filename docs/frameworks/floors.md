@@ -626,7 +626,7 @@ run. No exceptions. Applies in both COME_OUT and POINT_ACTIVE phases.
 | 13 | $30,000 | The Lodge | No |
 | 14 | $45,000 | The Lodge — The Inner Sanctum | **Yes** |
 
-*(Marker targets are design estimates — balance during implementation.)*
+*(Marker targets are design estimates — balance during implementation. Starting bankroll for the full 9-floor run is $30, calibrated against the Loading Dock's $50 first marker.)*
 
 ### Boss: The Hierophant
 
@@ -665,11 +665,11 @@ bankroll as tribute, on top of losing all active bets. Death spirals are real.
 
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
-| 15 | $75,000 | Atlantis | No |
+| 15 | $70,000 | Atlantis | No |
 | 16 | $120,000 | Atlantis | No |
 | 17 | $175,000 | Atlantis — The Throne Room | **Yes** |
 
-*(Marker targets are design estimates — balance during implementation.)*
+*(Marker targets are design estimates — balance during implementation. See Floor 5 note re: starting bankroll.)*
 
 ### Boss: The Sovereign
 
@@ -712,11 +712,11 @@ bankroll as tribute, on top of losing all active bets. Death spirals are real.
 
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
-| 18 | $275,000 | The Station | No |
-| 19 | $450,000 | The Station | No |
+| 18 | $250,000 | The Station | No |
+| 19 | $425,000 | The Station | No |
 | 20 | $650,000 | The Station — The Command Module | **Yes** |
 
-*(Marker targets are design estimates — balance during implementation.)*
+*(Marker targets are design estimates — balance during implementation. See Floor 5 note re: starting bankroll.)*
 
 ### Boss: The Commander
 
@@ -761,7 +761,7 @@ Momentum can work against the player.
 | 22 | $1,750,000 | The Signal | No |
 | 23 | $2,500,000 | The Signal — The Receiving Chamber | **Yes** |
 
-*(Marker targets are design estimates — balance during implementation.)*
+*(Marker targets are design estimates — balance during implementation. See Floor 5 note re: starting bankroll.)*
 
 ### Boss: The Emissary
 
@@ -806,7 +806,7 @@ points. Applies only during COME_OUT phase.
 | 25 | $7,000,000 | The Singularity | No |
 | 26 | $10,000,000 | The Singularity — The Root Node | **Yes** |
 
-*(Marker targets are design estimates — balance during implementation.)*
+*(Marker targets are design estimates — balance during implementation. See Floor 5 note re: starting bankroll.)*
 
 ### Boss: The Architect
 

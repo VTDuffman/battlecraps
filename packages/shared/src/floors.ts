@@ -116,11 +116,12 @@ export interface CelebrationSnapshot {
  * Drives ambient animation intensity, breathing overlay palette, and
  * (in future phases) sound design cues.
  *
- * 'gritty'   — Floor 1 (VFW Hall): worn, blue-collar, fluorescent grime
- * 'elegant'  — Floor 2 (The Riverboat): candlelit, mahogany, quiet danger
- * 'electric' — Floor 3 (The Strip): neon, obsidian, pure machine
+ * 'exposed'  — Floor 1 (The Loading Dock): stark, industrial, cold concrete
+ * 'gritty'   — Floor 2 (VFW Hall): worn, blue-collar, fluorescent grime
+ * 'elegant'  — Floor 3 (The Riverboat): candlelit, mahogany, quiet danger
+ * 'electric' — Floor 4 (The Strip): neon, obsidian, pure machine
  */
-export type FloorAtmosphere = 'gritty' | 'elegant' | 'electric';
+export type FloorAtmosphere = 'exposed' | 'gritty' | 'elegant' | 'electric';
 
 /**
  * The complete narrative and display configuration for a single floor.
@@ -220,11 +221,30 @@ export interface FloorConfig {
  */
 export const FLOORS: readonly FloorConfig[] = [
 
-  // ── Floor 1: VFW Hall ─────────────────────────────────────────────────────
-  // Gritty blue-collar gambling den. Worn green felt, tarnished gold,
-  // fluorescent grime. The entry point — familiar but not forgiving.
+  // ── Floor 1: The Loading Dock ─────────────────────────────────────────────
+  // Stained concrete, sodium-vapor streetlamp, chipped dice. The street.
+  // Where it all begins — before you've earned a seat at any real table.
   {
     id:        1,
+    name:      'The Loading Dock',
+    tagline:   'The street. The hustle. Where it all begins.',
+    introLines: [
+      'Stained concrete and the harsh glare of a sodium-vapor streetlamp. The air is cold, and the dice are chipped.',
+      'The Foreman stands by the freight elevator, steel-toed and impatient. He decides who gets to step inside.',
+      "The street always takes its cut. Don't bleed out before the real game even starts.",
+    ],
+    bossName:   'The Foreman',
+    bossTitle:  'Loading Dock Gatekeeper',
+    bossVenue:  'The Loading Dock — Freight Elevator',
+    bossTeaser: "The Foreman doesn't care if you win or lose. He just wants his cut.",
+    atmosphere: 'exposed',
+  },
+
+  // ── Floor 2: VFW Hall ─────────────────────────────────────────────────────
+  // Gritty blue-collar gambling den. Worn green felt, tarnished gold,
+  // fluorescent grime. The first real indoor table.
+  {
+    id:        2,
     name:      'VFW Hall',
     tagline:   'Where dice meet duty.',
     introLines: [
@@ -239,11 +259,11 @@ export const FLOORS: readonly FloorConfig[] = [
     atmosphere: 'gritty',
   },
 
-  // ── Floor 2: The Riverboat ────────────────────────────────────────────────
+  // ── Floor 3: The Riverboat ────────────────────────────────────────────────
   // Mississippi paddlewheel casino salon. Deep navy felt, aged champagne
   // brass, mahogany panels. Candlelit, quiet danger dressed as elegance.
   {
-    id:        2,
+    id:        3,
     name:      'The Riverboat',
     tagline:   'Fortune flows with the current.',
     introLines: [
@@ -258,11 +278,11 @@ export const FLOORS: readonly FloorConfig[] = [
     atmosphere: 'elegant',
   },
 
-  // ── Floor 3: The Strip ────────────────────────────────────────────────────
+  // ── Floor 4: The Strip ────────────────────────────────────────────────────
   // Vegas tower penthouse, sixty floors up. Obsidian felt, electric gold,
   // neon magenta. No warmth, no texture, no mercy. Pure money, pure machine.
   {
-    id:        3,
+    id:        4,
     name:      'The Strip',
     tagline:   'Sixty floors up. No safety net.',
     introLines: [
@@ -297,9 +317,10 @@ export function getFloorById(id: number): FloorConfig | undefined {
  * Clamps to the last floor if markerIndex exceeds the gauntlet length.
  *
  * Examples:
- *   getFloorByMarkerIndex(0) → Floor 1 (VFW Hall)
- *   getFloorByMarkerIndex(4) → Floor 2 (The Riverboat)
- *   getFloorByMarkerIndex(8) → Floor 3 (The Strip)
+ *   getFloorByMarkerIndex(0) → Floor 1 (The Loading Dock)
+ *   getFloorByMarkerIndex(3) → Floor 2 (VFW Hall)
+ *   getFloorByMarkerIndex(6) → Floor 3 (The Riverboat)
+ *   getFloorByMarkerIndex(9) → Floor 4 (The Strip)
  */
 export function getFloorByMarkerIndex(markerIndex: number): FloorConfig {
   const id = Math.floor(markerIndex / 3) + 1;

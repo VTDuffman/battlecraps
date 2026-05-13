@@ -102,7 +102,6 @@ export interface CrewRosterEntry {
   name:                string;
   abilityCategory:     string;
   cooldownType:        string;
-  baseCostCents:       number;
   visualId:            string;
   rarity:              string;
   briefDescription:    string | null;
@@ -124,7 +123,7 @@ export interface PubDraftEntry {
   name:                string;
   abilityCategory:     string;
   cooldownType:        string;
-  baseCostCents:       number;
+  hireCostCents:       number;
   visualId:            string;
   rarity:              string;
   briefDescription:    string | null;

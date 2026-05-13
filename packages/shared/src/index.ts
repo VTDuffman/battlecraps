@@ -16,6 +16,8 @@ export {
   STREAK_BASE_TICK,
   STREAK_INCREMENT,
   STREAK_CAP,
+  RARITY_COST_MULTIPLIERS,
+  getCrewHireCost,
 } from './config.js';
 
 export type {
@@ -37,6 +39,7 @@ export type {
   RunStatus,
   RollResult,
   AbilityCategory,
+  CrewRarity,
   CooldownType,
   HardwayBets,
   Bets,

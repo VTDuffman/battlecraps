@@ -21,7 +21,6 @@ export const silverLining: CrewMember = {
   abilityCategory:  'HYPE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         7_500,  // $75.00
   visualId:         'silver_lining',
   rarity:           'Starter',
 

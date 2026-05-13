@@ -21,7 +21,6 @@ export const mirror: CrewMember = {
   abilityCategory:  'PAYOUT',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         8_500,  // $85.00
   visualId:         'mirror',
   rarity:           'Starter',
 

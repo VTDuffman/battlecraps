@@ -7,7 +7,7 @@
 //
 // Two use-cases in one endpoint:
 //   1. BUY  — provide { crewId, slotIndex } to hire a crew member.
-//             Deducts baseCostCents from bankroll and seats them in the slot.
+//             Deducts getCrewHireCost(rarity, clearedMarkerTarget) from bankroll and seats them in the slot.
 //             Overwrites whatever crew member (if any) was in that slot.
 //   2. SKIP — omit crewId/slotIndex (or send empty object) to rest and skip.
 //
@@ -23,7 +23,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, users, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
-import { isBossMarker, GAUNTLET, LUCKY_CHARM_ID } from '@battlecraps/shared';
+import { isBossMarker, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, type CrewRarity } from '@battlecraps/shared';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
 
@@ -142,12 +142,16 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
             error: `Crew member ${crewId} has not been unlocked yet.`,
           });
         }
-        if (run.bankrollCents < crewDef.baseCostCents) {
+        const clearedIndex  = run.currentMarkerIndex - 1;
+        const clearedTarget = GAUNTLET[clearedIndex]?.targetCents ?? GAUNTLET[0]!.targetCents;
+        const hireCost      = getCrewHireCost(crewDef.rarity as CrewRarity, clearedTarget);
+
+        if (run.bankrollCents < hireCost) {
           return reply.status(422).send({
-            error: `Insufficient bankroll. Need ${crewDef.baseCostCents}¢, have ${run.bankrollCents}¢.`,
+            error: `Insufficient bankroll. Need ${hireCost}¢, have ${run.bankrollCents}¢.`,
           });
         }
-        newBankroll              = run.bankrollCents - crewDef.baseCostCents;
+        newBankroll              = run.bankrollCents - hireCost;
         newCrewSlots[slotIndex!] = { crewId: crewId!, cooldownState: 0 };
       }
 

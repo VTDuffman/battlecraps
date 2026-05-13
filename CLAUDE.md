@@ -1,7 +1,7 @@
 # BattleCraps — CLAUDE.md
 
 ## Project Overview
-Roguelike Craps game: 9-marker gauntlet (3 floors × 3 markers + boss). Players recruit a 5-slot crew whose abilities cascade each turn to modify dice, payouts, and hype multipliers. Entering beta — all alpha defects resolved.
+Roguelike Craps game: 12-marker gauntlet (4 floors × 3 markers + boss). Players recruit a 5-slot crew whose abilities cascade each turn to modify dice, payouts, and hype multipliers. Entering beta — all alpha defects resolved.
 
 **Tech Stack:** React 18 + TypeScript 5 + Vite 5 + Zustand | Fastify + Socket.io | PostgreSQL + Drizzle ORM | npm workspaces monorepo
 
@@ -36,10 +36,10 @@ packages/shared/src/          # Pure-function game engine — zero runtime deps
   types.ts                    # Source of truth: GamePhase, RollResult, TurnContext, CrewMember, Bets, LeaderboardEntry
   crapsEngine.ts              # classifyRoll(), settleTurn(), payout calculators
   cascade.ts                  # resolveCascade() — sequential crew execute() calls, emits CascadeEvents
-  config.ts                   # GAUNTLET[9], boss rules, comp perks, getMaxBet(), getMinBet()
+  config.ts                   # GAUNTLET[12], boss rules, comp perks, getMaxBet(), getMinBet(), RARITY_COST_MULTIPLIERS, getCrewHireCost()
   floors.ts                   # FloorConfig, FLOORS registry, TransitionType, CelebrationSnapshot — floor narrative/display data
   crew/                       # 30 execute() implementations + index.ts registry (IDs 1–15 unlock-gated; 16–30 Starter)
-  bossRules/                  # Boss rule hook implementations: disableCrew.ts, foursInstantLoss.ts, risingMinBets.ts, types.ts
+  bossRules/                  # Boss rule hook implementations: extortionFee.ts, disableCrew.ts, foursInstantLoss.ts, risingMinBets.ts, types.ts
 
 apps/api/src/                 # Fastify backend
   server.ts                   # Fastify + Socket.io setup, route registration
@@ -75,7 +75,7 @@ apps/web/src/                 # React SPA
                               #   FloorRevealConfirm, BossEntry, BossEntryDread, BossVictory, BossVictoryComp,
                               #   VictoryExplosion, VictoryRecap, VictorySendoff
   hooks/                      # useAnimatedCounter, useFloorTheme, useCrowdAudio, useTutorialSpotlight, useParticleEmitter
-  lib/floorThemes.ts          # Three floor theme objects (gritty / elegant / electric)
+  lib/floorThemes.ts          # Four floor theme objects (exposed / gritty / elegant / electric)
   lib/socket.ts               # Socket.io client singleton
   lib/tutorialBeats.ts        # Tutorial beat definitions (step data for TutorialOverlay)
 ```
@@ -93,6 +93,8 @@ apps/web/src/                 # React SPA
 - **Crew rail DnD** — `sensors=[]` (empty) when `isRolling || isCascading`; `useSortable` is `disabled` on empty slots. `slotIds` in Zustand tracks visual order for `SortableContext`; `reorderCrew` derives the server permutation mathematically (not via `findIndex`) to avoid null-equality collisions on empty slots.
 - **Particle canvas** (`useParticleEmitter`) must be rendered **unconditionally via `createPortal` to `document.body`** in DiceZone — never gate it on hypeTier. Conditional unmounting breaks the `canvasRef` and kills the rAF loop.
 - **DiePlaceholder** components must be **explicitly rendered** in the false branch of the `showingDice` conditional in DiceZone. The `showingDice` variable falls back to `displayDice` (never null), so the false branch is currently unreachable — but it must remain in place for correctness if that invariant ever changes.
+- **Dynamic crew pricing** (FB-023) — `baseCost` has been removed from `CrewMember`. Hire cost is computed at recruit time via `getCrewHireCost(rarity, clearedMarkerTargetCents)` in `config.ts`. The `/crew-roster` response includes `hireCostCents`; client always reads from that field, never computes independently.
+- **Dynamic additive scaling** (FB-024) — `markerTargetCents` is injected into `TurnContext` by `rolls.ts` before the cascade runs. Additive crew use `Math.round(ADDITIVE_MULT * Math.floor(ctx.markerTargetCents * 0.10) / 100) * 100` for floor-scaled bonuses.
 
 **Payout formula:** `FinalPayout = baseStakeReturned + floor((GrossProfit + additives) × hype × ∏multipliers)`
 
@@ -125,9 +127,9 @@ This project uses strict TypeScript. Whenever you write or modify TypeScript cod
 
 ## Game Constants (quick reference)
 
-**Gauntlet targets:** Floor 1: $300/$600/$1k | Floor 2: $1.5k/$2.5k/$4k | Floor 3: $6k/$9k/$12.5k
-**Bosses:** Sarge (rising min-bets) | Mme. Le Prix (crew disabled) | Executive (4s = instant loss)
-**Comps:** Member's Jacket (+1 shooter) | Sea Legs (7-out resets hype to 50%) | Golden Touch (guaranteed first natural)
+**Gauntlet targets:** Floor 1: $50/$100/$250 | Floor 2: $300/$600/$1k | Floor 3: $1.5k/$2.5k/$4k | Floor 4: $6k/$9k/$12.5k
+**Bosses:** The Foreman (20% payout tax) | Sarge (rising min-bets) | Mme. Le Prix (crew disabled) | Executive (4s = instant loss)
+**Comps:** The Vig (crew cash +20%, TODO) | Member's Jacket (+1 shooter) | Sea Legs (7-out resets hype to 50%) | Golden Touch (guaranteed first natural)
 **Odds:** 4/10 → 3× max, 2:1 | 5/9 → 4× max, 3:2 | 6/8 → 5× max, 6:5
 **Hardways:** 4/10 = 7:1 | 6/8 = 9:1
 **Bet max:** 10% of marker target
@@ -138,7 +140,7 @@ This project uses strict TypeScript. Whenever you write or modify TypeScript cod
 ## Docs Structure
 
 ```
-docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–022), tutorial-user-journey.md,
+docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–024), tutorial-user-journey.md,
                       #   vibe-ideas.md, floor-aesthetics.md
 docs/frameworks/      # crew_framework.md (30 crew — 15 Starter + 15 unlock-gated), floors.md, boss_framework.md
 docs/design/          # crew-sprites-tdd.md (asset spec), crew-implementation-design.md (FB-012 TDD),
@@ -157,7 +159,7 @@ docs/manifests/       # manifest-instruction-prompt.md, implemented/ (FB-009, FB
 
 ## Current State
 
-**Status:** Beta. All 12 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped. Boss mechanic framework (FB-010) fully implemented. Title lobby screen (FB-011) live. Crew Expansion & Unlock System (FB-012) live — 30-crew roster, unlock gating, real-time unlock notifications. Tutorial & How to Play system (FB-007) live. Dice Roll Sound Effect (FB-009) live. Versioning & Release Notes (FB-019) live — automated SemVer via build script, in-game release notes modal, "New" indicator with localStorage dismissal. High Roller's Club & Leaderboards (FB-014) live — `leaderboard_entries` table, `GET /api/v1/leaderboard` (global/personal), per-run `highestRollAmplifiedCents` tracking, `LeaderboardScreen` + `LeaderboardEntry` components accessible from TitleLobbyScreen. **NBA Jam Dice Hype Effects (FB-021) live** — three-tier hype visual system: Tier 0 (default ivory dice), Tier 2 / Heating Up (yellow dice + orange heat-glow CSS animation + smoke particle emitter), Tier 3 / On Fire (red dice + chaotic fire-glow CSS animation + fire particle emitter with additive blending); particle canvas portaled to `document.body` via `createPortal`; hype rebalance shipped alongside — ticks on all roll results (POINT_HIT +0.25, NATURAL +0.10, CRAPS_OUT −0.05 floored at 1.0), tier thresholds key off `s.hype` (≥1.5 / ≥2.5). **Drag-and-Drop Crew Rail Sorting (FB-022) live** — players reorder the 5-slot crew rail via drag-and-drop; `@dnd-kit/core` + `@dnd-kit/sortable`; 150ms activation delay prevents accidental drags; rail locked (`sensors=[]`) during rolls and cascade animations; optimistic UI with rollback on failure; `POST /api/v1/runs/:id/crew/reorder` persists the new slot order server-side with an optimistic lock on `updatedAt`. **Playtester Feedback System (FB-018) live** — `POST /api/v1/feedback` endpoint with Clerk auth + Fastify AJV validation; `feedback_submissions` table (serial PK, user FK, type/rating/comment/context JSONB); `FeedbackModal` component portaled to `document.body`; `snapshotForFeedback()` Zustand action captures game state before `disconnect()` clears it; bug icon in TableBoard HUD (live game context) + "SUBMIT FEEDBACK" button in TitleLobbyScreen footer (post-session context); "← TITLE SCREEN" back-to-lobby flow with inline confirmation; all top-left HUD controls in a single flex row so confirmation expansion does not overlap siblings.
+**Status:** Beta. All 12 transition phases shipped. Clerk auth (Google OAuth) live in production. Max bankroll tracking live. Bet take-down (odds + hardway pre-roll) live. Transition timing overhaul (FB-008) shipped. Boss mechanic framework (FB-010) fully implemented. Title lobby screen (FB-011) live. Crew Expansion & Unlock System (FB-012) live — 30-crew roster, unlock gating, real-time unlock notifications. Tutorial & How to Play system (FB-007) live. Dice Roll Sound Effect (FB-009) live. Versioning & Release Notes (FB-019) live — automated SemVer via build script, in-game release notes modal, "New" indicator with localStorage dismissal. High Roller's Club & Leaderboards (FB-014) live — `leaderboard_entries` table, `GET /api/v1/leaderboard` (global/personal), per-run `highestRollAmplifiedCents` tracking, `LeaderboardScreen` + `LeaderboardEntry` components accessible from TitleLobbyScreen. **NBA Jam Dice Hype Effects (FB-021) live** — three-tier hype visual system: Tier 0 (default ivory dice), Tier 2 / Heating Up (yellow dice + orange heat-glow CSS animation + smoke particle emitter), Tier 3 / On Fire (red dice + chaotic fire-glow CSS animation + fire particle emitter with additive blending); particle canvas portaled to `document.body` via `createPortal`; hype rebalance shipped alongside — ticks on all roll results (POINT_HIT +0.25, NATURAL +0.10, CRAPS_OUT −0.05 floored at 1.0), tier thresholds key off `s.hype` (≥1.5 / ≥2.5). **Drag-and-Drop Crew Rail Sorting (FB-022) live** — players reorder the 5-slot crew rail via drag-and-drop; `@dnd-kit/core` + `@dnd-kit/sortable`; 150ms activation delay prevents accidental drags; rail locked (`sensors=[]`) during rolls and cascade animations; optimistic UI with rollback on failure; `POST /api/v1/runs/:id/crew/reorder` persists the new slot order server-side with an optimistic lock on `updatedAt`. **Playtester Feedback System (FB-018) live** — `POST /api/v1/feedback` endpoint with Clerk auth + Fastify AJV validation; `feedback_submissions` table (serial PK, user FK, type/rating/comment/context JSONB); `FeedbackModal` component portaled to `document.body`; `snapshotForFeedback()` Zustand action captures game state before `disconnect()` clears it; bug icon in TableBoard HUD (live game context) + "SUBMIT FEEDBACK" button in TitleLobbyScreen footer (post-session context); "← TITLE SCREEN" back-to-lobby flow with inline confirmation; all top-left HUD controls in a single flex row so confirmation expansion does not overlap siblings. **Loading Dock Floor 1 (FB-015 partial) live** — The Loading Dock added as the new Floor 1 ($50/$100/$250 targets); all existing floors renumbered (VFW Hall → Floor 2, Riverboat → Floor 3, Strip → Floor 4); new boss The Foreman with `EXTORTION_FEE` mechanic (20% tax on winning payouts) enforced via new `modifyPayout` hook in `BossRuleHooks`; new comp The Vig (crew cash +20%, enforcement TODO); Loading Dock floor theme (sodium-vapor orange, concrete/asphalt palette), `FloorAtmosphere: 'exposed'`, and FloorEmblem (Share Tech Mono font) all added; `GAUNTLET[]` now 12 entries across 4 floors; tutorial beats updated to reference 4 floors/12 markers and The Foreman. **Dynamic Crew Hiring Costs (FB-023) live** — `baseCost` removed from `CrewMember` and DB; `RARITY_COST_MULTIPLIERS` + `getCrewHireCost()` in `config.ts` compute cost as `N × maxBet` by rarity; `/crew-roster` response includes `hireCostCents`; `PubScreen` reads it from the API. **Dynamic Crew Additive Scaling (FB-024) live** — `markerTargetCents` added to `TurnContext`, injected by `rolls.ts`; 10 additive crew replaced flat `ADDITIVE_BOOST` constants with `ADDITIVE_MULT` coefficients (0.5×–2.0× of current max bet), rounding to nearest dollar.
 
 **Active development:** None currently.
 

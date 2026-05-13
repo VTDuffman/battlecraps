@@ -3,18 +3,17 @@
 // packages/shared/src/crew/shark.ts
 //
 // Category:    PAYOUT
-// Ability:     +$100 (10000 cents) flat bonus on any Point Hit.
+// Ability:     Dynamic additive (2.0× max-bet) on any Point Hit.
 // Cooldown:    none
 //
 // The Shark is the premier PAYOUT crew for the grind game. Every Point Hit —
-// regardless of bet size — earns a flat $100 bonus that's subsequently
-// amplified by Hype and multipliers. At Hype 2.0x + Whale 1.2x, The Shark's
-// bonus alone becomes $240 per Point Hit.
+// regardless of bet size — earns a floor-scaled bonus subsequently amplified
+// by Hype and multipliers.
 // =============================================================================
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const BONUS_CENTS = 10_000; // +$100.00
+const ADDITIVE_MULT = 2.0;  // 2.0× the current marker's max bet
 
 export const shark: CrewMember = {
   id:               8,
@@ -22,7 +21,6 @@ export const shark: CrewMember = {
   abilityCategory:  'PAYOUT',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         20_000,  // $200.00
   visualId:         'shark',
   rarity:           'Rare',
 
@@ -31,8 +29,11 @@ export const shark: CrewMember = {
       return { context: ctx, newCooldown: 0 };
     }
 
+    const maxBet = Math.floor(ctx.markerTargetCents * 0.10);
+    const additive = Math.round(ADDITIVE_MULT * maxBet / 100) * 100;
+
     return {
-      context: { ...ctx, additives: ctx.additives + BONUS_CENTS },
+      context: { ...ctx, additives: ctx.additives + additive },
       newCooldown: 0,
     };
   },

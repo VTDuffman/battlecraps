@@ -353,6 +353,7 @@ async function rollHandler(
     previousRollTotal:     run.previousRollTotal ?? null,
     shooterRollCount:      run.shooterRollCount,
     pointPhaseBlankStreak: run.pointPhaseBlankStreak,
+    markerTargetCents:     GAUNTLET[run.currentMarkerIndex]?.targetCents ?? 0,
   });
 
   // ── 7b. Base-game Hype tick ────────────────────────────────────────────────
@@ -459,7 +460,10 @@ async function rollHandler(
   //   CRAPS_OUT($10 bet): payout=0,    betDelta=1000 → delta=-1000 (-$10 loss)
   //   SEVEN_OUT (bets already deducted at POINT_SET): betDelta=0 → delta=0
   //   POINT_SET (bets frozen): payout=0, betDelta=passLine → delta=-passLine
-  const payout = settleTurn(finalContext);
+  const rawPayout = settleTurn(finalContext);
+  const payout = bossHooks?.modifyPayout
+    ? bossHooks.modifyPayout(rawPayout, finalContext.baseStakeReturned, bossParams!, bossState)
+    : rawPayout;
   const newBankroll = run.bankrollCents - betDelta + payout;
   const bankrollDelta = newBankroll - run.bankrollCents;
 

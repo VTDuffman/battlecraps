@@ -737,3 +737,36 @@ The utility "Bar of Buttons" across the top of the screen (containing actions li
 1.  **Dedicated Header Space:** Remove absolute positioning (e.g., `absolute top-X`) from the top utility button container in `TableBoard.tsx`. Introduce a dedicated, fixed-height header `flex-row` at the very top of the main layout column, which will safely push the rest of the board content down and eliminate overlap.
 2.  **Improve Button Visibility:** Update the Tailwind utility classes on the buttons to ensure high contrast against all backgrounds (e.g., adding solid or semi-transparent background pills, stronger drop-shadows, or higher-contrast icon colors).
 3.  **Remove "Subscribed" Indicator:** Delete the socket "subscribed" status badge from the UI entirely, as it serves no player-facing purpose and contributes to clutter.
+
+---
+
+## KI-038 — Tutorial content stale after Loading Dock added as Floor 1
+
+**Area:** `apps/web/src/lib/tutorialBeats.ts`, `apps/web/src/components/tutorial/sections/BattleCrapsRulesSection.tsx`, `apps/web/src/components/tutorial/sections/CrewAndBossesSection.tsx`
+**Severity:** Medium
+**Status:** Fixed
+**Source:** Design review — FB-015 Loading Dock integration audit
+
+**Issue:**
+FB-015 prepended the Loading Dock as Floor 1, shifting the gauntlet from 3 floors / 9 markers to 4 floors / 12 markers and setting the starting bankroll to $40 against a $50 first marker. The tutorial system and How to Play reference screens were not updated to reflect these changes. Six specific stale references were identified:
+
+1. **`tutorialBeats.ts` — Beat 8:** Hardcoded `$301` bankroll figure. This was calibrated for the old system where a ~$250 starting bankroll barely crossed the $300 VFW Hall first marker. With $40 starting bankroll and a $50 first marker, the actual bankroll after the tutorial Hard 8 sequence is approximately $96 — the marker clear is still valid, but the specific amount is wrong.
+
+2. **`tutorialBeats.ts` — Beat 10:** Two stale references — `"$300"` as the displayed marker target (first marker is now $50), and `"Three floors, nine markers"` (now four floors, twelve markers). This beat is the first beat for Path B players, making it a high-visibility error.
+
+3. **`tutorialBeats.ts` — Beat 13:** The Foreman (Floor 1 boss) is completely absent from the boss introduction. Sarge is described as if he were the first boss the player will face; he is now on Floor 2. The player is about to walk into The Foreman's floor.
+
+4. **`BattleCrapsRulesSection.tsx` — `FLOOR_NAMES` constant:** Hardcoded as `['VFW Hall', 'The Riverboat', 'The Strip']` — three floors, wrong start. Missing The Loading Dock.
+
+5. **`BattleCrapsRulesSection.tsx` — floor loop and prose:** `[0, 1, 2].map(...)` renders only three floors; The Strip (Floor 4) is invisible. Companion prose says "Nine markers across three floors."
+
+6. **`BattleCrapsRulesSection.tsx` — starting bankroll row:** Displays `$250.00`; actual starting bankroll is `$40.00` (set in `routes/runs.ts`).
+
+7. **`CrewAndBossesSection.tsx` — boss cards:** Only three `<BossCard>` entries (markerIndex 2, 5, 8). The Executive at markerIndex 11 is missing entirely.
+
+**Fix applied:**
+- Beat 8: Removed hardcoded `$301` figure — text now reads "Look at that bankroll jump" without a specific amount.
+- Beat 10: Removed hardcoded `$300`, updated prose to "Four floors, twelve markers."
+- Beat 13: Rewrote boss list to lead with The Foreman (the boss the player is about to face), then enumerate the remaining three.
+- `BattleCrapsRulesSection`: Fixed `FLOOR_NAMES` to include all four floors, updated loop to `[0, 1, 2, 3]`, updated prose to "Twelve markers across four floors," corrected starting bankroll to `$40.00`.
+- `CrewAndBossesSection`: Added `<BossCard markerIndex={11} />` for The Executive.

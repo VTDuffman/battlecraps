@@ -3,19 +3,17 @@
 // packages/shared/src/crew/bigSpender.ts
 //
 // Category:    PAYOUT
-// Ability:     +$50 (5000 cents) flat bonus added to the payout on any
-//              roll where a Hardway bet wins.
+// Ability:     Dynamic additive (1.5× max-bet) on any roll where a Hardway bet wins.
 // Cooldown:    none
 //
 // The Big Spender is a straightforward PAYOUT crew member. When any hardway
-// bet wins, he slaps an extra $50 into the pot. Critically, this additive
-// is boosted by Hype and other multipliers in settleTurn() — so with Hype
-// at 2.0x and The Whale active, that $50 effectively becomes $120.
+// bet wins, he slaps an extra bonus into the pot. Critically, this additive
+// is boosted by Hype and other multipliers in settleTurn().
 // =============================================================================
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const BONUS_CENTS = 5_000; // +$50.00
+const ADDITIVE_MULT = 1.5;  // 1.5× the current marker's max bet
 
 export const bigSpender: CrewMember = {
   id:               7,
@@ -23,7 +21,6 @@ export const bigSpender: CrewMember = {
   abilityCategory:  'PAYOUT',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         10_000,  // $100.00
   visualId:         'big_spender',
   rarity:           'Uncommon',
 
@@ -33,8 +30,11 @@ export const bigSpender: CrewMember = {
       return { context: ctx, newCooldown: 0 };
     }
 
+    const maxBet = Math.floor(ctx.markerTargetCents * 0.10);
+    const additive = Math.round(ADDITIVE_MULT * maxBet / 100) * 100;
+
     return {
-      context: { ...ctx, additives: ctx.additives + BONUS_CENTS },
+      context: { ...ctx, additives: ctx.additives + additive },
       newCooldown: 0,
     };
   },

@@ -756,7 +756,7 @@ A new `leaderboard_entries` table to avoid expensive aggregate logic on the `run
 
 **Type:** Feature / Content  
 **Area:** Progression / `packages/shared/src/config.ts` / `apps/web/src/lib/floorThemes.ts`  
-**Status:** In Progress  
+**Status:** In Progress (Floor 1 — The Loading Dock implemented; Floors 5–9 pending design)
 
 ### Summary  
 Expand the game's core progression gauntlet from the MVP 3 floors to a full 9-floor experience. This requires defining new aesthetics, marker targets, boss rules, and comp rewards for each new venue.   
@@ -767,17 +767,32 @@ This ticket serves as the living master tracker for the 9-floor gauntlet. It wil
 
 | Floor | Venue Name | Design Status | Implementation Status | Notes |
 |---|---|---|---|---|
-| **1** | The Loading Dock | 🟡 Designed | 🔴 Pending | Specs in `floors.md` & `floor-aesthetics.md` |
-| **2** | VFW Hall | 🟢 Designed | 🟢 Implemented | Legacy Floor 1 |
-| **3** | Riverboat | 🟢 Designed | 🟢 Implemented | Legacy Floor 2 |
-| **4** | The Strip | 🟢 Designed | 🟢 Implemented | Legacy Floor 3 |
+| **1** | The Loading Dock | 🟢 Designed | 🟢 Implemented | $50/$100/$250 targets; Boss: The Foreman (20% payout tax) |
+| **2** | VFW Hall | 🟢 Designed | 🟢 Implemented | $300/$600/$1k targets; Boss: Sarge |
+| **3** | Riverboat | 🟢 Designed | 🟢 Implemented | $1.5k/$2.5k/$4k targets; Boss: Mme. Le Prix |
+| **4** | The Strip | 🟢 Designed | 🟢 Implemented | $6k/$9k/$12.5k targets; Boss: The Executive |
 | **5** | *TBD* | 🔴 Not Designed | 🔴 Pending | |
 | **6** | *TBD* | 🔴 Not Designed | 🔴 Pending | |
 | **7** | *TBD* | 🔴 Not Designed | 🔴 Pending | |
 | **8** | *TBD* | 🔴 Not Designed | 🔴 Pending | |
 | **9** | *TBD* | 🔴 Not Designed | 🔴 Pending | Final Boss / Game Completion |
 
-*(Note: The exact ordering of legacy floors vs. new floors may shift during balancing. Ensure marker targets scale appropriately as new floors are slotted into the array).*
+### Loading Dock Implementation Details
+
+**New boss mechanic — EXTORTION_FEE:**
+- `BossRuleType` union extended with `'EXTORTION_FEE'`
+- `BossRuleParams` union extended with `{ rule: 'EXTORTION_FEE'; taxPct: number }`
+- New `modifyPayout` hook added to `BossRuleHooks` interface — called after `settleTurn()` returns raw payout, before bankroll update; only fires on winning rolls
+- `packages/shared/src/bossRules/extortionFee.ts` created; deducts `floor(profit × taxPct)` from each winning payout
+- `rolls.ts`: `rawPayout = settleTurn(...)` → `payout = bossHooks?.modifyPayout?.(...)` pattern mirrors existing hook call style
+
+**New comp — THE_VIG:**
+- `CompRewardType` extended with `'THE_VIG'`; `COMP_PERK_IDS.THE_VIG = 4` added
+- Enforcement is deferred (crew cash +20% logic not yet wired); comp is awarded and displayed correctly
+
+**Floor renumbering:** All existing floors incremented by 1 (`floor` field in `GAUNTLET[]` and `id` in `FLOORS[]`). `getFloorByMarkerIndex()` examples updated. `floorThemes.ts` constants renamed (`FLOOR_1_THEME` → `FLOOR_2_THEME`, etc.).
+
+**Tutorial updates (beats 8, 10, 13):** Removed hardcoded "$301" reference; updated gauntlet description to "4 floors, 12 markers"; updated boss roster copy to include The Foreman.
 
 ### Definition of Done (per Floor)  
 For a floor to be marked as **Implemented**, the following components must be complete:  
@@ -1193,6 +1208,190 @@ The initial `findIndex`-based permutation derivation (`previousSlots.findIndex(s
 | `apps/web/src/store/useGameStore.ts` | Added `slotIds` state + `reorderCrew` action |
 | `apps/web/src/components/TableBoard.tsx` | `DndContext` + `SortableContext` + `handleDragEnd` |
 | `apps/web/src/components/CrewPortrait.tsx` | `useSortable` hook wiring + `cancelHold` on drag |
+
+---
+
+## FB-023 — Dynamic Crew Hiring Costs
+
+**Type:** Balance / Architecture
+**Area:** Crew Recruitment / `packages/shared/src/config.ts`, `apps/api/src/routes/recruit.ts`, `apps/api/src/routes/crewRoster.ts`, `apps/web/src/components/PubScreen.tsx`
+**Status:** Implemented (shipped alongside FB-015 and FB-024)
+
+### Problem
+
+Crew `baseCost` is an absolute dollar value baked into each of the 30 crew files, originally calibrated for the old 3-floor gauntlet that started at the VFW Hall (~$300 bankroll at first pub). With the Loading Dock added as Floor 1, this breaks in both directions:
+
+- **Too expensive early:** After clearing Loading Dock marker 0 ($50 target), bankroll is ~$52–70. Common starter crew cost $60–130 — sometimes more than the entire stack. Hiring isn't a strategic decision, it's a coin flip on whether you can afford anything.
+- **Too cheap late:** By the Riverboat, even a $425 Legendary (Whale) is ~10% of bankroll. By the Strip it's noise. The hiring decision carries no weight at floors 3 and 4.
+
+The root cause is structural: absolute costs cannot span a 250× bankroll range (Loading Dock pub ~$55 → Strip late-game $8,000+) and stay meaningful at both ends.
+
+### Solution
+
+Replace the static `baseCost` field with **dynamic pricing computed at hire time**, anchored to the cleared marker's max bet and scaled by rarity. The cleared marker's max bet is already a known, in-game concept (10% of marker target) and expresses cost naturally as "N max bets" — a unit that scales with the stakes everywhere in the game.
+
+**Formula:** `actualCostCents = RARITY_COST_MULTIPLIERS[crew.rarity] × getMaxBet(clearedMarkerTargetCents)`
+
+**Rarity multiplier table:**
+
+| Rarity | Multiplier | Dock m0 ($5 max) | VFW m0 ($30 max) | Riverboat m0 ($150 max) | Strip m0 ($600 max) |
+|---|---|---|---|---|---|
+| Starter | 4× | $20 | $120 | $600 | $2,400 |
+| Common | 6× | $30 | $180 | $900 | $3,600 |
+| Uncommon | 8× | $40 | $240 | $1,200 | $4,800 |
+| Rare | 12× | $60 | $360 | $1,800 | $7,200 |
+| Epic | 18× | $90 | $540 | $2,700 | $10,800 |
+| Legendary | 25× | $125 | $750 | $3,750 | $15,000 |
+
+At every pub, a Starter hire costs ~27–36% of the cleared marker target — a real decision, consistently. Legendary is always a major investment; it's aspirational at Loading Dock and achievable but significant at the Strip.
+
+The `clearedMarkerTarget` is the target of the marker the player just cleared — the pub they are currently in. This is the natural anchor: prices are proportional to what you just won, not what you're about to face.
+
+### Retirement of `baseCost`
+
+`baseCost` (and its DB counterpart `base_cost_cents` on `crew_definitions`) becomes vestigial. It should be removed from:
+- The `CrewMember` interface in `types.ts`
+- All 30 crew implementation files
+- The `crew_definitions` DB schema (Drizzle migration)
+- The DB seed data
+
+Removing it cleanly is preferable to keeping a dead field that will confuse future contributors. `RARITY_COST_MULTIPLIERS` in `config.ts` becomes the single source of truth for crew cost.
+
+### Technical Implementation
+
+**1. `packages/shared/src/config.ts`**
+- Add `RARITY_COST_MULTIPLIERS: Record<CrewRarity, number>` constant with the table above.
+- Add `getCrewHireCost(rarity: CrewRarity, clearedMarkerTargetCents: number): number` helper — pure function, returns `RARITY_COST_MULTIPLIERS[rarity] × getMaxBet(clearedMarkerTargetCents)`.
+
+**2. `packages/shared/src/types.ts`**
+- Remove `readonly baseCost: number` from `CrewMember` interface.
+- Add `CrewRarity` type alias (extract from the existing inline union on `rarity` field) so `RARITY_COST_MULTIPLIERS` can be typed against it.
+
+**3. All 30 crew files (`packages/shared/src/crew/*.ts`)**
+- Remove the `baseCost` field from each crew object.
+
+**4. `apps/api/src/db/schema.ts`**
+- Drop `baseCostCents` column from `crewDefinitions` table (Drizzle migration).
+
+**5. `apps/api/src/db/seed.ts`**
+- Remove `baseCostCents` from all 30 seed entries.
+
+**6. `apps/api/src/routes/recruit.ts`**
+- Replace `crewDef.baseCostCents` affordability check with `getCrewHireCost(crewDef.rarity, clearedMarkerTargetCents)`.
+- The `clearedMarkerTargetCents` is derivable from `run.currentMarkerIndex - 1` → `GAUNTLET[clearedIndex].targetCents`. Since the recruit route fires during `TRANSITION` status (after a marker clear), `currentMarkerIndex` has already been incremented to the new value, so the cleared marker index is `currentMarkerIndex - 1`.
+
+**7. `apps/api/src/routes/crewRoster.ts`**
+- Include `hireCostCents: getCrewHireCost(crew.rarity, clearedMarkerTargetCents)` in each crew entry returned by the pub draft response. The client must not compute costs independently — receiving it from the server is the single source of truth.
+
+**8. `apps/web/src/components/PubScreen.tsx`**
+- Replace reads of `crew.baseCost` with the `hireCostCents` field returned from `/crew-roster`.
+- Update any cost display formatting accordingly.
+
+### Files Affected
+
+| File | Action |
+|---|---|
+| `packages/shared/src/config.ts` | Add `RARITY_COST_MULTIPLIERS` + `getCrewHireCost()` helper |
+| `packages/shared/src/types.ts` | Remove `baseCost` from `CrewMember`; extract `CrewRarity` type alias |
+| `packages/shared/src/crew/*.ts` (30 files) | Remove `baseCost` field from each crew object |
+| `apps/api/src/db/schema.ts` | Drop `base_cost_cents` column from `crew_definitions` (migration) |
+| `apps/api/src/db/seed.ts` | Remove `baseCostCents` from all 30 seed entries |
+| `apps/api/src/routes/recruit.ts` | Replace `baseCostCents` affordability check with `getCrewHireCost()` |
+| `apps/api/src/routes/crewRoster.ts` | Include computed `hireCostCents` in draft response |
+| `apps/web/src/components/PubScreen.tsx` | Read `hireCostCents` from roster response instead of `crew.baseCost` |
+
+---
+
+## FB-024 — Dynamic Crew Additive Scaling
+
+**Type:** Balance / Architecture
+**Area:** Crew Cascade / `packages/shared/src/types.ts`, `packages/shared/src/config.ts`, `packages/shared/src/crew/*.ts`
+**Status:** Implemented (shipped alongside FB-015 and FB-023)
+**Depends on:** FB-023 (shares the same crew-file pass; implemented together)
+
+### Problem
+
+Ten crew members add a flat cent value to `ctx.additives` each time they fire. Like `baseCost`, these amounts were calibrated for the old 3-floor gauntlet starting at VFW Hall. They now break in both directions across the 4-floor range:
+
+- **Too powerful early:** At Loading Dock (max bet $5), Ace McGee's $50 additive is 10× the max bet — it fires on ~31% of rolls and dwarfs the actual bet profit. The flat amounts overwhelm normal game economics at low stakes.
+- **Trivial late:** By the Riverboat and Strip, $30–$100 additives are a rounding error. Shark's $100 on a Point Hit is less than 3% of a typical Strip roll's gross profit. The crew might as well not be in the slot.
+
+The ten affected crew, their triggers, and current flat amounts:
+
+| Crew | Rarity | Flat Amount | Trigger | Approx. Frequency |
+|---|---|---|---|---|
+| Grinder | Starter | $30 | `NO_RESOLUTION` (blank point roll) | Moderate |
+| Doorman | Starter | $40 | Any come-out (NATURAL / CRAPS_OUT / POINT_SET) | High — every come-out |
+| Ace McGee | Starter | $50 | Either die shows 1 | ~31% of all rolls |
+| Big Spender | Uncommon | $50 | Hardway win | Low |
+| Bookkeeper | Starter | $60 | Every 3rd shooter roll | Moderate |
+| Contrarian | Starter | $75 | This roll total < last roll total | ~Moderate (after first roll) |
+| Even Keel | Starter | $80 | Both dice even | ~25% of rolls |
+| Close Call | Starter | $100 | Dice values differ by exactly 1 | ~28% of rolls |
+| Pressure Cooker | Starter | $100 + 0.5× hype | 5th consecutive blank point roll | Rare |
+| Shark | Rare | $100 | `POINT_HIT` | Moderate |
+
+**The Regular** and **Floor Walker** are already correctly designed — The Regular adds `ctx.bets.passLine` and Floor Walker refunds `ctx.bets.passLine`, both inherently proportional to current stakes. No change needed for either.
+
+### Solution
+
+Replace each flat `ADDITIVE_BOOST` constant with an `ADDITIVE_MULT` coefficient (a fractional multiple of the current marker's max bet) and compute the actual additive at execute time. This makes every additive crew's contribution scale with the floor, exactly as hiring costs scale in FB-023.
+
+**Formula:** `actualAdditive = Math.round(ADDITIVE_MULT × getMaxBet(ctx.markerTargetCents))`
+
+**Calibration principle:** A typical max-bet pass+odds roll on a 6 or 8 produces approximately 7× maxBet in gross profit (1× pass line + 6× odds at 6:5 with 5× odds cap). An additive of 1× maxBet therefore contributes ~14% to that typical roll's profit — a noticeable but not dominant bump. That's the right baseline. Trigger frequency drives the final coefficient: a crew that fires every come-out should boost less per-fire than one that fires only on rare conditions.
+
+**Proposed coefficient table:**
+
+| Crew | Trigger Frequency | Proposed `ADDITIVE_MULT` | Effective at Dock m0 ($5) | Effective at Strip m0 ($600) |
+|---|---|---|---|---|
+| Doorman | High (every come-out) | 0.5× | $2.50 → $3 | $300 |
+| Grinder | Moderate (blanks only) | 0.75× | $3.75 → $4 | $450 |
+| Ace McGee | Moderate-high (~31%) | 0.75× | $3.75 → $4 | $450 |
+| Bookkeeper | Moderate (every 3rd) | 1.0× | $5 | $600 |
+| Contrarian | Moderate (~after 1st roll) | 1.0× | $5 | $600 |
+| Even Keel | Moderate (~25%) | 1.0× | $5 | $600 |
+| Close Call | Moderate (~28%) | 1.25× | $6.25 → $6 | $750 |
+| Big Spender | Low (hardway wins) | 1.5× | $7.50 → $8 | $900 |
+| Pressure Cooker | Rare (5 blank streak) | 1.5× | $7.50 → $8 | $900 |
+| Shark | Moderate (point hits, Rare rarity) | 2.0× | $10 | $1,200 |
+
+*Dollar amounts should be rounded to the nearest $1 (`Math.round(x / 100) * 100`) to stay consistent with the payout rounding convention.*
+
+**Note on hype amplification:** Additives are amplified by hype and multipliers before reaching the bankroll — `(GrossProfit + additives) × hype × ∏multipliers`. This is intentional and working correctly. The coefficients above are calibrated against base hype (1.0×); at 2.5× hype, they will scale up accordingly. This is desirable: getting hype hot should make additive crew meaningfully more powerful, and the scaling is already built in.
+
+### Architectural Change: `markerTargetCents` in TurnContext
+
+The crew `execute()` function currently receives only `TurnContext`, which has no reference to the current marker target. To compute `getMaxBet(ctx.markerTargetCents)` inside execute, `markerTargetCents: number` must be added to `TurnContext`.
+
+The server builds `TurnContext` before the cascade runs and already knows `GAUNTLET[run.currentMarkerIndex].targetCents` — this is a one-line addition when constructing the context in `rolls.ts`. The field is read-only during the cascade; no crew modifies it.
+
+### Sequencing with FB-023
+
+Both tickets touch all 30 crew files (FB-023 removes `baseCost`; this removes flat `ADDITIVE_BOOST` constants and adds `ADDITIVE_MULT`). Implementing them in the same pass avoids two rounds of identical file edits. The recommended order within a combined implementation:
+
+1. Add `CrewRarity` type alias and `RARITY_COST_MULTIPLIERS` to `config.ts` (FB-023)
+2. Add `markerTargetCents` to `TurnContext` in `types.ts` (this ticket)
+3. Single pass through all 30 crew files: remove `baseCost`, replace flat additive constants with `ADDITIVE_MULT` coefficients where applicable
+4. Update routes and DB as described in FB-023
+
+### Files Affected
+
+| File | Action |
+|---|---|
+| `packages/shared/src/types.ts` | Add `markerTargetCents: number` to `TurnContext` |
+| `packages/shared/src/config.ts` | Add `getMaxBet` usage note; no new exports needed (helper already exists) |
+| `packages/shared/src/crew/grinder.ts` | Replace `ADDITIVE_BOOST = 3_000` with `ADDITIVE_MULT = 0.75` |
+| `packages/shared/src/crew/doorman.ts` | Replace `ADDITIVE_BOOST = 4_000` with `ADDITIVE_MULT = 0.5` |
+| `packages/shared/src/crew/aceMcgee.ts` | Replace `ADDITIVE_BOOST = 5_000` with `ADDITIVE_MULT = 0.75` |
+| `packages/shared/src/crew/bigSpender.ts` | Replace `BONUS_CENTS = 5_000` with `ADDITIVE_MULT = 1.5` |
+| `packages/shared/src/crew/bookkeeper.ts` | Replace `ADDITIVE_BOOST = 6_000` with `ADDITIVE_MULT = 1.0` |
+| `packages/shared/src/crew/contrarian.ts` | Replace `ADDITIVE_BOOST = 7_500` with `ADDITIVE_MULT = 1.0` |
+| `packages/shared/src/crew/evenKeel.ts` | Replace `ADDITIVE_BOOST = 8_000` with `ADDITIVE_MULT = 1.0` |
+| `packages/shared/src/crew/closeCall.ts` | Replace `ADDITIVE_BOOST = 10_000` with `ADDITIVE_MULT = 1.25` |
+| `packages/shared/src/crew/pressureCooker.ts` | Replace `ADDITIVE_BOOST = 10_000` with `ADDITIVE_MULT = 1.5` |
+| `packages/shared/src/crew/shark.ts` | Replace `BONUS_CENTS = 10_000` with `ADDITIVE_MULT = 2.0` |
+| `apps/api/src/routes/rolls.ts` | Set `markerTargetCents` on `TurnContext` before cascade |
 
 
 

@@ -20,7 +20,6 @@ export const lookout: CrewMember = {
   abilityCategory:  'DICE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         6_500,  // $65.00
   visualId:         'lookout',
   rarity:           'Starter',
 

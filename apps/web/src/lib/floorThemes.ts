@@ -108,12 +108,64 @@ function feltTextureUri(base: string, dark: string, light: string): string {
 }
 
 // =============================================================================
-// Floor 1 — The Moose Lodge (VFW Hall)
+// Floor 1 — The Loading Dock
 // =============================================================================
-// Gritty blue-collar gambling den. Worn green felt, tarnished gold, fluorescent
-// grime. The existing baseline aesthetic, now formally documented.
+// Stained concrete, sodium-vapor streetlamp orange, cold alleyway shadows.
+// The absolute baseline — out back behind a warehouse before you're even inside.
 
 const FLOOR_1_THEME: FloorTheme = {
+  // Felt — stained concrete / asphalt
+  feltPrimary: '#1c1d21',
+  feltRail:    '#0a0a0c',
+  feltTexture: feltTextureUri('#1c1d21', '#0a0a0c', '#2d2f36'),
+
+  // Accents — sodium-vapor orange
+  accentBright:  '#ff9900',
+  accentPrimary: '#b35900',
+  accentDim:     '#4a2c11',
+
+  // Borders — rust orange
+  borderHigh: 'rgba(179,89,0,0.30)',
+  borderLow:  'rgba(179,89,0,0.20)',
+
+  // Breathing — night cold / streetlamp warm / police siren hot
+  breatheCold: 'rgba(30,35,50,0.20)',
+  breatheWarm: 'rgba(200,100,0,0.18)',
+  breatheHot:  'rgba(220,20,40,0.22)',
+
+  // Screen flash — streetlamp surge / alleyway shadow plunge
+  flashWin:  'rgba(255,153,0,0.35)',
+  flashLose: 'rgba(20,25,35,0.50)',
+
+  // Pub — The Milk Crate Circle
+  pubName:         'THE MILK CRATE CIRCLE',
+  pubBg:           'radial-gradient(ellipse at 50% 10%, #2a1500 0%, #110900 40%, #020202 100%)',
+  pubAccentBar:    'linear-gradient(90deg, transparent, #7a3800 30%, #ff9900 50%, #7a3800 70%, transparent)',
+  pubOverlayBg:    'radial-gradient(ellipse at 50% 0%, rgba(200,200,220,0.05) 0%, transparent 70%)',
+  pubTitleColor:   '#ff9900',
+  pubTitleShadow:  '0 0 20px #b35900, 0 0 40px #4a2c11',
+  pubSubtextColor: 'rgba(255,153,0,0.45)',
+
+  // Boss — Freight Elevator (The Foreman)
+  bossBg:          'radial-gradient(ellipse at 50% 40%, #1a1b20 0%, #0a0a0c 60%, #000000 100%)',
+  bossAccentBar:   'linear-gradient(90deg, transparent, #78350f 30%, #eab308 50%, #78350f 70%, transparent)',
+  bossGlow:        'radial-gradient(ellipse at 50% 40%, rgba(234,179,8,0.08) 0%, transparent 65%)',
+  bossTextColor:   '#eab308',
+  bossTitleShadow: '0 0 30px rgba(234,179,8,0.50), 0 0 80px rgba(120,53,15,0.35)',
+  bossBorderColor: 'rgba(133,77,14,0.50)',
+  bossStarColor:   '#eab308',
+  bossStarBg:      'rgba(120,53,15,0.40)',
+  bossStarBorder:  '2px solid rgba(234,179,8,0.50)',
+  bossStarGlow:    '0 0 20px 4px rgba(234,179,8,0.20)',
+};
+
+// =============================================================================
+// Floor 2 — The Moose Lodge (VFW Hall)
+// =============================================================================
+// Gritty blue-collar gambling den. Worn green felt, tarnished gold, fluorescent
+// grime. The first real indoor table.
+
+const FLOOR_2_THEME: FloorTheme = {
   // Felt
   feltPrimary: '#1a4731',
   feltRail:    '#0c1f15',
@@ -160,13 +212,13 @@ const FLOOR_1_THEME: FloorTheme = {
 };
 
 // =============================================================================
-// Floor 2 — The Riverboat (Salon Privé)
+// Floor 3 — The Riverboat (Salon Privé)
 // =============================================================================
 // Mississippi paddlewheel casino salon. Deep navy felt like river water at
 // midnight. Aged champagne brass replaces tarnished yellow-gold. Candlelit,
 // mahogany-paneled, quiet danger dressed as elegance.
 
-const FLOOR_2_THEME: FloorTheme = {
+const FLOOR_3_THEME: FloorTheme = {
   // Felt — midnight navy
   feltPrimary: '#0a1832',
   feltRail:    '#060e1e',
@@ -213,13 +265,13 @@ const FLOOR_2_THEME: FloorTheme = {
 };
 
 // =============================================================================
-// Floor 3 — The Strip (The Penthouse)
+// Floor 4 — The Strip (The Penthouse)
 // =============================================================================
 // Vegas tower penthouse, 60 floors up. The felt is near-black obsidian. Gold
 // hardens from warm to electric. Neon magenta pulses in the breathing overlay.
 // No warmth, no texture, no mercy. Pure money, pure machine.
 
-const FLOOR_3_THEME: FloorTheme = {
+const FLOOR_4_THEME: FloorTheme = {
   // Felt — near-black obsidian with violet undertone
   feltPrimary: '#05020f',
   feltRail:    '#020109',
@@ -269,21 +321,21 @@ const FLOOR_3_THEME: FloorTheme = {
 // Theme registry + public API
 // =============================================================================
 
-const THEMES: FloorTheme[] = [FLOOR_1_THEME, FLOOR_2_THEME, FLOOR_3_THEME];
+const THEMES: FloorTheme[] = [FLOOR_1_THEME, FLOOR_2_THEME, FLOOR_3_THEME, FLOOR_4_THEME];
 
 /**
  * Returns the FloorTheme for the given gauntlet marker index.
- * Floor is derived as Math.floor(markerIndex / 3), clamped to [0, 2].
+ * Floor is derived as Math.floor(markerIndex / 3), clamped to [0, 3].
  */
 export function getFloorTheme(markerIndex: number): FloorTheme {
-  const floor = Math.max(0, Math.min(2, Math.floor(markerIndex / 3)));
+  const floor = Math.max(0, Math.min(3, Math.floor(markerIndex / 3)));
   return THEMES[floor]!;
 }
 
 /**
- * Returns the zero-based floor number (0, 1, or 2) for a marker index.
+ * Returns the zero-based floor number (0, 1, 2, or 3) for a marker index.
  * Exported for use in components that need the floor number directly.
  */
 export function getFloorIndex(markerIndex: number): number {
-  return Math.max(0, Math.min(2, Math.floor(markerIndex / 3)));
+  return Math.max(0, Math.min(3, Math.floor(markerIndex / 3)));
 }

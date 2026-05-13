@@ -22,7 +22,6 @@ export const floorWalker: CrewMember = {
   abilityCategory:  'TABLE',
   cooldownType:     'per_shooter',
   cooldownState:    0,
-  baseCost:         12_500,  // $125.00
   visualId:         'floor_walker',
   rarity:           'Uncommon',
 

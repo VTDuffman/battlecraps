@@ -11,7 +11,7 @@ import { GAUNTLET } from '@battlecraps/shared';
 
 // ── Floor names ────────────────────────────────────────────────────────────
 
-const FLOOR_NAMES = ['VFW Hall', 'The Riverboat', 'The Strip'] as const;
+const FLOOR_NAMES = ['The Loading Dock', 'VFW Hall', 'The Riverboat', 'The Strip'] as const;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ const Row: React.FC<{ label: string; value: string; valueColor?: string }> = ({
 
 export const BattleCrapsRulesSection: React.FC = () => {
   // Build floor data from the shared GAUNTLET constant
-  const floors = [0, 1, 2].map((f) => {
+  const floors = [0, 1, 2, 3].map((f) => {
     const markers = GAUNTLET.filter((m) => m.floor === f + 1);
     return { name: FLOOR_NAMES[f]!, markers };
   });
@@ -51,8 +51,8 @@ export const BattleCrapsRulesSection: React.FC = () => {
       {/* ── Gauntlet Structure ─────────────────────────────────────────────── */}
       <SectionHeader>The Gauntlet</SectionHeader>
       <p className="text-white/50 leading-relaxed py-2">
-        Nine markers across three floors. Each floor ends with a boss fight.
-        Clear all nine to win the run.
+        Twelve markers across four floors. Each floor ends with a boss fight.
+        Clear all twelve to win the run.
       </p>
 
       {floors.map((floor, fi) => (
@@ -107,7 +107,7 @@ export const BattleCrapsRulesSection: React.FC = () => {
       {/* ── Marker System ─────────────────────────────────────────────────── */}
       <SectionHeader>Marker System</SectionHeader>
       <div className="py-2 space-y-1">
-        <Row label="Starting bankroll" value="$250.00" />
+        <Row label="Starting bankroll" value="$30.00" />
         <Row label="Bet max" value="10% of marker target" />
         <Row label="Odds cap (4/10)" value="3× Pass Line" />
         <Row label="Odds cap (5/9)" value="4× Pass Line" />

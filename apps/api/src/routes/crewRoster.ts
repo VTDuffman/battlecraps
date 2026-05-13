@@ -52,7 +52,6 @@ export interface CrewRosterEntry {
   name:                string;
   abilityCategory:     string;
   cooldownType:        string;
-  baseCostCents:       number;
   visualId:            string;
   rarity:              string;
   briefDescription:    string | null;
@@ -102,7 +101,6 @@ export async function crewRosterPlugin(app: FastifyInstance): Promise<void> {
           name:                crew.name,
           abilityCategory:     crew.abilityCategory,
           cooldownType:        crew.cooldownType,
-          baseCostCents:       crew.baseCostCents,
           visualId:            crew.visualId,
           rarity:              crew.rarity,
           briefDescription:    crew.briefDescription,

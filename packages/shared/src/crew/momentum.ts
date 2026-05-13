@@ -21,7 +21,6 @@ export const momentum: CrewMember = {
   abilityCategory:  'HYPE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         9_000,  // $90.00
   visualId:         'momentum',
   rarity:           'Starter',
 

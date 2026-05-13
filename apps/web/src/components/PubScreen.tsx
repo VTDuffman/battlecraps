@@ -159,7 +159,7 @@ const CrewCard: React.FC<CrewCardProps> = ({ crew, isSelected, canAfford, onClic
           canAfford ? 'text-amber-400' : 'text-red-400',
         ].join(' ')}
       >
-        {formatCents(crew.baseCostCents)}
+        {formatCents(crew.hireCostCents)}
       </div>
     </button>
   );
@@ -488,7 +488,7 @@ export const PubScreen: React.FC = () => {
                 key={crew.id}
                 crew={crew}
                 isSelected={selectedCrew?.id === crew.id}
-                canAfford={bankroll >= crew.baseCostCents}
+                canAfford={bankroll >= crew.hireCostCents}
                 onClick={() => handleCrewClick(crew)}
               />
             ))}
@@ -569,7 +569,7 @@ export const PubScreen: React.FC = () => {
                 ? 'HIRING…'
                 : selectedSlot === null
                   ? 'SELECT A SLOT'
-                  : `HIRE FOR ${formatCents(selectedCrew.baseCostCents)}`}
+                  : `HIRE FOR ${formatCents(selectedCrew.hireCostCents)}`}
             </button>
 
             {/* Cancel selection */}

@@ -443,6 +443,8 @@ export function resolveRoll(
     previousRollTotal: number | null;
     shooterRollCount: number;
     pointPhaseBlankStreak: number;
+    /** Target bankroll in cents for the current gauntlet marker. Defaults to 0 when not provided (e.g., in tests). */
+    markerTargetCents?: number;
   },
 ): TurnContext {
   const { phase, currentPoint, bets, hype } = state;
@@ -531,6 +533,7 @@ export function resolveRoll(
     previousRollTotal:     state.previousRollTotal,
     shooterRollCount:      state.shooterRollCount,
     pointPhaseBlankStreak: state.pointPhaseBlankStreak,
+    markerTargetCents:     state.markerTargetCents ?? 0,
   };
 }
 

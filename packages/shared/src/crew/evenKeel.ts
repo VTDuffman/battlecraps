@@ -3,7 +3,7 @@
 // packages/shared/src/crew/evenKeel.ts
 //
 // Category:    TABLE
-// Ability:     +$80 additive whenever both dice show even faces (2, 4, or 6).
+// Ability:     Dynamic additive (1.0× max-bet) whenever both dice show even faces.
 // Cooldown:    none
 //
 // Trigger: ctx.dice[0] % 2 === 0 && ctx.dice[1] % 2 === 0
@@ -13,7 +13,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_BOOST = 8_000;  // $80.00
+const ADDITIVE_MULT = 1.0;  // 1.0× the current marker's max bet
 
 export const evenKeel: CrewMember = {
   id:               23,
@@ -21,7 +21,6 @@ export const evenKeel: CrewMember = {
   abilityCategory:  'TABLE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         9_000,  // $90.00
   visualId:         'even_keel',
   rarity:           'Starter',
 
@@ -30,8 +29,11 @@ export const evenKeel: CrewMember = {
       return { context: ctx, newCooldown: 0 };
     }
 
+    const maxBet = Math.floor(ctx.markerTargetCents * 0.10);
+    const additive = Math.round(ADDITIVE_MULT * maxBet / 100) * 100;
+
     return {
-      context: { ...ctx, additives: ctx.additives + ADDITIVE_BOOST },
+      context: { ...ctx, additives: ctx.additives + additive },
       newCooldown: 0,
     };
   },

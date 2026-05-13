@@ -54,7 +54,6 @@ export const nervousIntern: CrewMember = {
   abilityCategory:  'HYPE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         5_000,    // $50.00 — intentionally cheap starter crew
   visualId:         'nervous_intern',
   rarity:           'Common',
 

@@ -41,7 +41,6 @@ export const luckyCharm: CrewMember = {
   abilityCategory:  'HYPE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         20_000,  // $200.00
   visualId:         'lucky_charm',
   rarity:           'Rare',
 

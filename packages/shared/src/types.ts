@@ -54,6 +54,9 @@ export type RollResult =
 /** The thematic category of a crew member's ability. Used for UI grouping. */
 export type AbilityCategory = 'DICE' | 'TABLE' | 'PAYOUT' | 'HYPE' | 'WILDCARD';
 
+/** Rarity tier of a crew member. Controls unlock gating and dynamic hire cost. */
+export type CrewRarity = 'Starter' | 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
+
 /**
  * Controls how a crew member's cooldown is managed between rolls.
  *
@@ -317,6 +320,14 @@ export interface TurnContext {
    * SEVEN_OUT, or any come-out outcome. Used by Pressure Cooker (29).
    */
   readonly pointPhaseBlankStreak: number;
+
+  /**
+   * The bankroll target (in cents) for the current gauntlet marker.
+   * Equal to GAUNTLET[currentMarkerIndex].targetCents. Injected by the roll
+   * route before the cascade runs; read-only throughout the cascade.
+   * Used by additive crew to compute floor-scaled bonuses via getMaxBet().
+   */
+  readonly markerTargetCents: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -421,14 +432,11 @@ export interface CrewMember {
    */
   cooldownState: number;
 
-  /** Base recruitment cost during "The Seven-Proof Pub" phase, in cents. */
-  readonly baseCost: number;
-
   /** String key used to look up the 16-bit portrait sprite sheet frame. */
   readonly visualId: string;
 
-  /** Rarity tier of this crew member. Controls availability gating. */
-  readonly rarity: 'Starter' | 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
+  /** Rarity tier of this crew member. Controls availability gating and dynamic hire cost. */
+  readonly rarity: CrewRarity;
 
   /**
    * The crew member's core ability.

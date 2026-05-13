@@ -10,6 +10,7 @@
 //   - Boss 1 (Floor 1): visible once currentMarkerIndex >= 2
 //   - Boss 2 (Floor 2): visible once currentMarkerIndex >= 5
 //   - Boss 3 (Floor 3): visible once currentMarkerIndex >= 8
+//   - Boss 4 (Floor 4): visible once currentMarkerIndex >= 11
 // =============================================================================
 
 import React, { useEffect } from 'react';
@@ -102,9 +103,6 @@ const CrewCard: React.FC<{ crew: CrewRosterEntry }> = ({ crew }) => {
             >
               {crew.abilityCategory}
             </span>
-          </div>
-          <div className="font-mono text-[8px] text-white/50 mt-0.5">
-            ${(crew.baseCostCents / 100).toFixed(0)} to hire
           </div>
         </div>
       </div>
@@ -221,9 +219,10 @@ export const CrewAndBossesSection: React.FC = () => {
         comp perk. Bosses are revealed as you progress.
       </p>
       <div className="space-y-2 mt-1">
-        <BossCard markerIndex={2} revealed={bossRevealed(2)} />
-        <BossCard markerIndex={5} revealed={bossRevealed(5)} />
-        <BossCard markerIndex={8} revealed={bossRevealed(8)} />
+        <BossCard markerIndex={2}  revealed={bossRevealed(2)} />
+        <BossCard markerIndex={5}  revealed={bossRevealed(5)} />
+        <BossCard markerIndex={8}  revealed={bossRevealed(8)} />
+        <BossCard markerIndex={11} revealed={bossRevealed(11)} />
       </div>
 
       {/* ── Crew ───────────────────────────────────────────────────────────── */}

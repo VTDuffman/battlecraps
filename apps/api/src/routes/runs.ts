@@ -117,7 +117,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
           userId:        user.id,
           status:        'IDLE_TABLE',
           phase:         'COME_OUT',
-          bankrollCents: 25000,
+          bankrollCents: 3000,   // $30 starting bankroll — below the $50 Loading Dock marker 0 so the tutorial beats play out correctly
           shooters:      5,
           hype:          1.0,
           crewSlots:     EMPTY_CREW_SLOTS,

@@ -80,7 +80,7 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
 
   return (
     <div
-      className="relative w-full max-w-lg mx-auto min-h-[100dvh] flex flex-col"
+      className="relative w-full max-w-lg mx-auto h-[100dvh] flex flex-col"
       style={{ background: theme.feltPrimary, borderColor: theme.borderHigh }}
     >
       {/* Header */}
@@ -124,53 +124,74 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {loading && (
-          <p
-            className="font-mono text-center text-[9px]"
-            style={{ color: `${theme.accentPrimary}50` }}
-          >
-            Loading...
-          </p>
-        )}
-        {error && (
-          <p className="font-mono text-center text-[9px] text-red-400">{error}</p>
-        )}
-
-        {tab === 'global' && globalData && !loading && (
-          <>
-            <SectionHeader label="THE HALL OF FAME" />
-            {globalData.winners.length === 0
-              ? <EmptyState label="No victors yet. Be the first." />
-              : globalData.winners.map((entry, i) => (
-                  <LeaderboardEntry key={entry.id} entry={entry} rank={i + 1} />
-                ))
-            }
-
-            <div className="mt-6 mb-2">
-              <SectionHeader label="GONE BUT NOT FORGOTTEN" />
-            </div>
-            {globalData.nonWinners.length === 0
-              ? <EmptyState label="No fallen runners yet." />
-              : globalData.nonWinners.map((entry, i) => (
-                  <LeaderboardEntry key={entry.id} entry={entry} rank={i + 1} showMarker />
-                ))
-            }
-          </>
-        )}
-
-        {tab === 'personal' && personalData && !loading && (
-          <>
-            <SectionHeader label="YOUR RUN HISTORY" />
-            {personalData.entries.length === 0
-              ? <EmptyState label="No runs recorded yet. Start rolling." />
-              : personalData.entries.map((entry, i) => (
-                  <LeaderboardEntry key={entry.id} entry={entry} rank={i + 1} showMarker />
-                ))
-            }
-          </>
-        )}
-      </div>
+      {tab === 'global' ? (
+        <div className="flex-1 flex flex-col overflow-hidden p-4 gap-4">
+          {loading && (
+            <p
+              className="font-mono text-center text-[9px]"
+              style={{ color: `${theme.accentPrimary}50` }}
+            >
+              Loading...
+            </p>
+          )}
+          {error && (
+            <p className="font-mono text-center text-[9px] text-red-400">{error}</p>
+          )}
+          {globalData && !loading && (
+            <>
+              <div
+                className="lb-scroll overflow-y-scroll rounded p-3 border"
+                style={{ flex: '2 1 0', borderColor: theme.borderHigh }}
+              >
+                <SectionHeader label="THE HALL OF FAME" />
+                {globalData.winners.length === 0
+                  ? <EmptyState label="No victors yet. Be the first." />
+                  : globalData.winners.slice(0, 25).map((entry, i) => (
+                      <LeaderboardEntry key={entry.id} entry={entry} rank={i + 1} />
+                    ))
+                }
+              </div>
+              <div
+                className="lb-scroll overflow-y-scroll rounded p-3 border"
+                style={{ flex: '1 1 0', borderColor: `${theme.accentDim}60` }}
+              >
+                <SectionHeader label="GONE BUT NOT FORGOTTEN" />
+                {globalData.nonWinners.length === 0
+                  ? <EmptyState label="No fallen runners yet." />
+                  : globalData.nonWinners.slice(0, 10).map((entry, i) => (
+                      <LeaderboardEntry key={entry.id} entry={entry} rank={i + 1} showMarker />
+                    ))
+                }
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto p-4">
+          {loading && (
+            <p
+              className="font-mono text-center text-[9px]"
+              style={{ color: `${theme.accentPrimary}50` }}
+            >
+              Loading...
+            </p>
+          )}
+          {error && (
+            <p className="font-mono text-center text-[9px] text-red-400">{error}</p>
+          )}
+          {tab === 'personal' && personalData && !loading && (
+            <>
+              <SectionHeader label="YOUR RUN HISTORY" />
+              {personalData.entries.length === 0
+                ? <EmptyState label="No runs recorded yet. Start rolling." />
+                : personalData.entries.map((entry, i) => (
+                    <LeaderboardEntry key={entry.id} entry={entry} rank={i + 1} showMarker />
+                  ))
+              }
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

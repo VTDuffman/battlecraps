@@ -771,13 +771,13 @@ This ticket serves as the living master tracker for the 9-floor gauntlet. It wil
 | **2** | VFW Hall | 🟢 Designed | 🟢 Implemented | Legacy Floor 1 |
 | **3** | Riverboat | 🟢 Designed | 🟢 Implemented | Legacy Floor 2 |
 | **4** | The Strip | 🟢 Designed | 🟢 Implemented | Legacy Floor 3 |
-| **5** | *TBD* | 🔴 Not Designed | 🔴 Pending | |
-| **6** | *TBD* | 🔴 Not Designed | 🔴 Pending | |
-| **7** | *TBD* | 🔴 Not Designed | 🔴 Pending | |
-| **8** | *TBD* | 🔴 Not Designed | 🔴 Pending | |
-| **9** | *TBD* | 🔴 Not Designed | 🔴 Pending | Final Boss / Game Completion |
+| **5** | The Lodge | 🟢 Designed | 🔴 Pending | Boss: The Hierophant / Rule: `TRIBUTE` |
+| **6** | Atlantis | 🟢 Designed | 🔴 Pending | Boss: The Sovereign / Rule: `TIDAL_SURGE` |
+| **7** | The Station | 🟢 Designed | 🔴 Pending | Boss: The Commander / Rule: `ORBITAL_DECAY` |
+| **8** | The Signal | 🟢 Designed | 🔴 Pending | Boss: The Emissary / Rule: `FIRST_CONTACT_PROTOCOL` |
+| **9** | The Singularity | 🟢 Designed | 🔴 Pending | Boss: The Architect / Rule: `CONVERGENCE` — Final Boss |
 
-*(Note: The exact ordering of legacy floors vs. new floors may shift during balancing. Ensure marker targets scale appropriately as new floors are slotted into the array).*
+*(Note: Marker targets for Floors 5–9 are design estimates and require balancing during implementation. Exact ordering of legacy floors vs. new floors may also shift.)*
 
 ### Definition of Done (per Floor)  
 For a floor to be marked as **Implemented**, the following components must be complete:  

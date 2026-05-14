@@ -12,6 +12,7 @@
 // never expose raw payout calculations or dice logic to the client.
 // =============================================================================
 
+import type { CascadeEvent } from './cascade.js';
 import type {
   Bets,
   GamePhase,
@@ -687,9 +688,17 @@ function calcLostBetsThisRoll(ctx: TurnContext): number {
  * This is always negative on a pure loss (even when crew add flat bonuses),
  * and positive only when winnings exceed losses.
  *
- * @param ctx  The FINAL TurnContext after the full cascade.
+ * @param ctx           The FINAL TurnContext after the full cascade.
+ * @param events        Ordered cascade events — used to attribute additives and
+ *                      multipliers to specific crew members by name.
+ * @param bossDeduction When the boss's modifyPayout hook reduced the payout,
+ *                      pass the amount and boss name so it appears as a loss line.
  */
-export function buildRollReceipt(ctx: TurnContext): RollReceipt {
+export function buildRollReceipt(
+  ctx: TurnContext,
+  events?: CascadeEvent[],
+  bossDeduction?: { amount: number; source: string },
+): RollReceipt {
   const { dice, diceTotal, isHardway, rollResult, activePoint, bets } = ctx;
   const lines: RollReceiptLine[] = [];
 
@@ -796,11 +805,27 @@ export function buildRollReceipt(ctx: TurnContext): RollReceipt {
     }
   }
 
-  // ── Crew flat bonus ───────────────────────────────────────────────────────
-  if (ctx.additives > 0) {
+  // ── Crew additive bonuses — attributed per crew when events are available ──
+  if (events && events.length > 0) {
+    let runningAdditives = 0;
+    for (const event of events) {
+      if (event.contextDelta.additives !== undefined) {
+        const delta = event.contextDelta.additives - runningAdditives;
+        if (delta > 0) {
+          lines.push({ kind: 'win', text: `${event.crewName}: ${fmtCents(delta)}` });
+        }
+        runningAdditives = event.contextDelta.additives;
+      }
+    }
+  } else if (ctx.additives > 0) {
+    lines.push({ kind: 'win', text: `Crew Bonus: ${fmtCents(ctx.additives)}` });
+  }
+
+  // ── Boss deduction ─────────────────────────────────────────────────────────
+  if (bossDeduction && bossDeduction.amount > 0) {
     lines.push({
-      kind: 'win',
-      text: `Crew Bonus: +${fmtCents(ctx.additives)}`,
+      kind: 'loss',
+      text: `${bossDeduction.source}: ${fmtCents(bossDeduction.amount)} extortion fee`,
     });
   }
 
@@ -812,20 +837,37 @@ export function buildRollReceipt(ctx: TurnContext): RollReceipt {
     });
   }
 
-  // ── Hype / multiplier note ────────────────────────────────────────────────
-  if (finalMultiplier !== 1.0) {
+  // ── Multiplier breakdown — per-crew then hype ─────────────────────────────
+  if (events && events.length > 0) {
+    let prevMultCount = 0;
+    for (const event of events) {
+      const mults = event.contextDelta.multipliers;
+      if (mults !== undefined && mults.length > prevMultCount) {
+        for (let idx = prevMultCount; idx < mults.length; idx++) {
+          const m = mults.at(idx);
+          if (m !== undefined) {
+            lines.push({ kind: 'info', text: `${event.crewName}: ${m.toFixed(2)}× multiplier` });
+          }
+        }
+        prevMultCount = mults.length;
+      }
+    }
+    if (ctx.hype !== 1.0) {
+      lines.push({ kind: 'info', text: `Hype: ${ctx.hype.toFixed(2)}×` });
+    }
+  } else if (finalMultiplier !== 1.0) {
     lines.push({
       kind: 'info',
       text: `Hype Applied: ${finalMultiplier.toFixed(2)}× (profits boosted)`,
     });
   }
 
-  // Net delta: amplified profit minus lost stakes.
-  // settleTurn(ctx) = baseStakeReturned + amplifiedProfit, so subtracting
-  // baseStakeReturned isolates the profit. Then subtract lost stakes to get
-  // the true signed net for this roll.
+  // Net delta: amplified profit minus lost stakes minus any boss deduction.
+  // settleTurn(ctx) = baseStakeReturned + amplifiedProfit (pre-boss-deduction),
+  // so subtracting baseStakeReturned isolates the profit. Then subtract lost
+  // stakes and the boss's cut to get the true signed net for this roll.
   const amplifiedProfit = settleTurn(ctx) - ctx.baseStakeReturned;
-  const netDelta = amplifiedProfit - calcLostBetsThisRoll(ctx);
+  const netDelta = amplifiedProfit - calcLostBetsThisRoll(ctx) - (bossDeduction?.amount ?? 0);
 
   return {
     timestamp: new Date().toISOString(),

@@ -328,6 +328,73 @@ async function rollHandler(
     }
   }
 
+  // ── 4b. Post-bet marker clear guard ──────────────────────────────────────
+  // After all bet changes are validated, the player's effective cash is
+  // (bankrollCents - betDelta). A negative betDelta means working bets were
+  // taken down and cash returned; if that alone meets the marker target, clear
+  // it without rolling. Also fires when bankroll already exceeded the target
+  // with no bet changes (betDelta === 0).
+  //
+  // finalBankroll = postBetBankroll + sumBets(incomingBets)
+  //              = run.bankrollCents + sumBets(run.bets)   [total player wealth]
+  // No deductions apply — returned bets are not winnings.
+  const postBetBankroll    = run.bankrollCents - betDelta;
+  const postBetMarkerTarget = MARKER_TARGETS[run.currentMarkerIndex];
+  if (postBetMarkerTarget !== undefined && postBetBankroll >= postBetMarkerTarget) {
+    const remainingBets  = sumBets(incomingBets);
+    const finalBankroll  = postBetBankroll + remainingBets;
+    const bankrollDelta  = sumBets(run.bets as Bets);   // total of all previously-placed bets returned
+    const isLastMarker   = run.currentMarkerIndex >= MARKER_TARGETS.length - 1;
+    const nextStatus     = isLastMarker ? 'GAME_OVER' : 'TRANSITION';
+    const nextMkrIndex   = isLastMarker ? run.currentMarkerIndex : run.currentMarkerIndex + 1;
+    const zeroBets: Bets = { passLine: 0, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } };
+
+    const autoRun = await db
+      .update(runs)
+      .set({
+        status:                nextStatus,
+        phase:                 'COME_OUT',
+        bankrollCents:         finalBankroll,
+        currentPoint:          null,
+        bets:                  zeroBets,
+        currentMarkerIndex:    nextMkrIndex,
+        consecutivePointHits:  0,
+        bossPointHits:         0,
+        pointPhaseBlankStreak: 0,
+        mechanicFreeze:        null,
+        hype:                  run.hype,
+        shooters:              run.shooters,
+        highestRollAmplifiedCents: run.highestRollAmplifiedCents,
+        updatedAt:             new Date(),
+      })
+      .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
+      .returning();
+
+    if (!autoRun[0]) {
+      return reply.status(409).send({ error: 'Conflict: run was modified by another request. Please retry.' });
+    }
+
+    if (nextStatus === 'GAME_OVER') {
+      void submitLeaderboardEntry(user as UserRow, autoRun[0]).catch((err: unknown) => {
+        request.log.error({ err }, '[leaderboard] submission error (auto-clear)');
+      });
+    }
+
+    return reply.status(200).send({
+      run: autoRun[0],
+      roll: {
+        autoClear:       true,
+        dice:            [1, 6] as [number, number],
+        diceTotal:       7,
+        rollResult:      'POINT_HIT' as const,
+        bankrollDelta:   bankrollDelta,
+        resolvedBets:    zeroBets,
+        payoutBreakdown: { passLine: 0, odds: 0, hardways: 0 },
+        mechanicFreeze:  null,
+      },
+    });
+  }
+
   // ── 5. Hydrate crew slots ─────────────────────────────────────────────────
   //
   // The database stores { crewId, cooldownState } pairs. We reconstruct full
@@ -473,8 +540,12 @@ async function rollHandler(
     rollAmplifiedProfit,
   );
 
-  // Build the QA receipt (net delta computed internally from TurnContext).
-  const receipt = buildRollReceipt(finalContext);
+  // Build the QA receipt with per-crew attribution and boss deduction breakdown.
+  const bossDeductionAmount = rawPayout - payout;
+  const bossDeduction = bossDeductionAmount > 0 && bossMarkerConfig?.boss
+    ? { amount: bossDeductionAmount, source: bossMarkerConfig.boss.name }
+    : undefined;
+  const receipt = buildRollReceipt(finalContext, events, bossDeduction);
 
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
@@ -897,12 +968,17 @@ function computeNextState(
 
       // ── Marker check: hardway wins (or crew bonuses) may have pushed the
       // bankroll over the marker threshold mid-point. If so, treat this as a
-      // marker clear: refund all remaining table bets and advance. ───────────
+      // marker clear: refund all remaining table bets and advance.
+      //
+      // IMPORTANT: check (newBankroll + refund) not just newBankroll.
+      // Pass line and odds are still locked on the table (clearedBets is
+      // non-zero). The final bankroll on a marker clear is newBankroll + refund,
+      // so that is what must meet the target — not the cash-only snapshot.
       const markerTarget = MARKER_TARGETS[currentMarkerIndex];
-      const hitMarker    = markerTarget !== undefined && newBankroll >= markerTarget;
+      const refund       = sumBets(clearedBets);
+      const hitMarker    = markerTarget !== undefined && (newBankroll + refund) >= markerTarget;
 
       if (hitMarker) {
-        const refund = sumBets(clearedBets);
         const zeroBets: Bets = {
           passLine: 0,
           odds:     0,

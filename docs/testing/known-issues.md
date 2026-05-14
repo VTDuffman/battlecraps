@@ -770,3 +770,311 @@ FB-015 prepended the Loading Dock as Floor 1, shifting the gauntlet from 3 floor
 - Beat 13: Rewrote boss list to lead with The Foreman (the boss the player is about to face), then enumerate the remaining three.
 - `BattleCrapsRulesSection`: Fixed `FLOOR_NAMES` to include all four floors, updated loop to `[0, 1, 2, 3]`, updated prose to "Twelve markers across four floors," corrected starting bankroll to `$40.00`.
 - `CrewAndBossesSection`: Added `<BossCard markerIndex={11} />` for The Executive.
+
+---
+
+## KI-039 — Crew unlock notifications fire in wrong run / wrong sequence
+
+**Area:** `apps/web/src/store/useGameStore.ts` (`disconnect`, `connectToRun`), `apps/web/src/components/UnlockModal.tsx`, `apps/web/src/transitions/TransitionOrchestrator.tsx`
+**Severity:** Medium
+**Status:** Fixed
+**Source:** Playtest observation (05/13/2026)
+
+**Issue:**
+Two distinct unlock timing failures observed:
+
+1. **Mid-run unlocks (Lefty McGuffin, The Whale):** The unlock modal did not appear when the unlock condition was met during the winning run. It fired instead in the *next* run, after visiting the pub for the first time. The player earned the unlock in run N but was not notified until run N+1's pub visit.
+
+2. **End-of-run unlocks (Old Pro):** The unlock modal did not appear at all after the winning run. The intended sequence for a run that clears the final marker and triggers a crew unlock should be: **(1) Beat Marker → (2) Crew Unlock Modal → (3) Unlock Recap Screen → (4) Game Over Summary Screen.** Instead the notification was absent and the game advanced directly to the game-over flow.
+
+**Root Cause:**
+`unlocks:granted` arrives asynchronously — `evaluateUnlocks` does two `await db.update()` calls before emitting, so the event reaches the client after `applyPendingSettlement` has already run. The handler populates `unacknowledgedUnlocks` and `crewUnlockedThisRun` but never set `unlockModalReady`; only `applyPendingSettlement` sets that flag, and it already ran with an empty queue. For the GAME_OVER path, TransitionOrchestrator's Priority 4.5 gates on `crewUnlockedThisRun.length > 0`, which was empty at evaluation time, causing the recap to be skipped entirely before `disconnect()` wiped `unacknowledgedUnlocks`.
+
+**Fix applied:**
+1. **`useGameStore.ts` — `unlocks:granted` handler:** Added `settlementComplete` guard: if `!state.isRolling && state.pendingSettlement === null` when the event arrives, set `unlockModalReady = true` immediately. Fixes mid-run case.
+2. **`TransitionOrchestrator.tsx` — Priority 4.5:** Added `unacknowledgedUnlocks` selector and added it to the `useEffect` dependency array. Updated Priority 4.5 condition and routing guard to `(crewUnlockedThisRun.length > 0 || unacknowledgedUnlocks.length > 0)`. When `unlocks:granted` arrives late the effect re-fires, `gameOverTransitionShown` is still false, and the GAME_OVER unlock recap fires correctly.
+
+---
+
+## KI-040 — UI text obscured by dice overlay after dice reset
+
+**Area:** `apps/web/src/components/DiceZone.tsx`
+**Severity:** Low
+**Status:** Fixed
+**Source:** Playtest observation (05/13/2026)
+
+**Issue:**
+After dice reset between rolls, a small persistent result label (e.g. "NATURAL!", "POINT HIT!") was visible behind the dice — partially illegible because it sat at `absolute bottom-0` inside the dice container with no z-index elevation above the dice faces.
+
+**Root Cause:**
+A "small persistent result label" rendered at `throwPhase === 'idle'` using `absolute bottom-0 left-1/2` in the same container as the dice. It was a `text-[7px]` echo of `lastResult` that persisted between rolls after the animated `ResultPopup` dismissed.
+
+**Fix:**
+Removed the persistent label entirely. It was fully redundant — the animated `ResultPopup` (shown at `throwPhase === 'result' | 'result-out'`) already displays the same text at readable size during the roll, and the Roll Log records every result permanently. The `ResultPopup` is unaffected.
+
+---
+
+## KI-041 — Handicapper crew power may not be firing
+
+**Area:** `packages/shared/src/crew/handicapper.ts`, `packages/shared/src/cascade.ts`
+**Severity:** Medium
+**Status:** Closed — Not a Bug
+**Source:** Playtest observation (05/13/2026)
+
+**Issue:**
+The Handicapper (ID: 26) crew power did not appear to fire across multiple rolls in conditions that should have triggered it. No portrait animation, no bark line, and no observable hype change attributable to the Handicapper were seen.
+
+**Resolution:**
+A full unit test suite was written for `handicapper.ts` and all 14 tests passed (05/13/2026). The `execute()` logic is correct — correct guard conditions, correct hype deltas for all six point values, no context mutation. The ability fires only on `POINT_SET` (come-out rolls that establish a new point), which produces no bark line during a typical session — the only observable effect is a 0.1–0.3 tick on the hype meter. The playtest observation was a sampling artifact: the trigger condition was either not met frequently enough to notice, or the hype delta was too subtle to register without watching the thermometer.
+
+**Test file:** `packages/shared/src/tests/crew/handicapper.test.ts`
+
+---
+
+## KI-042 — Marker clear not evaluated before roll; forces extra roll when bankroll already qualifies
+
+**Area:** `apps/api/src/routes/rolls.ts`, `apps/web/src/store/useGameStore.ts`
+**Severity:** Medium
+**Status:** Fixed
+**Source:** Playtest observation (05/13/2026)
+
+**Issue:**
+The marker clear condition was only evaluated at the end of each roll's resolution chain. If a player's bankroll (including bets that could be taken down) met the marker target before rolling, the game still required a roll to register the win. Additionally, a hardway bet payout that pushed total wealth (cash + remaining locked bets) over the marker target was not detected on the settling roll — only on the next bet take-down.
+
+**Fix applied:**
+
+Three layers of detection added:
+
+1. **Post-bet guard in `rolls.ts` (section 4b):** After all bet validation, computes `postBetBankroll = run.bankrollCents - betDelta`. If `postBetBankroll >= markerTarget`, auto-clears immediately — no dice generated. Handles bet take-downs and the pure "cash already there" case. Returns `{ autoClear: true }` in the roll response.
+
+2. **`NO_RESOLUTION` marker check fix in `computeNextState`:** Changed the check from `newBankroll >= markerTarget` to `(newBankroll + sumBets(clearedBets)) >= markerTarget`. Pass line and odds remain locked on the table during NO_RESOLUTION, so the correct test is total wealth (cash + remaining bets), not cash alone. The final bankroll on clear is `newBankroll + refund` — the check now matches.
+
+3. **Client: `removeBet()` → `autoCollect()`:** When a bet take-down pushes the client's effective bankroll over the marker target, `removeBet()` automatically calls `autoCollect()` — no Roll button click required. `autoCollect()` fires the roll endpoint without incrementing `_rollKey`, so no dice animation plays; the transition fires immediately.
+
+**Files:** `apps/api/src/routes/rolls.ts`, `apps/web/src/store/useGameStore.ts`
+
+---
+
+## KI-043 — Cent values reappearing in payouts (rounding regression from Foreman extortion fee)
+
+**Area:** `packages/shared/src/bossRules/extortionFee.ts`
+**Severity:** Medium
+**Status:** Fixed
+**Source:** Playtest observation (05/13/2026)
+
+**Issue:**
+Fractional dollar values (e.g., "$14.60" instead of "$15") are reappearing in payout and bankroll displays. The project convention requires all monetary values to be integer cents rounded to the nearest dollar (i.e., always a multiple of 100 cents). This regression appears to have been introduced by The Foreman's `EXTORTION_FEE` boss rule (20% payout tax), which was implemented as part of FB-015.
+
+**Root Cause:**
+`extortionFee.ts` computes the tax as `Math.floor(profit * taxPct)` where `taxPct = 0.20` and `profit` is in cents. `Math.floor` rounds to the nearest cent but not to the nearest dollar. When `profit` is not a multiple of 500 cents (i.e., not a multiple of $5), the result is a non-dollar-rounded value. Example: a $73 profit (7300 cents) produces a tax of `Math.floor(7300 × 0.20) = 1460 cents = $14.60`, which is a valid cent value but violates the dollar-rounding convention.
+
+**Proposed fix:**
+In `extortionFee.ts`, replace `Math.floor(profit * params.taxPct)` with `Math.round(profit * params.taxPct / 100) * 100` to round the fee to the nearest dollar before deducting. Apply the same audit to any other boss rule or crew calculation that applies a percentage to a payout value.
+
+---
+
+## KI-044 — Roll log lacks payout breakdown (additives, multipliers, boss deductions)
+
+**Area:** `packages/shared/src/crapsEngine.ts`, `apps/api/src/routes/rolls.ts`
+**Severity:** Low
+**Status:** Fixed
+**Source:** Playtest observation (05/13/2026)
+
+**Issue:**
+The roll log did not show a breakdown of how the net bankroll change was calculated. The Foreman's 20% extortion fee was silently deducted with no indication in the log. The "Crew Bonus" line showed only a combined total with no crew name attribution. Hype and crew multipliers were collapsed into a single combined multiplier line.
+
+**Root Cause:**
+`buildRollReceipt()` had no access to the cascade event list, so it could not attribute additive bonuses to individual crew members. Boss deduction amounts were never passed into the receipt builder.
+
+**Fix:**
+- `buildRollReceipt(ctx, events?, bossDeduction?)` — two new optional parameters added.
+- When `events` are provided, the generic "Crew Bonus" line is replaced with per-crew attributed lines (e.g., "The Grinder: +$12.50").
+- Crew multiplier contributors each get their own `info` line (e.g., "The Whale: 1.20× multiplier"), followed by a separate `Hype: X.XX×` line.
+- When `bossDeduction` is provided, a `loss` line appears for the boss cut (e.g., "The Foreman: $15.00 extortion fee").
+- `netDelta` now subtracts the boss deduction so the receipt's Net matches the actual bankroll change.
+- `rolls.ts` passes `events` and `{ amount: rawPayout − payout, source: boss.name }` to `buildRollReceipt`.
+
+---
+
+## KI-045 — Comp card emojis off by one; The Vig absent from comp HUD and deal-in screen
+
+**Area:** `apps/web/src/components/CompCard.tsx` (`COMP_DEFS`), `apps/web/src/components/CompCardFan.tsx` (threshold map), `apps/web/src/transitions/phases/BossVictoryCompPhase.tsx` (`getCompForBossMarker`)
+**Severity:** Medium
+**Status:** Fixed
+**Source:** Playtest observation (05/13/2026)
+
+**Issue:**
+Two related comp display failures, both caused by incomplete integration of The Vig (The Foreman's comp, perkId 4) when FB-015 added the Loading Dock as Floor 1:
+
+1. **Emoji off by one on deal-in screen:** When The Vig is awarded after defeating The Foreman, the `BossVictoryCompPhase` shows the Member's Jacket emoji (🪖) instead of The Vig's icon. When Member's Jacket is awarded (Sarge), it shows the Sea Legs emoji (⚓). Every comp's reveal icon is shifted by one boss position.
+
+2. **The Vig absent from the Comps HUD:** The `CompCardFan` in the game HUD shows comps based on a hardcoded threshold map: `currentMarkerIndex >= 3` → Member's Jacket, `>= 6` → Sea Legs, `>= 9` → Golden Touch. These thresholds were written for the old 3-floor gauntlet. After FB-015, the correct mapping is: `>= 3` → The Vig, `>= 6` → Member's Jacket, `>= 9` → Sea Legs, `>= 12` → Golden Touch. Players entering the VFW Hall after earning The Vig see Member's Jacket in the HUD instead.
+
+**Root Cause:**
+- `COMP_DEFS` in `CompCard.tsx` has entries for perkIds 1, 2, 3 only. The Vig (perkId 4) has no entry; `BossVictoryCompPhase` falls through to a fallback. The `getCompForBossMarker` lookup (used by the deal-in screen) still maps markerIndex 2 → Member's Jacket because it was built for the pre-FB-015 boss order where Sarge was at marker 3.
+- `CompCardFan`'s threshold-to-comp mapping was not updated when the 4-floor gauntlet restructured the boss positions.
+
+**Fix:**
+- Added The Vig to `COMP_DEFS` (perkId 4, threshold 3, icon 💸, sodium-vapor orange accent).
+- Shifted all existing thresholds up by one floor: Member's Jacket 3→6, Sea Legs 6→9, Golden Touch 9→12.
+- `getCompForBossMarker` logic (`threshold === markerIndex + 1`) now resolves correctly for all four bosses: index 2→The Vig, 5→Member's Jacket, 8→Sea Legs, 11→Golden Touch.
+- `CompCardFan` derives earnedComps from `COMP_DEFS` directly, so the HUD fan and the `BossVictoryCompPhase` cinematic both update automatically.
+- Updated header comment in `CompCardFan.tsx` to document the 4-floor threshold map.
+- Golden Touch is now reachable at threshold 12 (The Executive cleared, marker 12+).
+
+---
+
+## KI-046 — Unlock-gated crew hire costs unattainably high relative to bankroll
+
+**Area:** `packages/shared/src/config.ts` (`RARITY_COST_MULTIPLIERS`), `apps/api/src/routes/pubDraft.ts` (or `crewRoster.ts`)
+**Severity:** High
+**Status:** Fixed
+**Source:** Playtest observation (05/13/2026)
+
+**Issue:**
+Unlock-gated crew (Lefty McGuffin, Old Pro, The Whale, The Mechanic) appear in the pub with hire costs consistently double or more than the player's available bankroll at the time they become recruitable. Confirmed example: The Whale was priced at $2,500 after Marker 6 while the player's bankroll was approximately $1,200.
+
+**Root Cause:**
+This is a balance calibration issue introduced by FB-023's dynamic hire cost formula, not a code defect. The formula is `RARITY_COST_MULTIPLIERS[rarity] × Math.floor(markerTargetCents × 0.10)`. `RARITY_COST_MULTIPLIERS` are: Starter: 4×, Common: 6×, Uncommon: 8×, Rare: 12×, Epic: 18×, Legendary: 25×.
+
+The Whale is Legendary. At Marker 6 (target $1,000, maxBet $100): `25 × $100 = $2,500` — exactly what was observed. The multipliers were not calibrated against expected bankroll ranges at each unlock milestone, and the $40 starting bankroll + 4-floor gauntlet structure produce significantly lower bankrolls at each unlock point than the formula assumes.
+
+The unlock-gated crew (IDs 1–15) are likely Rare, Epic, and Legendary — the highest cost tiers — making all of them practically unattainable when they first appear in the pub.
+
+**Proposed fix:**
+1. Audit the rarity tiers of Lefty, Old Pro, The Whale, and The Mechanic. Map each to the marker where they unlock and calculate the expected bankroll at that point.
+2. Reduce `RARITY_COST_MULTIPLIERS` for Rare, Epic, and Legendary tiers, or introduce a separate multiplier scale for unlock-gated vs. Starter crew, so the hire cost sits at roughly 30–50% of the expected bankroll at the milestone where they appear.
+3. Alternatively, add a cost cap in `getCrewHireCost`: the hire cost for unlock-gated crew should not exceed a fixed percentage (e.g., 60%) of `clearedMarkerTargetCents` regardless of rarity.
+
+---
+
+## KI-047 — Flat-payout crew tooltips display stale hardcoded values post-FB-024
+
+**Area:** `apps/web/src/components/CrewPortrait.tsx` (`ABILITY_DESCRIPTIONS`), `apps/web/src/components/PubScreen.tsx` (crew description rendering)
+**Severity:** Medium
+**Status:** Open
+**Source:** Playtest observation (05/13/2026)
+
+**Issue:**
+After the FB-024 dynamic additive scaling implementation, crew members that pay a flat bonus no longer have fixed payout amounts — their bonus scales with the current marker target via `ADDITIVE_MULT × Math.floor(markerTargetCents × 0.10)`. However, `ABILITY_DESCRIPTIONS` in `CrewPortrait.tsx` is a static lookup table that was not updated after FB-024. It still shows the old hardcoded dollar amounts from before the scaling was added (e.g., "Pays a flat $100 bonus on a Point Hit"). These values are wrong for every floor except possibly Floor 1, and they give players no useful information about what a crew member will actually pay on the current floor.
+
+**Root Cause:**
+`ABILITY_DESCRIPTIONS` is a static `Record<number, string>` authored at implementation time. FB-024 replaced the flat `ADDITIVE_BOOST` constants in each crew's `execute()` with `ADDITIVE_MULT` coefficients, but updating static description strings was not part of that implementation pass.
+
+**Proposed fix:**
+Rather than updating static strings (which would become stale again on any balance change), make additive crew tooltips dynamic:
+1. Expose each additive crew's `ADDITIVE_MULT` constant from `packages/shared/src/crew/` (it can be exported alongside the `execute` function).
+2. In `CrewPortrait.tsx` and `PubScreen.tsx`, when rendering the tooltip for an additive crew member, read `markerTargetCents` from the game store and compute `displayPayout = Math.round(ADDITIVE_MULT × Math.floor(markerTargetCents × 0.10) / 100) × 100`. Render the computed dollar amount rather than a static string.
+3. For non-additive crew, `ABILITY_DESCRIPTIONS` remains static — no change needed.
+
+---
+
+## KI-048 — Mme. Le Prix Riverboat floor intro describes the wrong mechanic
+
+**Area:** `packages/shared/src/floors.ts` (Riverboat floor / boss description text)
+**Severity:** Low
+**Status:** Open
+**Source:** Playtest observation (05/13/2026)
+
+**Issue:**
+On the Riverboat "Floor Intro" screen, Mme. Le Prix's description references "Reversing the Order" — this does not match her actual boss mechanic. Mme. Le Prix's real ability is `DISABLE_CREW`: no crew abilities fire while she is the active boss ("You're on your own in the Salon Privé"). The description appears to be leftover from an earlier design draft for her mechanic and was never corrected when `DISABLE_CREW` was finalized.
+
+**Root Cause:**
+Static flavor text in `floors.ts` was authored before Mme. Le Prix's mechanic was locked in and was not updated after the `DISABLE_CREW` rule was implemented.
+
+**Proposed fix:**
+Update Mme. Le Prix's floor intro description in `floors.ts` to accurately describe her mechanic: she silences the crew — no crew abilities fire during her floor. Revise the flavor text to fit her high-society riverboat antagonist persona while making the gameplay implication unmistakable (e.g., "Mme. Le Prix runs a quiet house. Your crew won't say a word in the Salon Privé.").
+
+---
+
+## KI-049 — Round-start marker clear not evaluated when bankroll already exceeds target
+
+**Area:** `apps/web/src/store/useGameStore.ts`, `apps/api/src/routes/rolls.ts`
+**Severity:** Low
+**Status:** Open
+**Source:** Identified during KI-042 implementation (05/13/2026)
+
+**Issue:**
+When a player arrives at the start of a new round (IDLE_TABLE / COME_OUT phase) with a bankroll that already meets or exceeds the current marker target — without any bet take-down required — the game still requires them to click Roll. The server's post-bet-change guard (KI-042 fix) will detect the auto-clear on that roll request (`betDelta = 0`, `postBetBankroll = bankrollCents >= markerTarget`) and return `autoClear: true`, but because `rollDice()` increments `_rollKey` before the fetch, the dice animation starts briefly before the transition overlay appears.
+
+This scenario occurs when a player clears marker N with a bankroll significantly above marker N's target — enough to already surpass marker N+1's target — and then reaches the table for the new round. No bet change is needed; the win condition is already met on arrival.
+
+**Root Cause:**
+The `removeBet()` → `autoCollect()` trigger (KI-042 fix) only fires when a bet take-down is the event that pushes the bankroll over the marker. There is no equivalent detection at round-start when the bankroll was already sufficient before any player action.
+
+**Proposed fix:**
+TBD — design decision pending. Options include: (a) checking for auto-clear when `applyPendingSettlement()` settles into a new marker and the bankroll already exceeds the next target; (b) adding a round-start effect in the client that fires `autoCollect()` when `status === 'IDLE_TABLE'` and `bankroll >= MARKER_TARGETS[currentMarkerIndex]`; (c) handling it server-side at the transition endpoint so the auto-clear is baked into the response that kicks off the new round.
+
+**Related:** KI-042
+
+---
+
+## KI-050 — No boss intro cinematic for The Foreman (Loading Dock, marker 2)
+
+**Area:** `apps/web/src/transitions/TransitionOrchestrator.tsx`, `apps/web/src/transitions/phases/BossEntryDreadPhase.tsx`, `apps/web/src/transitions/phases/BossEntryPhase.tsx`
+**Severity:** Medium
+**Status:** Open
+**Source:** Playtest observation (05/13/2026)
+
+**Issue:**
+When the player clears marker 1 on the Loading Dock and advances to marker 2 (The Foreman), no `BOSS_ENTRY` cinematic plays. The dread phase and rule-briefing screen that appear before Sarge, Mme. Le Prix, and The Executive are absent for The Foreman — the player goes directly from the pub to the table with no introduction.
+
+**Root Cause:**
+The Foreman's boss config in `GAUNTLET[2]` is complete (`dreadTagline`, `entryLines`, `ruleBlurb`, etc.) and the `BossEntryDreadPhase` / `BossEntryPhase` components read from live GAUNTLET data, so content is not the issue. The `TransitionOrchestrator` Priority 2 check (`isBossMarker(currentMarkerIndex) && bossEntryShownFor !== currentMarkerIndex`) appears correct at a code-review level.
+
+The likely cause is a state-machine edge case unique to Floor 1: The Loading Dock is the only floor without a `FLOOR_REVEAL` transition (the `TITLE` phase at index 0 covers it). The other three boss markers (5, 8, 11) are always entered immediately after a `FLOOR_REVEAL` at the preceding index (3, 6, 9), which advances the orchestrator through a known state path before `BOSS_ENTRY` is evaluated. Marker 2 is the only boss marker entered directly after a within-floor `MARKER_INTRO` (index 1), making its `IDLE_TABLE` → `BOSS_ENTRY` path distinct. The orchestrator's `bossEntryShownForMarker` may be set prematurely or the effect dependency chain for this state path may not re-fire correctly.
+
+**Proposed fix:**
+1. Add runtime logging to `TransitionOrchestrator.tsx` to trace the effect firing sequence at marker 2 and compare it against a working boss (e.g., Sarge at marker 5). Confirm whether `isBossMarker(2)` evaluates to `true` and whether `bossEntryShownFor !== 2` holds at the time the effect runs.
+2. Audit the `clearTransition('MARKER_CLEAR')` → pub exit → `status: 'IDLE_TABLE'` handoff for an intra-floor transition (markers 0→1→2 on Floor 1) vs. a cross-floor transition (e.g., 2→3 with `FLOOR_REVEAL`). If the state at `activeTransition === null && status === 'IDLE_TABLE'` is reached differently, the orchestrator effect's dependency array or initial-mount timing may need a guard.
+3. As a targeted fix: if `bossEntryShownForMarker` is being set to 2 before the effect evaluates the Priority 2 condition, reset it to `null` in `connectToRun` only after the run has passed that marker, not on all rehydrations.
+
+**Note:** This is the same class of gap as KI-038 — the FB-015 Loading Dock integration introduced a new first floor but the transition system was designed around the original three-floor structure where boss markers always follow floor-opening markers.
+
+---
+
+## KI-051 — The Vig comp not enforced (crew cash abilities unaffected by +20% bonus)
+
+**Area:** `packages/shared/src/cascade.ts`, `apps/api/src/routes/rolls.ts`
+**Severity:** Medium
+**Status:** Open
+**Source:** Design gap (noted during FB-015 implementation, 05/13/2026)
+
+**Issue:**
+The Vig comp (awarded for defeating The Foreman) is described as "crew cash abilities pay out 20% more," but this bonus is not enforced anywhere in the game engine. Players who defeat The Foreman earn the perkId 4 entry in `users.comp_perk_ids` and see The Vig comp card in the HUD, but all crew additive payouts remain at their base values. The Vig is effectively a dead comp with no mechanical effect.
+
+**Root Cause:**
+The Vig enforcement was explicitly deferred during FB-015 implementation (marked `TODO` in CLAUDE.md and config comments). The comp perk IDs are stored in `users.comp_perk_ids` and read by the roll route for other comps (e.g., `COMP_PERK_IDS.SEA_LEGS` drives the Sea Legs hype reset), but no equivalent check for `COMP_PERK_IDS.THE_VIG` exists in the cascade or settlement layer.
+
+**Proposed fix:**
+1. In `rolls.ts`, detect whether `(user.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_VIG)` and derive a `vigMultiplier` (1.2 when active, 1.0 otherwise).
+2. Thread `vigMultiplier` into `resolveCascade()` (via a new optional param or via TurnContext) so each additive crew member's bonus is scaled by 1.2 before being added to `ctx.additives`.
+3. Alternatively: apply the multiplier post-cascade in `rolls.ts` — after `resolveCascade()`, scale `finalContext.additives` by 1.2 if the player has The Vig. This is simpler and does not require modifying the cascade signature.
+4. The roll log already shows per-crew additive attribution (KI-044 fix) so the 20% uplift will be visible at playtime without additional receipt changes.
+
+---
+
+## KI-052 — Bankroll-below-minimum-bet GAME_OVER no longer triggers
+
+**Area:** `apps/api/src/routes/rolls.ts` (`isBelowMinBet`, section 4b auto-clear guard), `apps/web/src/store/useGameStore.ts` (`removeBet`, `autoCollect`)
+**Severity:** High
+**Status:** Open
+**Source:** Playtest observation (05/13/2026) — believed regression from KI-042 win-condition changes
+
+**Issue:**
+When the player's bankroll drops below the minimum Pass Line bet with no bets remaining on the table, the game no longer transitions to GAME_OVER. The player is stuck: they cannot afford the required bet, the Roll button either does nothing or returns a 422 validation error, and no game-over screen appears.
+
+**How it should work:**
+`isBelowMinBet(bankroll, remainingBets, markerIndex)` is called inside `computeNextState()` on every NATURAL, CRAPS_OUT, POINT_HIT, and SEVEN_OUT outcome. When `bankroll < getMinBet(markerIndex) && sumBets(remainingBets) === 0`, the function returns `true` and the roll handler sets `status: 'GAME_OVER'`. This was the working behavior before the KI-042 changes.
+
+**Root Cause (suspected):**
+`isBelowMinBet` can only fire if a roll completes through `computeNextState`. The KI-042 changes introduced two new code paths that can leave the player in a sub-minimum bankroll state without going through `computeNextState`:
+
+1. **Server section 4b auto-clear guard** — fires before the dice roll when `postBetBankroll >= markerTarget` and returns early without calling `computeNextState`. While this path is for a winning condition (bankroll ≥ target), a miscalculation in `betDelta` or a same-moment edge case could produce an unexpected early return that bypasses the min-bet check.
+
+2. **Client `removeBet()` → `autoCollect()` path** — when the player takes down a bet, `removeBet()` immediately updates the client-side bankroll and may call `autoCollect()`. If `autoCollect()` fires but the auto-clear check resolves differently on the server (e.g., a race or state mismatch), `isRolling` is reset without any settlement being applied. The client can be left in a state where bankroll is below minimum and no further roll succeeds — yet no GAME_OVER is shown because that transition only comes from a settled roll response.
+
+**Investigation steps:**
+1. Confirm the exact scenario that reproduces the stuck state: SEVEN_OUT vs. CRAPS_OUT vs. bet take-down path.
+2. Add a server-side guard at the top of the roll handler (after section 4b) that checks `isBelowMinBet(run.bankrollCents, run.bets as Bets, run.currentMarkerIndex)` before attempting validation. If true, immediately persist and return `status: 'GAME_OVER'` — this acts as a catch-all for any stuck state that reaches the roll endpoint.
+3. Alternatively, add a client-side check in `removeBet()` and `autoCollect()` completion: after updating bankroll, if `bankroll < getMinBet(currentMarkerIndex) && sumBets(bets) === 0`, dispatch a game-over action without waiting for a server roll.

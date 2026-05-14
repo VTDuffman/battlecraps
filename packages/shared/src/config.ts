@@ -18,12 +18,12 @@ import type { CrewRarity } from './types.js';
  * This scales hiring decisions proportionally to the stakes at every floor.
  */
 export const RARITY_COST_MULTIPLIERS: Record<CrewRarity, number> = {
-  Starter:   4,
-  Common:    6,
-  Uncommon:  8,
-  Rare:      12,
-  Epic:      18,
-  Legendary: 25,
+  Starter:   2,
+  Common:    3,
+  Uncommon:  4,
+  Rare:      5,
+  Epic:      7,
+  Legendary: 9,
 };
 
 /**

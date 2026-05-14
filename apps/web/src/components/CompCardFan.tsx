@@ -6,9 +6,10 @@
 // Cards are earned by defeating bosses and fan open on tap to reveal details.
 //
 // Earned comps are derived from currentMarkerIndex thresholds — no API needed:
-//   >= 3 → Sarge defeated      → Member's Jacket (+1 Shooter per segment)
-//   >= 6 → Mme. Le Prix beaten → Sea Legs       (Hype resets to 50% not zero)
-//   >= 9 → The Executive down  → Golden Touch   (Guaranteed first Natural)
+//   >= 3  → The Foreman defeated → The Vig        (Crew cash abilities +20%)
+//   >= 6  → Sarge defeated       → Member's Jacket (+1 Shooter per segment)
+//   >= 9  → Mme. Le Prix beaten  → Sea Legs        (Hype resets to 50% not zero)
+//   >= 12 → The Executive down   → Golden Touch    (Guaranteed first Natural)
 //
 // Animation: newly earned cards play animate-comp-deal-in (slide from top-left
 // with rotation + spring overshoot). Only NEW cards animate — existing cards

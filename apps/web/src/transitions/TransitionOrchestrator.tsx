@@ -52,6 +52,7 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
   const victoryShown             = useGameStore((s) => s.victoryShown);
   const victoryComplete          = useGameStore((s) => s.victoryComplete);
   const crewUnlockedThisRun      = useGameStore((s) => s.crewUnlockedThisRun);
+  const unacknowledgedUnlocks    = useGameStore((s) => s.unacknowledgedUnlocks);
   const gameOverTransitionShown  = useGameStore((s) => s.gameOverTransitionShown);
   const setActiveTransition      = useGameStore((s) => s.setActiveTransition);
   const setBossEntryShownFor     = useGameStore((s) => s.setBossEntryShownForMarker);
@@ -134,10 +135,13 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
     // Only fires when there are unlocks to show — runs with no unlocks skip straight
     // to GameOverScreen. UnlockRecapPhase calls onAdvance() immediately if empty,
     // but we avoid the transition entirely to prevent a one-frame black flash.
+    // unacknowledgedUnlocks is also checked because unlocks:granted can arrive after
+    // crewUnlockedThisRun was evaluated (async emission delay) — the dep array entry
+    // on unacknowledgedUnlocks causes this effect to re-fire when it arrives.
     if (
       status === 'GAME_OVER' &&
       currentMarkerIndex < GAUNTLET.length &&
-      crewUnlockedThisRun.length > 0 &&
+      (crewUnlockedThisRun.length > 0 || unacknowledgedUnlocks.length > 0) &&
       !gameOverTransitionShown
     ) {
       setGameOverTransitionShown();
@@ -164,6 +168,7 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
     victoryShown,
     markerIntroShownFor,
     crewUnlockedThisRun,
+    unacknowledgedUnlocks,
     gameOverTransitionShown,
     lastHydratedAt,
     setActiveTransition,
@@ -228,7 +233,8 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
     if (currentMarkerIndex >= GAUNTLET.length && !victoryShown) return null;
     // Loss path: suppress GameOverScreen for the one-frame gap between status
     // becoming GAME_OVER and the detection effect firing to set activeTransition.
-    if (crewUnlockedThisRun.length > 0 && !gameOverTransitionShown) return null;
+    // Also suppressed when unlocks:granted arrives late (unacknowledgedUnlocks > 0).
+    if ((crewUnlockedThisRun.length > 0 || unacknowledgedUnlocks.length > 0) && !gameOverTransitionShown) return null;
     return <GameOverScreen onPlayAgain={onPlayAgain} />;
   }
 

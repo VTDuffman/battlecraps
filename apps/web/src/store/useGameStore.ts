@@ -32,7 +32,7 @@ import type {
   CelebrationSnapshot,
   TransitionType,
 } from '@battlecraps/shared';
-import { validateOddsBet, getMaxBet, getBossMinBet, isBossMarker, GAUNTLET } from '@battlecraps/shared';
+import { validateOddsBet, getMaxBet, getBossMinBet, isBossMarker, GAUNTLET, MARKER_TARGETS } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // Bet field type — identifies a single wager within the Bets structure
@@ -623,8 +623,17 @@ export interface GameActions {
    * Remove any bet added since the last roll on `field`, returning the
    * pending amount to bankroll. Bets at or below the committed floor
    * (locked in from the previous roll) are untouched.
+   * If the returned cash pushes the bankroll past the current marker target,
+   * autoCollect() is triggered automatically — no Roll click required.
    */
   removeBet(field: BetField): void;
+
+  /**
+   * Fires the roll endpoint without dice or a roll animation, expecting an
+   * autoClear response. Called automatically by removeBet() when a bet
+   * take-down alone clears the current marker target.
+   */
+  autoCollect(): Promise<void>;
 
   /**
    * Optimistically mark a roll as in-flight (called immediately before POST).
@@ -1076,13 +1085,19 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     // toast notification so the player sees what they just earned.
     // Also invalidates crewRoster so the next pub visit re-fetches fresh data.
     socket.on('unlocks:granted', (payload: { newUnlockIds: number[]; crewNames: string[] }) => {
-      set((state) => ({
-        unlockedCrewIds:       [...new Set([...state.unlockedCrewIds,       ...payload.newUnlockIds])],
-        unacknowledgedUnlocks: [...new Set([...state.unacknowledgedUnlocks, ...payload.newUnlockIds])],
-        crewUnlockedThisRun:   [...new Set([...state.crewUnlockedThisRun,   ...payload.newUnlockIds])],
-        // Invalidate the cached roster — availability has changed.
-        crewRoster:            null,
-      }));
+      set((state) => {
+        // If settlement already completed before this event arrived (async DB writes
+        // in evaluateUnlocks delay emission), set unlockModalReady proactively so the
+        // modal fires now instead of waiting for the next roll's applyPendingSettlement.
+        const settlementComplete = !state.isRolling && state.pendingSettlement === null;
+        return {
+          unlockedCrewIds:       [...new Set([...state.unlockedCrewIds,       ...payload.newUnlockIds])],
+          unacknowledgedUnlocks: [...new Set([...state.unacknowledgedUnlocks, ...payload.newUnlockIds])],
+          crewUnlockedThisRun:   [...new Set([...state.crewUnlockedThisRun,   ...payload.newUnlockIds])],
+          crewRoster:            null,
+          unlockModalReady:      settlementComplete || state.unlockModalReady,
+        };
+      });
       // Pre-fetch roster so the cinematic modal has crew data ready.
       void get().fetchCrewRoster();
     });
@@ -1237,16 +1252,104 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   removeBet(field) {
+    let shouldAutoCollect = false;
     set((state) => {
       const current = getBetField(state.bets, field);
       const floor   = getBetField(state.committedBets, field);
       const pending = current - floor;
       if (pending <= 0) return state; // nothing to undo above the committed floor
+      const newBankroll  = state.bankroll + pending;
+      const markerTarget = MARKER_TARGETS[state.currentMarkerIndex];
+      if (!state.isRolling && markerTarget !== undefined && newBankroll >= markerTarget) {
+        shouldAutoCollect = true;
+      }
       return {
-        bankroll: state.bankroll + pending,
+        bankroll: newBankroll,
         bets:     withBetField(state.bets, field, floor),
       };
     });
+    if (shouldAutoCollect) {
+      void get().autoCollect();
+    }
+  },
+
+  async autoCollect() {
+    const { runId, bets, isRolling } = get();
+    if (isRolling || !runId) return;
+
+    set({ isRolling: true }); // lock UI, but NO _rollKey increment — no dice animation
+    try {
+      const token = await get().getToken?.();
+      const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/roll`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token ?? ''}`,
+        },
+        body: JSON.stringify({ bets }),
+      });
+
+      if (!res.ok) {
+        set({ isRolling: false });
+        return;
+      }
+
+      const data = await res.json() as {
+        run: {
+          bankrollCents:        number;
+          shooters:             number;
+          hype:                 number;
+          phase:                GamePhase;
+          status:               RunStatus;
+          currentPoint:         number | null;
+          currentMarkerIndex:   number;
+          consecutivePointHits: number;
+          bossPointHits:        number;
+          bets:                 Bets;
+        };
+        roll: {
+          autoClear:       boolean;
+          dice:            [number, number];
+          diceTotal:       number;
+          rollResult:      RollResult;
+          bankrollDelta:   number;
+          resolvedBets:    Bets;
+          payoutBreakdown: { passLine: number; odds: number; hardways: number };
+          mechanicFreeze:  null;
+        };
+      };
+
+      if (!data.roll.autoClear) {
+        // Server didn't auto-clear — state mismatch. Reset and let the player roll normally.
+        console.warn('[autoCollect] Server did not confirm auto-clear; resetting.');
+        set({ isRolling: false });
+        return;
+      }
+
+      const settlement: TurnSettledPayload = {
+        runId:                   runId,
+        dice:                    data.roll.dice,
+        diceTotal:               data.roll.diceTotal,
+        rollResult:              data.roll.rollResult,
+        bankrollDelta:           data.roll.bankrollDelta,
+        newBankroll:             data.run.bankrollCents,
+        newShooters:             data.run.shooters,
+        newHype:                 data.run.hype,
+        newPhase:                data.run.phase,
+        newPoint:                data.run.currentPoint,
+        runStatus:               data.run.status,
+        newMarkerIndex:          data.run.currentMarkerIndex,
+        newBets:                 data.roll.resolvedBets,
+        newConsecutivePointHits: data.run.consecutivePointHits,
+        newBossPointHits:        data.run.bossPointHits,
+        payoutBreakdown:         data.roll.payoutBreakdown,
+      };
+      set({ pendingSettlement: settlement });
+      get().applyPendingSettlement();
+    } catch (err) {
+      console.error('[autoCollect] error:', err);
+      set({ isRolling: false });
+    }
   },
 
   setRolling(rolling) {
@@ -1611,11 +1714,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           bets:                 Bets;
         };
         roll: {
+          autoClear?:       boolean;
           dice:             [number, number];
           diceTotal:        number;
           rollResult:       RollResult;
           bankrollDelta:    number;
-          receipt:          RollReceipt;
+          receipt?:         RollReceipt;
           resolvedBets:    Bets;
           payoutBreakdown: { passLine: number; odds: number; hardways: number };
           mechanicFreeze:  { lockedValue: number; rollsRemaining: number } | null;
@@ -1623,6 +1727,34 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           nudgedFrom?:     [number, number];
         };
       };
+
+      // ── Auto-clear: bankroll already met the marker target before this roll ─
+      // The server skipped the full dice pipeline and advanced the run directly.
+      // Build a synthetic settlement and apply it immediately; the dice animation
+      // that started with _rollKey++ plays out harmlessly under the transition overlay.
+      if (data.roll.autoClear) {
+        const autoSettlement: TurnSettledPayload = {
+          runId:                   runId,
+          dice:                    data.roll.dice,
+          diceTotal:               data.roll.diceTotal,
+          rollResult:              data.roll.rollResult,
+          bankrollDelta:           data.roll.bankrollDelta,
+          newBankroll:             data.run.bankrollCents,
+          newShooters:             data.run.shooters,
+          newHype:                 data.run.hype,
+          newPhase:                data.run.phase,
+          newPoint:                data.run.currentPoint,
+          runStatus:               data.run.status,
+          newMarkerIndex:          data.run.currentMarkerIndex,
+          newBets:                 data.roll.resolvedBets,
+          newConsecutivePointHits: data.run.consecutivePointHits,
+          newBossPointHits:        data.run.bossPointHits,
+          payoutBreakdown:         data.roll.payoutBreakdown,
+        };
+        set({ pendingSettlement: autoSettlement });
+        get().applyPendingSettlement();
+        return true;
+      }
 
       // Build the settlement payload from the HTTP response so the game
       // always advances even if the WebSocket turn:settled event is missed.

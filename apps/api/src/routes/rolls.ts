@@ -186,6 +186,12 @@ interface WsTurnSettledPayload {
    * craps-out animation and let the come-out phase continue.
    */
   crapsOutBlocked?: boolean;
+  /**
+   * Present when FIRST_CONTACT_PROTOCOL suppressed a come-out natural (7/11).
+   * The rollResult will be NO_RESOLUTION; this flag signals the client to skip the
+   * natural win animation and stay in the come-out UI state.
+   */
+  naturalBlocked?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -432,25 +438,44 @@ async function rollHandler(
     shooters:              run.shooters,
   });
 
+  // ── 7a-b. FIRST_CONTACT_PROTOCOL — suppress COME_OUT naturals ───────────────
+  // Applied BEFORE the hype tick so the +0.10 NATURAL momentum bonus never fires
+  // for a blocked natural. The naturalBlocked flag propagates through cascade and
+  // is read by computeNextState to return IDLE_TABLE/COME_OUT instead of POINT_ACTIVE.
+  const activeBossRule   = GAUNTLET[run.currentMarkerIndex]?.boss?.rule ?? null;
+  const isFirstContact   = activeBossRule === 'FIRST_CONTACT_PROTOCOL'
+    && isBossMarker(run.currentMarkerIndex);
+
+  const initialCtxFcp = (
+    isFirstContact &&
+    run.phase === 'COME_OUT' &&
+    initialCtx.rollResult === 'NATURAL'
+  ) ? {
+    ...initialCtx,
+    rollResult: 'NO_RESOLUTION' as const,
+    flags: { ...initialCtx.flags, naturalBlocked: true },
+  } : initialCtx;
+
   // ── 7b. Base-game Hype tick ────────────────────────────────────────────────
   //
-  // Applied to initialCtx.hype BEFORE resolveCascade so crew HYPE bonuses
+  // Applied to initialCtxFcp.hype BEFORE resolveCascade so crew HYPE bonuses
   // stack on top of the already-seeded excitement.
   //   POINT_HIT  → +0.25 (flat)
   //   NATURAL    → +0.10
   //   CRAPS_OUT  → −0.05 (floored at 1.0)
+  // FCP: blocked naturals have rollResult NO_RESOLUTION → baseHypeTick = 0. Correct.
   const baseHypeTick =
-    initialCtx.rollResult === 'POINT_HIT'  ?  0.25
-    : initialCtx.rollResult === 'NATURAL'  ?  0.10
-    : initialCtx.rollResult === 'CRAPS_OUT' ? -0.05
+    initialCtxFcp.rollResult === 'POINT_HIT'   ?  0.25
+    : initialCtxFcp.rollResult === 'NATURAL'   ?  0.10
+    : initialCtxFcp.rollResult === 'CRAPS_OUT' ? -0.05
     : 0;
   const seededHype = Math.max(
     1.0,
-    Math.round((initialCtx.hype + baseHypeTick) * 10_000) / 10_000,
+    Math.round((initialCtxFcp.hype + baseHypeTick) * 10_000) / 10_000,
   );
   const seededCtx = baseHypeTick !== 0
-    ? { ...initialCtx, hype: seededHype }
-    : initialCtx;
+    ? { ...initialCtxFcp, hype: seededHype }
+    : initialCtxFcp;
 
   // ── 7c. Boss outcome modifier (e.g. The Executive: 4s set instantLoss) ────
   const outcomeCtx = bossHooks?.modifyOutcome
@@ -569,7 +594,22 @@ async function rollHandler(
     finalContext.rollResult === 'SEVEN_OUT' && bossHooks?.modifySevenOut
       ? bossHooks.modifySevenOut(newBankroll, bossParams!, bossState)
       : newBankroll;
-  const bankrollDelta = tributedBankroll - run.bankrollCents;
+
+  // ── 9c. THE_FREQUENCY comp — flat bonus on come-out naturals ──────────────
+  // Awards 3% of marker target (rounded to nearest $1) on any real NATURAL
+  // during COME_OUT. "Real" means not blocked by FCP (finalContext.rollResult
+  // would be NO_RESOLUTION for blocked naturals). Applied before computeNextState
+  // so the marker-clear check uses the fully settled bankroll.
+  const hasTheFrequency = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_FREQUENCY);
+  const frequencyBonus = (
+    hasTheFrequency &&
+    finalContext.rollResult === 'NATURAL' &&
+    run.phase === 'COME_OUT'
+  ) ? Math.round(GAUNTLET[run.currentMarkerIndex]!.targetCents * 0.03 / 100) * 100
+    : 0;
+  const postFrequencyBankroll = tributedBankroll + frequencyBonus;
+
+  const bankrollDelta = postFrequencyBankroll - run.bankrollCents;
 
   const rollAmplifiedProfit = payout - viggedContext.baseStakeReturned;
   const newHighestRollAmplifiedCents = Math.max(
@@ -586,9 +626,15 @@ async function rollHandler(
 
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
-  const nextState = computeNextState(run, viggedContext, tributedBankroll, incomingBets, hasSeaLegs);
+  const nextState = computeNextState(run, viggedContext, postFrequencyBankroll, incomingBets, hasSeaLegs);
 
-  // ── 11b. Mechanic freeze lifecycle ───────────────────────────────────────
+  // ── 11b. ZERO_POINT comp — permanent 1.25× hype floor ────────────────────
+  const hasZeroPoint = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.ZERO_POINT);
+  if (hasZeroPoint && nextState.hype < 1.25) {
+    nextState.hype = 1.25;
+  }
+
+  // ── 11c. Mechanic freeze lifecycle ───────────────────────────────────────
   // If a freeze was applied this roll, decrement rollsRemaining.
   // Clear on seven-out (shooter ends) or when the count reaches 0.
   const currentFreeze = (run.mechanicFreeze as { lockedValue: number; rollsRemaining: number } | null | undefined) ?? null;
@@ -669,8 +715,8 @@ async function rollHandler(
   // hot path; the client also tracks this locally for immediate display.
   void db
     .update(users)
-    .set({ maxBankrollCents: tributedBankroll })
-    .where(and(eq(users.id, userId), lt(users.maxBankrollCents, tributedBankroll)))
+    .set({ maxBankrollCents: postFrequencyBankroll })
+    .where(and(eq(users.id, userId), lt(users.maxBankrollCents, postFrequencyBankroll)))
     .catch((err: unknown) => {
       request.log.error({ err }, '[roll] Failed to update maxBankrollCents');
     });
@@ -724,6 +770,7 @@ async function rollHandler(
     ...(finalContext.flags.sevenOutBlocked && { originalDice: dice }),
     ...(finalContext.flags.nudgedFrom !== undefined && { nudgedFrom: finalContext.flags.nudgedFrom }),
     ...(finalContext.flags.crapsOutBlocked && { crapsOutBlocked: true }),
+    ...(finalContext.flags.naturalBlocked && { naturalBlocked: true }),
   };
   io.to(runRoom).emit('turn:settled', settledPayload);
 
@@ -804,7 +851,8 @@ function computeNextState(
   // (not just POINT_HIT). Detect it once here and build a helper used across all
   // result branches to keep the logic consistent.
   const activeBossRule  = GAUNTLET[currentMarkerIndex]?.boss?.rule ?? null;
-  const isTidalSurge   = activeBossRule === 'TIDAL_SURGE';
+  const isTidalSurge    = activeBossRule === 'TIDAL_SURGE';
+  const isOrbitalDecay  = activeBossRule === 'ORBITAL_DECAY' && isBossMarker(currentMarkerIndex);
   const tidalCycleTotal = isTidalSurge
     ? (() => {
         const p = GAUNTLET[currentMarkerIndex]!.boss!.ruleParams as
@@ -992,8 +1040,18 @@ function computeNextState(
       // so a high-hype run isn't completely reset on seven-out.
       // cascadeHypeDelta captures crew head-start above pre-roll level and stacks on top.
       const cascadeHypeDelta = Math.max(0, finalCtx.hype - run.hype);
-      const seaLegsBaseline = hasSeaLegs ? 1.0 + (run.hype - 1.0) / 2 : 1.0;
-      const nextHype = Math.max(1.0, seaLegsBaseline + cascadeHypeDelta);
+      let nextHype: number;
+      if (isOrbitalDecay) {
+        const decayParams = GAUNTLET[currentMarkerIndex]!.boss!.ruleParams as
+          Extract<BossRuleParams, { rule: 'ORBITAL_DECAY' }>;
+        nextHype = Math.max(
+          decayParams.hypeFloor,
+          run.hype - decayParams.decayAmount + cascadeHypeDelta,
+        );
+      } else {
+        const seaLegsBaseline = hasSeaLegs ? 1.0 + (run.hype - 1.0) / 2 : 1.0;
+        nextHype = Math.max(1.0, seaLegsBaseline + cascadeHypeDelta);
+      }
 
       return {
         status:               nextStatus,
@@ -1016,6 +1074,30 @@ function computeNextState(
     // ── No resolution — bets stay, bankroll unchanged ──────────────────────
 
     case 'NO_RESOLUTION': {
+      // ── FIRST_CONTACT_PROTOCOL: blocked COME_OUT natural ────────────────
+      // Return the shooter to come-out (IDLE_TABLE) with their passLine bet
+      // still on the table. The blocked natural consumed a roll but resolved
+      // nothing — no point was set, no payout occurred, same phase continues.
+      if (flags.naturalBlocked) {
+        return {
+          status:               isBelowMinBet(newBankroll, clearedBets, currentMarkerIndex)
+                                  ? 'GAME_OVER'
+                                  : 'IDLE_TABLE',
+          phase:                'COME_OUT',
+          bankrollCents:        newBankroll,
+          shooters:             run.shooters,
+          currentPoint:         null,
+          hype:                 finalCtx.hype,
+          bets:                 clearedBets,
+          currentMarkerIndex,
+          consecutivePointHits: run.consecutivePointHits,
+          bossPointHits:        nextBossCounter(run.bossPointHits, rollResult, false),
+          previousRollTotal:    finalCtx.diceTotal,
+          shooterRollCount:     run.shooterRollCount + 1,
+          pointPhaseBlankStreak: 0,
+        };
+      }
+
       // No payout. Pass line and odds stay locked on the table.
       // However, if the dice showed a hardway number (4/6/8/10), that specific
       // hardway bet resolves independently — a soft loss clears it even though

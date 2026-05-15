@@ -50,7 +50,9 @@ export type BossRuleType =
   | 'DISABLE_CREW'        // Floor 3 — Mme. Le Prix: Crew cascade is fully suppressed
   | 'FOURS_INSTANT_LOSS'  // Floor 4 — The Executive: rolling a total of 4 is instant loss
   | 'TRIBUTE'             // Floor 5 — The Hierophant: seven-out seizes 15% of bankroll
-  | 'TIDAL_SURGE';        // Floor 6 — The Sovereign: min bet floods 15% of target every 5 rolls
+  | 'TIDAL_SURGE'         // Floor 6 — The Sovereign: min bet floods 15% of target every 5 rolls
+  | 'ORBITAL_DECAY'        // Floor 7 — The Commander: seven-out drains hype by 0.5×, can go below 1.0×
+  | 'FIRST_CONTACT_PROTOCOL'; // Floor 8 — The Emissary: come-out 7/11 naturals are blank rolls
 
 /** The permanent comp perk awarded for defeating a boss. */
 export type CompRewardType =
@@ -59,7 +61,9 @@ export type CompRewardType =
   | 'HYPE_RESET_HALF' // Floor 3 — Sea Legs: Hype resets to 50% of current (not 1.0×)
   | 'GOLDEN_TOUCH'    // Floor 4 — Golden Touch: guaranteed Natural on first come-out roll
   | 'THE_COVENANT'    // Floor 5 — The Covenant: direct bankroll drains reduced by 50%
-  | 'POSEIDONS_FAVOR'; // Floor 6 — Poseidon's Favor: first come-out can never craps-out
+  | 'POSEIDONS_FAVOR' // Floor 6 — Poseidon's Favor: first come-out can never craps-out
+  | 'ZERO_POINT'      // Floor 7 — Zero Point: hype permanently floored at 1.25×
+  | 'THE_FREQUENCY';  // Floor 8 — The Frequency: come-out naturals award 3% of marker target as bonus
 
 /**
  * Tunable parameters for the RISING_MIN_BETS boss rule.
@@ -88,7 +92,9 @@ export type BossRuleParams =
   | { rule: 'DISABLE_CREW' }
   | { rule: 'FOURS_INSTANT_LOSS'; triggerTotal: number }
   | { rule: 'TRIBUTE';            tributePct: number }
-  | { rule: 'TIDAL_SURGE';        cycleLength: number; surgeDuration: number; surgePct: number };
+  | { rule: 'TIDAL_SURGE';        cycleLength: number; surgeDuration: number; surgePct: number }
+  | { rule: 'ORBITAL_DECAY';      decayAmount: number; hypeFloor: number }
+  | { rule: 'FIRST_CONTACT_PROTOCOL' };  // Floor 8 — no params; binary toggle
 
 /** Full descriptor for a boss fight. Only present on markers where isBoss is true. */
 export interface BossConfig {
@@ -172,10 +178,12 @@ export const COMP_PERK_IDS = {
   GOLDEN_TOUCH:     3,  // Floor 4 boss reward — guaranteed first Natural
   THE_COVENANT:     5,  // Floor 5 boss reward — direct bankroll drains reduced by 50%
   POSEIDONS_FAVOR:  6,  // Floor 6 boss reward — first come-out can never craps-out
+  ZERO_POINT:       7,  // Floor 7 boss reward — hype permanently floored at 1.25×
+  THE_FREQUENCY:    8,  // Floor 8 boss reward — 3% marker target bonus on come-out naturals
 } as const;
 
 // ---------------------------------------------------------------------------
-// The Gauntlet — 18 markers across 6 floors (3 markers per floor)
+// The Gauntlet — 24 markers across 8 floors (3 markers per floor)
 //
 // Targets:
 //   Floor 1 — The Loading Dock: $50 / $100 / $250
@@ -184,8 +192,10 @@ export const COMP_PERK_IDS = {
 //   Floor 4 — The Strip:        $6,000 / $9,000 / $12,500
 //   Floor 5 — The Lodge:        $20,000 / $30,000 / $45,000
 //   Floor 6 — Atlantis:         $70,000 / $120,000 / $175,000
+//   Floor 7 — The Station:      $250,000 / $425,000 / $650,000
+//   Floor 8 — The Signal:       $1,000,000 / $1,750,000 / $2,500,000
 //
-// Boss at every 3rd marker (0-based indices 2, 5, 8, 11, 14, 17).
+// Boss at every 3rd marker (0-based indices 2, 5, 8, 11, 14, 17, 20, 23).
 // ---------------------------------------------------------------------------
 
 export const GAUNTLET: readonly MarkerConfig[] = [
@@ -479,6 +489,102 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compFanLabel:    'POSEIDON',
       // Legacy
       flavorText: "My kingdom has stood for three thousand years. Your run will not outlast this tide.",
+    },
+  },
+
+  // ── Floor 7: The Station ─────────────────────────────────────────────────
+
+  {
+    targetCents: 25_000_000,   // $250,000
+    venue:       'The Station',
+    floor:       7,
+    isBoss:      false,
+  },
+  {
+    targetCents: 42_500_000,   // $425,000
+    venue:       'The Station',
+    floor:       7,
+    isBoss:      false,
+  },
+  {
+    targetCents: 65_000_000,   // $650,000 — BOSS: The Commander
+    venue:       'The Station — The Command Module',
+    floor:       7,
+    isBoss:      true,
+    boss: {
+      // Identity
+      name:  'The Commander',
+      title: 'Station Chief, Table Authority',
+      // Vibe
+      dreadTagline:        'MOMENTUM DECAYS.',
+      entryLines: [
+        "Eleven months up here. I don't miss the ground.",
+        "Your hype is a resource. And resources decay in this environment.",
+        "Every time you seven-out, your multiplier drops. There is no floor — until there is.",
+      ],
+      ruleBlurb:          "Every seven-out subtracts 0.5× from your Hype multiplier, which can fall below 1.0×. Below 1.0×, your payouts are penalized.",
+      victoryQuote:       "…orbital mechanics didn't account for you. Gravity's compliments.",
+      defeatAnnouncement: 'ORBITAL AUTHORITY LOST',
+      // Mechanic
+      rule:           'ORBITAL_DECAY',
+      ruleHeaderText: 'SEVEN-OUT DRAINS HYPE BY 0.5× — CAN FALL BELOW 1.0×',
+      ruleParams:     { rule: 'ORBITAL_DECAY', decayAmount: 0.5, hypeFloor: 0.5 },
+      // Comp
+      compReward:      'ZERO_POINT',
+      compPerkId:      COMP_PERK_IDS.ZERO_POINT,
+      compName:        'ZERO POINT',
+      compDescription: 'Hype multiplier is permanently floored at 1.25× for all future runs.',
+      compFanLabel:    'ZERO PT',
+      // Legacy
+      flavorText: "Gravity is a courtesy I extend to paying customers. So is generosity.",
+    },
+  },
+
+  // ── Floor 8: The Signal ─────────────────────────────────────────────────
+
+  {
+    targetCents: 100_000_000,   // $1,000,000
+    venue:       'The Signal',
+    floor:       8,
+    isBoss:      false,
+  },
+  {
+    targetCents: 175_000_000,   // $1,750,000
+    venue:       'The Signal',
+    floor:       8,
+    isBoss:      false,
+  },
+  {
+    targetCents: 250_000_000,   // $2,500,000 — BOSS: The Emissary
+    venue:       'The Signal — The Receiving Chamber',
+    floor:       8,
+    isBoss:      true,
+    boss: {
+      // Identity
+      name:  'The Emissary',
+      title: 'First Point of Contact',
+      // Vibe
+      dreadTagline: 'WE SHOULD NOT HAVE ANSWERED.',
+      entryLines: [
+        "The table is here. The felt, the chips, the dice. All correct.",
+        "The geometry of the room is not correct. The light arrives from the wrong direction.",
+        "It studied the game for eleven years. It could not translate one concept. That concept is the natural.",
+      ],
+      ruleBlurb:          "Come-out 7s and 11s are blank rolls. No payout. No hype. No resolution. The Emissary has no concept of a free win.",
+      victoryQuote:       "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]",
+      defeatAnnouncement: 'SIGNAL LOST',
+      // Mechanic
+      rule:           'FIRST_CONTACT_PROTOCOL',
+      ruleHeaderText: 'COME-OUT 7 / 11 IS A NULL EVENT — NO WIN, NO HYPE',
+      ruleParams:     { rule: 'FIRST_CONTACT_PROTOCOL' },
+      // Comp
+      compReward:      'THE_FREQUENCY',
+      compPerkId:      COMP_PERK_IDS.THE_FREQUENCY,
+      compName:        'THE FREQUENCY',
+      compDescription: 'Come-out natural 7s and 11s award a flat bonus equal to 3% of the current marker target for the rest of the run.',
+      compFanLabel:    'FREQ.',
+      // Legacy
+      flavorText: "[Untranslatable. The entity gestures toward the table.]",
     },
   },
 ];

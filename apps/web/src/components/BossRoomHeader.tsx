@@ -16,6 +16,7 @@ import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js
 export const BossRoomHeader: React.FC = () => {
   const currentMarkerIndex = useGameStore(selectDisplayMarkerIndex);
   const bossPointHits      = useGameStore((s) => s.bossPointHits);
+  const currentHype        = useGameStore((s) => s.hype);
 
   if (!isBossMarker(currentMarkerIndex)) return null;
 
@@ -26,7 +27,9 @@ export const BossRoomHeader: React.FC = () => {
   const currentMinBet = getBossMinBet(currentMarkerIndex, bossPointHits);
   const nextMinBet    = getBossMinBet(currentMarkerIndex, bossPointHits + 1);
 
-  const isTidalSurge = boss.rule === 'TIDAL_SURGE';
+  const isTidalSurge   = boss.rule === 'TIDAL_SURGE';
+  const isOrbitalDecay = boss.rule === 'ORBITAL_DECAY';
+  const isFirstContact = boss.rule === 'FIRST_CONTACT_PROTOCOL';
   const tidalParams = isTidalSurge
     ? (boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>)
     : null;
@@ -125,6 +128,44 @@ export const BossRoomHeader: React.FC = () => {
               </div>
             )}
           </div>
+        ) : isFirstContact ? (
+          <div className="flex-none text-right">
+            <div className="font-pixel text-[5px] tracking-widest leading-none"
+              style={{ color: 'rgba(57,255,20,0.60)' }}>
+              NULL PROTOCOL
+            </div>
+            <div className="font-pixel text-[8px] leading-tight"
+              style={{ color: '#39ff14' }}>
+              7/11 = NULL
+            </div>
+            <div className="font-pixel text-[5px] leading-none mt-0.5"
+              style={{ color: 'rgba(57,255,20,0.45)' }}>
+              POINTS ONLY
+            </div>
+          </div>
+        ) : isOrbitalDecay ? (
+          (() => {
+            const hypeStr    = currentHype.toFixed(2) + '×';
+            const isBelow1   = currentHype < 1.0;
+            const isWarning  = currentHype < 1.25 && currentHype >= 1.0;
+            const hypeColor  = isBelow1 ? '#ef4444' : isWarning ? '#fbbf24' : '#c8d8e8';
+            return (
+              <div className="flex-none text-right">
+                <div className="font-pixel text-[5px] tracking-widest leading-none"
+                  style={{ color: 'rgba(200,216,232,0.60)' }}>
+                  HYPE DECAY
+                </div>
+                <div className="font-pixel text-[10px] leading-tight"
+                  style={{ color: hypeColor }}>
+                  {hypeStr}
+                </div>
+                <div className="font-pixel text-[5px] leading-none mt-0.5"
+                  style={{ color: isBelow1 ? '#ef4444' : 'rgba(200,216,232,0.45)' }}>
+                  {isBelow1 ? '⚠ PENALTY MODE' : '−0.5× ON 7-OUT'}
+                </div>
+              </div>
+            );
+          })()
         ) : currentMinBet !== null ? (
           <div className="flex-none text-right">
             <div className="font-pixel text-[5px] text-red-400/70 tracking-widest leading-none">

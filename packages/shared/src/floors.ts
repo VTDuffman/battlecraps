@@ -122,8 +122,10 @@ export interface CelebrationSnapshot {
  * 'electric' — Floor 4 (The Strip): neon, obsidian, pure machine
  * 'occult'   — Floor 5 (The Lodge): deep plum-black, amber candlelight, ritual silence
  * 'ancient'  — Floor 6 (Atlantis): bioluminescent warmth, coral-threaded stone, abyssal depth
+ * 'cosmic'   — Floor 7 (The Station): void-black, starlight silver, nebula purple — zero gravity
+ * 'alien'    — Floor 8 (The Signal): void black, electric acid green, deep magenta — organised wrongness
  */
-export type FloorAtmosphere = 'exposed' | 'gritty' | 'elegant' | 'electric' | 'occult' | 'ancient';
+export type FloorAtmosphere = 'exposed' | 'gritty' | 'elegant' | 'electric' | 'occult' | 'ancient' | 'cosmic' | 'alien';
 
 /**
  * The complete narrative and display configuration for a single floor.
@@ -338,6 +340,45 @@ export const FLOORS: readonly FloorConfig[] = [
     atmosphere: 'ancient',
   },
 
+  // ── Floor 7: The Station ──────────────────────────────────────────────────
+  // Void-black and starlight silver. A table in low orbit, eleven months from
+  // gravity. The Commander never lost a run — your hype will decay here.
+  {
+    id:        7,
+    name:      'The Station',
+    tagline:   "Momentum decays. Everything does, up here.",
+    introLines: [
+      'The viewport shows nothing but stars and the slow curve of the Earth below. Everything else is silence and the hum of life support.',
+      'The Commander has been at this table for eleven months. She does not miss the ground.',
+      'Up here, momentum is a resource. And resources decay.',
+    ],
+    bossName:   'The Commander',
+    bossTitle:  'Station Chief, Table Authority',
+    bossVenue:  'The Station — The Command Module',
+    bossTeaser: 'Every seven-out drains your hype multiplier. There is no floor — until there is.',
+    atmosphere: 'cosmic',
+  },
+
+  // ── Floor 8: The Signal ───────────────────────────────────────────────────
+  // Void black, electric acid green, deep magenta. The table is correct.
+  // The room is not. The Emissary reconstructed the game from a transmission —
+  // faithfully, except for one concept it could not translate.
+  {
+    id:        8,
+    name:      'The Signal',
+    tagline:   "We received it. We shouldn't have answered.",
+    introLines: [
+      'The table is here. The felt, the chips, the dice — all correct. The geometry of the room is not correct. The light arrives from the wrong direction.',
+      'The Emissary studied the transmission for eleven years. It reconstructed the game faithfully, except for one concept it could not translate.',
+      'That concept is the natural. Here, sevens on come-out mean nothing. You earn every dollar the hard way.',
+    ],
+    bossName:   'The Emissary',
+    bossTitle:  'First Point of Contact',
+    bossVenue:  'The Signal — The Receiving Chamber',
+    bossTeaser: 'The Emissary studied the game for eleven years. It misunderstood one rule. That rule is the one that matters.',
+    atmosphere: 'alien',
+  },
+
 ];
 
 // ---------------------------------------------------------------------------
@@ -364,6 +405,8 @@ export function getFloorById(id: number): FloorConfig | undefined {
  *   getFloorByMarkerIndex(9)  → Floor 4 (The Strip)
  *   getFloorByMarkerIndex(12) → Floor 5 (The Lodge)
  *   getFloorByMarkerIndex(15) → Floor 6 (Atlantis)
+ *   getFloorByMarkerIndex(18) → Floor 7 (The Station)
+ *   getFloorByMarkerIndex(21) → Floor 8 (The Signal)
  */
 export function getFloorByMarkerIndex(markerIndex: number): FloorConfig {
   const id = Math.floor(markerIndex / 3) + 1;

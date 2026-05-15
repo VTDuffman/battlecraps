@@ -154,6 +154,13 @@ export interface TurnContextFlags {
    * that the dice showed a craps number but the game treated it as a blank roll.
    */
   crapsOutBlocked?: boolean;
+
+  /**
+   * Set when FIRST_CONTACT_PROTOCOL converts a COME_OUT NATURAL to NO_RESOLUTION.
+   * Tells computeNextState to return IDLE_TABLE / COME_OUT (not POINT_ACTIVE),
+   * and tells the client to suppress the NATURAL win animation.
+   */
+  naturalBlocked?: boolean;
 }
 
 /**

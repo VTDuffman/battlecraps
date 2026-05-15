@@ -17,14 +17,18 @@ import { disableCrewHooks }    from './disableCrew.js';
 import { foursInstantLossHooks } from './foursInstantLoss.js';
 import { tributeHooks }        from './tribute.js';
 import { tidalSurgeHooks }     from './tidalSurge.js';
+import { orbitalDecayHooks }          from './orbitalDecay.js';
+import { firstContactProtocolHooks }  from './firstContactProtocol.js';
 
 export const BOSS_RULE_HOOKS: Record<BossRuleType, BossRuleHooks> = {
-  EXTORTION_FEE:      extortionFeeHooks,
-  RISING_MIN_BETS:    risingMinBetsHooks,
-  DISABLE_CREW:       disableCrewHooks,
-  FOURS_INSTANT_LOSS: foursInstantLossHooks,
-  TRIBUTE:            tributeHooks,
-  TIDAL_SURGE:        tidalSurgeHooks,
+  EXTORTION_FEE:           extortionFeeHooks,
+  RISING_MIN_BETS:         risingMinBetsHooks,
+  DISABLE_CREW:            disableCrewHooks,
+  FOURS_INSTANT_LOSS:      foursInstantLossHooks,
+  TRIBUTE:                 tributeHooks,
+  TIDAL_SURGE:             tidalSurgeHooks,
+  ORBITAL_DECAY:           orbitalDecayHooks,
+  FIRST_CONTACT_PROTOCOL:  firstContactProtocolHooks,
 };
 
 export type { BossRuleHooks, BossRuleState } from './types.js';

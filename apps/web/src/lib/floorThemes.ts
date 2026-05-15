@@ -422,27 +422,133 @@ const FLOOR_6_THEME: FloorTheme = {
 };
 
 // =============================================================================
+// Floor 7 — The Station (The Command Module)
+// =============================================================================
+// Void-black, starlight silver, nebula purple. Zero gravity. Eleven months
+// above the Earth. Momentum decays here — and so does your hype multiplier.
+
+const FLOOR_7_THEME: FloorTheme = {
+  // Felt — deep space black with faint blue tint
+  feltPrimary: '#060810',
+  feltRail:    '#030408',
+  feltTexture: feltTextureUri('#060810', '#030408', '#0a0c18'),
+
+  // Accents — starlight silver / steel blue
+  accentBright:  '#c8d8e8',
+  accentPrimary: '#8098b0',
+  accentDim:     '#3a4a5a',
+
+  // Borders
+  borderHigh: 'rgba(128,152,176,0.30)',
+  borderLow:  'rgba(128,152,176,0.20)',
+
+  // Breathing — void cold / nebula purple / warning red
+  breatheCold: 'rgba(20,20,60,0.22)',
+  breatheWarm: 'rgba(80,40,140,0.18)',
+  breatheHot:  'rgba(200,40,60,0.25)',
+
+  // Screen flash — starlight surge / void darkness
+  flashWin:  'rgba(200,220,240,0.38)',
+  flashLose: 'rgba(10,10,30,0.65)',
+
+  // Pub — The Ops Center
+  pubName:         'THE OPS CENTER',
+  pubBg:           'radial-gradient(ellipse at 50% 20%, #0a0c1a 0%, #050610 45%, #020208 100%)',
+  pubAccentBar:    'linear-gradient(90deg, transparent, #3a4a5a 30%, #c8d8e8 50%, #3a4a5a 70%, transparent)',
+  pubOverlayBg:    'radial-gradient(ellipse at 50% 50%, rgba(80,40,140,0.05) 0%, transparent 70%)',
+  pubTitleColor:   '#c8d8e8',
+  pubTitleShadow:  '0 0 20px #8098b0, 0 0 40px #3a4a5a',
+  pubSubtextColor: 'rgba(200,216,232,0.48)',
+
+  // Boss — The Command Module (The Commander)
+  bossBg:          'radial-gradient(ellipse at 50% 30%, #0a0818 0%, #05040e 55%, #020208 100%)',
+  bossAccentBar:   'linear-gradient(90deg, transparent, #1a1040 30%, #3a2880 50%, #1a1040 70%, transparent)',
+  bossGlow:        'radial-gradient(ellipse at 50% 40%, rgba(80,40,160,0.08) 0%, transparent 65%)',
+  bossTextColor:   '#c8d8e8',
+  bossTitleShadow: '0 0 30px rgba(200,216,232,0.40), 0 0 80px rgba(80,40,140,0.30)',
+  bossBorderColor: 'rgba(80,40,140,0.50)',
+  bossStarColor:   '#c8d8e8',
+  bossStarBg:      'rgba(80,40,140,0.35)',
+  bossStarBorder:  '2px solid rgba(80,40,160,0.50)',
+  bossStarGlow:    '0 0 20px 4px rgba(80,40,160,0.20)',
+};
+
+// =============================================================================
+// Floor 8 — The Signal (The Receiving Chamber)
+// =============================================================================
+// Void black felt — not space black, just void. Electric acid green
+// bioluminescence. Deep magenta dimensional seam. Organised wrongness.
+// The architecture tiles in patterns that shouldn't resolve.
+
+const FLOOR_8_THEME: FloorTheme = {
+  // Felt — void black (no tint, no undertone — pure absence)
+  feltPrimary: '#020108',
+  feltRail:    '#010106',
+  feltTexture: feltTextureUri('#020108', '#010106', '#060210'),
+
+  // Accents — electric acid green
+  accentBright:  '#39ff14',
+  accentPrimary: '#20cc00',
+  accentDim:     '#0a5500',
+
+  // Borders — acid green at very low opacity
+  borderHigh: 'rgba(32,204,0,0.28)',
+  borderLow:  'rgba(32,204,0,0.18)',
+
+  // Breathing — dim alien static / bioluminescent surge / dimensional bleed
+  breatheCold: 'rgba(0,60,10,0.20)',
+  breatheWarm: 'rgba(40,200,20,0.15)',
+  breatheHot:  'rgba(180,10,200,0.25)',
+
+  // Screen flash — alien green surge / deep magenta void
+  flashWin:  'rgba(40,255,20,0.40)',
+  flashLose: 'rgba(160,0,200,0.60)',
+
+  // Pub — The Interface
+  pubName:         'THE INTERFACE',
+  pubBg:           'radial-gradient(ellipse at 50% 50%, #050210 0%, #020108 50%, #000000 100%)',
+  pubAccentBar:    'linear-gradient(90deg, transparent, #0a5500 30%, #39ff14 50%, #0a5500 70%, transparent)',
+  pubOverlayBg:    'radial-gradient(ellipse at 50% 50%, rgba(40,255,20,0.03) 0%, transparent 70%)',
+  pubTitleColor:   '#39ff14',
+  pubTitleShadow:  '0 0 20px #20cc00, 0 0 40px #0a5500',
+  pubSubtextColor: 'rgba(57,255,20,0.45)',
+
+  // Boss — The Receiving Chamber (The Emissary)
+  bossBg:          'radial-gradient(ellipse at 50% 40%, #081004 0%, #030806 55%, #000000 100%)',
+  bossAccentBar:   'linear-gradient(90deg, transparent, #0a5500 30%, #20cc00 50%, #0a5500 70%, transparent)',
+  bossGlow:        'radial-gradient(ellipse at 50% 40%, rgba(40,200,20,0.07) 0%, transparent 65%)',
+  bossTextColor:   '#39ff14',
+  bossTitleShadow: '0 0 30px rgba(57,255,20,0.45), 0 0 80px rgba(192,38,211,0.20)',
+  bossBorderColor: 'rgba(32,204,0,0.35)',
+  bossStarColor:   '#39ff14',
+  bossStarBg:      'rgba(10,85,0,0.40)',
+  bossStarBorder:  '2px solid rgba(57,255,20,0.45)',
+  bossStarGlow:    '0 0 20px 4px rgba(32,204,0,0.20)',
+};
+
+// =============================================================================
 // Theme registry + public API
 // =============================================================================
 
 const THEMES: FloorTheme[] = [
   FLOOR_1_THEME, FLOOR_2_THEME, FLOOR_3_THEME,
   FLOOR_4_THEME, FLOOR_5_THEME, FLOOR_6_THEME,
+  FLOOR_7_THEME, FLOOR_8_THEME,
 ];
 
 /**
  * Returns the FloorTheme for the given gauntlet marker index.
- * Floor is derived as Math.floor(markerIndex / 3), clamped to [0, 5].
+ * Floor is derived as Math.floor(markerIndex / 3), clamped to [0, 7].
  */
 export function getFloorTheme(markerIndex: number): FloorTheme {
-  const floor = Math.max(0, Math.min(5, Math.floor(markerIndex / 3)));
+  const floor = Math.max(0, Math.min(7, Math.floor(markerIndex / 3)));
   return THEMES[floor]!;
 }
 
 /**
- * Returns the zero-based floor number (0–5) for a marker index.
+ * Returns the zero-based floor number (0–7) for a marker index.
  * Exported for use in components that need the floor number directly.
  */
 export function getFloorIndex(markerIndex: number): number {
-  return Math.max(0, Math.min(5, Math.floor(markerIndex / 3)));
+  return Math.max(0, Math.min(7, Math.floor(markerIndex / 3)));
 }

@@ -48,14 +48,18 @@ export type BossRuleType =
   | 'EXTORTION_FEE'   // Floor 1 — The Foreman: 20% tax on all winning payouts
   | 'RISING_MIN_BETS'     // Floor 2 — Sarge: minimum Pass Line bet rises each Point Hit
   | 'DISABLE_CREW'        // Floor 3 — Mme. Le Prix: Crew cascade is fully suppressed
-  | 'FOURS_INSTANT_LOSS'; // Floor 4 — The Executive: rolling a total of 4 is instant loss
+  | 'FOURS_INSTANT_LOSS'  // Floor 4 — The Executive: rolling a total of 4 is instant loss
+  | 'TRIBUTE'             // Floor 5 — The Hierophant: seven-out seizes 15% of bankroll
+  | 'TIDAL_SURGE';        // Floor 6 — The Sovereign: min bet floods 15% of target every 5 rolls
 
 /** The permanent comp perk awarded for defeating a boss. */
 export type CompRewardType =
   | 'THE_VIG'         // Floor 1 — The Vig: crew cash abilities pay out 20% more
   | 'EXTRA_SHOOTER'   // Floor 2 — Member's Jacket: +1 Shooter at next segment reset
   | 'HYPE_RESET_HALF' // Floor 3 — Sea Legs: Hype resets to 50% of current (not 1.0×)
-  | 'GOLDEN_TOUCH';   // Floor 4 — Golden Touch: guaranteed Natural on first come-out roll
+  | 'GOLDEN_TOUCH'    // Floor 4 — Golden Touch: guaranteed Natural on first come-out roll
+  | 'THE_COVENANT'    // Floor 5 — The Covenant: direct bankroll drains reduced by 50%
+  | 'POSEIDONS_FAVOR'; // Floor 6 — Poseidon's Favor: first come-out can never craps-out
 
 /**
  * Tunable parameters for the RISING_MIN_BETS boss rule.
@@ -82,7 +86,9 @@ export type BossRuleParams =
   | { rule: 'EXTORTION_FEE';      taxPct: number }
   | { rule: 'RISING_MIN_BETS';    startPct: number; incrementPct: number; capPct: number }
   | { rule: 'DISABLE_CREW' }
-  | { rule: 'FOURS_INSTANT_LOSS'; triggerTotal: number };
+  | { rule: 'FOURS_INSTANT_LOSS'; triggerTotal: number }
+  | { rule: 'TRIBUTE';            tributePct: number }
+  | { rule: 'TIDAL_SURGE';        cycleLength: number; surgeDuration: number; surgePct: number };
 
 /** Full descriptor for a boss fight. Only present on markers where isBoss is true. */
 export interface BossConfig {
@@ -160,22 +166,26 @@ export interface MarkerConfig {
 // ---------------------------------------------------------------------------
 
 export const COMP_PERK_IDS = {
-  THE_VIG:       4,  // Floor 1 boss reward — crew cash abilities +20%
-  MEMBER_JACKET: 1,  // Floor 2 boss reward — +1 Shooter per segment reset
-  SEA_LEGS:      2,  // Floor 3 boss reward — Hype resets to 50%
-  GOLDEN_TOUCH:  3,  // Floor 4 boss reward — guaranteed first Natural
+  THE_VIG:          4,  // Floor 1 boss reward — crew cash abilities +20%
+  MEMBER_JACKET:    1,  // Floor 2 boss reward — +1 Shooter per segment reset
+  SEA_LEGS:         2,  // Floor 3 boss reward — Hype resets to 50%
+  GOLDEN_TOUCH:     3,  // Floor 4 boss reward — guaranteed first Natural
+  THE_COVENANT:     5,  // Floor 5 boss reward — direct bankroll drains reduced by 50%
+  POSEIDONS_FAVOR:  6,  // Floor 6 boss reward — first come-out can never craps-out
 } as const;
 
 // ---------------------------------------------------------------------------
-// The Gauntlet — 12 markers across 4 floors (3 markers per floor)
+// The Gauntlet — 18 markers across 6 floors (3 markers per floor)
 //
 // Targets:
 //   Floor 1 — The Loading Dock: $50 / $100 / $250
 //   Floor 2 — VFW Hall:         $300 / $600 / $1,000
 //   Floor 3 — Riverboat:        $1,500 / $2,500 / $4,000
 //   Floor 4 — The Strip:        $6,000 / $9,000 / $12,500
+//   Floor 5 — The Lodge:        $20,000 / $30,000 / $45,000
+//   Floor 6 — Atlantis:         $70,000 / $120,000 / $175,000
 //
-// Boss at every 3rd marker (0-based indices 2, 5, 8, 11).
+// Boss at every 3rd marker (0-based indices 2, 5, 8, 11, 14, 17).
 // ---------------------------------------------------------------------------
 
 export const GAUNTLET: readonly MarkerConfig[] = [
@@ -375,6 +385,102 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       flavorText: "Fours are for losers. Don't roll one.",
     },
   },
+
+  // ── Floor 5: The Lodge ────────────────────────────────────────────────────
+
+  {
+    targetCents: 2_000_000,  // $20,000
+    venue:       'The Lodge',
+    floor:       5,
+    isBoss:      false,
+  },
+  {
+    targetCents: 3_000_000,  // $30,000
+    venue:       'The Lodge',
+    floor:       5,
+    isBoss:      false,
+  },
+  {
+    targetCents: 4_500_000,  // $45,000 — BOSS: The Hierophant
+    venue:       'The Lodge — The Inner Sanctum',
+    floor:       5,
+    isBoss:      true,
+    boss: {
+      // Identity
+      name:  'The Hierophant',
+      title: 'Keeper of the Rites',
+      // Vibe
+      dreadTagline:        'THE ORDER COLLECTS.',
+      entryLines: [
+        "You were vouched for. That person is no longer welcome.",
+        "Three centuries of tradition have kept this table alive.",
+        "The order always takes its tribute. Especially from seven-outs.",
+      ],
+      ruleBlurb:          "Every seven-out seizes 15% of your current bankroll as tribute — on top of your lost bets.",
+      victoryQuote:       "…the rites acknowledge your offering. Leave before the observers decide otherwise.",
+      defeatAnnouncement: 'RITES CONCLUDED',
+      // Mechanic
+      rule:           'TRIBUTE',
+      ruleHeaderText: 'SEVEN-OUT SEIZES 15% OF BANKROLL AS TRIBUTE',
+      ruleParams:     { rule: 'TRIBUTE', tributePct: 0.15 },
+      // Comp
+      compReward:      'THE_COVENANT',
+      compPerkId:      COMP_PERK_IDS.THE_COVENANT,
+      compName:        'THE COVENANT',
+      compDescription: 'Direct bankroll drains from boss mechanics are permanently reduced by 50%.',
+      compFanLabel:    'COVENANT',
+      // Legacy
+      flavorText: "Three centuries of tradition. You'll respect it, or you'll fund it.",
+    },
+  },
+
+  // ── Floor 6: Atlantis ─────────────────────────────────────────────────────
+
+  {
+    targetCents: 7_000_000,   // $70,000
+    venue:       'Atlantis',
+    floor:       6,
+    isBoss:      false,
+  },
+  {
+    targetCents: 12_000_000,  // $120,000
+    venue:       'Atlantis',
+    floor:       6,
+    isBoss:      false,
+  },
+  {
+    targetCents: 17_500_000,  // $175,000 — BOSS: The Sovereign
+    venue:       'Atlantis — The Throne Room',
+    floor:       6,
+    isBoss:      true,
+    boss: {
+      // Identity
+      name:  'The Sovereign',
+      title: 'Last King of Atlantis',
+      // Vibe
+      dreadTagline:        'THE TIDE TURNS.',
+      entryLines: [
+        "Three thousand years. Every empire above you has collapsed from here.",
+        "My table runs on a tide. Five rolls calm, two rolls flood.",
+        "You can see it coming. That was never the point.",
+      ],
+      ruleBlurb:          "Every 5 rolls the minimum Pass Line bet floods to 15% of the marker target for 2 rolls, then recedes. The tide is visible. The tide is inevitable.",
+      victoryQuote:       "…the tide will return. It always does.",
+      defeatAnnouncement: 'THE TIDE RECEDES',
+      // Mechanic
+      rule:           'TIDAL_SURGE',
+      ruleHeaderText: 'TIDE SURGES EVERY 5 ROLLS — MIN BET 15% OF TARGET FOR 2 ROLLS',
+      ruleParams:     { rule: 'TIDAL_SURGE', cycleLength: 5, surgeDuration: 2, surgePct: 0.15 },
+      // Comp
+      compReward:      'POSEIDONS_FAVOR',
+      compPerkId:      COMP_PERK_IDS.POSEIDONS_FAVOR,
+      compName:        "POSEIDON'S FAVOR",
+      compDescription: "First come-out roll of each shooter can never craps-out — treated as a blank re-roll instead.",
+      compFanLabel:    'POSEIDON',
+      // Legacy
+      flavorText: "My kingdom has stood for three thousand years. Your run will not outlast this tide.",
+    },
+  },
 ];
 
 /**
@@ -416,10 +522,23 @@ export function isBossMarker(markerIndex: number): boolean {
  */
 export function getBossMinBet(markerIndex: number, bossPointHits: number): number | null {
   const config = GAUNTLET[markerIndex];
-  if (!config?.isBoss || !config.boss?.risingMinBets) return null;
+  if (!config?.isBoss || !config.boss) return null;
 
   const { targetCents } = config;
-  const { startPct, incrementPct, capPct } = config.boss.risingMinBets;
+  const boss = config.boss;
+
+  if (boss.rule === 'TIDAL_SURGE') {
+    const params = boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>;
+    if (bossPointHits >= params.cycleLength) {
+      // In surge window — return the surge minimum (rounded up to nearest dollar).
+      return Math.ceil(targetCents * params.surgePct / 100) * 100;
+    }
+    return null; // Normal tide — no elevated minimum
+  }
+
+  if (!boss.risingMinBets) return null;
+
+  const { startPct, incrementPct, capPct } = boss.risingMinBets;
 
   const rawPct     = startPct + incrementPct * bossPointHits;
   const clampedPct = Math.min(rawPct, capPct);

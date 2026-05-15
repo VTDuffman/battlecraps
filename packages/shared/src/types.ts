@@ -147,6 +147,13 @@ export interface TurnContextFlags {
    * physical flip from the original face to the corrected face.
    */
   nudgedFrom?: [number, number];
+
+  /**
+   * Set when POSEIDONS_FAVOR suppresses a craps-out on the shooter's first roll.
+   * The rollResult is overridden to NO_RESOLUTION; this flag signals the client
+   * that the dice showed a craps number but the game treated it as a blank roll.
+   */
+  crapsOutBlocked?: boolean;
 }
 
 /**

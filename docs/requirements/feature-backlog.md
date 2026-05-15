@@ -769,7 +769,7 @@ This ticket serves as the living master tracker for the 9-floor gauntlet. It wil
 | **2** | VFW Hall | 🟢 Designed | 🟢 Implemented | Legacy Floor 1 |
 | **3** | Riverboat | 🟢 Designed | 🟢 Implemented | Legacy Floor 2 |
 | **4** | The Strip | 🟢 Designed | 🟢 Implemented | Legacy Floor 3 |
-| **5** | The Lodge | 🟢 Designed | 🔴 Pending | Boss: The Hierophant / Rule: `TRIBUTE` |
+| **5** | The Lodge | 🟢 Designed | 🟢 Implemented | Boss: The Hierophant / Rule: `TRIBUTE` |
 | **6** | Atlantis | 🟢 Designed | 🔴 Pending | Boss: The Sovereign / Rule: `TIDAL_SURGE` |
 | **7** | The Station | 🟢 Designed | 🔴 Pending | Boss: The Commander / Rule: `ORBITAL_DECAY` |
 | **8** | The Signal | 🟢 Designed | 🔴 Pending | Boss: The Emissary / Rule: `FIRST_CONTACT_PROTOCOL` |

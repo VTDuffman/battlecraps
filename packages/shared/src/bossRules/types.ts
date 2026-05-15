@@ -19,6 +19,8 @@ export interface BossRuleState {
   bossPointHits: number;
   /** 0-based index into GAUNTLET for the current marker. */
   markerIndex:   number;
+  /** True when the player holds THE_COVENANT comp — halves TRIBUTE drain. */
+  covenantActive: boolean;
 }
 
 /**
@@ -61,6 +63,19 @@ export interface BossRuleHooks {
   modifyPayout?(
     payoutCents: number,
     baseStakeReturned: number,
+    params: BossRuleParams,
+    state: BossRuleState,
+  ): number;
+
+  /**
+   * Called after the bet-loss bankroll is computed on a SEVEN_OUT, before
+   * computeNextState runs. Return the (potentially reduced) post-drain
+   * bankroll in cents.
+   *
+   * Used by: TRIBUTE — seizes a percentage of bankroll on every seven-out.
+   */
+  modifySevenOut?(
+    bankrollAfterLoss: number,
     params: BossRuleParams,
     state: BossRuleState,
   ): number;

@@ -41,6 +41,7 @@ import {
   type CrewMember,
   type Bets,
   type GamePhase,
+  type RollResult,
   type BossRuleParams,
   type BossRuleState,
 } from '@battlecraps/shared';
@@ -179,6 +180,12 @@ interface WsTurnSettledPayload {
    * physical flip from original face to corrected face.
    */
   nudgedFrom?: [number, number];
+  /**
+   * Present when POSEIDONS_FAVOR suppressed a craps-out on the shooter's first roll.
+   * The rollResult will be NO_RESOLUTION; this flag signals the client to skip the
+   * craps-out animation and let the come-out phase continue.
+   */
+  crapsOutBlocked?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -237,7 +244,8 @@ async function rollHandler(
   const bossMarkerConfig = GAUNTLET[run.currentMarkerIndex];
   const bossHooks        = bossMarkerConfig?.boss ? BOSS_RULE_HOOKS[bossMarkerConfig.boss.ruleParams.rule] : undefined;
   const bossParams       = bossMarkerConfig?.boss ? bossMarkerConfig.boss.ruleParams : undefined;
-  const bossState: BossRuleState = { bossPointHits: run.bossPointHits, markerIndex: run.currentMarkerIndex };
+  const hasTheCovenant = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_COVENANT);
+  const bossState: BossRuleState = { bossPointHits: run.bossPointHits, markerIndex: run.currentMarkerIndex, covenantActive: hasTheCovenant };
 
   // ── 4. Bet validation ──────────────────────────────────────────────────────
   //
@@ -509,11 +517,25 @@ async function rollHandler(
     });
   }
 
+  // ── 7e. POSEIDONS_FAVOR — block craps-out on first shooter roll ───────────────
+  // Fires after classifyRoll() and boss modifyOutcome() but BEFORE the cascade so
+  // crew never see a CRAPS_OUT that was suppressed by this comp.
+  const hasPoseidonsFavor = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.POSEIDONS_FAVOR);
+  const poseidonCtx = (
+    hasPoseidonsFavor &&
+    run.shooterRollCount === 0 &&
+    outcomeCtx.rollResult === 'CRAPS_OUT'
+  ) ? {
+    ...outcomeCtx,
+    rollResult: 'NO_RESOLUTION' as const,
+    flags: { ...outcomeCtx.flags, crapsOutBlocked: true },
+  } : outcomeCtx;
+
   // ── 8. Run the Clockwise Cascade ───────────────────────────────────────────
   //
   // Each crew member's execute() fires left-to-right (slot 0 → 4), each one
   // seeing the TurnContext as modified by all previous crew members.
-  const cascadeResult = resolveCascade(crewSlots, outcomeCtx, rollDice, bossHooks, bossParams);
+  const cascadeResult = resolveCascade(crewSlots, poseidonCtx, rollDice, bossHooks, bossParams);
   const { finalContext, events, updatedCrewSlots } = cascadeResult;
 
   // ── 8b. The Vig comp — scale crew additive bonuses by 1.20 ──────────────
@@ -541,7 +563,13 @@ async function rollHandler(
     ? bossHooks.modifyPayout(rawPayout, viggedContext.baseStakeReturned, bossParams!, bossState)
     : rawPayout;
   const newBankroll = run.bankrollCents - betDelta + payout;
-  const bankrollDelta = newBankroll - run.bankrollCents;
+
+  // ── 9b. TRIBUTE — boss drain applied on SEVEN_OUT before state advances ──────
+  const tributedBankroll =
+    finalContext.rollResult === 'SEVEN_OUT' && bossHooks?.modifySevenOut
+      ? bossHooks.modifySevenOut(newBankroll, bossParams!, bossState)
+      : newBankroll;
+  const bankrollDelta = tributedBankroll - run.bankrollCents;
 
   const rollAmplifiedProfit = payout - viggedContext.baseStakeReturned;
   const newHighestRollAmplifiedCents = Math.max(
@@ -558,7 +586,7 @@ async function rollHandler(
 
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
-  const nextState = computeNextState(run, viggedContext, newBankroll, incomingBets, hasSeaLegs);
+  const nextState = computeNextState(run, viggedContext, tributedBankroll, incomingBets, hasSeaLegs);
 
   // ── 11b. Mechanic freeze lifecycle ───────────────────────────────────────
   // If a freeze was applied this roll, decrement rollsRemaining.
@@ -641,8 +669,8 @@ async function rollHandler(
   // hot path; the client also tracks this locally for immediate display.
   void db
     .update(users)
-    .set({ maxBankrollCents: newBankroll })
-    .where(and(eq(users.id, userId), lt(users.maxBankrollCents, newBankroll)))
+    .set({ maxBankrollCents: tributedBankroll })
+    .where(and(eq(users.id, userId), lt(users.maxBankrollCents, tributedBankroll)))
     .catch((err: unknown) => {
       request.log.error({ err }, '[roll] Failed to update maxBankrollCents');
     });
@@ -695,6 +723,7 @@ async function rollHandler(
     payoutBreakdown,
     ...(finalContext.flags.sevenOutBlocked && { originalDice: dice }),
     ...(finalContext.flags.nudgedFrom !== undefined && { nudgedFrom: finalContext.flags.nudgedFrom }),
+    ...(finalContext.flags.crapsOutBlocked && { crapsOutBlocked: true }),
   };
   io.to(runRoom).emit('turn:settled', settledPayload);
 
@@ -770,6 +799,30 @@ function computeNextState(
   const { rollResult, flags } = finalCtx;
   const currentMarkerIndex = run.currentMarkerIndex;
 
+  // ── TIDAL_SURGE: per-roll tide counter ────────────────────────────────────
+  // TIDAL_SURGE is the only boss rule that advances `bossPointHits` on EVERY roll
+  // (not just POINT_HIT). Detect it once here and build a helper used across all
+  // result branches to keep the logic consistent.
+  const activeBossRule  = GAUNTLET[currentMarkerIndex]?.boss?.rule ?? null;
+  const isTidalSurge   = activeBossRule === 'TIDAL_SURGE';
+  const tidalCycleTotal = isTidalSurge
+    ? (() => {
+        const p = GAUNTLET[currentMarkerIndex]!.boss!.ruleParams as
+          Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>;
+        return p.cycleLength + p.surgeDuration;
+      })()
+    : 0;
+
+  const nextBossCounter = (current: number, result: RollResult, hitMarker: boolean): number => {
+    if (hitMarker) return 0; // Boss defeated or marker cleared — always reset
+    if (isTidalSurge) return isBossMarker(currentMarkerIndex)
+      ? (current + 1) % tidalCycleTotal
+      : 0;
+    // RISING_MIN_BETS: only increment on POINT_HIT mid-boss-fight
+    if (result === 'POINT_HIT' && isBossMarker(currentMarkerIndex)) return current + 1;
+    return current;
+  };
+
   // Use the resolved bets from the final TurnContext — this is the authoritative
   // post-roll bet state, including any crew modifications (e.g. Mathlete restoring
   // a hardway bet that would have been cleared by a soft roll).
@@ -799,8 +852,7 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex:   hitMarker ? currentMarkerIndex + 1 : currentMarkerIndex,
         consecutivePointHits: run.consecutivePointHits, // streak unaffected by naturals
-        // Boss: reset on marker clear; hold on natural (only Point Hits escalate).
-        bossPointHits:         hitMarker ? 0 : run.bossPointHits,
+        bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, hitMarker),
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
@@ -820,8 +872,7 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex,
         consecutivePointHits:  run.consecutivePointHits, // streak unaffected by craps-out
-        // Boss: min-bet holds on craps-out (only Point Hits escalate the ante).
-        bossPointHits:         run.bossPointHits,
+        bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, false),
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
@@ -844,8 +895,7 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex,
         consecutivePointHits:  run.consecutivePointHits, // unchanged until the point resolves
-        // Boss: min-bet holds on point-set (only Point Hits escalate the ante).
-        bossPointHits:         run.bossPointHits,
+        bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, false),
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
@@ -881,8 +931,7 @@ function computeNextState(
         currentMarkerIndex:   hitMarker ? currentMarkerIndex + 1 : currentMarkerIndex,
         // Streak resets on marker clear (new chapter); otherwise increments.
         consecutivePointHits:  hitMarker ? 0 : run.consecutivePointHits + 1,
-        // Boss: reset on marker clear (boss defeated); increment on mid-fight Point Hit.
-        bossPointHits:         hitMarker ? 0 : isBossMarker(currentMarkerIndex) ? run.bossPointHits + 1 : 0,
+        bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, hitMarker),
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
@@ -956,9 +1005,7 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex:   nextMarkerIndex,
         consecutivePointHits:  0,  // Seven Out kills the streak
-        // Boss: min-bet HOLDS on Seven Out (run.bossPointHits unchanged).
-        // Reset only on TRANSITION or GAME_OVER (when nextMarkerIndex advanced).
-        bossPointHits:         nextMarkerIndex !== currentMarkerIndex ? 0 : run.bossPointHits,
+        bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, nextMarkerIndex !== currentMarkerIndex),
         // New shooter: counters reset. Blocked seven-out: shooter survives, counters continue.
         previousRollTotal:     shooterLost ? null : finalCtx.diceTotal,
         shooterRollCount:      shooterLost ? 0 : run.shooterRollCount + 1,
@@ -1003,7 +1050,7 @@ function computeNextState(
           bets:                 zeroBets,
           currentMarkerIndex:   currentMarkerIndex + 1,
           consecutivePointHits:  0,
-          bossPointHits:         0,
+          bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, true),
           previousRollTotal:     finalCtx.diceTotal,
           shooterRollCount:      run.shooterRollCount + 1,
           pointPhaseBlankStreak: 0,
@@ -1020,8 +1067,7 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex,
         consecutivePointHits:  run.consecutivePointHits, // no change on non-resolving roll
-        // Boss: min-bet holds on no-resolution rolls (only Point Hits escalate).
-        bossPointHits:         run.bossPointHits,
+        bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, false),
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: run.pointPhaseBlankStreak + 1,

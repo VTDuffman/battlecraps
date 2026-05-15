@@ -15,12 +15,16 @@ import { extortionFeeHooks }   from './extortionFee.js';
 import { risingMinBetsHooks }  from './risingMinBets.js';
 import { disableCrewHooks }    from './disableCrew.js';
 import { foursInstantLossHooks } from './foursInstantLoss.js';
+import { tributeHooks }        from './tribute.js';
+import { tidalSurgeHooks }     from './tidalSurge.js';
 
 export const BOSS_RULE_HOOKS: Record<BossRuleType, BossRuleHooks> = {
   EXTORTION_FEE:      extortionFeeHooks,
   RISING_MIN_BETS:    risingMinBetsHooks,
   DISABLE_CREW:       disableCrewHooks,
   FOURS_INSTANT_LOSS: foursInstantLossHooks,
+  TRIBUTE:            tributeHooks,
+  TIDAL_SURGE:        tidalSurgeHooks,
 };
 
 export type { BossRuleHooks, BossRuleState } from './types.js';

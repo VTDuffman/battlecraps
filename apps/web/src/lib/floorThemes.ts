@@ -318,24 +318,131 @@ const FLOOR_4_THEME: FloorTheme = {
 };
 
 // =============================================================================
+// Floor 5 — The Lodge (The Inner Sanctum)
+// =============================================================================
+// Marble columns, candlelight, hooded observers. Deep plum-black felt, aged
+// amber gold accents, cardinal-red rites. Occult ritual dressed as craps.
+
+const FLOOR_5_THEME: FloorTheme = {
+  // Felt — deep plum-black
+  feltPrimary: '#0f0b14',
+  feltRail:    '#070509',
+  feltTexture: feltTextureUri('#0f0b14', '#07040a', '#16101d'),
+
+  // Accents — aged amber gold
+  accentBright:  '#c9943a',
+  accentPrimary: '#9a6e28',
+  accentDim:     '#4a3412',
+
+  // Borders — amber at low opacity
+  borderHigh: 'rgba(154,110,40,0.35)',
+  borderLow:  'rgba(154,110,40,0.20)',
+
+  // Breathing — occult violet / amber candle / cardinal blood
+  breatheCold: 'rgba(40,20,70,0.25)',
+  breatheWarm: 'rgba(160,90,20,0.20)',
+  breatheHot:  'rgba(180,20,40,0.28)',
+
+  // Screen flash — amber flare / plum-black abyss
+  flashWin:  'rgba(201,148,58,0.38)',
+  flashLose: 'rgba(30,10,50,0.60)',
+
+  // Pub — The Anteroom
+  pubName:         'THE ANTEROOM',
+  pubBg:           'radial-gradient(ellipse at 50% 20%, #1a0d28 0%, #0a0610 45%, #040208 100%)',
+  pubAccentBar:    'linear-gradient(90deg, transparent, #6b4a18 30%, #c9943a 50%, #6b4a18 70%, transparent)',
+  pubOverlayBg:    'radial-gradient(ellipse at 50% 0%, rgba(80,40,120,0.06) 0%, transparent 70%)',
+  pubTitleColor:   '#c9943a',
+  pubTitleShadow:  '0 0 20px #9a6e28, 0 0 40px #3a2008',
+  pubSubtextColor: 'rgba(201,148,58,0.48)',
+
+  // Boss — The Inner Sanctum (The Hierophant)
+  bossBg:          'radial-gradient(ellipse at 50% 30%, #2a0810 0%, #140408 55%, #060102 100%)',
+  bossAccentBar:   'linear-gradient(90deg, transparent, #4a0a14 30%, #7a1a2e 50%, #4a0a14 70%, transparent)',
+  bossGlow:        'radial-gradient(ellipse at 50% 40%, rgba(120,20,40,0.12) 0%, transparent 65%)',
+  bossTextColor:   '#c9943a',
+  bossTitleShadow: '0 0 30px rgba(201,148,58,0.50), 0 0 80px rgba(74,10,20,0.40)',
+  bossBorderColor: 'rgba(122,26,46,0.55)',
+  bossStarColor:   '#c9943a',
+  bossStarBg:      'rgba(74,10,20,0.45)',
+  bossStarBorder:  '2px solid rgba(122,26,46,0.55)',
+  bossStarGlow:    '0 0 20px 4px rgba(122,26,46,0.25)',
+};
+
+// =============================================================================
+// Floor 6 — Atlantis (The Throne Room)
+// =============================================================================
+// Marble columns. Three thousand years of coral. Bioluminescent warmth.
+// The Sovereign never left — and neither did the tide.
+
+const FLOOR_6_THEME: FloorTheme = {
+  // Felt — deep sea-teal
+  feltPrimary: '#062535',
+  feltRail:    '#031520',
+  feltTexture: feltTextureUri('#062535', '#041d2a', '#0a3a4a'),
+
+  // Accents — warm aquamarine bioluminescence
+  accentBright:  '#00c9a0',
+  accentPrimary: '#009070',
+  accentDim:     '#004840',
+
+  // Borders — aquamarine at low opacity
+  borderHigh: 'rgba(0,144,112,0.30)',
+  borderLow:  'rgba(0,144,112,0.20)',
+
+  // Breathing — abyssal teal / bioluminescent bloom / thermal vent orange
+  breatheCold: 'rgba(0,60,80,0.22)',
+  breatheWarm: 'rgba(0,160,120,0.18)',
+  breatheHot:  'rgba(200,80,20,0.25)',
+
+  // Screen flash — bioluminescent surge / total depth darkness
+  flashWin:  'rgba(0,200,160,0.35)',
+  flashLose: 'rgba(0,30,50,0.70)',
+
+  // Pub — The Hall of Records
+  pubName:         'THE HALL OF RECORDS',
+  pubBg:           'radial-gradient(ellipse at 50% 20%, #0a2535 0%, #041520 45%, #010810 100%)',
+  pubAccentBar:    'linear-gradient(90deg, transparent, #005840 30%, #00c9a0 50%, #005840 70%, transparent)',
+  pubOverlayBg:    'radial-gradient(ellipse at 50% 50%, rgba(0,150,100,0.05) 0%, transparent 70%)',
+  pubTitleColor:   '#00c9a0',
+  pubTitleShadow:  '0 0 20px #009070, 0 0 40px #004840',
+  pubSubtextColor: 'rgba(0,201,160,0.48)',
+
+  // Boss — The Throne Room (The Sovereign)
+  bossBg:          'radial-gradient(ellipse at 50% 30%, #082535 0%, #031520 55%, #010810 100%)',
+  bossAccentBar:   'linear-gradient(90deg, transparent, #5a4020 30%, #c9a06a 50%, #5a4020 70%, transparent)',
+  bossGlow:        'radial-gradient(ellipse at 50% 40%, rgba(0,160,120,0.08) 0%, transparent 65%)',
+  bossTextColor:   '#c9a06a',
+  bossTitleShadow: '0 0 30px rgba(201,160,106,0.50), 0 0 80px rgba(0,100,80,0.35)',
+  bossBorderColor: 'rgba(0,100,80,0.45)',
+  bossStarColor:   '#c9a06a',
+  bossStarBg:      'rgba(0,80,60,0.40)',
+  bossStarBorder:  '2px solid rgba(0,160,120,0.50)',
+  bossStarGlow:    '0 0 20px 4px rgba(0,160,120,0.20)',
+};
+
+// =============================================================================
 // Theme registry + public API
 // =============================================================================
 
-const THEMES: FloorTheme[] = [FLOOR_1_THEME, FLOOR_2_THEME, FLOOR_3_THEME, FLOOR_4_THEME];
+const THEMES: FloorTheme[] = [
+  FLOOR_1_THEME, FLOOR_2_THEME, FLOOR_3_THEME,
+  FLOOR_4_THEME, FLOOR_5_THEME, FLOOR_6_THEME,
+];
 
 /**
  * Returns the FloorTheme for the given gauntlet marker index.
- * Floor is derived as Math.floor(markerIndex / 3), clamped to [0, 3].
+ * Floor is derived as Math.floor(markerIndex / 3), clamped to [0, 5].
  */
 export function getFloorTheme(markerIndex: number): FloorTheme {
-  const floor = Math.max(0, Math.min(3, Math.floor(markerIndex / 3)));
+  const floor = Math.max(0, Math.min(5, Math.floor(markerIndex / 3)));
   return THEMES[floor]!;
 }
 
 /**
- * Returns the zero-based floor number (0, 1, 2, or 3) for a marker index.
+ * Returns the zero-based floor number (0–5) for a marker index.
  * Exported for use in components that need the floor number directly.
  */
 export function getFloorIndex(markerIndex: number): number {
-  return Math.max(0, Math.min(3, Math.floor(markerIndex / 3)));
+  return Math.max(0, Math.min(5, Math.floor(markerIndex / 3)));
 }

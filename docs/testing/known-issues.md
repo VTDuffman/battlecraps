@@ -1088,3 +1088,40 @@ When the player's bankroll drops below the minimum Pass Line bet with no bets re
 1. Confirm the exact scenario that reproduces the stuck state: SEVEN_OUT vs. CRAPS_OUT vs. bet take-down path.
 2. Add a server-side guard at the top of the roll handler (after section 4b) that checks `isBelowMinBet(run.bankrollCents, run.bets as Bets, run.currentMarkerIndex)` before attempting validation. If true, immediately persist and return `status: 'GAME_OVER'` — this acts as a catch-all for any stuck state that reaches the roll endpoint.
 3. Alternatively, add a client-side check in `removeBet()` and `autoCollect()` completion: after updating bankroll, if `bankroll < getMinBet(currentMarkerIndex) && sumBets(bets) === 0`, dispatch a game-over action without waiting for a server roll.
+
+---
+
+## KI-053 — Roll Log does not display The Heirphant's Tribute bankroll deduction
+
+**Area:** `apps/web/src/components/RollLog.tsx`, `apps/api/src/routes/rolls.ts`
+**Severity:** Medium
+**Status:** Open
+**Source:** Design review — FB-015 The Lodge integration
+
+**Issue:**
+When The Heirphant's Tribute boss rule fires on Floor 5 (The Lodge), it deducts 15% of the player's current bankroll as tribute. This deduction is applied silently — it does not appear as a line item in the Roll Log. The player sees their bankroll drop but has no in-log explanation attributing the loss to The Heirphant, creating confusion that looks identical to a game bug.
+
+This is the same class of omission as the KI-044 fix (Foreman extortion fee not shown in roll log), but that fix only wired up the `bossDeduction` field for `modifyPayout`-style deductions. The Tribute mechanic operates via a `modifyBankroll` hook rather than `modifyPayout`, so it is not captured by `buildRollReceipt()`'s existing `bossDeduction` parameter.
+
+**Proposed fix:**
+1. Extend `buildRollReceipt()` in `crapsEngine.ts` (or its call site in `rolls.ts`) to accept a second deduction source, or make `bossDeduction` an array so multiple deduction lines can be appended.
+2. In `rolls.ts`, after the Tribute hook fires and computes its deduction amount, pass it into `buildRollReceipt` alongside any existing `modifyPayout` deduction so a `loss` line appears in the receipt (e.g., "The Heirphant: $X.XX tribute").
+3. Confirm the deduction amount surfaced in the receipt matches the actual bankroll delta persisted to the DB.
+
+---
+
+## KI-054 — Golden Touch comp has no mechanical effect
+
+**Area:** `apps/api/src/routes/rolls.ts`
+**Severity:** Medium
+**Status:** Open
+**Source:** Code audit
+
+**Issue:**
+The Golden Touch comp (awarded for defeating The Executive, Floor 4) is defined in config, awarded to `users.comp_perk_ids`, and displayed correctly in the `CompCard` / `CompCardFan` HUD — but it is never enforced in the roll handler. No code in `rolls.ts` reads `COMP_PERK_IDS.GOLDEN_TOUCH` or forces a Natural on the first come-out roll of a new segment. The comp is a dead perk with no mechanical effect, identical to the pre-fix state of The Vig (KI-051).
+
+**Proposed fix:**
+Mirror the Sea Legs / Vig enforcement pattern in `rolls.ts`:
+1. Derive `hasGoldenTouch` from `user.compPerkIds` at the top of `rollHandler` (alongside the existing `hasSeaLegs` check).
+2. Add a per-run flag (on the `runs` row or derived from `run.shootersUsed / shooterIndex`) that tracks whether the first come-out of the current segment has been taken. Reset this flag on each segment start (Seven-Out → new shooter).
+3. When `hasGoldenTouch && isFirstComeOut && phase === 'COME_OUT'`, override the RNG result with a Natural (7 or 11 — pick randomly between the two, or always 7 for simplicity) before the cascade runs. Mark the flag consumed so subsequent come-outs in the same segment roll normally.

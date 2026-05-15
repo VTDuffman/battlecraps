@@ -120,8 +120,10 @@ export interface CelebrationSnapshot {
  * 'gritty'   — Floor 2 (VFW Hall): worn, blue-collar, fluorescent grime
  * 'elegant'  — Floor 3 (The Riverboat): candlelit, mahogany, quiet danger
  * 'electric' — Floor 4 (The Strip): neon, obsidian, pure machine
+ * 'occult'   — Floor 5 (The Lodge): deep plum-black, amber candlelight, ritual silence
+ * 'ancient'  — Floor 6 (Atlantis): bioluminescent warmth, coral-threaded stone, abyssal depth
  */
-export type FloorAtmosphere = 'exposed' | 'gritty' | 'elegant' | 'electric';
+export type FloorAtmosphere = 'exposed' | 'gritty' | 'elegant' | 'electric' | 'occult' | 'ancient';
 
 /**
  * The complete narrative and display configuration for a single floor.
@@ -297,6 +299,45 @@ export const FLOORS: readonly FloorConfig[] = [
     atmosphere: 'electric',
   },
 
+  // ── Floor 5: The Lodge ────────────────────────────────────────────────────
+  // Marble columns. Candlelight. Hooded figures. A table three centuries old.
+  // The order always collects — win or lose, something is owed.
+  {
+    id:        5,
+    name:      'The Lodge',
+    tagline:   "You weren't supposed to know this place existed.",
+    introLines: [
+      'Marble columns. Candlelight. Hooded figures standing against the walls in silence, watching.',
+      "The Hierophant has kept this table running for three centuries. You're here because someone vouched for you. That person is no longer welcome.",
+      'The order always collects. Win or lose, something is owed.',
+    ],
+    bossName:   'The Hierophant',
+    bossTitle:  'Keeper of the Rites',
+    bossVenue:  'The Lodge — The Inner Sanctum',
+    bossTeaser: 'The order always collects. Win or lose, something is owed.',
+    atmosphere: 'occult',
+  },
+
+  // ── Floor 6: Atlantis ─────────────────────────────────────────────────────
+  // Marble columns still standing. Three thousand years of coral grown through
+  // the stone, lit from within by creatures that have never seen the sun.
+  // The Sovereign never left. The tide obeys him — and so will your minimum bets.
+  {
+    id:        6,
+    name:      'Atlantis',
+    tagline:   "It didn't sink. It descended on purpose.",
+    introLines: [
+      'Marble columns still standing. Mosaic floors intact. Three thousand years of coral grown through the stone, lit from within by creatures that have never seen the sun.',
+      "The Sovereign never left. He watched every empire above collapse from this room, and he is not impressed by yours.",
+      'The tides here answer to him. He will set them against you.',
+    ],
+    bossName:   'The Sovereign',
+    bossTitle:  'Last King of Atlantis',
+    bossVenue:  'Atlantis — The Throne Room',
+    bossTeaser: 'The tides have always obeyed the Sovereign. So will your minimum bets.',
+    atmosphere: 'ancient',
+  },
+
 ];
 
 // ---------------------------------------------------------------------------
@@ -317,10 +358,12 @@ export function getFloorById(id: number): FloorConfig | undefined {
  * Clamps to the last floor if markerIndex exceeds the gauntlet length.
  *
  * Examples:
- *   getFloorByMarkerIndex(0) → Floor 1 (The Loading Dock)
- *   getFloorByMarkerIndex(3) → Floor 2 (VFW Hall)
- *   getFloorByMarkerIndex(6) → Floor 3 (The Riverboat)
- *   getFloorByMarkerIndex(9) → Floor 4 (The Strip)
+ *   getFloorByMarkerIndex(0)  → Floor 1 (The Loading Dock)
+ *   getFloorByMarkerIndex(3)  → Floor 2 (VFW Hall)
+ *   getFloorByMarkerIndex(6)  → Floor 3 (The Riverboat)
+ *   getFloorByMarkerIndex(9)  → Floor 4 (The Strip)
+ *   getFloorByMarkerIndex(12) → Floor 5 (The Lodge)
+ *   getFloorByMarkerIndex(15) → Floor 6 (Atlantis)
  */
 export function getFloorByMarkerIndex(markerIndex: number): FloorConfig {
   const id = Math.floor(markerIndex / 3) + 1;

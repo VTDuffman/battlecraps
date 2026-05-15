@@ -65,7 +65,6 @@ export const whale: CrewMember = {
   abilityCategory:  'PAYOUT',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         42_500,   // $425.00 — premium late-game crew
   visualId:         'whale',
   rarity:           'Legendary',
 

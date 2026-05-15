@@ -50,4 +50,18 @@ export interface BossRuleHooks {
    * Used by: DISABLE_CREW — returns [] to fully suppress crew cascade.
    */
   modifyCascadeOrder?(slotCount: number, params: BossRuleParams): number[];
+
+  /**
+   * Called after settleTurn() returns the raw payout but before it is applied
+   * to the bankroll. Return the (potentially reduced) payout in cents.
+   * Only fires on winning rolls — hook implementations must guard for profit <= 0.
+   *
+   * Used by: EXTORTION_FEE — deducts 20% tax from winning payouts.
+   */
+  modifyPayout?(
+    payoutCents: number,
+    baseStakeReturned: number,
+    params: BossRuleParams,
+    state: BossRuleState,
+  ): number;
 }

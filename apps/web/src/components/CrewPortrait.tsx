@@ -21,6 +21,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { MARKER_TARGETS } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
 
 interface CrewPortraitProps {
@@ -43,42 +44,80 @@ interface CrewPortraitProps {
 
 // ---------------------------------------------------------------------------
 // Ability descriptions — shown in a tooltip on hover.
+//
+// Additive crew (IDs that pay a floor-scaled cash bonus) are handled
+// separately via CREW_ADDITIVE_MULTS + CREW_ADDITIVE_TRIGGERS so the dollar
+// amount shown is computed from the current marker target at render time.
+// All other crew use the static strings below.
 // ---------------------------------------------------------------------------
 
 const ABILITY_DESCRIPTIONS: Record<number, string> = {
   // ── IDs 1–15: Unlock-gated ─────────────────────────────────────────────
   1:  'Re-rolls a Seven Out once per shooter.',
-  2:  'Occasionally swaps a 7 for the active Point number.',
+  2:  'On any paired roll in the point phase, nudges both dice ±1 pip toward the active point.',
   3:  'Once per shooter: lock a die face (1–6). That die is held for up to 4 rolls, or until a Seven Out.',
   4:  'Active Hardway bets survive a soft-number hit.',
-  5:  'The first Seven Out of a shooter refunds your Pass Line bet.',
-  6:  'Grants a free Odds bet equal to your Pass Line on a Natural.',
-  7:  'Doubles the Pass Line bet size when Hype > 2×.',
-  8:  'Adds a flat $100 bonus to every Point Hit payout.',
-  9:  'Multiplies all winning payouts by 1.2× on every roll.',
+  5:  'On Seven Out, refunds your Pass Line bet — except on the final shooter.',
+  6:  'Grants an Odds-style bonus equal to your Pass Line bet on every Natural.',
+  9:  'Multiplies all winning payouts by 1.2× (fires only on rolls with a positive payout).',
   10: 'Adds +0.2× Hype on every Natural.',
   11: 'Adds +0.3× Hype on every Point Hit.',
-  12: '25% chance to add +0.5× Hype — or subtract 0.1×.',
+  12: '33% chance each roll: +0.5× Hype or −0.25× Hype (no Hype floor).',
   13: 'Copies the ability of the last crew member that fired.',
-  14: 'If all others are on cooldown, activates all of them.',
-  15: 'When alone on the rail, sets a Hype floor of 2.0×.',
+  14: 'Raises the table bet ceiling from 10% to 15% of the marker target.',
+  15: 'Adds +1.0× Hype on every Seven Out; next shooter always starts at ≥2.0× Hype.',
   // ── IDs 16–30: Starter roster ──────────────────────────────────────────
   16: 'Adds +0.15× Hype whenever a 6 appears on either die.',
-  17: 'Adds a flat $50 bonus whenever a 1 appears on either die.',
-  18: 'Adds a flat $100 bonus when the two dice show consecutive face values.',
   19: 'Adds +0.2× Hype whenever this roll\'s total is higher than the last.',
   20: 'Adds +0.4× Hype whenever the dice repeat the same total as the last roll.',
   21: 'Adds +0.6× Hype on a Craps Out — turns the worst come-out into a crowd moment.',
   22: 'Adds +0.2× Hype whenever both dice show odd faces (1, 3, or 5).',
-  23: 'Adds a flat $80 bonus whenever both dice show even faces (2, 4, or 6).',
-  24: 'Adds a flat $40 bonus on every come-out roll, win or lose.',
-  25: 'Adds a flat $30 bonus on every blank point-phase roll.',
   26: 'Adds Hype on Point Set, scaled by difficulty: +0.3 for 4/10, +0.2 for 5/9, +0.1 for 6/8.',
   27: 'Adds +0.2× Hype on any roll totalling 7, come-out or point phase.',
-  28: 'Adds a flat $60 bonus on every 3rd roll of the current shooter.',
-  29: 'After 5 consecutive blank point-phase rolls, adds +0.5× Hype and a flat $100 bonus.',
-  30: 'Adds a flat $75 bonus whenever this roll\'s total is lower than the last.',
 };
+
+// ---------------------------------------------------------------------------
+// Additive crew — cash bonuses that scale with the current marker target.
+// ADDITIVE_MULT matches the constant in each crew's execute() file.
+// ---------------------------------------------------------------------------
+
+const CREW_ADDITIVE_MULTS: Record<number, number> = {
+  7:  1.5,   // The Big Spender
+  8:  2.0,   // The Shark
+  17: 0.75,  // "Ace" McGee
+  18: 1.25,  // The Close Call
+  23: 1.0,   // The Even Keel
+  24: 0.5,   // The Doorman
+  25: 0.75,  // The Grinder
+  28: 1.0,   // The Bookkeeper
+  29: 1.5,   // The Pressure Cooker
+  30: 1.0,   // The Contrarian
+};
+
+const CREW_ADDITIVE_TRIGGERS: Record<number, string> = {
+  7:  'when a Hardway bet wins',
+  8:  'on every Point Hit',
+  17: 'whenever a 1 appears on either die',
+  18: 'when dice show consecutive face values',
+  23: 'when both dice show even faces',
+  24: 'on every come-out roll',
+  25: 'on every blank point-phase roll',
+  28: 'on every 3rd roll of the shooter',
+  29: 'after 5 consecutive blank rolls (also +0.5× Hype)',
+  30: "when this roll's total is lower than the last",
+};
+
+function getAbilityDesc(crewId: number, markerTargetCents: number): string {
+  const mult    = CREW_ADDITIVE_MULTS[crewId];
+  const trigger = CREW_ADDITIVE_TRIGGERS[crewId];
+  if (mult !== undefined && trigger !== undefined) {
+    const maxBetCents  = Math.floor(markerTargetCents * 0.10);
+    const amountCents  = Math.round(mult * maxBetCents / 100) * 100;
+    const dollars      = amountCents / 100;
+    return `Adds $${dollars} ${trigger}.`;
+  }
+  return ABILITY_DESCRIPTIONS[crewId] ?? '???';
+}
 
 // ---------------------------------------------------------------------------
 // Bark text lookup — a short flavour line per crew member ID.
@@ -168,8 +207,8 @@ export const CREW_EMOJI: Record<number, string> = {
   26: '📊', // The Handicapper — +Hype on Point Set, scaled by difficulty
   27: '🪞', // The Mirror     — +Hype on any 7
   28: '📒', // The Bookkeeper — +$60 on every 3rd shooter roll
-  29: '💥', // The Pressure Cooker — +Hype +$100 after 5 blank rolls
-  30: '📉', // The Contrarian — +$75 when roll total falls
+  29: '💥', // The Pressure Cooker — +Hype + floor-scaled bonus after 5 blank rolls
+  30: '📉', // The Contrarian — floor-scaled bonus when roll total falls
 };
 
 // Die face Unicode characters — index 0 unused; indices 1–6 map to ⚀–⚅
@@ -189,9 +228,11 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   onSetFreeze,
   freezeState,
 }) => {
-  const portraitRef = useRef<HTMLDivElement>(null);
-  const hype        = useGameStore((s) => s.hype);
-  const isRolling   = useGameStore((s) => s.isRolling);
+  const portraitRef       = useRef<HTMLDivElement>(null);
+  const hype              = useGameStore((s) => s.hype);
+  const isRolling         = useGameStore((s) => s.isRolling);
+  const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
+  const markerTargetCents = MARKER_TARGETS[currentMarkerIndex] ?? 5000;
 
   // ── Emoji pulse tier — scales with hype, suppressed while triggering/cooldown
   const onCooldownNow = cooldownState > 0;
@@ -354,7 +395,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
           `}
         >
           <div className="font-pixel text-[6px] text-gold/70 mb-1">{crewName}</div>
-          {ABILITY_DESCRIPTIONS[crewId] ?? '???'}
+          {getAbilityDesc(crewId, markerTargetCents)}
         </div>
       )}
 

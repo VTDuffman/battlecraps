@@ -36,7 +36,6 @@ export const drunkUncle: CrewMember = {
   abilityCategory:  'HYPE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         15_000,  // $150.00
   visualId:         'drunk_uncle',
   rarity:           'Rare',
 

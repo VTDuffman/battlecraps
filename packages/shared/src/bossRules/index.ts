@@ -11,11 +11,13 @@
 import type { BossRuleType } from '../config.js';
 import type { BossRuleHooks } from './types.js';
 
-import { risingMinBetsHooks } from './risingMinBets.js';
-import { disableCrewHooks }   from './disableCrew.js';
+import { extortionFeeHooks }   from './extortionFee.js';
+import { risingMinBetsHooks }  from './risingMinBets.js';
+import { disableCrewHooks }    from './disableCrew.js';
 import { foursInstantLossHooks } from './foursInstantLoss.js';
 
 export const BOSS_RULE_HOOKS: Record<BossRuleType, BossRuleHooks> = {
+  EXTORTION_FEE:      extortionFeeHooks,
   RISING_MIN_BETS:    risingMinBetsHooks,
   DISABLE_CREW:       disableCrewHooks,
   FOURS_INSTANT_LOSS: foursInstantLossHooks,

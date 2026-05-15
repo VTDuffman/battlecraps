@@ -3,7 +3,7 @@
 // packages/shared/src/crew/grinder.ts
 //
 // Category:    TABLE
-// Ability:     +$30 additive on every NO_RESOLUTION (blank point-phase roll).
+// Ability:     Dynamic additive (0.75× max-bet) on every NO_RESOLUTION.
 // Cooldown:    none
 //
 // Trigger: ctx.rollResult === 'NO_RESOLUTION'
@@ -14,7 +14,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_BOOST = 3_000;  // $30.00
+const ADDITIVE_MULT = 0.75;  // 0.75× the current marker's max bet
 
 export const grinder: CrewMember = {
   id:               25,
@@ -22,7 +22,6 @@ export const grinder: CrewMember = {
   abilityCategory:  'TABLE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         13_000,  // $130.00
   visualId:         'grinder',
   rarity:           'Starter',
 
@@ -31,8 +30,11 @@ export const grinder: CrewMember = {
       return { context: ctx, newCooldown: 0 };
     }
 
+    const maxBet = Math.floor(ctx.markerTargetCents * 0.10);
+    const additive = Math.round(ADDITIVE_MULT * maxBet / 100) * 100;
+
     return {
-      context: { ...ctx, additives: ctx.additives + ADDITIVE_BOOST },
+      context: { ...ctx, additives: ctx.additives + additive },
       newCooldown: 0,
     };
   },

@@ -21,7 +21,6 @@ export const echo: CrewMember = {
   abilityCategory:  'HYPE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         8_500,  // $85.00
   visualId:         'echo',
   rarity:           'Starter',
 

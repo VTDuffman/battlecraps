@@ -28,7 +28,6 @@ export const oldPro: CrewMember = {
   abilityCategory:  'WILDCARD',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         25_000,  // $250.00
   visualId:         'old_pro',
   rarity:           'Epic',
 

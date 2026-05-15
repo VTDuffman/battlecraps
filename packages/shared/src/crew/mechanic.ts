@@ -29,7 +29,6 @@ export const mechanic: CrewMember = {
   abilityCategory: 'DICE',
   cooldownType:    'per_shooter',
   cooldownState:   0,
-  baseCost:        25_000,  // $250.00
   visualId:        'mechanic',
   rarity:          'Legendary',
 

@@ -31,7 +31,6 @@ export const mathlete: CrewMember = {
   abilityCategory:  'TABLE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         17_500,  // $175.00
   visualId:         'mathlete',
   rarity:           'Rare',
 

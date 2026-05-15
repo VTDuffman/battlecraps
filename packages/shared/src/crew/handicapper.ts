@@ -22,7 +22,6 @@ export const handicapper: CrewMember = {
   abilityCategory:  'PAYOUT',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         10_000,  // $100.00
   visualId:         'handicapper',
   rarity:           'Starter',
 

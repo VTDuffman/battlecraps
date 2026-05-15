@@ -6,21 +6,56 @@
 // web client (progress UI). Placing them here is the single source of truth.
 // =============================================================================
 
+import type { CrewRarity } from './types.js';
+
+// ---------------------------------------------------------------------------
+// Dynamic crew hiring cost (FB-023)
+// ---------------------------------------------------------------------------
+
+/**
+ * Number of max-bets a crew member costs to hire, by rarity.
+ * Hire cost = RARITY_COST_MULTIPLIERS[rarity] × getMaxBet(clearedMarkerTarget).
+ * This scales hiring decisions proportionally to the stakes at every floor.
+ */
+export const RARITY_COST_MULTIPLIERS: Record<CrewRarity, number> = {
+  Starter:   2,
+  Common:    3,
+  Uncommon:  4,
+  Rare:      5,
+  Epic:      7,
+  Legendary: 9,
+};
+
+/**
+ * Compute the actual hire cost for a crew member at the current pub stop.
+ *
+ * @param rarity                 The crew member's rarity tier.
+ * @param clearedMarkerTargetCents  The target (in cents) of the marker just cleared
+ *                               (i.e. GAUNTLET[currentMarkerIndex - 1].targetCents).
+ * @returns Hire cost in cents.
+ */
+export function getCrewHireCost(rarity: CrewRarity, clearedMarkerTargetCents: number): number {
+  const maxBet = Math.floor(clearedMarkerTargetCents * 0.10);
+  return RARITY_COST_MULTIPLIERS[rarity] * maxBet;
+}
+
 // ---------------------------------------------------------------------------
 // Boss rule & reward types
 // ---------------------------------------------------------------------------
 
 /** The mechanical modifier a boss applies during their High Limit Room fight. */
 export type BossRuleType =
-  | 'RISING_MIN_BETS'     // Floor 1 — Sarge: minimum Pass Line bet rises each Point Hit
-  | 'DISABLE_CREW'        // Floor 2 — Mme. Le Prix: Crew cascade is fully suppressed
-  | 'FOURS_INSTANT_LOSS'; // Floor 3 — The Executive: rolling a total of 4 is instant loss
+  | 'EXTORTION_FEE'   // Floor 1 — The Foreman: 20% tax on all winning payouts
+  | 'RISING_MIN_BETS'     // Floor 2 — Sarge: minimum Pass Line bet rises each Point Hit
+  | 'DISABLE_CREW'        // Floor 3 — Mme. Le Prix: Crew cascade is fully suppressed
+  | 'FOURS_INSTANT_LOSS'; // Floor 4 — The Executive: rolling a total of 4 is instant loss
 
 /** The permanent comp perk awarded for defeating a boss. */
 export type CompRewardType =
-  | 'EXTRA_SHOOTER'   // Floor 1 — Member's Jacket: +1 Shooter at next segment reset
-  | 'HYPE_RESET_HALF' // Floor 2 — Sea Legs: Hype resets to 50% of current (not 1.0×)
-  | 'GOLDEN_TOUCH';   // Floor 3 — Golden Touch: guaranteed Natural on first come-out roll
+  | 'THE_VIG'         // Floor 1 — The Vig: crew cash abilities pay out 20% more
+  | 'EXTRA_SHOOTER'   // Floor 2 — Member's Jacket: +1 Shooter at next segment reset
+  | 'HYPE_RESET_HALF' // Floor 3 — Sea Legs: Hype resets to 50% of current (not 1.0×)
+  | 'GOLDEN_TOUCH';   // Floor 4 — Golden Touch: guaranteed Natural on first come-out roll
 
 /**
  * Tunable parameters for the RISING_MIN_BETS boss rule.
@@ -44,6 +79,7 @@ export interface RisingMinBetsParams {
  * when a new boss rule type is introduced — no other shared types need changing.
  */
 export type BossRuleParams =
+  | { rule: 'EXTORTION_FEE';      taxPct: number }
   | { rule: 'RISING_MIN_BETS';    startPct: number; incrementPct: number; capPct: number }
   | { rule: 'DISABLE_CREW' }
   | { rule: 'FOURS_INSTANT_LOSS'; triggerTotal: number };
@@ -124,41 +160,91 @@ export interface MarkerConfig {
 // ---------------------------------------------------------------------------
 
 export const COMP_PERK_IDS = {
-  MEMBER_JACKET: 1,  // Floor 1 boss reward — +1 Shooter per segment reset
-  SEA_LEGS:      2,  // Floor 2 boss reward — Hype resets to 50%
-  GOLDEN_TOUCH:  3,  // Floor 3 boss reward — guaranteed first Natural
+  THE_VIG:       4,  // Floor 1 boss reward — crew cash abilities +20%
+  MEMBER_JACKET: 1,  // Floor 2 boss reward — +1 Shooter per segment reset
+  SEA_LEGS:      2,  // Floor 3 boss reward — Hype resets to 50%
+  GOLDEN_TOUCH:  3,  // Floor 4 boss reward — guaranteed first Natural
 } as const;
 
 // ---------------------------------------------------------------------------
-// The Gauntlet — 9 markers across 3 floors (3 markers per floor)
+// The Gauntlet — 12 markers across 4 floors (3 markers per floor)
 //
-// Targets (PRD v1.1, Section 5.1):
-//   Floor 1 — VFW Hall:  $300 / $600 / $1,000
-//   Floor 2 — Riverboat: $1,500 / $2,500 / $4,000
-//   Floor 3 — The Strip: $6,000 / $9,000 / $12,500
+// Targets:
+//   Floor 1 — The Loading Dock: $50 / $100 / $250
+//   Floor 2 — VFW Hall:         $300 / $600 / $1,000
+//   Floor 3 — Riverboat:        $1,500 / $2,500 / $4,000
+//   Floor 4 — The Strip:        $6,000 / $9,000 / $12,500
 //
-// Boss at every 3rd marker (0-based indices 2, 5, 8).
+// Boss at every 3rd marker (0-based indices 2, 5, 8, 11).
 // ---------------------------------------------------------------------------
 
 export const GAUNTLET: readonly MarkerConfig[] = [
-  // ── Floor 1: VFW Hall ─────────────────────────────────────────────────────
+  // ── Floor 1: The Loading Dock ─────────────────────────────────────────────
+
+  {
+    targetCents: 5_000,  // $50
+    venue:       'The Loading Dock',
+    floor:       1,
+    isBoss:      false,
+  },
+  {
+    targetCents: 10_000,  // $100
+    venue:       'The Loading Dock',
+    floor:       1,
+    isBoss:      false,
+  },
+  {
+    targetCents: 25_000,  // $250 — BOSS: The Foreman
+    venue:       'The Loading Dock — Freight Elevator',
+    floor:       1,
+    isBoss:      true,
+    boss: {
+      // Identity
+      name:  'The Foreman',
+      title: 'Loading Dock Gatekeeper',
+      // Vibe
+      dreadTagline:        'PAY UP.',
+      entryLines: [
+        "You're blocking my dock.",
+        "I don't care who you are or how good you shoot.",
+        "Twenty percent off the top. Every time. Non-negotiable.",
+      ],
+      ruleBlurb:          "20% tax on every winning payout. The Foreman always gets his cut.",
+      victoryQuote:       "…you got lucky. Don't let me catch you around here again.",
+      defeatAnnouncement: 'DOCK CLEARED',
+      // Mechanic
+      rule:           'EXTORTION_FEE',
+      ruleHeaderText: 'THE FOREMAN TAKES 20% OF ALL WINNING PAYOUTS',
+      ruleParams:     { rule: 'EXTORTION_FEE', taxPct: 0.20 },
+      // Comp
+      compReward:      'THE_VIG',
+      compPerkId:      COMP_PERK_IDS.THE_VIG,
+      compName:        'THE VIG',
+      compDescription: "You took over the corner. Crew cash abilities pay out 20% more.",
+      compFanLabel:    'THE VIG',
+      // Legacy
+      flavorText: "You're blocking my dock. Clear out or pay up.",
+    },
+  },
+
+  // ── Floor 2: VFW Hall ─────────────────────────────────────────────────────
 
   {
     targetCents: 30_000,  // $300
     venue:       'VFW Hall',
-    floor:       1,
+    floor:       2,
     isBoss:      false,
   },
   {
     targetCents: 60_000,  // $600
     venue:       'VFW Hall',
-    floor:       1,
+    floor:       2,
     isBoss:      false,
   },
   {
     targetCents: 100_000,  // $1,000 — BOSS: Sarge
     venue:       'VFW Hall — High Limit Room',
-    floor:       1,
+    floor:       2,
     isBoss:      true,
     boss: {
       // Identity
@@ -194,24 +280,24 @@ export const GAUNTLET: readonly MarkerConfig[] = [
     },
   },
 
-  // ── Floor 2: Riverboat ────────────────────────────────────────────────────
+  // ── Floor 3: Riverboat ────────────────────────────────────────────────────
 
   {
     targetCents: 150_000,  // $1,500
     venue:       'The Riverboat',
-    floor:       2,
+    floor:       3,
     isBoss:      false,
   },
   {
     targetCents: 250_000,  // $2,500
     venue:       'The Riverboat',
-    floor:       2,
+    floor:       3,
     isBoss:      false,
   },
   {
     targetCents: 400_000,  // $4,000 — BOSS: Mme. Le Prix
     venue:       'The Riverboat — Salon Privé',
-    floor:       2,
+    floor:       3,
     isBoss:      true,
     boss: {
       // Identity
@@ -242,24 +328,24 @@ export const GAUNTLET: readonly MarkerConfig[] = [
     },
   },
 
-  // ── Floor 3: The Strip ────────────────────────────────────────────────────
+  // ── Floor 4: The Strip ────────────────────────────────────────────────────
 
   {
     targetCents: 600_000,  // $6,000
     venue:       'The Strip',
-    floor:       3,
+    floor:       4,
     isBoss:      false,
   },
   {
     targetCents: 900_000,  // $9,000
     venue:       'The Strip',
-    floor:       3,
+    floor:       4,
     isBoss:      false,
   },
   {
     targetCents: 1_250_000,  // $12,500 — BOSS: The Executive
     venue:       'The Strip — Penthouse',
-    floor:       3,
+    floor:       4,
     isBoss:      true,
     boss: {
       // Identity

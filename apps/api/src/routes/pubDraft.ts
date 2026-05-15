@@ -22,6 +22,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, crewDefinitions } from '../db/schema.js';
+import { GAUNTLET, getCrewHireCost, type CrewRarity } from '@battlecraps/shared';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
 
@@ -34,7 +35,7 @@ export interface PubDraftEntry {
   name:                string;
   abilityCategory:     string;
   cooldownType:        string;
-  baseCostCents:       number;
+  hireCostCents:       number;
   visualId:            string;
   rarity:              string;
   briefDescription:    string | null;
@@ -95,17 +96,22 @@ export async function pubDraftPlugin(app: FastifyInstance): Promise<void> {
         });
       }
 
-      // ── 2. Determine guaranteed crew ─────────────────────────────────────────
+      // ── 2. Compute hire cost anchor from the marker just cleared ────────────
+      // currentMarkerIndex was already incremented by rolls.ts on TRANSITION.
+      const clearedIndex  = run.currentMarkerIndex - 1;
+      const clearedTarget = GAUNTLET[clearedIndex]?.targetCents ?? GAUNTLET[0]!.targetCents;
+
+      // ── 3. Determine guaranteed crew ─────────────────────────────────────────
       const guaranteedIds = new Set(run.guaranteedPubDraftIds);
 
-      // ── 2b. Collect crew IDs already seated in the squad ─────────────────────
+      // ── 3b. Collect crew IDs already seated in the squad ─────────────────────
       const occupiedIds = new Set(
         run.crewSlots
           .filter((s): s is NonNullable<typeof s> => s !== null)
           .map(s => s.crewId),
       );
 
-      // ── 3. Load all crew definitions ─────────────────────────────────────────
+      // ── 4. Load all crew definitions ─────────────────────────────────────────
       const allCrew = await db.select().from(crewDefinitions);
 
       const unlockedSet = new Set(user.unlockedCrewIds);
@@ -115,24 +121,24 @@ export async function pubDraftPlugin(app: FastifyInstance): Promise<void> {
       const isAvailable = (crewId: number, isStarterRoster: boolean): boolean =>
         isStarterRoster || unlockedSet.has(crewId) || guaranteedIds.has(crewId);
 
-      // ── 4. Partition into guaranteed and pool ────────────────────────────────
+      // ── 5. Partition into guaranteed and pool ────────────────────────────────
       // Exclude crew already in the squad from both lists to prevent duplicates.
       const guaranteedCrew = allCrew.filter(c => guaranteedIds.has(c.id) && !occupiedIds.has(c.id));
       const poolCrew       = allCrew.filter(
         c => !guaranteedIds.has(c.id) && !occupiedIds.has(c.id) && isAvailable(c.id, c.isStarterRoster),
       );
 
-      // ── 5. Build draft ───────────────────────────────────────────────────────
+      // ── 6. Build draft ───────────────────────────────────────────────────────
       const draftSize    = Math.max(NORMAL_DRAFT_SIZE, guaranteedCrew.length);
       const fillCount    = Math.max(0, draftSize - guaranteedCrew.length);
       const randomFill   = shuffle(poolCrew).slice(0, fillCount);
 
       const draft: PubDraftEntry[] = [
-        ...guaranteedCrew.map(c => ({ ...toDraftEntry(c), isGuaranteed: true })),
-        ...randomFill.map(c   => ({ ...toDraftEntry(c), isGuaranteed: false })),
+        ...guaranteedCrew.map(c => ({ ...toDraftEntry(c, clearedTarget), isGuaranteed: true })),
+        ...randomFill.map(c   => ({ ...toDraftEntry(c, clearedTarget), isGuaranteed: false })),
       ];
 
-      // ── 6. Clear guaranteedPubDraftIds on the run ────────────────────────────
+      // ── 7. Clear guaranteedPubDraftIds on the run ────────────────────────────
       if (guaranteedIds.size > 0) {
         await db
           .update(runs)
@@ -147,13 +153,14 @@ export async function pubDraftPlugin(app: FastifyInstance): Promise<void> {
 
 function toDraftEntry(
   c: typeof crewDefinitions.$inferSelect,
+  clearedMarkerTargetCents: number,
 ): Omit<PubDraftEntry, 'isGuaranteed'> {
   return {
     id:                  c.id,
     name:                c.name,
     abilityCategory:     c.abilityCategory,
     cooldownType:        c.cooldownType,
-    baseCostCents:       c.baseCostCents,
+    hireCostCents:       getCrewHireCost(c.rarity as CrewRarity, clearedMarkerTargetCents),
     visualId:            c.visualId,
     rarity:              c.rarity,
     briefDescription:    c.briefDescription,

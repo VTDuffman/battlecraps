@@ -3,7 +3,7 @@
 // packages/shared/src/crew/aceMcgee.ts
 //
 // Category:    DICE
-// Ability:     +$50 additive whenever a 1 appears on either die.
+// Ability:     Dynamic additive (0.75× max-bet) whenever a 1 appears on either die.
 // Cooldown:    none
 //
 // Trigger: ctx.dice[0] === 1 || ctx.dice[1] === 1
@@ -12,7 +12,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_BOOST = 5_000;  // $50.00
+const ADDITIVE_MULT = 0.75;  // 0.75× the current marker's max bet
 
 export const aceMcgee: CrewMember = {
   id:               17,
@@ -20,7 +20,6 @@ export const aceMcgee: CrewMember = {
   abilityCategory:  'DICE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         6_000,  // $60.00
   visualId:         'ace_mcgee',
   rarity:           'Starter',
 
@@ -29,8 +28,11 @@ export const aceMcgee: CrewMember = {
       return { context: ctx, newCooldown: 0 };
     }
 
+    const maxBet = Math.floor(ctx.markerTargetCents * 0.10);
+    const additive = Math.round(ADDITIVE_MULT * maxBet / 100) * 100;
+
     return {
-      context: { ...ctx, additives: ctx.additives + ADDITIVE_BOOST },
+      context: { ...ctx, additives: ctx.additives + additive },
       newCooldown: 0,
     };
   },

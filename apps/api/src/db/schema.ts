@@ -490,9 +490,6 @@ export const crewDefinitions = pgTable('crew_definitions', {
    */
   cooldownType: cooldownTypeEnum('cooldown_type').notNull(),
 
-  /** Recruitment cost in the "Seven-Proof Pub", in cents. */
-  baseCostCents: integer('base_cost_cents').notNull(),
-
   /** Key for the 16-bit sprite sheet frame. e.g. 'lefty', 'nervous_intern'. */
   visualId: text('visual_id').notNull(),
 

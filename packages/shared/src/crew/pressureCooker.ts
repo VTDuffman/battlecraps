@@ -3,8 +3,8 @@
 // packages/shared/src/crew/pressureCooker.ts
 //
 // Category:    WILDCARD
-// Ability:     +0.5 Hype AND +$100 additive after 5 consecutive blank
-//              point-phase rolls.
+// Ability:     +0.5 Hype AND dynamic additive (1.5× max-bet) after 5 consecutive
+//              blank point-phase rolls.
 // Cooldown:    none
 //
 // Trigger: ctx.rollResult === 'NO_RESOLUTION' && ctx.pointPhaseBlankStreak === 4
@@ -21,7 +21,7 @@
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
 const HYPE_BOOST    = 0.5;
-const ADDITIVE_BOOST = 10_000;  // $100.00
+const ADDITIVE_MULT = 1.5;  // 1.5× the current marker's max bet
 
 export const pressureCooker: CrewMember = {
   id:               29,
@@ -29,7 +29,6 @@ export const pressureCooker: CrewMember = {
   abilityCategory:  'WILDCARD',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         12_000,  // $120.00
   visualId:         'pressure_cooker',
   rarity:           'Starter',
 
@@ -39,9 +38,11 @@ export const pressureCooker: CrewMember = {
     }
 
     const newHype = Math.round((ctx.hype + HYPE_BOOST) * 10_000) / 10_000;
+    const maxBet = Math.floor(ctx.markerTargetCents * 0.10);
+    const additive = Math.round(ADDITIVE_MULT * maxBet / 100) * 100;
 
     return {
-      context: { ...ctx, hype: newHype, additives: ctx.additives + ADDITIVE_BOOST },
+      context: { ...ctx, hype: newHype, additives: ctx.additives + additive },
       newCooldown: 0,
     };
   },

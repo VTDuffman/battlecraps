@@ -505,19 +505,6 @@ export const DiceZone: React.FC = () => {
             />
           )}
 
-        {/* Small persistent result label — hidden during dread phase */}
-        {throwPhase === 'idle' && lastResult && lastResult !== 'NO_RESOLUTION' && dreadDice === null && (
-          <span
-            className={[
-              'absolute bottom-0 left-1/2 -translate-x-1/2',
-              'font-pixel text-[7px]',
-              ROLL_RESULT_COLOURS[lastResult] ?? 'text-white',
-            ].join(' ')}
-          >
-            {ROLL_RESULT_LABELS[lastResult] ?? lastResult}
-          </span>
-        )}
-
         {/* Lefty McGuffin dread phase — "SEVEN OUT?" pulsing warning */}
         {throwPhase === 'idle' && dreadDice !== null && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">

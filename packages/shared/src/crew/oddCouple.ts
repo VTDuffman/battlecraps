@@ -21,7 +21,6 @@ export const oddCouple: CrewMember = {
   abilityCategory:  'HYPE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         8_000,  // $80.00
   visualId:         'odd_couple',
   rarity:           'Starter',
 

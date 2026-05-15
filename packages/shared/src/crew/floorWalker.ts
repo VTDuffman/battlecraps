@@ -22,7 +22,6 @@ export const floorWalker: CrewMember = {
   abilityCategory:  'TABLE',
   cooldownType:     'per_shooter',
   cooldownState:    0,
-  baseCost:         12_500,  // $125.00
   visualId:         'floor_walker',
   rarity:           'Uncommon',
 
@@ -32,6 +31,13 @@ export const floorWalker: CrewMember = {
     // the stake was already deducted at bet placement. We detect a loss by
     // checking that a pass line bet exists — on SEVEN_OUT it is always lost.
     if (ctx.rollResult !== 'SEVEN_OUT' || ctx.bets.passLine === 0) {
+      return { context: ctx, newCooldown: 0 };
+    }
+
+    // Do not fire on the last shooter's seven-out. The run ends regardless,
+    // and refunding the pass line on a terminal roll causes misleading feedback
+    // (player sees money returned, then immediately hits GAME_OVER).
+    if (ctx.shooters <= 1) {
       return { context: ctx, newCooldown: 0 };
     }
 

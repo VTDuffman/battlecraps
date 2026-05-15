@@ -3,7 +3,7 @@
 // packages/shared/src/crew/closeCall.ts
 //
 // Category:    DICE
-// Ability:     +$100 additive whenever the dice show consecutive face values.
+// Ability:     Dynamic additive (1.25× max-bet) whenever dice show consecutive values.
 // Cooldown:    none
 //
 // Trigger: Math.abs(ctx.dice[0] - ctx.dice[1]) === 1
@@ -13,7 +13,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_BOOST = 10_000;  // $100.00
+const ADDITIVE_MULT = 1.25;  // 1.25× the current marker's max bet
 
 export const closeCall: CrewMember = {
   id:               18,
@@ -21,7 +21,6 @@ export const closeCall: CrewMember = {
   abilityCategory:  'DICE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         11_000,  // $110.00
   visualId:         'close_call',
   rarity:           'Starter',
 
@@ -30,8 +29,11 @@ export const closeCall: CrewMember = {
       return { context: ctx, newCooldown: 0 };
     }
 
+    const maxBet = Math.floor(ctx.markerTargetCents * 0.10);
+    const additive = Math.round(ADDITIVE_MULT * maxBet / 100) * 100;
+
     return {
-      context: { ...ctx, additives: ctx.additives + ADDITIVE_BOOST },
+      context: { ...ctx, additives: ctx.additives + additive },
       newCooldown: 0,
     };
   },

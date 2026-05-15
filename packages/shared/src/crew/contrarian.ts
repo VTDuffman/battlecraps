@@ -3,7 +3,7 @@
 // packages/shared/src/crew/contrarian.ts
 //
 // Category:    WILDCARD
-// Ability:     +$75 additive whenever this roll's total is lower than the last.
+// Ability:     Dynamic additive (1.0× max-bet) whenever this roll total < last.
 // Cooldown:    none
 //
 // Trigger: ctx.previousRollTotal !== null && ctx.diceTotal < ctx.previousRollTotal
@@ -16,7 +16,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_BOOST = 7_500;  // $75.00
+const ADDITIVE_MULT = 1.0;  // 1.0× the current marker's max bet
 
 export const contrarian: CrewMember = {
   id:               30,
@@ -24,7 +24,6 @@ export const contrarian: CrewMember = {
   abilityCategory:  'WILDCARD',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         8_500,  // $85.00
   visualId:         'contrarian',
   rarity:           'Starter',
 
@@ -33,8 +32,11 @@ export const contrarian: CrewMember = {
       return { context: ctx, newCooldown: 0 };
     }
 
+    const maxBet = Math.floor(ctx.markerTargetCents * 0.10);
+    const additive = Math.round(ADDITIVE_MULT * maxBet / 100) * 100;
+
     return {
-      context: { ...ctx, additives: ctx.additives + ADDITIVE_BOOST },
+      context: { ...ctx, additives: ctx.additives + additive },
       newCooldown: 0,
     };
   },

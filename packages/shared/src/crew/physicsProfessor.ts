@@ -20,7 +20,6 @@ export const physicsProfessor: CrewMember = {
   abilityCategory:  'DICE',
   cooldownType:     'none',
   cooldownState:    0,
-  baseCost:         12_000,  // $120.00 — reduced from $200; 17% activation rate was overpriced
   visualId:         'physics_prof',
   rarity:           'Rare',
 

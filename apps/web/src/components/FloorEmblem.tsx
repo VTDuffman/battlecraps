@@ -7,9 +7,10 @@
 // its own thematic font and visual identity, like real casino table branding.
 //
 // Floors:
-//   1 — VFW Hall      : Special Elite (typewriter/stencil, military)
-//   2 — The Riverboat : IM Fell English Italic (1800s broadsheet, old-money)
-//   3 — The Strip     : Bebas Neue (tall condensed Las Vegas marquee)
+//   1 — The Loading Dock : Share Tech Mono (stencil/industrial, street-level)
+//   2 — VFW Hall         : Special Elite (typewriter/stencil, military)
+//   3 — The Riverboat    : IM Fell English Italic (1800s broadsheet, old-money)
+//   4 — The Strip        : Bebas Neue (tall condensed Las Vegas marquee)
 //
 // Rendered at low opacity so the felt breathing overlay (z-[1]) passes over it
 // naturally. pointer-events-none so dice interactions are never blocked.
@@ -46,6 +47,28 @@ interface FloorConfig {
 const FLOOR_CONFIGS: Record<number, FloorConfig> = {
   1: {
     roman:         'I',
+    displayName:   'LOADING DOCK',
+    fontFamily:    '"Share Tech Mono", monospace',
+    fontWeight:    400,
+    letterSpacing: '0.18em',
+    nameSize:      'clamp(28px, 5dvh, 44px)',
+    decorTop: (
+      <span style={{ fontSize: '0.8em', letterSpacing: '0.12em', opacity: 0.85 }}>
+        # # # # # # # # #
+      </span>
+    ),
+    decorBottom: (
+      <span style={{ fontSize: '0.7em', letterSpacing: '0.14em', opacity: 0.7 }}>
+        -- FREIGHT ACCESS --
+      </span>
+    ),
+    color:       'rgba(255, 153, 0, 0.18)',
+    textShadow:  '0 0 30px rgba(255, 153, 0, 0.20)',
+    subLabel:    'GAUNTLET FLOOR I',
+  },
+
+  2: {
+    roman:         'II',
     displayName:   'VFW HALL',
     fontFamily:    '"Special Elite", serif',
     fontWeight:    400,
@@ -60,11 +83,11 @@ const FLOOR_CONFIGS: Record<number, FloorConfig> = {
       </span>
     ),
     color:       'rgba(162, 138, 68, 0.20)',
-    subLabel:    'GAUNTLET FLOOR I',
+    subLabel:    'GAUNTLET FLOOR II',
   },
 
-  2: {
-    roman:         'II',
+  3: {
+    roman:         'III',
     displayName:   'The Riverboat',
     fontFamily:    '"IM Fell English", serif',
     fontStyle:     'italic',
@@ -83,11 +106,11 @@ const FLOOR_CONFIGS: Record<number, FloorConfig> = {
     ),
     color:       'rgba(20, 158, 148, 0.20)',
     textShadow:  '0 0 40px rgba(20, 158, 148, 0.25)',
-    subLabel:    'GAUNTLET FLOOR II',
+    subLabel:    'GAUNTLET FLOOR III',
   },
 
-  3: {
-    roman:         'III',
+  4: {
+    roman:         'IV',
     displayName:   'THE STRIP',
     fontFamily:    '"Bebas Neue", sans-serif',
     fontWeight:    400,
@@ -101,7 +124,7 @@ const FLOOR_CONFIGS: Record<number, FloorConfig> = {
     ),
     color:       'rgba(245, 200, 66, 0.18)',
     textShadow:  '0 0 60px rgba(245, 200, 66, 0.30), 0 0 20px rgba(255, 80, 180, 0.20)',
-    subLabel:    'GAUNTLET FLOOR III',
+    subLabel:    'GAUNTLET FLOOR IV',
   },
 };
 

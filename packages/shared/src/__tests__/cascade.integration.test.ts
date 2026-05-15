@@ -144,36 +144,37 @@ describe('cascade: Holly + Whale on a POINT_HIT (Holly fires +0.3)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Cooldown management: The Mechanic (per_roll)
+// Cooldown management: The Mechanic (per_shooter — execute() is a deliberate no-op)
 // ---------------------------------------------------------------------------
 
-describe('cascade: per_roll cooldown — The Mechanic', () => {
-  it('fires on roll 1 and goes on a 4-roll cooldown', () => {
+describe('cascade: per_shooter cooldown — The Mechanic', () => {
+  it('execute() is a no-op: cooldownState stays at 0, no event emitted', () => {
     const ctx  = makeCtx({ rollResult: 'NO_RESOLUTION', dice: [2, 3], diceTotal: 5, activePoint: 9 });
     const crew: (CrewMember | null)[] = [fresh(mechanic), null, null, null, null];
 
-    const { updatedCrewSlots } = resolveCascade(crew, ctx, neverCalledRng);
-    expect(updatedCrewSlots[0]?.cooldownState).toBe(4);
+    const { updatedCrewSlots, events } = resolveCascade(crew, ctx, neverCalledRng);
+    expect(updatedCrewSlots[0]?.cooldownState).toBe(0); // no-op: newCooldown = 0
+    expect(events).toHaveLength(0);                      // context unchanged → no event
   });
 
-  it('decrements per_roll cooldown each roll until 0', () => {
+  it('per_shooter cooldown is NOT decremented by the cascade (server resets on new shooter)', () => {
     const ctx  = makeCtx({ rollResult: 'NO_RESOLUTION', dice: [2, 3], diceTotal: 5, activePoint: 9 });
     const mechanicOnCooldown = { ...fresh(mechanic), cooldownState: 3 };
     const crew: (CrewMember | null)[] = [mechanicOnCooldown, null, null, null, null];
 
     const { updatedCrewSlots, events } = resolveCascade(crew, ctx, neverCalledRng);
-    expect(updatedCrewSlots[0]?.cooldownState).toBe(2); // decremented from 3 to 2
-    expect(events).toHaveLength(0); // no ability fired
+    expect(updatedCrewSlots[0]?.cooldownState).toBe(3); // per_shooter: not decremented by cascade
+    expect(events).toHaveLength(0);                      // on cooldown, no ability fires
   });
 
-  it('re-fires after cooldown reaches 0', () => {
+  it('when cooldownState is 0, execute() runs as a no-op: stays 0, no event', () => {
     const ctx  = makeCtx({ rollResult: 'NO_RESOLUTION', dice: [2, 3], diceTotal: 5, activePoint: 9 });
     const mechanicReady = { ...fresh(mechanic), cooldownState: 0 };
     const crew: (CrewMember | null)[] = [mechanicReady, null, null, null, null];
 
     const { updatedCrewSlots, events } = resolveCascade(crew, ctx, neverCalledRng);
-    expect(updatedCrewSlots[0]?.cooldownState).toBe(4); // fired again, new 4-roll cooldown
-    expect(events).toHaveLength(1);
+    expect(updatedCrewSlots[0]?.cooldownState).toBe(0); // execute() returns newCooldown = 0
+    expect(events).toHaveLength(0);                      // context unchanged → no event
   });
 });
 
@@ -236,47 +237,36 @@ describe('cascade: The Mimic', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The Lucky Charm: additive hype floor (+1.0) when solo, hype < 2.0×
+// The Lucky Charm: +1.0 Hype boost on any SEVEN_OUT (no floor, no solo guard)
 // ---------------------------------------------------------------------------
 
 describe('cascade: The Lucky Charm', () => {
-  it('raises hype to 2.0× when solo and hype is at baseline (1.0×)', () => {
-    const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 1.0 });
+  it('fires on SEVEN_OUT and adds +1.0 hype from baseline (1.0×)', () => {
+    const ctx = makeCtx({ rollResult: 'SEVEN_OUT', hype: 1.0 });
     const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
 
     expect(finalContext.hype).toBe(2.0); // 1.0 + 1.0 = 2.0
   });
 
-  it('preserves accumulated bonuses: hype between 1.0× and 2.0× gets +1.0 not clamped to 2.0×', () => {
-    // Player carried 0.3× of bonus into this roll — Lucky Charm should add +1.0,
-    // giving 2.3× rather than discarding the bonus and clamping to 2.0×.
-    const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 1.3 });
+  it('fires on SEVEN_OUT and adds +1.0 hype from an elevated value', () => {
+    const ctx = makeCtx({ rollResult: 'SEVEN_OUT', hype: 1.3 });
     const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
 
     expect(finalContext.hype).toBeCloseTo(2.3, 5);
   });
 
-  it('does NOT change hype when it is exactly 2.0×', () => {
-    const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 2.0 });
-    const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
-    const { finalContext, events } = resolveCascade(crew, ctx, neverCalledRng);
-
-    expect(finalContext.hype).toBe(2.0);
-    expect(events).toHaveLength(0); // no-op, hype already at floor
-  });
-
-  it('does NOT reduce hype if it is already above 2.0×', () => {
-    const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 3.5 });
+  it('fires on SEVEN_OUT even when hype is already above 2.0×', () => {
+    const ctx = makeCtx({ rollResult: 'SEVEN_OUT', hype: 2.5 });
     const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
 
-    expect(finalContext.hype).toBe(3.5); // above floor — no-op
+    expect(finalContext.hype).toBeCloseTo(3.5, 5); // 2.5 + 1.0 = 3.5
   });
 
-  it('emits a cascadeEvent when hype is raised from below 2.0×', () => {
-    const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 1.0 });
+  it('emits a cascadeEvent with the updated hype on SEVEN_OUT', () => {
+    const ctx = makeCtx({ rollResult: 'SEVEN_OUT', hype: 1.0 });
     const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
     const { events } = resolveCascade(crew, ctx, neverCalledRng);
 
@@ -285,31 +275,31 @@ describe('cascade: The Lucky Charm', () => {
     expect(events[0]?.contextDelta.hype).toBe(2.0);
   });
 
-  it('emits a cascadeEvent with the full additive hype when carrying a bonus', () => {
-    const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 1.3 });
+  it('does NOT fire on NATURAL — context unchanged, no event emitted', () => {
+    const ctx = makeCtx({ rollResult: 'NATURAL', hype: 1.0 });
     const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
-    const { events } = resolveCascade(crew, ctx, neverCalledRng);
+    const { finalContext, events } = resolveCascade(crew, ctx, neverCalledRng);
 
-    expect(events).toHaveLength(1);
-    expect(events[0]?.contextDelta.hype).toBeCloseTo(2.3, 5);
+    expect(finalContext.hype).toBe(1.0);
+    expect(events).toHaveLength(0);
   });
 
-  it('does NOT emit a cascadeEvent when hype is already at or above 2.0×', () => {
-    const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 2.5 });
+  it('does NOT fire on POINT_HIT — context unchanged, no event emitted', () => {
+    const ctx = makeCtx({ rollResult: 'POINT_HIT', hype: 1.0 });
     const crew: (CrewMember | null)[] = [fresh(luckyCharm), null, null, null, null];
-    const { events } = resolveCascade(crew, ctx, neverCalledRng);
+    const { finalContext, events } = resolveCascade(crew, ctx, neverCalledRng);
 
-    expect(events).toHaveLength(0); // no-op, hype already above floor
+    expect(finalContext.hype).toBe(1.0);
+    expect(events).toHaveLength(0);
   });
 
-  it('does NOT activate when other crew are present', () => {
-    const ctx = makeCtx({ rollResult: 'NATURAL', basePassLinePayout: 10_000, hype: 1.0 });
-    // Lucky Charm + Whale in slots — Lucky Charm is NOT solo
+  it('fires on SEVEN_OUT even when other crew are present', () => {
+    const ctx = makeCtx({ rollResult: 'SEVEN_OUT', hype: 1.0 });
+    // Whale won't fire (no payout on SEVEN_OUT); Lucky Charm fires regardless
     const crew: (CrewMember | null)[] = [fresh(luckyCharm), fresh(whale), null, null, null];
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
 
-    // Hype should still be 1.0 (Lucky Charm didn't fire; only Whale's 1.2× applied)
-    expect(finalContext.hype).toBe(1.0);
-    expect(finalContext.multipliers).toEqual([1.2]); // Only Whale fired
+    expect(finalContext.hype).toBe(2.0);          // Lucky Charm fires
+    expect(finalContext.multipliers).toEqual([]); // Whale silent — no payout on SEVEN_OUT
   });
 });

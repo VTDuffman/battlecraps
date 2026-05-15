@@ -54,6 +54,9 @@ export type RollResult =
 /** The thematic category of a crew member's ability. Used for UI grouping. */
 export type AbilityCategory = 'DICE' | 'TABLE' | 'PAYOUT' | 'HYPE' | 'WILDCARD';
 
+/** Rarity tier of a crew member. Controls unlock gating and dynamic hire cost. */
+export type CrewRarity = 'Starter' | 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
+
 /**
  * Controls how a crew member's cooldown is managed between rolls.
  *
@@ -317,6 +320,23 @@ export interface TurnContext {
    * SEVEN_OUT, or any come-out outcome. Used by Pressure Cooker (29).
    */
   readonly pointPhaseBlankStreak: number;
+
+  /**
+   * The bankroll target (in cents) for the current gauntlet marker.
+   * Equal to GAUNTLET[currentMarkerIndex].targetCents. Injected by the roll
+   * route before the cascade runs; read-only throughout the cascade.
+   * Used by additive crew to compute floor-scaled bonuses via getMaxBet().
+   */
+  readonly markerTargetCents: number;
+
+  /**
+   * Shooter lives remaining at the START of this roll (before any resolution).
+   * Used by TABLE crew (e.g., Floor Walker) to distinguish a mid-run seven-out
+   * (where a refund is meaningful) from a last-shooter seven-out (where the run
+   * ends regardless and refunding the pass line causes confusing feedback).
+   * Defaults to 5 in test contexts where the field is not explicitly set.
+   */
+  readonly shooters: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -421,14 +441,11 @@ export interface CrewMember {
    */
   cooldownState: number;
 
-  /** Base recruitment cost during "The Seven-Proof Pub" phase, in cents. */
-  readonly baseCost: number;
-
   /** String key used to look up the 16-bit portrait sprite sheet frame. */
   readonly visualId: string;
 
-  /** Rarity tier of this crew member. Controls availability gating. */
-  readonly rarity: 'Starter' | 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary';
+  /** Rarity tier of this crew member. Controls availability gating and dynamic hire cost. */
+  readonly rarity: CrewRarity;
 
   /**
    * The crew member's core ability.

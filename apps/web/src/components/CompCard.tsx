@@ -27,8 +27,16 @@ export interface CompDef {
 
 export const COMP_DEFS: CompDef[] = [
   {
-    perkId:      1,
+    perkId:      4,
     threshold:   3,
+    name:        'The Vig',
+    icon:        '💰',
+    effect:      'Crew cash abilities pay out 20% more. Defeat The Foreman reward.',
+    accentColor: '#b35900',  // sodium-vapor orange — Loading Dock floor
+  },
+  {
+    perkId:      1,
+    threshold:   6,
     name:        "Member's Jacket",
     icon:        '🪖',
     effect:      '+1 Shooter granted at each segment reset. Defeat Sarge reward.',
@@ -36,7 +44,7 @@ export const COMP_DEFS: CompDef[] = [
   },
   {
     perkId:      2,
-    threshold:   6,
+    threshold:   9,
     name:        'Sea Legs',
     icon:        '⚓',
     effect:      'Hype resets to 50% on Seven Out instead of zeroing. Mme. Le Prix reward.',
@@ -44,7 +52,7 @@ export const COMP_DEFS: CompDef[] = [
   },
   {
     perkId:      3,
-    threshold:   9,
+    threshold:   12,
     name:        'Golden Touch',
     icon:        '👑',
     effect:      'Guaranteed Natural on the first come-out of each segment. The Executive reward.',
@@ -53,8 +61,8 @@ export const COMP_DEFS: CompDef[] = [
 ];
 
 /**
- * Resolve the CompDef for a boss defeat. Boss markers sit at indices 2, 5, 8;
- * each has threshold = markerIndex + 1 in COMP_DEFS.
+ * Resolve the CompDef for a boss defeat. Boss markers sit at indices 2, 5, 8, 11;
+ * each comp's threshold = markerIndex + 1, matching the filter in CompCardFan.
  */
 export function getCompForBossMarker(markerIndex: number): CompDef | undefined {
   return COMP_DEFS.find((c) => c.threshold === markerIndex + 1);

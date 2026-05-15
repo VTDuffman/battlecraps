@@ -269,12 +269,12 @@ export const FLOORS: readonly FloorConfig[] = [
     introLines: [
       'Mahogany panels. Candlelight. The paddle wheel churns the dark water below.',
       "Mme. Le Prix does not raise her voice. She doesn't need to.",
-      'Your crew works differently here. Adapt, or sink.',
+      "In the Salon Privé, she runs a quiet house. Your crew won't say a word in here.",
     ],
     bossName:   'Mme. Le Prix',
     bossTitle:  'Proprietress of the Salon Privé',
     bossVenue:  'The Riverboat — Salon Privé',
-    bossTeaser: 'Mme. Le Prix reverses the order of things. Everything costs more than you think.',
+    bossTeaser: "Mme. Le Prix runs a quiet house. Your crew stays silent in the Salon Privé.",
     atmosphere: 'elegant',
   },
 

@@ -1000,6 +1000,17 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       committedBets:  initialState.bets ?? DEFAULT_BETS,
     });
 
+    // If the hydrated run's bankroll already meets the current marker target,
+    // auto-clear without requiring the player to click Roll. Deferred to the
+    // next tick so socket handlers below are registered before autoCollect fires.
+    setTimeout(() => {
+      const { status, bankroll, currentMarkerIndex: markerIdx, isRolling } = get();
+      const markerTarget = MARKER_TARGETS[markerIdx];
+      if (status === 'IDLE_TABLE' && !isRolling && markerTarget !== undefined && bankroll >= markerTarget) {
+        void get().autoCollect();
+      }
+    }, 0);
+
     // ── Socket event handlers ─────────────────────────────────────────────
 
     socket.on('connect', () => {
@@ -1864,6 +1875,16 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastDelta:      null,
       cascadeQueue:   [],
     });
+
+    // If the pub visit left the player with a bankroll that already meets the
+    // next marker target, auto-clear without requiring them to click Roll.
+    if (data.status === 'IDLE_TABLE') {
+      const { currentMarkerIndex, bankroll } = get();
+      const markerTarget = MARKER_TARGETS[currentMarkerIndex];
+      if (markerTarget !== undefined && bankroll >= markerTarget) {
+        void get().autoCollect();
+      }
+    }
   },
 
   async fireCrew(slotIndex) {

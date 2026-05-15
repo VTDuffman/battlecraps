@@ -950,22 +950,27 @@ The unlock-gated crew (IDs 1–15) are likely Rare, Epic, and Legendary — the 
 
 ## KI-047 — Flat-payout crew tooltips display stale hardcoded values post-FB-024
 
-**Area:** `apps/web/src/components/CrewPortrait.tsx` (`ABILITY_DESCRIPTIONS`), `apps/web/src/components/PubScreen.tsx` (crew description rendering)
+**Area:** `apps/web/src/components/CrewPortrait.tsx` (`ABILITY_DESCRIPTIONS`), `apps/api/src/db/seed.ts` (`BRIEF_DESCRIPTIONS`, `DETAILED_DESCRIPTIONS`)
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed
 **Source:** Playtest observation (05/13/2026)
 
 **Issue:**
-After the FB-024 dynamic additive scaling implementation, crew members that pay a flat bonus no longer have fixed payout amounts — their bonus scales with the current marker target via `ADDITIVE_MULT × Math.floor(markerTargetCents × 0.10)`. However, `ABILITY_DESCRIPTIONS` in `CrewPortrait.tsx` is a static lookup table that was not updated after FB-024. It still shows the old hardcoded dollar amounts from before the scaling was added (e.g., "Pays a flat $100 bonus on a Point Hit"). These values are wrong for every floor except possibly Floor 1, and they give players no useful information about what a crew member will actually pay on the current floor.
+After the FB-024 dynamic additive scaling implementation, crew members that pay a flat bonus no longer have fixed payout amounts — their bonus scales with the current marker target via `ADDITIVE_MULT × Math.floor(markerTargetCents × 0.10)`. However, `ABILITY_DESCRIPTIONS` in `CrewPortrait.tsx` was a static lookup table that still showed old hardcoded dollar amounts (e.g., "Pays a flat $100 bonus on a Point Hit"). These values were wrong for every floor except possibly Floor 1.
 
-**Root Cause:**
-`ABILITY_DESCRIPTIONS` is a static `Record<number, string>` authored at implementation time. FB-024 replaced the flat `ADDITIVE_BOOST` constants in each crew's `execute()` with `ADDITIVE_MULT` coefficients, but updating static description strings was not part of that implementation pass.
+Additionally, a full audit of `ABILITY_DESCRIPTIONS` uncovered six descriptions that were factually wrong (not just stale dollar amounts):
+- **ID 2 (Physics Prof):** Said "swaps a 7 for the active Point number" — actually nudges paired dice ±1 pip toward the active point.
+- **ID 7 (Big Spender):** Said "Doubles the Pass Line bet size when Hype > 2×" — actually adds a 1.5× max-bet additive on every Hardway win.
+- **ID 12 (Drunk Uncle):** Said "25% chance, −0.1× Hype" — actually 33% chance (d1 ∈ {1,2} of 1–6), −0.25× Hype.
+- **ID 14 (Old Pro):** Said "If all others are on cooldown, activates all of them" — actually raises bet ceiling from 10% to 15% of marker target.
+- **ID 15 (Lucky Charm):** Said "When alone on the rail, sets a Hype floor of 2.0×" — actually injects +1.0× Hype on every Seven Out regardless of crew configuration; the ≥2.0× next-shooter guarantee follows from the server's `cascadeHypeDelta` mechanism.
+- **ID 9 (Whale):** Said "on every roll" — actually fires only on rolls with a positive payout component.
 
-**Proposed fix:**
-Rather than updating static strings (which would become stale again on any balance change), make additive crew tooltips dynamic:
-1. Expose each additive crew's `ADDITIVE_MULT` constant from `packages/shared/src/crew/` (it can be exported alongside the `execute` function).
-2. In `CrewPortrait.tsx` and `PubScreen.tsx`, when rendering the tooltip for an additive crew member, read `markerTargetCents` from the game store and compute `displayPayout = Math.round(ADDITIVE_MULT × Math.floor(markerTargetCents × 0.10) / 100) × 100`. Render the computed dollar amount rather than a static string.
-3. For non-additive crew, `ABILITY_DESCRIPTIONS` remains static — no change needed.
+**Fix applied:**
+1. **`CrewPortrait.tsx`:** Introduced `CREW_ADDITIVE_MULTS` (ID → ADDITIVE_MULT) and `CREW_ADDITIVE_TRIGGERS` (ID → trigger phrase) lookup tables. Added `getAbilityDesc(crewId, markerTargetCents)` — for additive crew it computes the current dollar amount via `Math.round(ADDITIVE_MULT × Math.floor(markerTargetCents × 0.10) / 100) × 100` and formats a live description; for all others it falls back to `ABILITY_DESCRIPTIONS`. The component reads `currentMarkerIndex` from the store and imports `MARKER_TARGETS` from `@battlecraps/shared` to derive `markerTargetCents`.
+2. **`ABILITY_DESCRIPTIONS`:** Corrected all six factually wrong descriptions (IDs 2, 7, 9, 12, 14, 15). Removed additive crew IDs from the static map (they are now fully handled by `getAbilityDesc`).
+3. **`seed.ts` `BRIEF_DESCRIPTIONS`:** Replaced "$50"/"$100" for IDs 7 and 8 with "floor-scaled cash bonus" language.
+4. **`seed.ts` `DETAILED_DESCRIPTIONS`:** Replaced hardcoded dollar amounts for all additive crew (IDs 7, 8, 17, 18, 23, 24, 25, 28, 29, 30) with "floor-scaled bonus" language so the long-form descriptions in the DB do not become stale again.
 
 ---
 
@@ -973,7 +978,7 @@ Rather than updating static strings (which would become stale again on any balan
 
 **Area:** `packages/shared/src/floors.ts` (Riverboat floor / boss description text)
 **Severity:** Low
-**Status:** Open
+**Status:** Fixed
 **Source:** Playtest observation (05/13/2026)
 
 **Issue:**
@@ -982,8 +987,10 @@ On the Riverboat "Floor Intro" screen, Mme. Le Prix's description references "Re
 **Root Cause:**
 Static flavor text in `floors.ts` was authored before Mme. Le Prix's mechanic was locked in and was not updated after the `DISABLE_CREW` rule was implemented.
 
-**Proposed fix:**
-Update Mme. Le Prix's floor intro description in `floors.ts` to accurately describe her mechanic: she silences the crew — no crew abilities fire during her floor. Revise the flavor text to fit her high-society riverboat antagonist persona while making the gameplay implication unmistakable (e.g., "Mme. Le Prix runs a quiet house. Your crew won't say a word in the Salon Privé.").
+**Fix applied:**
+Updated the Riverboat floor entry in `packages/shared/src/floors.ts`:
+- `introLines[2]`: Changed from `'Your crew works differently here. Adapt, or sink.'` to `"In the Salon Privé, she runs a quiet house. Your crew won't say a word in here."` — makes the DISABLE_CREW mechanic explicit without breaking character.
+- `bossTeaser`: Changed from `'Mme. Le Prix reverses the order of things. Everything costs more than you think.'` to `"Mme. Le Prix runs a quiet house. Your crew stays silent in the Salon Privé."` — removes the stale "Reversing the Order" draft language and accurately previews crew silencing.
 
 ---
 
@@ -991,7 +998,7 @@ Update Mme. Le Prix's floor intro description in `floors.ts` to accurately descr
 
 **Area:** `apps/web/src/store/useGameStore.ts`, `apps/api/src/routes/rolls.ts`
 **Severity:** Low
-**Status:** Open
+**Status:** Fixed (05/14/2026)
 **Source:** Identified during KI-042 implementation (05/13/2026)
 
 **Issue:**
@@ -1002,8 +1009,12 @@ This scenario occurs when a player clears marker N with a bankroll significantly
 **Root Cause:**
 The `removeBet()` → `autoCollect()` trigger (KI-042 fix) only fires when a bet take-down is the event that pushes the bankroll over the marker. There is no equivalent detection at round-start when the bankroll was already sufficient before any player action.
 
-**Proposed fix:**
-TBD — design decision pending. Options include: (a) checking for auto-clear when `applyPendingSettlement()` settles into a new marker and the bankroll already exceeds the next target; (b) adding a round-start effect in the client that fires `autoCollect()` when `status === 'IDLE_TABLE'` and `bankroll >= MARKER_TARGETS[currentMarkerIndex]`; (c) handling it server-side at the transition endpoint so the auto-clear is baked into the response that kicks off the new round.
+**Fix applied:**
+Added proactive `autoCollect()` calls in `useGameStore.ts` at both IDLE_TABLE entry points:
+1. **`recruitCrew`** — after the pub-visit response is applied, if `data.status === 'IDLE_TABLE'` and `bankroll >= MARKER_TARGETS[currentMarkerIndex]`, fires `autoCollect()` immediately.
+2. **`connectToRun`** — after the hydrated run state is applied (page refresh / reconnect), a `setTimeout(0)` deferred check fires `autoCollect()` if `status === 'IDLE_TABLE' && !isRolling && bankroll >= MARKER_TARGETS[currentMarkerIndex]`. The defer ensures socket handlers are registered before the roll request is sent.
+
+No changes to `rolls.ts` — the server's existing section 4b auto-clear logic (`betDelta = 0`, `postBetBankroll >= markerTarget`) handles the request correctly.
 
 **Related:** KI-042
 
@@ -1035,9 +1046,9 @@ The likely cause is a state-machine edge case unique to Floor 1: The Loading Doc
 
 ## KI-051 — The Vig comp not enforced (crew cash abilities unaffected by +20% bonus)
 
-**Area:** `packages/shared/src/cascade.ts`, `apps/api/src/routes/rolls.ts`
+**Area:** `apps/api/src/routes/rolls.ts`
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed
 **Source:** Design gap (noted during FB-015 implementation, 05/13/2026)
 
 **Issue:**
@@ -1046,11 +1057,10 @@ The Vig comp (awarded for defeating The Foreman) is described as "crew cash abil
 **Root Cause:**
 The Vig enforcement was explicitly deferred during FB-015 implementation (marked `TODO` in CLAUDE.md and config comments). The comp perk IDs are stored in `users.comp_perk_ids` and read by the roll route for other comps (e.g., `COMP_PERK_IDS.SEA_LEGS` drives the Sea Legs hype reset), but no equivalent check for `COMP_PERK_IDS.THE_VIG` exists in the cascade or settlement layer.
 
-**Proposed fix:**
-1. In `rolls.ts`, detect whether `(user.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_VIG)` and derive a `vigMultiplier` (1.2 when active, 1.0 otherwise).
-2. Thread `vigMultiplier` into `resolveCascade()` (via a new optional param or via TurnContext) so each additive crew member's bonus is scaled by 1.2 before being added to `ctx.additives`.
-3. Alternatively: apply the multiplier post-cascade in `rolls.ts` — after `resolveCascade()`, scale `finalContext.additives` by 1.2 if the player has The Vig. This is simpler and does not require modifying the cascade signature.
-4. The roll log already shows per-crew additive attribution (KI-044 fix) so the 20% uplift will be visible at playtime without additional receipt changes.
+**Fix applied:**
+Post-cascade in `rolls.ts` (step 8b): after `resolveCascade()` returns `finalContext`, detect `COMP_PERK_IDS.THE_VIG` in `user.compPerkIds`. If active and `finalContext.additives > 0`, create `viggedContext` with `additives` scaled by 1.2 (rounded to nearest dollar). `settleTurn()`, `buildRollReceipt()`, and `computeNextState()` all receive `viggedContext` so the boosted additives flow through the full payout formula and state machine. Individual crew `execute()` functions remain unaware of the comp — no cascade signature changes required.
+
+**File:** `apps/api/src/routes/rolls.ts`
 
 ---
 

@@ -421,6 +421,7 @@ async function rollHandler(
     shooterRollCount:      run.shooterRollCount,
     pointPhaseBlankStreak: run.pointPhaseBlankStreak,
     markerTargetCents:     GAUNTLET[run.currentMarkerIndex]?.targetCents ?? 0,
+    shooters:              run.shooters,
   });
 
   // ── 7b. Base-game Hype tick ────────────────────────────────────────────────
@@ -515,6 +516,14 @@ async function rollHandler(
   const cascadeResult = resolveCascade(crewSlots, outcomeCtx, rollDice, bossHooks, bossParams);
   const { finalContext, events, updatedCrewSlots } = cascadeResult;
 
+  // ── 8b. The Vig comp — scale crew additive bonuses by 1.20 ──────────────
+  // Applied post-cascade so individual crew execute() functions stay unaware.
+  // Rounds to the nearest dollar (100 cents) per project convention.
+  const hasTheVig = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_VIG);
+  const viggedContext = hasTheVig && finalContext.additives > 0
+    ? { ...finalContext, additives: Math.round(finalContext.additives * 1.2 / 100) * 100 }
+    : finalContext;
+
   // ── 9. Settle the turn ─────────────────────────────────────────────────────
   //
   // Deduct-on-placement model:
@@ -527,14 +536,14 @@ async function rollHandler(
   //   CRAPS_OUT($10 bet): payout=0,    betDelta=1000 → delta=-1000 (-$10 loss)
   //   SEVEN_OUT (bets already deducted at POINT_SET): betDelta=0 → delta=0
   //   POINT_SET (bets frozen): payout=0, betDelta=passLine → delta=-passLine
-  const rawPayout = settleTurn(finalContext);
+  const rawPayout = settleTurn(viggedContext);
   const payout = bossHooks?.modifyPayout
-    ? bossHooks.modifyPayout(rawPayout, finalContext.baseStakeReturned, bossParams!, bossState)
+    ? bossHooks.modifyPayout(rawPayout, viggedContext.baseStakeReturned, bossParams!, bossState)
     : rawPayout;
   const newBankroll = run.bankrollCents - betDelta + payout;
   const bankrollDelta = newBankroll - run.bankrollCents;
 
-  const rollAmplifiedProfit = payout - finalContext.baseStakeReturned;
+  const rollAmplifiedProfit = payout - viggedContext.baseStakeReturned;
   const newHighestRollAmplifiedCents = Math.max(
     run.highestRollAmplifiedCents,
     rollAmplifiedProfit,
@@ -545,11 +554,11 @@ async function rollHandler(
   const bossDeduction = bossDeductionAmount > 0 && bossMarkerConfig?.boss
     ? { amount: bossDeductionAmount, source: bossMarkerConfig.boss.name }
     : undefined;
-  const receipt = buildRollReceipt(finalContext, events, bossDeduction);
+  const receipt = buildRollReceipt(viggedContext, events, bossDeduction);
 
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
-  const nextState = computeNextState(run, finalContext, newBankroll, incomingBets, hasSeaLegs);
+  const nextState = computeNextState(run, viggedContext, newBankroll, incomingBets, hasSeaLegs);
 
   // ── 11b. Mechanic freeze lifecycle ───────────────────────────────────────
   // If a freeze was applied this roll, decrement rollsRemaining.

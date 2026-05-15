@@ -52,7 +52,7 @@ export type BossRuleType =
 
 /** The permanent comp perk awarded for defeating a boss. */
 export type CompRewardType =
-  | 'THE_VIG'         // Floor 1 — The Vig: crew cash abilities pay out 20% more (TODO: enforce)
+  | 'THE_VIG'         // Floor 1 — The Vig: crew cash abilities pay out 20% more
   | 'EXTRA_SHOOTER'   // Floor 2 — Member's Jacket: +1 Shooter at next segment reset
   | 'HYPE_RESET_HALF' // Floor 3 — Sea Legs: Hype resets to 50% of current (not 1.0×)
   | 'GOLDEN_TOUCH';   // Floor 4 — Golden Touch: guaranteed Natural on first come-out roll
@@ -160,7 +160,7 @@ export interface MarkerConfig {
 // ---------------------------------------------------------------------------
 
 export const COMP_PERK_IDS = {
-  THE_VIG:       4,  // Floor 1 boss reward — crew cash abilities +20% (enforcement deferred)
+  THE_VIG:       4,  // Floor 1 boss reward — crew cash abilities +20%
   MEMBER_JACKET: 1,  // Floor 2 boss reward — +1 Shooter per segment reset
   SEA_LEGS:      2,  // Floor 3 boss reward — Hype resets to 50%
   GOLDEN_TOUCH:  3,  // Floor 4 boss reward — guaranteed first Natural

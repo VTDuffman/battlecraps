@@ -34,6 +34,13 @@ export const floorWalker: CrewMember = {
       return { context: ctx, newCooldown: 0 };
     }
 
+    // Do not fire on the last shooter's seven-out. The run ends regardless,
+    // and refunding the pass line on a terminal roll causes misleading feedback
+    // (player sees money returned, then immediately hits GAME_OVER).
+    if (ctx.shooters <= 1) {
+      return { context: ctx, newCooldown: 0 };
+    }
+
     // Ability fires: refund the Pass Line stake by adding it to stakeReturned.
     // The pass line bet was already deducted from the bankroll at placement,
     // so returning the stake via baseStakeReturned gives the player their

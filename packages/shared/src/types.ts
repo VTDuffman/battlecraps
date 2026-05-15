@@ -328,6 +328,15 @@ export interface TurnContext {
    * Used by additive crew to compute floor-scaled bonuses via getMaxBet().
    */
   readonly markerTargetCents: number;
+
+  /**
+   * Shooter lives remaining at the START of this roll (before any resolution).
+   * Used by TABLE crew (e.g., Floor Walker) to distinguish a mid-run seven-out
+   * (where a refund is meaningful) from a last-shooter seven-out (where the run
+   * ends regardless and refunding the pass line causes confusing feedback).
+   * Defaults to 5 in test contexts where the field is not explicitly set.
+   */
+  readonly shooters: number;
 }
 
 // ---------------------------------------------------------------------------

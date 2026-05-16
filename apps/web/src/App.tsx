@@ -28,6 +28,9 @@ import { AliasPickerModal }            from './components/AliasPickerModal.js';
 import type { StoredCrewSlots }        from './store/useGameStore.js';
 import type { Bets }                   from '@battlecraps/shared';
 
+const IS_TEST = import.meta.env['VITE_TEST_MODE'] === 'true';
+const TEST_CLERK_ID = 'test_user_e2e';
+
 // ---------------------------------------------------------------------------
 // API base URL
 // ---------------------------------------------------------------------------
@@ -469,13 +472,117 @@ const AuthenticatedApp: React.FC = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Root component — shows sign-in screen for unauthenticated visitors
+// TestAuthenticatedApp — renders the game without Clerk (VITE_TEST_MODE only)
 // ---------------------------------------------------------------------------
 
-export const App: React.FC = () => {
+const TestAuthenticatedApp: React.FC = () => {
+  const connectToRun = useGameStore((s) => s.connectToRun);
+  const disconnect   = useGameStore((s) => s.disconnect);
+  const setGetToken  = useGameStore((s) => s.setGetToken);
+  const socketStatus = useGameStore((s) => s.socketStatus);
+  const [ready, setReady]         = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [pendingRunId, setPendingRunId] = useState<string | null>(null);
+
+  // Expose run ID on window only after the socket is subscribed to the run room.
+  // Playwright waits for window.__testRunId before making API calls, so this
+  // ensures the socket is ready to receive turn:settled events.
+  useEffect(() => {
+    if (socketStatus === 'subscribed' && pendingRunId !== null) {
+      window.__testRunId = pendingRunId;
+    }
+  }, [socketStatus, pendingRunId]);
+
+  useEffect(() => {
+    // Provide a test token so the socket middleware can authenticate.
+    setGetToken(() => Promise.resolve(TEST_CLERK_ID));
+
+    const init = async () => {
+      try {
+        // Ensure the test user exists in the DB.
+        await fetch(`${API_BASE}/api/v1/auth/provision`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+          body: JSON.stringify({
+            email:       'e2e@battlecraps.test',
+            displayName: 'E2E Test User',
+            firstName:   null,
+            lastName:    null,
+          }),
+        });
+
+        // Create a fresh run.
+        const res = await fetch(`${API_BASE}/api/v1/runs`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+          body: '{}',
+        });
+        if (!res.ok) throw new Error(`Create run failed: ${res.status}`);
+
+        const data = (await res.json()) as CreateRunResponse;
+
+        // Store run ID — will be exposed on window once socket subscribes.
+        setPendingRunId(data.runId);
+
+        connectToRun(data.runId, {
+          bankroll:           data.run.bankroll,
+          shooters:           data.run.shooters,
+          hype:               data.run.hype,
+          phase:              data.run.phase,
+          status:             data.run.status as never,
+          point:              data.run.point,
+          crewSlots:          data.run.crewSlots,
+          currentMarkerIndex: data.run.currentMarkerIndex,
+          ...(data.run.bets && { bets: data.run.bets }),
+          // Suppress boot transitions so TableBoard is immediately visible.
+          titleShown:                true,
+          markerIntroShownForMarker: 0,
+        });
+
+        setReady(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    };
+
+    void init();
+    return () => disconnect();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (error) {
+    return (
+      <main className="min-h-[100dvh] flex items-center justify-center bg-black">
+        <div className="font-pixel text-[9px] text-red-400 text-center px-4">{error}</div>
+      </main>
+    );
+  }
+
+  if (!ready) {
+    return (
+      <main className="min-h-[100dvh] flex items-center justify-center bg-black">
+        <div className="font-pixel text-[10px] text-gold animate-pulse">LOADING…</div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
+      <TransitionOrchestrator onPlayAgain={() => { window.location.reload(); }}>
+        <TableBoard />
+      </TransitionOrchestrator>
+      <UnlockModal />
+    </main>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// AuthGuardedApp — Clerk-authenticated root (production path)
+// ---------------------------------------------------------------------------
+
+const AuthGuardedApp: React.FC = () => {
   const { isSignedIn, isLoaded } = useUser();
 
-  // Clerk is still loading its session state — show nothing briefly.
   if (!isLoaded) {
     return (
       <main className="min-h-[100dvh] flex items-center justify-center bg-black">
@@ -486,7 +593,6 @@ export const App: React.FC = () => {
     );
   }
 
-  // Not signed in — render Clerk's pre-built sign-in UI.
   if (!isSignedIn) {
     return (
       <main className="min-h-[100dvh] flex flex-col items-center justify-center bg-black gap-6">
@@ -500,3 +606,5 @@ export const App: React.FC = () => {
 
   return <AuthenticatedApp />;
 };
+
+export const App = IS_TEST ? TestAuthenticatedApp : AuthGuardedApp;

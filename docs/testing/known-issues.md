@@ -1088,3 +1088,192 @@ When the player's bankroll drops below the minimum Pass Line bet with no bets re
 1. Confirm the exact scenario that reproduces the stuck state: SEVEN_OUT vs. CRAPS_OUT vs. bet take-down path.
 2. Add a server-side guard at the top of the roll handler (after section 4b) that checks `isBelowMinBet(run.bankrollCents, run.bets as Bets, run.currentMarkerIndex)` before attempting validation. If true, immediately persist and return `status: 'GAME_OVER'` — this acts as a catch-all for any stuck state that reaches the roll endpoint.
 3. Alternatively, add a client-side check in `removeBet()` and `autoCollect()` completion: after updating bankroll, if `bankroll < getMinBet(currentMarkerIndex) && sumBets(bets) === 0`, dispatch a game-over action without waiting for a server roll.
+
+---
+
+## KI-053 — Roll Log does not display The Heirphant's Tribute bankroll deduction
+
+**Area:** `apps/web/src/components/RollLog.tsx`, `apps/api/src/routes/rolls.ts`
+**Severity:** Medium
+**Status:** Open
+**Source:** Design review — FB-015 The Lodge integration
+
+**Issue:**
+When The Heirphant's Tribute boss rule fires on Floor 5 (The Lodge), it deducts 15% of the player's current bankroll as tribute. This deduction is applied silently — it does not appear as a line item in the Roll Log. The player sees their bankroll drop but has no in-log explanation attributing the loss to The Heirphant, creating confusion that looks identical to a game bug.
+
+This is the same class of omission as the KI-044 fix (Foreman extortion fee not shown in roll log), but that fix only wired up the `bossDeduction` field for `modifyPayout`-style deductions. The Tribute mechanic operates via a `modifyBankroll` hook rather than `modifyPayout`, so it is not captured by `buildRollReceipt()`'s existing `bossDeduction` parameter.
+
+**Proposed fix:**
+1. Extend `buildRollReceipt()` in `crapsEngine.ts` (or its call site in `rolls.ts`) to accept a second deduction source, or make `bossDeduction` an array so multiple deduction lines can be appended.
+2. In `rolls.ts`, after the Tribute hook fires and computes its deduction amount, pass it into `buildRollReceipt` alongside any existing `modifyPayout` deduction so a `loss` line appears in the receipt (e.g., "The Heirphant: $X.XX tribute").
+3. Confirm the deduction amount surfaced in the receipt matches the actual bankroll delta persisted to the DB.
+
+---
+
+## KI-054 — Golden Touch comp has no mechanical effect
+
+**Area:** `apps/api/src/routes/rolls.ts`
+**Severity:** Medium
+**Status:** Open
+**Source:** Code audit
+
+**Issue:**
+The Golden Touch comp (awarded for defeating The Executive, Floor 4) is defined in config, awarded to `users.comp_perk_ids`, and displayed correctly in the `CompCard` / `CompCardFan` HUD — but it is never enforced in the roll handler. No code in `rolls.ts` reads `COMP_PERK_IDS.GOLDEN_TOUCH` or forces a Natural on the first come-out roll of a new segment. The comp is a dead perk with no mechanical effect, identical to the pre-fix state of The Vig (KI-051).
+
+**Proposed fix:**
+Mirror the Sea Legs / Vig enforcement pattern in `rolls.ts`:
+1. Derive `hasGoldenTouch` from `user.compPerkIds` at the top of `rollHandler` (alongside the existing `hasSeaLegs` check).
+2. Add a per-run flag (on the `runs` row or derived from `run.shootersUsed / shooterIndex`) that tracks whether the first come-out of the current segment has been taken. Reset this flag on each segment start (Seven-Out → new shooter).
+3. When `hasGoldenTouch && isFirstComeOut && phase === 'COME_OUT'`, override the RNG result with a Natural (7 or 11 — pick randomly between the two, or always 7 for simplicity) before the cascade runs. Mark the flag consumed so subsequent come-outs in the same segment roll normally.
+
+---
+
+## KI-055 — Floor 9 theme visually indistinguishable from Floor 8; intended void aesthetic not implemented
+
+**Area:** `apps/web/src/lib/floorThemes.ts`
+**Severity:** Medium
+**Status:** Open
+**Source:** Manual playtest observation
+
+**Issue:**
+`FLOOR_9_THEME` ("The Null Space") shares its entire accent palette — phosphor green (`#39ff14` / `#20cc00`) and deep-black felts — with `FLOOR_8_THEME` ("The Signal"). At the table, Floors 8 and 9 are visually indistinguishable: same acid-green text, same void-black felt, same screen flashes. The Null Space is intended to communicate finality and total emptiness through a stark, inverted aesthetic (pure white backgrounds, pure black text), but the current token set delivers a second instance of The Signal's alien-terminal look instead.
+
+**Steps to Reproduce:**
+1. Begin a run and progress to Floor 8 (marker 21+).
+2. Note The Signal's visual identity: void-black felt, acid-green accents, magenta lose-flash.
+3. Clear the three Floor 8 markers and enter Floor 9 (The Null Space).
+4. Observe that the table, pub screen, and boss room are visually identical to Floor 8 — only the floor name and boss copy change.
+
+**Expected Behavior:**
+Floor 9 should present a distinctly different, high-contrast "void" aesthetic: white or near-white backgrounds (`feltPrimary`, `pubBg`, `bossBg`), black typography (`pubTitleColor`, `bossTextColor`), black or dark-grey accents, and a stark, monochromatic palette that signals total absence and finality — sharply distinguished from The Signal's neon-green alien register.
+
+**Actual Behavior:**
+Floor 9 renders with the same acid-green accents (`accentBright: '#39ff14'`, `accentPrimary: '#20cc00'`) and near-identical black felts and overlays as Floor 8. No visual differentiation exists between the two floors at runtime.
+
+**Likely Affected Area:**
+`apps/web/src/lib/floorThemes.ts` — `FLOOR_9_THEME` constant (lines 536–580). All `FloorTheme` token fields require replacement: felt colors, accent colors, border colors, breathing overlays, screen flashes, pub tokens, and boss tokens. No structural changes to `FloorTheme` interface or `getFloorTheme()` are required; this is a pure token-value change.
+
+**High-Level Fix:**
+Replace all color tokens in `FLOOR_9_THEME` with a white-ground, black-ink palette. `feltPrimary` and `feltRail` should shift to near-white (e.g., `#f8f8f8` / `#e8e8e8`); `accentBright` and `accentPrimary` to near-black; `pubBg` and `bossBg` to a flat white or very pale radial; `pubTitleColor` and `bossTextColor` to `#000000` or a very dark grey; screen flashes to a white win-surge and a hard black lose-cut. The `breatheCold` / `breatheWarm` / `breatheHot` overlays should be kept at near-zero opacity to preserve the sense of stillness. Care should be taken with `pubTitleShadow` and `bossTitleShadow` — on a white ground, dark-colored glows (not light ones) are needed. The `feltTexture` SVG should also be updated with matching light-palette values so the woven grain reads on a white surface.
+
+---
+
+## KI-056 — Floor 5–8 comp cards missing emoji and absent from the comp fan HUD
+
+**Area:** `apps/web/src/components/CompCard.tsx` (`COMP_DEFS`, `getCompForBossMarker`), `apps/web/src/components/CompCardFan.tsx`
+**Severity:** Medium
+**Status:** Open
+**Source:** Manual playtest observation — FB-015 integration audit (2026-05-15)
+
+**Issue:**
+Two related display failures affect all comp awards for Floors 5–8 (The Covenant, Poseidon's Favor, Zero Point, The Frequency). Both share the same root cause: `COMP_DEFS` in `CompCard.tsx` was never extended beyond the four comps that existed before the FB-015 nine-floor expansion. Floor 9 (The Null Space / The Architect) awards no comp by design (`compReward: 'NONE'`) and is excluded from this defect.
+
+**Symptom 1 — Emoji absent on the cinematic comp reveal card:** When a Floor 5–8 boss is defeated, `BossVictoryCompPhase` calls `getCompForBossMarker(snapshot.markerIndex)`. For boss markers at indices 14, 17, 20, and 23, this lookup finds no match in `COMP_DEFS` and returns `undefined`. The component falls back to `compDef?.icon ?? '★'`, so the large cinematic comp card displays a raw `★` character in place of the expected emoji. The `accentColor` also falls back to `theme.bossStarColor`, stripping the comp's intended floor-specific accent.
+
+**Symptom 2 — Comp fan/deck invisible for all Floor 5–8 comps:** `CompCardFan` derives its `earnedComps` array by filtering `COMP_DEFS` against `currentMarkerIndex >= c.threshold`. Because `COMP_DEFS` has no entries with thresholds of 15, 18, 21, or 24, no comp objects pass the filter after Floor 4 is cleared. `earnedComps.length === 0` triggers the component's early `return null`, causing the entire HUD deck to disappear for the remainder of the run. Players who have earned up to four comps (Floors 1–4) see the fan vanish once they cross into Floor 5 territory — the previously visible cards for The Vig, Member's Jacket, Sea Legs, and Golden Touch also become inaccessible because the component unmounts entirely.
+
+**Steps to Reproduce:**
+1. Begin a run and defeat any of the first four bosses to earn at least one comp (confirm the fan is visible).
+2. Clear all three markers on Floor 4 (The Strip) and defeat The Executive to earn Golden Touch.
+3. Progress past marker 12 into Floor 5 (The Lodge) — observe the comp fan disappears from the HUD.
+4. Defeat The Hierophant (Floor 5 boss, marker 14). Observe the `BossVictoryCompPhase` cinematic shows `★` instead of the expected comp emoji for The Covenant.
+
+**Expected Behavior:**
+- The comp fan HUD persists and grows as Floors 5–8 bosses are defeated, adding entries for The Covenant, Poseidon's Favor, Zero Point, and The Frequency.
+- The `BossVictoryCompPhase` cinematic displays the correct icon and accent color for each new comp (e.g., The Covenant should display its designated emoji with its floor-appropriate accent).
+- Comps earned on Floors 1–4 remain visible in the fan HUD throughout Floors 5–9.
+
+**Actual Behavior:**
+- The comp fan HUD vanishes entirely once the player's `currentMarkerIndex` exceeds 12 (i.e., moves past the last defined `COMP_DEFS` threshold), removing previously earned Floors 1–4 comp cards from view as well.
+- The `BossVictoryCompPhase` comp reveal card shows `★` (raw fallback character) in place of the emoji for all five post-Floor-4 comps.
+
+**Likely Affected Area:**
+`apps/web/src/components/CompCard.tsx` — `COMP_DEFS` array and `getCompForBossMarker()` lookup. No changes required to `CompCardFan.tsx` or `BossVictoryCompPhase.tsx` — both components consume `COMP_DEFS` correctly; they only misbehave because the data is incomplete.
+
+**High-Level Fix:**
+Add four new entries to `COMP_DEFS` for the FB-015 comps: The Covenant (boss marker 14, threshold 15), Poseidon's Favor (marker 17, threshold 18), Zero Point (marker 20, threshold 21), and The Frequency (marker 23, threshold 24). Each entry needs a `perkId` matching the value in `COMP_PERK_IDS`, an appropriate emoji `icon`, and an `accentColor` drawn from the corresponding floor theme token (occult/ancient/cosmic/alien). The `getCompForBossMarker` function's `threshold === markerIndex + 1` logic is already correct and will resolve the new entries automatically once they are present. No changes to `CompCardFan` or `BossVictoryCompPhase` are required. After the fix, verify that previously earned Floors 1–4 comp cards remain visible in the fan HUD when the player progresses to Floor 5 and beyond.
+
+---
+
+## KI-057 — Chip denominations are static and do not scale with floor progression
+
+**Area:** `apps/web/src/components/BettingGrid.tsx` — `BASE_CHIPS`, `FLOOR_CHIPS`, `chipsForFloor()`
+**Severity:** High
+**Status:** Open
+**Source:** Manual playtest observation — FB-015 nine-floor integration QA (2026-05-15)
+
+**Issue:**
+The chip tray in `BettingGrid.tsx` is driven by two static arrays: `BASE_CHIPS` (five denominations, $1–$50) and `FLOOR_CHIPS` (two additive entries that unlock a $100 chip at Floor 2 and a $500 chip at Floor 3). This scheme was designed for the original three-floor gauntlet and was never updated to cover the FB-015 expansion. By Floor 5 (The Lodge, max bet $4,500) the $500 top chip is already inadequate for reaching the table minimum in fewer than a few clicks; by Floor 9 (The Null Space, max bet $2,000,000) the minimum bet is $333,500 and the maximum is $2,000,000 — both completely unreachable with the current chip rack without hundreds of clicks per bet field. The `$1` and `$5` chips are effectively dead weight from Floor 3 onward. The defect makes mid-to-late game play unacceptably tedious and, on late floors, functionally unplayable via point-and-click alone.
+
+**Steps to Reproduce:**
+1. Start a run and progress to any Floor 5+ marker (marker index ≥ 12).
+2. Observe the chip tray — it shows denominations up to $500 with $1 chips still present.
+3. Attempt to place a bet equal to the Pass Line minimum (e.g., ~$333,500 on Floor 9 marker 0). Count the required clicks at the $500 chip: 667 clicks to reach minimum.
+4. Note that no chip denomination larger than $500 is available regardless of floor.
+
+**Expected Behavior:**
+The chip tray should always present 4–6 meaningful denominations that bracket the current marker's min/max bet range — the smallest chip should comfortably build toward the minimum bet, and the largest chip should allow a player to reach the table maximum in a reasonable number of clicks (target: ≤ ~10 clicks from zero to max bet). Denomination labels and colors should update dynamically as the player advances through the gauntlet.
+
+**Actual Behavior:**
+The chip tray is frozen at a maximum denomination of $500 for all floors above Floor 3. On Floor 9, reaching the minimum bet requires 667+ clicks on the largest available chip. The $1, $5, and $10 chips contribute nothing beyond Floor 2 and add visual noise to the tray.
+
+**Likely Affected Area:**
+`apps/web/src/components/BettingGrid.tsx` — specifically the `BASE_CHIPS` constant, the `FLOOR_CHIPS` record, and the `chipsForFloor()` helper. The floor-aware building blocks are already in place (`currentMarkerIndex` is read from `useGameStore` and passed to `chipsForFloor`); only the denomination logic needs to change. `getMaxBet()` and `getMinBet()` in `packages/shared/src/config.ts` are fully floor-aware and should be imported to drive the computation — no changes are needed there.
+
+**High-Level Fix:**
+Replace the static `BASE_CHIPS` / `FLOOR_CHIPS` approach with a `chipsForMarker(markerIndex: number): Chip[]` function that derives denominations dynamically from the current marker's `getMaxBet()` value. A clean algorithm: compute the max bet for the marker, then generate 5–6 chip sizes by dividing down from the max bet using a fixed step ratio (e.g., each chip is ~5–10× the next smaller one), rounding each to a round dollar amount. The smallest chip should target roughly `getMinBet() / 8` so a player can fine-tune bets near the minimum; the largest should be at or just below the full max bet. Chip colors can either cycle through a fixed palette or be keyed to named tiers (e.g., white / red / blue / green / black / purple mapped to small / medium / mid-high / high / table-max). Remove `BASE_CHIPS` and `FLOOR_CHIPS` entirely once the dynamic function is in place. The `ChipSelector` component consumes the `chips` array through a local variable already — only the producer (`chipsForFloor`) needs to change. Verify that the smallest chip never rounds to zero cents and that denominations are always strictly increasing.
+
+---
+
+## KI-058 — TIDAL_SURGE pass line input locks during surge; mechanic rhythm unintuitive
+
+**Area:** `apps/web/src/components/BettingGrid.tsx`, `packages/shared/src/bossRules/tidalSurge.ts`, `apps/api/src/routes/rolls.ts` (`computeNextState` — `nextBossCounter` / tide cycle logic), `packages/shared/src/config.ts` (`getMinBet` — TIDAL_SURGE branch)
+**Severity:** High (functional bug) / Medium (design defect) — logged together as both will be resolved in a single TIDAL_SURGE rework
+**Status:** Open
+**Source:** Manual playtest observation — FB-015 nine-floor integration QA (2026-05-15)
+
+**Issue:**
+Two related defects observed during Floor 6 (Atlantis / The Sovereign) boss fight:
+
+**1. Pass Line input locked during surge (functional bug — High).**
+When the tide counter crosses into the surge window (`bossPointHits >= cycleLength`, i.e., rolls 6–7 of the 7-roll tide cycle), the pass line bet input appears locked — the player cannot add to it. The surge is enforced server-side via `tidalSurgeHooks.validateBet`, which rejects a roll submission if `bets.passLine < surgeMinCents`. The most likely cause is that the client interprets the server's `422` validation error as a signal to disable or freeze the input field entirely, rather than merely enforcing a minimum. The pass line bet should remain editable (subject to the surge minimum); only submissions below the surge floor should be rejected.
+
+**2. Roll-counter tide cycle is opaque and unintuitive (design defect — Medium).**
+The current mechanic advances a `bossPointHits` counter on every roll (mod 7: 5 normal rolls + 2 surge rolls). Players have no clear mental model for when the surge will strike — the rhythm is derived from an invisible internal counter, not from any in-world state they can observe. The 15%-of-marker-target surge minimum is also a blunt instrument: at Floor 6 targets ($70k / $120k / $175k) the surge floor reaches $10,500–$26,250, which can constitute a large fraction of a player's bankroll and may feel like an unavoidable death sentence rather than a tension-building challenge.
+
+**Steps to Reproduce (Bug 1):**
+1. Start a run and advance to Floor 6, marker 0 (The Sovereign, Atlantis).
+2. Begin the boss fight. Roll 5 times from come-out (cycling through the normal tide window).
+3. On roll 6, the surge window opens. Observe the pass line bet input — it should be interactable.
+4. Attempt to increase the pass line bet to meet the surge minimum.
+5. Observe that the input is locked; the player cannot change the bet amount.
+
+**Steps to Reproduce (Design Defect):**
+1. Play through the Atlantis boss fight and observe whether you can predict when the surge will activate.
+2. Note that no visual indicator, count, or thematic cue communicates the current tide position. The surge arrives without warning.
+
+**Expected Behavior:**
+- The pass line input remains fully interactable during the surge window. Submitting a bet below the surge minimum is rejected with an explanatory error message; the player can correct it and try again.
+- The mechanic's timing is legible and thematically grounded. Players can anticipate the surge and prepare — either by increasing their bet ahead of it or accepting the risk of being caught short.
+
+**Actual Behavior:**
+- The pass line input is non-interactive during the surge, preventing the player from raising their bet to meet the surge minimum. This can strand the player in an unresolvable state.
+- The internal roll counter is invisible; surge timing is unpredictable from the player's perspective, making the mechanic feel arbitrary rather than rhythmic.
+
+**Likely Affected Area:**
+- `apps/web/src/components/BettingGrid.tsx` — client-side input enable/disable logic likely reads error state or a "surge active" flag and is incorrectly treating it as a full lock rather than a minimum enforcement.
+- `packages/shared/src/bossRules/tidalSurge.ts` — `validateBet` hook; the server-side enforcement is structurally correct but the error pathway may be misinterpreted on the client.
+- `apps/api/src/routes/rolls.ts` (`computeNextState` — `nextBossCounter`) and `packages/shared/src/config.ts` (`getMinBet` TIDAL_SURGE branch) — the per-roll tide counter and surge detection logic will need to be redesigned to support a binary Low Tide / High Tide state.
+
+**High-Level Fix:**
+The TIDAL_SURGE mechanic should be reworked as a binary **Low Tide / High Tide** alternating state rather than a fixed-length roll counter:
+
+- **Low Tide:** Standard floor minimum bet applies (i.e., `getMinBet(markerIndex)` — normal play). The pass line input is unconstrained beyond the standard floor minimum.
+- **High Tide:** An elevated minimum applies — a meaningful but beatable multiple of the standard floor minimum (exact multiple TBD by design; a suggested starting point is 3×–5× the standard min, tuned so it is challenging but survivable for a player with healthy bankroll management). The state alternates on a rhythm that feels predictable and thematic — for example, toggling every N point hits rather than every N rolls, or toggling on a fixed dice-roll count that is surfaced explicitly to the player via a UI indicator (e.g., "TIDE RISES IN 2 ROLLS").
+
+Immediate fix for Bug 1 (independent of the redesign): audit `BettingGrid.tsx` to identify what condition disables the pass line input during the surge window and remove any full-lock behavior — the input should remain editable; only the roll submission should be gated.
+
+For the redesign: the `bossPointHits` counter in `computeNextState` will need to be updated to track the new alternating-state model. `tidalSurgeHooks.validateBet` should read the new state representation and enforce the High Tide minimum only when the flag is active. A UI indicator in `BossRoomHeader.tsx` should surface the current tide state and, ideally, the number of rolls until the next transition. The new surge minimum should be derived from `getMinBet(markerIndex)` × a configurable multiplier (stored in `ruleParams`) rather than a percentage of the marker target, so it scales with floor difficulty without becoming prohibitive on high-value markers.
+
+**Design Note (captured from QA session):**
+The user-proposed redesign intent is explicitly a binary oscillation — Low Tide (normal) / High Tide (elevated minimum) — rather than the current 5+2 roll-counter model. The High Tide minimum should be high enough to create genuine tension but remain beatable: "a meaningfully elevated minimum bet that creates a tense, challenging moment — but one that remains beatable, not a death sentence." RISING_MIN_BETS (Sarge / Floor 2) already owns the progressively-escalating-minimum design space; TIDAL_SURGE should occupy the rhythmic/oscillating space and feel distinct from it.

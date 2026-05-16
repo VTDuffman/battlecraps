@@ -120,8 +120,13 @@ export interface CelebrationSnapshot {
  * 'gritty'   — Floor 2 (VFW Hall): worn, blue-collar, fluorescent grime
  * 'elegant'  — Floor 3 (The Riverboat): candlelit, mahogany, quiet danger
  * 'electric' — Floor 4 (The Strip): neon, obsidian, pure machine
+ * 'occult'   — Floor 5 (The Lodge): deep plum-black, amber candlelight, ritual silence
+ * 'ancient'  — Floor 6 (Atlantis): bioluminescent warmth, coral-threaded stone, abyssal depth
+ * 'cosmic'   — Floor 7 (The Station): void-black, starlight silver, nebula purple — zero gravity
+ * 'alien'    — Floor 8 (The Signal): void black, electric acid green, deep magenta — organised wrongness
+ * 'digital'  — Floor 9 (The Null Space): pure black, phosphor green terminal — the abyss at the end of the line
  */
-export type FloorAtmosphere = 'exposed' | 'gritty' | 'elegant' | 'electric';
+export type FloorAtmosphere = 'exposed' | 'gritty' | 'elegant' | 'electric' | 'occult' | 'ancient' | 'cosmic' | 'alien' | 'digital';
 
 /**
  * The complete narrative and display configuration for a single floor.
@@ -297,6 +302,104 @@ export const FLOORS: readonly FloorConfig[] = [
     atmosphere: 'electric',
   },
 
+  // ── Floor 5: The Lodge ────────────────────────────────────────────────────
+  // Marble columns. Candlelight. Hooded figures. A table three centuries old.
+  // The order always collects — win or lose, something is owed.
+  {
+    id:        5,
+    name:      'The Lodge',
+    tagline:   "You weren't supposed to know this place existed.",
+    introLines: [
+      'Marble columns. Candlelight. Hooded figures standing against the walls in silence, watching.',
+      "The Hierophant has kept this table running for three centuries. You're here because someone vouched for you. That person is no longer welcome.",
+      'The order always collects. Win or lose, something is owed.',
+    ],
+    bossName:   'The Hierophant',
+    bossTitle:  'Keeper of the Rites',
+    bossVenue:  'The Lodge — The Inner Sanctum',
+    bossTeaser: 'The order always collects. Win or lose, something is owed.',
+    atmosphere: 'occult',
+  },
+
+  // ── Floor 6: Atlantis ─────────────────────────────────────────────────────
+  // Marble columns still standing. Three thousand years of coral grown through
+  // the stone, lit from within by creatures that have never seen the sun.
+  // The Sovereign never left. The tide obeys him — and so will your minimum bets.
+  {
+    id:        6,
+    name:      'Atlantis',
+    tagline:   "It didn't sink. It descended on purpose.",
+    introLines: [
+      'Marble columns still standing. Mosaic floors intact. Three thousand years of coral grown through the stone, lit from within by creatures that have never seen the sun.',
+      "The Sovereign never left. He watched every empire above collapse from this room, and he is not impressed by yours.",
+      'The tides here answer to him. He will set them against you.',
+    ],
+    bossName:   'The Sovereign',
+    bossTitle:  'Last King of Atlantis',
+    bossVenue:  'Atlantis — The Throne Room',
+    bossTeaser: 'The tides have always obeyed the Sovereign. So will your minimum bets.',
+    atmosphere: 'ancient',
+  },
+
+  // ── Floor 7: The Station ──────────────────────────────────────────────────
+  // Void-black and starlight silver. A table in low orbit, eleven months from
+  // gravity. The Commander never lost a run — your hype will decay here.
+  {
+    id:        7,
+    name:      'The Station',
+    tagline:   "Momentum decays. Everything does, up here.",
+    introLines: [
+      'The viewport shows nothing but stars and the slow curve of the Earth below. Everything else is silence and the hum of life support.',
+      'The Commander has been at this table for eleven months. She does not miss the ground.',
+      'Up here, momentum is a resource. And resources decay.',
+    ],
+    bossName:   'The Commander',
+    bossTitle:  'Station Chief, Table Authority',
+    bossVenue:  'The Station — The Command Module',
+    bossTeaser: 'Every seven-out drains your hype multiplier. There is no floor — until there is.',
+    atmosphere: 'cosmic',
+  },
+
+  // ── Floor 8: The Signal ───────────────────────────────────────────────────
+  // Void black, electric acid green, deep magenta. The table is correct.
+  // The room is not. The Emissary reconstructed the game from a transmission —
+  // faithfully, except for one concept it could not translate.
+  {
+    id:        8,
+    name:      'The Signal',
+    tagline:   "We received it. We shouldn't have answered.",
+    introLines: [
+      'The table is here. The felt, the chips, the dice — all correct. The geometry of the room is not correct. The light arrives from the wrong direction.',
+      'The Emissary studied the transmission for eleven years. It reconstructed the game faithfully, except for one concept it could not translate.',
+      'That concept is the natural. Here, sevens on come-out mean nothing. You earn every dollar the hard way.',
+    ],
+    bossName:   'The Emissary',
+    bossTitle:  'First Point of Contact',
+    bossVenue:  'The Signal — The Receiving Chamber',
+    bossTeaser: 'The Emissary studied the game for eleven years. It misunderstood one rule. That rule is the one that matters.',
+    atmosphere: 'alien',
+  },
+
+  // ── Floor 9: The Null Space ───────────────────────────────────────────────
+  // Pure black. No felt texture. No ambient light. No sound.
+  // The Architect built this room from the data of every run ever played.
+  // Your crew is temporary. Your patterns are not.
+  {
+    id:        9,
+    name:      'The Null Space',
+    tagline:   'End of line.',
+    introLines: [
+      'Pure black. No felt texture, no ambient light, no sound. Just the table, the dice, and the cursor blinking at the end of a very long terminal session.',
+      'The Architect built this place from the data of every run ever played. He knows your patterns. He designed this room specifically for you.',
+      'Every seven-out, one of your crew is reclaimed. The table has infinite patience. You do not.',
+    ],
+    bossName:   'The Architect',
+    bossTitle:  'Designer of the Null Space',
+    bossVenue:  'The Null Space — The Zero Chamber',
+    bossTeaser: 'The Architect reclaims your crew one by one. Five seven-outs and you roll alone.',
+    atmosphere: 'digital',
+  },
+
 ];
 
 // ---------------------------------------------------------------------------
@@ -317,10 +420,15 @@ export function getFloorById(id: number): FloorConfig | undefined {
  * Clamps to the last floor if markerIndex exceeds the gauntlet length.
  *
  * Examples:
- *   getFloorByMarkerIndex(0) → Floor 1 (The Loading Dock)
- *   getFloorByMarkerIndex(3) → Floor 2 (VFW Hall)
- *   getFloorByMarkerIndex(6) → Floor 3 (The Riverboat)
- *   getFloorByMarkerIndex(9) → Floor 4 (The Strip)
+ *   getFloorByMarkerIndex(0)  → Floor 1 (The Loading Dock)
+ *   getFloorByMarkerIndex(3)  → Floor 2 (VFW Hall)
+ *   getFloorByMarkerIndex(6)  → Floor 3 (The Riverboat)
+ *   getFloorByMarkerIndex(9)  → Floor 4 (The Strip)
+ *   getFloorByMarkerIndex(12) → Floor 5 (The Lodge)
+ *   getFloorByMarkerIndex(15) → Floor 6 (Atlantis)
+ *   getFloorByMarkerIndex(18) → Floor 7 (The Station)
+ *   getFloorByMarkerIndex(21) → Floor 8 (The Signal)
+ *   getFloorByMarkerIndex(24) → Floor 9 (The Null Space)
  */
 export function getFloorByMarkerIndex(markerIndex: number): FloorConfig {
   const id = Math.floor(markerIndex / 3) + 1;

@@ -128,6 +128,7 @@ export const RollLog: React.FC = () => {
 
       {/* ── Bottom-sheet drawer ─────────────────────────────────────────── */}
       <div
+        data-testid="roll-log"
         className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto z-50 transition-transform duration-300 ease-in-out"
         style={{
           transform: expanded

@@ -147,6 +147,20 @@ export interface TurnContextFlags {
    * physical flip from the original face to the corrected face.
    */
   nudgedFrom?: [number, number];
+
+  /**
+   * Set when POSEIDONS_FAVOR suppresses a craps-out on the shooter's first roll.
+   * The rollResult is overridden to NO_RESOLUTION; this flag signals the client
+   * that the dice showed a craps number but the game treated it as a blank roll.
+   */
+  crapsOutBlocked?: boolean;
+
+  /**
+   * Set when FIRST_CONTACT_PROTOCOL converts a COME_OUT NATURAL to NO_RESOLUTION.
+   * Tells computeNextState to return IDLE_TABLE / COME_OUT (not POINT_ACTIVE),
+   * and tells the client to suppress the NATURAL win animation.
+   */
+  naturalBlocked?: boolean;
 }
 
 /**
@@ -337,6 +351,14 @@ export interface TurnContext {
    * Defaults to 5 in test contexts where the field is not explicitly set.
    */
   readonly shooters: number;
+
+  /**
+   * The number of seven-outs accumulated so far in the current CONVERGENCE boss fight.
+   * Equals run.bossPointHits at the start of the roll (PRE-resolution).
+   * undefined for all non-CONVERGENCE boss fights and non-boss markers.
+   * Used by the CONVERGENCE hook to determine how many crew slots to suppress.
+   */
+  readonly bossSevenOutCount?: number;
 }
 
 // ---------------------------------------------------------------------------

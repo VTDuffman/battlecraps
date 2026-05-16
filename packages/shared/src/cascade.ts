@@ -13,7 +13,7 @@
 // =============================================================================
 
 import type { CrewMember, RollDiceFn, TurnContext } from './types.js';
-import type { BossRuleHooks } from './bossRules/index.js';
+import type { BossRuleHooks, BossRuleState } from './bossRules/index.js';
 import type { BossRuleParams } from './config.js';
 import { MIMIC_ID } from './crew/mimic.js';
 
@@ -178,6 +178,7 @@ export function resolveCascade(
   rollDice: RollDiceFn,
   bossHooks?: BossRuleHooks,
   bossParams?: BossRuleParams,
+  bossState?: BossRuleState,
 ): CascadeResult {
   const events: CascadeEvent[] = [];
 
@@ -193,9 +194,10 @@ export function resolveCascade(
   let ctx = initialCtx;
 
   // Boss hook: DISABLE_CREW returns [] to skip the entire loop.
+  // CONVERGENCE returns [0..N-1] where N shrinks with each seven-out.
   // Default: fire slots 0→N in order.
   const slotOrder =
-    bossHooks?.modifyCascadeOrder?.(crewSlots.length, bossParams!) ??
+    bossHooks?.modifyCascadeOrder?.(crewSlots.length, bossParams!, bossState) ??
     Array.from({ length: crewSlots.length }, (_, i) => i);
 
   for (const i of slotOrder) {

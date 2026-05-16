@@ -32,16 +32,25 @@ export const BossVictoryCompPhase: React.FC<PhaseComponentProps> = ({ onAdvance 
   const [showCard,   setShowCard]   = useState(false);
   const [showButton, setShowButton] = useState(false);
 
+  // Floor 9 (compReward === 'NONE'): skip the comp screen entirely.
+  // onAdvance() must be called in an effect — not during render.
   useEffect(() => {
+    if (boss?.compReward === 'NONE') {
+      onAdvance();
+    }
+  }, [boss?.compReward, onAdvance]);
+
+  useEffect(() => {
+    if (!boss || boss.compReward === 'NONE') return;
     const t1 = setTimeout(() => setShowCard(true),   600);
     const t2 = setTimeout(() => setShowButton(true), 1400);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, []);
+  }, [boss]);
 
-  if (!boss || !theme) return null;
+  if (!boss || !theme || boss.compReward === 'NONE') return null;
 
   return (
     <div

@@ -576,7 +576,7 @@ const GameStatus: React.FC = () => {
           {/* Bankroll — directly beneath logo */}
           <div className="mt-1.5 text-center">
             <div className="font-pixel text-[6px] text-white/40 mb-0.5">BANKROLL</div>
-            <div className={`font-pixel text-sm transition-colors duration-150 ${bankrollColor}`}>
+            <div data-testid="bankroll" className={`font-pixel text-sm transition-colors duration-150 ${bankrollColor}`}>
               {bankrollStr}
             </div>
           </div>
@@ -613,7 +613,7 @@ const GameStatus: React.FC = () => {
           </div>
 
           {/* Shooters */}
-          <div className="text-center">
+          <div data-testid="shooters" className="text-center">
             <div className="font-pixel text-[6px] text-white/40 mb-0.5">SHOOTERS</div>
             <div className="flex gap-1 justify-center">
               {(() => {

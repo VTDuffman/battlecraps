@@ -1,0 +1,19 @@
+  ---
+  To run the tests
+
+  # Start the test DB (Docker Desktop must be running)
+  docker compose up postgres-test -d
+
+  # From project root:
+  npm run test:integration
+
+  # Or from inside apps/api:
+  npm run test:integration
+
+  # Manual schema reset (if you change schema.ts):
+  npm run db:migrate:test -w @battlecraps/api
+
+  # Stop when done:
+  docker compose stop postgres-test
+
+✻ Cooked for 19m 47s

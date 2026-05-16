@@ -45,17 +45,27 @@ export function getCrewHireCost(rarity: CrewRarity, clearedMarkerTargetCents: nu
 
 /** The mechanical modifier a boss applies during their High Limit Room fight. */
 export type BossRuleType =
-  | 'EXTORTION_FEE'   // Floor 1 — The Foreman: 20% tax on all winning payouts
-  | 'RISING_MIN_BETS'     // Floor 2 — Sarge: minimum Pass Line bet rises each Point Hit
-  | 'DISABLE_CREW'        // Floor 3 — Mme. Le Prix: Crew cascade is fully suppressed
-  | 'FOURS_INSTANT_LOSS'; // Floor 4 — The Executive: rolling a total of 4 is instant loss
+  | 'EXTORTION_FEE'          // Floor 1 — The Foreman: 20% tax on all winning payouts
+  | 'RISING_MIN_BETS'        // Floor 2 — Sarge: minimum Pass Line bet rises each Point Hit
+  | 'DISABLE_CREW'           // Floor 3 — Mme. Le Prix: Crew cascade is fully suppressed
+  | 'FOURS_INSTANT_LOSS'     // Floor 4 — The Executive: rolling a total of 4 is instant loss
+  | 'TRIBUTE'                // Floor 5 — The Hierophant: seven-out seizes 15% of bankroll
+  | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: min bet floods 15% of target every 5 rolls
+  | 'ORBITAL_DECAY'          // Floor 7 — The Commander: seven-out drains hype by 0.5×, can go below 1.0×
+  | 'FIRST_CONTACT_PROTOCOL' // Floor 8 — The Emissary: come-out 7/11 naturals are blank rolls
+  | 'CONVERGENCE';           // Floor 9 — The Architect: each seven-out removes one crew slot from the cascade
 
 /** The permanent comp perk awarded for defeating a boss. */
 export type CompRewardType =
   | 'THE_VIG'         // Floor 1 — The Vig: crew cash abilities pay out 20% more
   | 'EXTRA_SHOOTER'   // Floor 2 — Member's Jacket: +1 Shooter at next segment reset
   | 'HYPE_RESET_HALF' // Floor 3 — Sea Legs: Hype resets to 50% of current (not 1.0×)
-  | 'GOLDEN_TOUCH';   // Floor 4 — Golden Touch: guaranteed Natural on first come-out roll
+  | 'GOLDEN_TOUCH'    // Floor 4 — Golden Touch: guaranteed Natural on first come-out roll
+  | 'THE_COVENANT'    // Floor 5 — The Covenant: direct bankroll drains reduced by 50%
+  | 'POSEIDONS_FAVOR' // Floor 6 — Poseidon's Favor: first come-out can never craps-out
+  | 'ZERO_POINT'      // Floor 7 — Zero Point: hype permanently floored at 1.25×
+  | 'THE_FREQUENCY'   // Floor 8 — The Frequency: come-out naturals award 3% of marker target as bonus
+  | 'NONE';           // Floor 9 — No comp awarded; The Null Space is the end of the line
 
 /**
  * Tunable parameters for the RISING_MIN_BETS boss rule.
@@ -82,7 +92,12 @@ export type BossRuleParams =
   | { rule: 'EXTORTION_FEE';      taxPct: number }
   | { rule: 'RISING_MIN_BETS';    startPct: number; incrementPct: number; capPct: number }
   | { rule: 'DISABLE_CREW' }
-  | { rule: 'FOURS_INSTANT_LOSS'; triggerTotal: number };
+  | { rule: 'FOURS_INSTANT_LOSS'; triggerTotal: number }
+  | { rule: 'TRIBUTE';            tributePct: number }
+  | { rule: 'TIDAL_SURGE';        cycleLength: number; surgeDuration: number; surgePct: number }
+  | { rule: 'ORBITAL_DECAY';      decayAmount: number; hypeFloor: number }
+  | { rule: 'FIRST_CONTACT_PROTOCOL' }   // Floor 8 — no params; binary toggle
+  | { rule: 'CONVERGENCE' };             // Floor 9 — no params; counter tracked via bossPointHits
 
 /** Full descriptor for a boss fight. Only present on markers where isBoss is true. */
 export interface BossConfig {
@@ -160,22 +175,31 @@ export interface MarkerConfig {
 // ---------------------------------------------------------------------------
 
 export const COMP_PERK_IDS = {
-  THE_VIG:       4,  // Floor 1 boss reward — crew cash abilities +20%
-  MEMBER_JACKET: 1,  // Floor 2 boss reward — +1 Shooter per segment reset
-  SEA_LEGS:      2,  // Floor 3 boss reward — Hype resets to 50%
-  GOLDEN_TOUCH:  3,  // Floor 4 boss reward — guaranteed first Natural
+  THE_VIG:          4,  // Floor 1 boss reward — crew cash abilities +20%
+  MEMBER_JACKET:    1,  // Floor 2 boss reward — +1 Shooter per segment reset
+  SEA_LEGS:         2,  // Floor 3 boss reward — Hype resets to 50%
+  GOLDEN_TOUCH:     3,  // Floor 4 boss reward — guaranteed first Natural
+  THE_COVENANT:     5,  // Floor 5 boss reward — direct bankroll drains reduced by 50%
+  POSEIDONS_FAVOR:  6,  // Floor 6 boss reward — first come-out can never craps-out
+  ZERO_POINT:       7,  // Floor 7 boss reward — hype permanently floored at 1.25×
+  THE_FREQUENCY:    8,  // Floor 8 boss reward — 3% marker target bonus on come-out naturals
 } as const;
 
 // ---------------------------------------------------------------------------
-// The Gauntlet — 12 markers across 4 floors (3 markers per floor)
+// The Gauntlet — 27 markers across 9 floors (3 markers per floor)
 //
 // Targets:
 //   Floor 1 — The Loading Dock: $50 / $100 / $250
 //   Floor 2 — VFW Hall:         $300 / $600 / $1,000
 //   Floor 3 — Riverboat:        $1,500 / $2,500 / $4,000
 //   Floor 4 — The Strip:        $6,000 / $9,000 / $12,500
+//   Floor 5 — The Lodge:        $20,000 / $30,000 / $45,000
+//   Floor 6 — Atlantis:         $70,000 / $120,000 / $175,000
+//   Floor 7 — The Station:      $250,000 / $425,000 / $650,000
+//   Floor 8 — The Signal:       $1,000,000 / $1,750,000 / $2,500,000
+//   Floor 9 — The Null Space:   $5,000,000 / $10,000,000 / $20,000,000
 //
-// Boss at every 3rd marker (0-based indices 2, 5, 8, 11).
+// Boss at every 3rd marker (0-based indices 2, 5, 8, 11, 14, 17, 20, 23, 26).
 // ---------------------------------------------------------------------------
 
 export const GAUNTLET: readonly MarkerConfig[] = [
@@ -375,6 +399,246 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       flavorText: "Fours are for losers. Don't roll one.",
     },
   },
+
+  // ── Floor 5: The Lodge ────────────────────────────────────────────────────
+
+  {
+    targetCents: 2_000_000,  // $20,000
+    venue:       'The Lodge',
+    floor:       5,
+    isBoss:      false,
+  },
+  {
+    targetCents: 3_000_000,  // $30,000
+    venue:       'The Lodge',
+    floor:       5,
+    isBoss:      false,
+  },
+  {
+    targetCents: 4_500_000,  // $45,000 — BOSS: The Hierophant
+    venue:       'The Lodge — The Inner Sanctum',
+    floor:       5,
+    isBoss:      true,
+    boss: {
+      // Identity
+      name:  'The Hierophant',
+      title: 'Keeper of the Rites',
+      // Vibe
+      dreadTagline:        'THE ORDER COLLECTS.',
+      entryLines: [
+        "You were vouched for. That person is no longer welcome.",
+        "Three centuries of tradition have kept this table alive.",
+        "The order always takes its tribute. Especially from seven-outs.",
+      ],
+      ruleBlurb:          "Every seven-out seizes 15% of your current bankroll as tribute — on top of your lost bets.",
+      victoryQuote:       "…the rites acknowledge your offering. Leave before the observers decide otherwise.",
+      defeatAnnouncement: 'RITES CONCLUDED',
+      // Mechanic
+      rule:           'TRIBUTE',
+      ruleHeaderText: 'SEVEN-OUT SEIZES 15% OF BANKROLL AS TRIBUTE',
+      ruleParams:     { rule: 'TRIBUTE', tributePct: 0.15 },
+      // Comp
+      compReward:      'THE_COVENANT',
+      compPerkId:      COMP_PERK_IDS.THE_COVENANT,
+      compName:        'THE COVENANT',
+      compDescription: 'Direct bankroll drains from boss mechanics are permanently reduced by 50%.',
+      compFanLabel:    'COVENANT',
+      // Legacy
+      flavorText: "Three centuries of tradition. You'll respect it, or you'll fund it.",
+    },
+  },
+
+  // ── Floor 6: Atlantis ─────────────────────────────────────────────────────
+
+  {
+    targetCents: 7_000_000,   // $70,000
+    venue:       'Atlantis',
+    floor:       6,
+    isBoss:      false,
+  },
+  {
+    targetCents: 12_000_000,  // $120,000
+    venue:       'Atlantis',
+    floor:       6,
+    isBoss:      false,
+  },
+  {
+    targetCents: 17_500_000,  // $175,000 — BOSS: The Sovereign
+    venue:       'Atlantis — The Throne Room',
+    floor:       6,
+    isBoss:      true,
+    boss: {
+      // Identity
+      name:  'The Sovereign',
+      title: 'Last King of Atlantis',
+      // Vibe
+      dreadTagline:        'THE TIDE TURNS.',
+      entryLines: [
+        "Three thousand years. Every empire above you has collapsed from here.",
+        "My table runs on a tide. Five rolls calm, two rolls flood.",
+        "You can see it coming. That was never the point.",
+      ],
+      ruleBlurb:          "Every 5 rolls the minimum Pass Line bet floods to 15% of the marker target for 2 rolls, then recedes. The tide is visible. The tide is inevitable.",
+      victoryQuote:       "…the tide will return. It always does.",
+      defeatAnnouncement: 'THE TIDE RECEDES',
+      // Mechanic
+      rule:           'TIDAL_SURGE',
+      ruleHeaderText: 'TIDE SURGES EVERY 5 ROLLS — MIN BET 15% OF TARGET FOR 2 ROLLS',
+      ruleParams:     { rule: 'TIDAL_SURGE', cycleLength: 5, surgeDuration: 2, surgePct: 0.15 },
+      // Comp
+      compReward:      'POSEIDONS_FAVOR',
+      compPerkId:      COMP_PERK_IDS.POSEIDONS_FAVOR,
+      compName:        "POSEIDON'S FAVOR",
+      compDescription: "First come-out roll of each shooter can never craps-out — treated as a blank re-roll instead.",
+      compFanLabel:    'POSEIDON',
+      // Legacy
+      flavorText: "My kingdom has stood for three thousand years. Your run will not outlast this tide.",
+    },
+  },
+
+  // ── Floor 7: The Station ─────────────────────────────────────────────────
+
+  {
+    targetCents: 25_000_000,   // $250,000
+    venue:       'The Station',
+    floor:       7,
+    isBoss:      false,
+  },
+  {
+    targetCents: 42_500_000,   // $425,000
+    venue:       'The Station',
+    floor:       7,
+    isBoss:      false,
+  },
+  {
+    targetCents: 65_000_000,   // $650,000 — BOSS: The Commander
+    venue:       'The Station — The Command Module',
+    floor:       7,
+    isBoss:      true,
+    boss: {
+      // Identity
+      name:  'The Commander',
+      title: 'Station Chief, Table Authority',
+      // Vibe
+      dreadTagline:        'MOMENTUM DECAYS.',
+      entryLines: [
+        "Eleven months up here. I don't miss the ground.",
+        "Your hype is a resource. And resources decay in this environment.",
+        "Every time you seven-out, your multiplier drops. There is no floor — until there is.",
+      ],
+      ruleBlurb:          "Every seven-out subtracts 0.5× from your Hype multiplier, which can fall below 1.0×. Below 1.0×, your payouts are penalized.",
+      victoryQuote:       "…orbital mechanics didn't account for you. Gravity's compliments.",
+      defeatAnnouncement: 'ORBITAL AUTHORITY LOST',
+      // Mechanic
+      rule:           'ORBITAL_DECAY',
+      ruleHeaderText: 'SEVEN-OUT DRAINS HYPE BY 0.5× — CAN FALL BELOW 1.0×',
+      ruleParams:     { rule: 'ORBITAL_DECAY', decayAmount: 0.5, hypeFloor: 0.5 },
+      // Comp
+      compReward:      'ZERO_POINT',
+      compPerkId:      COMP_PERK_IDS.ZERO_POINT,
+      compName:        'ZERO POINT',
+      compDescription: 'Hype multiplier is permanently floored at 1.25× for all future runs.',
+      compFanLabel:    'ZERO PT',
+      // Legacy
+      flavorText: "Gravity is a courtesy I extend to paying customers. So is generosity.",
+    },
+  },
+
+  // ── Floor 8: The Signal ─────────────────────────────────────────────────
+
+  {
+    targetCents: 100_000_000,   // $1,000,000
+    venue:       'The Signal',
+    floor:       8,
+    isBoss:      false,
+  },
+  {
+    targetCents: 175_000_000,   // $1,750,000
+    venue:       'The Signal',
+    floor:       8,
+    isBoss:      false,
+  },
+  {
+    targetCents: 250_000_000,   // $2,500,000 — BOSS: The Emissary
+    venue:       'The Signal — The Receiving Chamber',
+    floor:       8,
+    isBoss:      true,
+    boss: {
+      // Identity
+      name:  'The Emissary',
+      title: 'First Point of Contact',
+      // Vibe
+      dreadTagline: 'WE SHOULD NOT HAVE ANSWERED.',
+      entryLines: [
+        "The table is here. The felt, the chips, the dice. All correct.",
+        "The geometry of the room is not correct. The light arrives from the wrong direction.",
+        "It studied the game for eleven years. It could not translate one concept. That concept is the natural.",
+      ],
+      ruleBlurb:          "Come-out 7s and 11s are blank rolls. No payout. No hype. No resolution. The Emissary has no concept of a free win.",
+      victoryQuote:       "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]",
+      defeatAnnouncement: 'SIGNAL LOST',
+      // Mechanic
+      rule:           'FIRST_CONTACT_PROTOCOL',
+      ruleHeaderText: 'COME-OUT 7 / 11 IS A NULL EVENT — NO WIN, NO HYPE',
+      ruleParams:     { rule: 'FIRST_CONTACT_PROTOCOL' },
+      // Comp
+      compReward:      'THE_FREQUENCY',
+      compPerkId:      COMP_PERK_IDS.THE_FREQUENCY,
+      compName:        'THE FREQUENCY',
+      compDescription: 'Come-out natural 7s and 11s award a flat bonus equal to 3% of the current marker target for the rest of the run.',
+      compFanLabel:    'FREQ.',
+      // Legacy
+      flavorText: "[Untranslatable. The entity gestures toward the table.]",
+    },
+  },
+
+  // ── Floor 9: The Null Space ───────────────────────────────────────────────
+
+  {
+    targetCents: 500_000_000,   // $5,000,000
+    venue:       'The Null Space',
+    floor:       9,
+    isBoss:      false,
+  },
+  {
+    targetCents: 1_000_000_000,  // $10,000,000
+    venue:       'The Null Space',
+    floor:       9,
+    isBoss:      false,
+  },
+  {
+    targetCents: 2_000_000_000,  // $20,000,000 — BOSS: The Architect
+    venue:       'The Null Space — The Zero Chamber',
+    floor:       9,
+    isBoss:      true,
+    boss: {
+      // Identity
+      name:  'The Architect',
+      title: 'Designer of the Null Space',
+      // Vibe
+      dreadTagline: 'YOUR CREW IS TEMPORARY.',
+      entryLines: [
+        "You've been here before. This table was built from the pattern you left behind.",
+        "Every seven-out, one of them disappears. Not gone — just reclaimed.",
+        "By the fifth, you'll be rolling alone. The table will still be here. Will you?",
+      ],
+      ruleBlurb: "Every seven-out permanently removes one crew slot from the cascade, starting with slot 5. After five seven-outs, you roll naked craps.",
+      victoryQuote: "…the pattern was incomplete after all. Interesting.",
+      defeatAnnouncement: 'NULL SPACE COLLAPSED',
+      // Mechanic
+      rule:           'CONVERGENCE',
+      ruleHeaderText: 'SEVEN-OUT REMOVES A CREW SLOT — 5 SEVEN-OUTS = NAKED CRAPS',
+      ruleParams:     { rule: 'CONVERGENCE' },
+      // No comp — The Null Space is the end of the line
+      compReward:     'NONE',
+      compPerkId:      0,
+      compName:        '',
+      compDescription: '',
+      compFanLabel:    '',
+      // Legacy
+      flavorText: "You built this table from every run you ever played. Now it takes you apart.",
+    },
+  },
 ];
 
 /**
@@ -416,10 +680,23 @@ export function isBossMarker(markerIndex: number): boolean {
  */
 export function getBossMinBet(markerIndex: number, bossPointHits: number): number | null {
   const config = GAUNTLET[markerIndex];
-  if (!config?.isBoss || !config.boss?.risingMinBets) return null;
+  if (!config?.isBoss || !config.boss) return null;
 
   const { targetCents } = config;
-  const { startPct, incrementPct, capPct } = config.boss.risingMinBets;
+  const boss = config.boss;
+
+  if (boss.rule === 'TIDAL_SURGE') {
+    const params = boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>;
+    if (bossPointHits >= params.cycleLength) {
+      // In surge window — return the surge minimum (rounded up to nearest dollar).
+      return Math.ceil(targetCents * params.surgePct / 100) * 100;
+    }
+    return null; // Normal tide — no elevated minimum
+  }
+
+  if (!boss.risingMinBets) return null;
+
+  const { startPct, incrementPct, capPct } = boss.risingMinBets;
 
   const rawPct     = startPct + incrementPct * bossPointHits;
   const clampedPct = Math.min(rawPct, capPct);

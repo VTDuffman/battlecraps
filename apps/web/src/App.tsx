@@ -537,6 +537,9 @@ const TestAuthenticatedApp: React.FC = () => {
           // Suppress boot transitions so TableBoard is immediately visible.
           titleShown:                true,
           markerIntroShownForMarker: 0,
+          // Pre-mark the unlock-recap transition as shown so status=GAME_OVER
+          // routes directly to GameOverScreen regardless of unlock events.
+          gameOverTransitionShown:   true,
         });
 
         setReady(true);

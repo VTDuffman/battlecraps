@@ -29,6 +29,7 @@ import type {
   CascadeEvent,
   RollResult,
   RollReceipt,
+  RollReceiptLine,
   CelebrationSnapshot,
   TransitionType,
 } from '@battlecraps/shared';
@@ -1077,6 +1078,20 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         if (state.pendingSettlement !== null) return {};
         const isLeftySave = payload.originalDice !== undefined;
         const isNudge     = payload.nudgedFrom   !== undefined;
+
+        // In test mode, build a synthetic receipt for the roll log so tests can
+        // assert on roll history without going through the full UI roll path.
+        let extraState: Partial<typeof state> = {};
+        if (import.meta.env['VITE_TEST_MODE'] === 'true') {
+          const rLines: RollReceiptLine[] = [
+            { kind: 'roll', text: `${payload.rollResult.replace(/_/g, ' ')} [${payload.dice[0]}+${payload.dice[1]}=${payload.diceTotal}]` },
+          ];
+          if (payload.bankrollDelta > 0) rLines.push({ kind: 'win',  text: `+$${(payload.bankrollDelta  / 100).toFixed(2)}` });
+          else if (payload.bankrollDelta < 0) rLines.push({ kind: 'loss', text: `-$${(Math.abs(payload.bankrollDelta) / 100).toFixed(2)}` });
+          const receipt: RollReceipt = { timestamp: new Date().toISOString(), netDelta: payload.bankrollDelta, lines: rLines };
+          extraState = { rollHistory: [receipt, ...state.rollHistory].slice(0, 50) };
+        }
+
         return {
           lastDice:          isLeftySave ? payload.originalDice!
                              : isNudge   ? payload.nudgedFrom!
@@ -1085,8 +1100,14 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           dreadDice:         isLeftySave ? payload.originalDice! : null,
           nudgeDice:         isNudge     ? payload.nudgedFrom!   : null,
           pendingSettlement: payload,
+          ...extraState,
         };
       });
+      // In test mode there is no dice animation, so apply the settlement
+      // immediately (after one tick to let the set() above flush first).
+      if (import.meta.env['VITE_TEST_MODE'] === 'true') {
+        setTimeout(() => get().applyPendingSettlement(), 50);
+      }
     });
 
     // ── unlocks:granted ───────────────────────────────────────────────────

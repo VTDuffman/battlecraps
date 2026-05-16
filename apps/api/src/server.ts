@@ -282,6 +282,12 @@ io.use(async (socket, next) => {
     return next(new Error('Unauthorized — token required in auth payload'));
   }
 
+  if (process.env['NODE_ENV'] === 'test' && token.startsWith('test_')) {
+    const user = await resolveUserByClerkId(token);
+    if (user) { socket.data['userId'] = user.id; return next(); }
+    return next(new Error('Test user not found'));
+  }
+
   try {
     const payload = await verifyToken(token, {
       secretKey: process.env['CLERK_SECRET_KEY'],

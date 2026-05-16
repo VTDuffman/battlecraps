@@ -48,6 +48,7 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
 
   return (
     <div
+      data-testid="marker-celebration"
       className="
         relative w-full max-w-lg mx-auto min-h-[100dvh]
         flex flex-col items-center justify-center gap-7

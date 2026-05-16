@@ -4,4 +4,5 @@ interface Window {
       getToken: () => Promise<string | null>;
     };
   };
+  __testRunId?: string;
 }

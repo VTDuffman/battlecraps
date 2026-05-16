@@ -545,6 +545,7 @@ export const DiceZone: React.FC = () => {
       {/* ── RIGHT: roll button ───────────────────────────────────────────── */}
       <button
         type="button"
+        data-testid="roll-button"
         disabled={!canRoll}
         onClick={() => void handleRoll()}
         className={[

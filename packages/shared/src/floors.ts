@@ -124,8 +124,9 @@ export interface CelebrationSnapshot {
  * 'ancient'  — Floor 6 (Atlantis): bioluminescent warmth, coral-threaded stone, abyssal depth
  * 'cosmic'   — Floor 7 (The Station): void-black, starlight silver, nebula purple — zero gravity
  * 'alien'    — Floor 8 (The Signal): void black, electric acid green, deep magenta — organised wrongness
+ * 'digital'  — Floor 9 (The Null Space): pure black, phosphor green terminal — the abyss at the end of the line
  */
-export type FloorAtmosphere = 'exposed' | 'gritty' | 'elegant' | 'electric' | 'occult' | 'ancient' | 'cosmic' | 'alien';
+export type FloorAtmosphere = 'exposed' | 'gritty' | 'elegant' | 'electric' | 'occult' | 'ancient' | 'cosmic' | 'alien' | 'digital';
 
 /**
  * The complete narrative and display configuration for a single floor.
@@ -379,6 +380,26 @@ export const FLOORS: readonly FloorConfig[] = [
     atmosphere: 'alien',
   },
 
+  // ── Floor 9: The Null Space ───────────────────────────────────────────────
+  // Pure black. No felt texture. No ambient light. No sound.
+  // The Architect built this room from the data of every run ever played.
+  // Your crew is temporary. Your patterns are not.
+  {
+    id:        9,
+    name:      'The Null Space',
+    tagline:   'End of line.',
+    introLines: [
+      'Pure black. No felt texture, no ambient light, no sound. Just the table, the dice, and the cursor blinking at the end of a very long terminal session.',
+      'The Architect built this place from the data of every run ever played. He knows your patterns. He designed this room specifically for you.',
+      'Every seven-out, one of your crew is reclaimed. The table has infinite patience. You do not.',
+    ],
+    bossName:   'The Architect',
+    bossTitle:  'Designer of the Null Space',
+    bossVenue:  'The Null Space — The Zero Chamber',
+    bossTeaser: 'The Architect reclaims your crew one by one. Five seven-outs and you roll alone.',
+    atmosphere: 'digital',
+  },
+
 ];
 
 // ---------------------------------------------------------------------------
@@ -407,6 +428,7 @@ export function getFloorById(id: number): FloorConfig | undefined {
  *   getFloorByMarkerIndex(15) → Floor 6 (Atlantis)
  *   getFloorByMarkerIndex(18) → Floor 7 (The Station)
  *   getFloorByMarkerIndex(21) → Floor 8 (The Signal)
+ *   getFloorByMarkerIndex(24) → Floor 9 (The Null Space)
  */
 export function getFloorByMarkerIndex(markerIndex: number): FloorConfig {
   const id = Math.floor(markerIndex / 3) + 1;

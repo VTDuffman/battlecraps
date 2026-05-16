@@ -45,14 +45,15 @@ export function getCrewHireCost(rarity: CrewRarity, clearedMarkerTargetCents: nu
 
 /** The mechanical modifier a boss applies during their High Limit Room fight. */
 export type BossRuleType =
-  | 'EXTORTION_FEE'   // Floor 1 — The Foreman: 20% tax on all winning payouts
-  | 'RISING_MIN_BETS'     // Floor 2 — Sarge: minimum Pass Line bet rises each Point Hit
-  | 'DISABLE_CREW'        // Floor 3 — Mme. Le Prix: Crew cascade is fully suppressed
-  | 'FOURS_INSTANT_LOSS'  // Floor 4 — The Executive: rolling a total of 4 is instant loss
-  | 'TRIBUTE'             // Floor 5 — The Hierophant: seven-out seizes 15% of bankroll
-  | 'TIDAL_SURGE'         // Floor 6 — The Sovereign: min bet floods 15% of target every 5 rolls
-  | 'ORBITAL_DECAY'        // Floor 7 — The Commander: seven-out drains hype by 0.5×, can go below 1.0×
-  | 'FIRST_CONTACT_PROTOCOL'; // Floor 8 — The Emissary: come-out 7/11 naturals are blank rolls
+  | 'EXTORTION_FEE'          // Floor 1 — The Foreman: 20% tax on all winning payouts
+  | 'RISING_MIN_BETS'        // Floor 2 — Sarge: minimum Pass Line bet rises each Point Hit
+  | 'DISABLE_CREW'           // Floor 3 — Mme. Le Prix: Crew cascade is fully suppressed
+  | 'FOURS_INSTANT_LOSS'     // Floor 4 — The Executive: rolling a total of 4 is instant loss
+  | 'TRIBUTE'                // Floor 5 — The Hierophant: seven-out seizes 15% of bankroll
+  | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: min bet floods 15% of target every 5 rolls
+  | 'ORBITAL_DECAY'          // Floor 7 — The Commander: seven-out drains hype by 0.5×, can go below 1.0×
+  | 'FIRST_CONTACT_PROTOCOL' // Floor 8 — The Emissary: come-out 7/11 naturals are blank rolls
+  | 'CONVERGENCE';           // Floor 9 — The Architect: each seven-out removes one crew slot from the cascade
 
 /** The permanent comp perk awarded for defeating a boss. */
 export type CompRewardType =
@@ -63,7 +64,8 @@ export type CompRewardType =
   | 'THE_COVENANT'    // Floor 5 — The Covenant: direct bankroll drains reduced by 50%
   | 'POSEIDONS_FAVOR' // Floor 6 — Poseidon's Favor: first come-out can never craps-out
   | 'ZERO_POINT'      // Floor 7 — Zero Point: hype permanently floored at 1.25×
-  | 'THE_FREQUENCY';  // Floor 8 — The Frequency: come-out naturals award 3% of marker target as bonus
+  | 'THE_FREQUENCY'   // Floor 8 — The Frequency: come-out naturals award 3% of marker target as bonus
+  | 'NONE';           // Floor 9 — No comp awarded; The Null Space is the end of the line
 
 /**
  * Tunable parameters for the RISING_MIN_BETS boss rule.
@@ -94,7 +96,8 @@ export type BossRuleParams =
   | { rule: 'TRIBUTE';            tributePct: number }
   | { rule: 'TIDAL_SURGE';        cycleLength: number; surgeDuration: number; surgePct: number }
   | { rule: 'ORBITAL_DECAY';      decayAmount: number; hypeFloor: number }
-  | { rule: 'FIRST_CONTACT_PROTOCOL' };  // Floor 8 — no params; binary toggle
+  | { rule: 'FIRST_CONTACT_PROTOCOL' }   // Floor 8 — no params; binary toggle
+  | { rule: 'CONVERGENCE' };             // Floor 9 — no params; counter tracked via bossPointHits
 
 /** Full descriptor for a boss fight. Only present on markers where isBoss is true. */
 export interface BossConfig {
@@ -183,7 +186,7 @@ export const COMP_PERK_IDS = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// The Gauntlet — 24 markers across 8 floors (3 markers per floor)
+// The Gauntlet — 27 markers across 9 floors (3 markers per floor)
 //
 // Targets:
 //   Floor 1 — The Loading Dock: $50 / $100 / $250
@@ -194,8 +197,9 @@ export const COMP_PERK_IDS = {
 //   Floor 6 — Atlantis:         $70,000 / $120,000 / $175,000
 //   Floor 7 — The Station:      $250,000 / $425,000 / $650,000
 //   Floor 8 — The Signal:       $1,000,000 / $1,750,000 / $2,500,000
+//   Floor 9 — The Null Space:   $5,000,000 / $10,000,000 / $20,000,000
 //
-// Boss at every 3rd marker (0-based indices 2, 5, 8, 11, 14, 17, 20, 23).
+// Boss at every 3rd marker (0-based indices 2, 5, 8, 11, 14, 17, 20, 23, 26).
 // ---------------------------------------------------------------------------
 
 export const GAUNTLET: readonly MarkerConfig[] = [
@@ -585,6 +589,54 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compFanLabel:    'FREQ.',
       // Legacy
       flavorText: "[Untranslatable. The entity gestures toward the table.]",
+    },
+  },
+
+  // ── Floor 9: The Null Space ───────────────────────────────────────────────
+
+  {
+    targetCents: 500_000_000,   // $5,000,000
+    venue:       'The Null Space',
+    floor:       9,
+    isBoss:      false,
+  },
+  {
+    targetCents: 1_000_000_000,  // $10,000,000
+    venue:       'The Null Space',
+    floor:       9,
+    isBoss:      false,
+  },
+  {
+    targetCents: 2_000_000_000,  // $20,000,000 — BOSS: The Architect
+    venue:       'The Null Space — The Zero Chamber',
+    floor:       9,
+    isBoss:      true,
+    boss: {
+      // Identity
+      name:  'The Architect',
+      title: 'Designer of the Null Space',
+      // Vibe
+      dreadTagline: 'YOUR CREW IS TEMPORARY.',
+      entryLines: [
+        "You've been here before. This table was built from the pattern you left behind.",
+        "Every seven-out, one of them disappears. Not gone — just reclaimed.",
+        "By the fifth, you'll be rolling alone. The table will still be here. Will you?",
+      ],
+      ruleBlurb: "Every seven-out permanently removes one crew slot from the cascade, starting with slot 5. After five seven-outs, you roll naked craps.",
+      victoryQuote: "…the pattern was incomplete after all. Interesting.",
+      defeatAnnouncement: 'NULL SPACE COLLAPSED',
+      // Mechanic
+      rule:           'CONVERGENCE',
+      ruleHeaderText: 'SEVEN-OUT REMOVES A CREW SLOT — 5 SEVEN-OUTS = NAKED CRAPS',
+      ruleParams:     { rule: 'CONVERGENCE' },
+      // No comp — The Null Space is the end of the line
+      compReward:     'NONE',
+      compPerkId:      0,
+      compName:        '',
+      compDescription: '',
+      compFanLabel:    '',
+      // Legacy
+      flavorText: "You built this table from every run you ever played. Now it takes you apart.",
     },
   },
 ];

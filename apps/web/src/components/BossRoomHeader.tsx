@@ -30,6 +30,7 @@ export const BossRoomHeader: React.FC = () => {
   const isTidalSurge   = boss.rule === 'TIDAL_SURGE';
   const isOrbitalDecay = boss.rule === 'ORBITAL_DECAY';
   const isFirstContact = boss.rule === 'FIRST_CONTACT_PROTOCOL';
+  const isConvergence  = boss.rule === 'CONVERGENCE';
   const tidalParams = isTidalSurge
     ? (boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>)
     : null;
@@ -143,6 +144,27 @@ export const BossRoomHeader: React.FC = () => {
               POINTS ONLY
             </div>
           </div>
+        ) : isConvergence ? (
+          (() => {
+            const activeCrewCount = Math.max(0, 5 - bossPointHits);
+            const isNaked         = activeCrewCount === 0;
+            return (
+              <div className="flex-none text-right">
+                <div className="font-pixel text-[5px] tracking-widest leading-none"
+                  style={{ color: 'rgba(57,255,20,0.60)' }}>
+                  CONVERGENCE
+                </div>
+                <div className="font-pixel text-[10px] leading-tight"
+                  style={{ color: isNaked ? '#ef4444' : '#39ff14' }}>
+                  {isNaked ? '⌀ NAKED CRAPS' : `${activeCrewCount}/5 CREW`}
+                </div>
+                <div className="font-pixel text-[5px] leading-none mt-0.5"
+                  style={{ color: isNaked ? '#ef4444' : 'rgba(57,255,20,0.45)' }}>
+                  {isNaked ? 'RAW CRAPS — NO CREW' : '−1 ON 7-OUT'}
+                </div>
+              </div>
+            );
+          })()
         ) : isOrbitalDecay ? (
           (() => {
             const hypeStr    = currentHype.toFixed(2) + '×';

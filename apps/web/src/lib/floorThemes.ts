@@ -527,28 +527,81 @@ const FLOOR_8_THEME: FloorTheme = {
 };
 
 // =============================================================================
+// Floor 9 — The Null Space (The Zero Chamber)
+// =============================================================================
+// Pure absence. No felt texture, no ambient light, no atmosphere.
+// The Architect's table exists in a void built from the data of every run played.
+// Phosphor green terminal glow. Deletion red for the penalty. Nothing else.
+
+const FLOOR_9_THEME: FloorTheme = {
+  // Felt — pure black, no tint, no texture (void is void)
+  feltPrimary: '#000000',
+  feltRail:    '#000000',
+  feltTexture: feltTextureUri('#000000', '#000000', '#050505'),
+
+  // Accents — phosphor green terminal
+  accentBright:  '#39ff14',
+  accentPrimary: '#20cc00',
+  accentDim:     '#0a5500',
+
+  // Borders — phosphor green at low opacity
+  borderHigh: 'rgba(32,204,0,0.28)',
+  borderLow:  'rgba(32,204,0,0.18)',
+
+  // Breathing — void is still / phosphor surge / deletion red
+  breatheCold: 'rgba(0,0,0,0.0)',
+  breatheWarm: 'rgba(32,204,0,0.10)',
+  breatheHot:  'rgba(200,20,20,0.20)',
+
+  // Screen flash — phosphor surge / deletion void
+  flashWin:  'rgba(40,255,20,0.35)',
+  flashLose: 'rgba(0,0,0,0.80)',
+
+  // Pub — The Terminal
+  pubName:         'THE TERMINAL',
+  pubBg:           '#000000',
+  pubAccentBar:    'linear-gradient(90deg, transparent, #0a5500 30%, #39ff14 50%, #0a5500 70%, transparent)',
+  pubOverlayBg:    'radial-gradient(ellipse at 50% 50%, rgba(32,204,0,0.03) 0%, transparent 70%)',
+  pubTitleColor:   '#39ff14',
+  pubTitleShadow:  '0 0 20px #20cc00, 0 0 40px #0a5500',
+  pubSubtextColor: 'rgba(57,255,20,0.50)',
+
+  // Boss — The Zero Chamber (The Architect)
+  bossBg:          'radial-gradient(ellipse at 50% 50%, #020802 0%, #010401 50%, #000000 100%)',
+  bossAccentBar:   'linear-gradient(90deg, transparent, #0a5500 30%, #20cc00 50%, #0a5500 70%, transparent)',
+  bossGlow:        'radial-gradient(ellipse at 50% 40%, rgba(32,204,0,0.06) 0%, transparent 65%)',
+  bossTextColor:   '#39ff14',
+  bossTitleShadow: '0 0 30px rgba(57,255,20,0.40), 0 0 80px rgba(10,85,0,0.25)',
+  bossBorderColor: 'rgba(32,204,0,0.30)',
+  bossStarColor:   '#39ff14',
+  bossStarBg:      'rgba(10,85,0,0.35)',
+  bossStarBorder:  '2px solid rgba(57,255,20,0.40)',
+  bossStarGlow:    '0 0 20px 4px rgba(32,204,0,0.18)',
+};
+
+// =============================================================================
 // Theme registry + public API
 // =============================================================================
 
 const THEMES: FloorTheme[] = [
   FLOOR_1_THEME, FLOOR_2_THEME, FLOOR_3_THEME,
   FLOOR_4_THEME, FLOOR_5_THEME, FLOOR_6_THEME,
-  FLOOR_7_THEME, FLOOR_8_THEME,
+  FLOOR_7_THEME, FLOOR_8_THEME, FLOOR_9_THEME,
 ];
 
 /**
  * Returns the FloorTheme for the given gauntlet marker index.
- * Floor is derived as Math.floor(markerIndex / 3), clamped to [0, 7].
+ * Floor is derived as Math.floor(markerIndex / 3), clamped to [0, 8].
  */
 export function getFloorTheme(markerIndex: number): FloorTheme {
-  const floor = Math.max(0, Math.min(7, Math.floor(markerIndex / 3)));
+  const floor = Math.max(0, Math.min(8, Math.floor(markerIndex / 3)));
   return THEMES[floor]!;
 }
 
 /**
- * Returns the zero-based floor number (0–7) for a marker index.
+ * Returns the zero-based floor number (0–8) for a marker index.
  * Exported for use in components that need the floor number directly.
  */
 export function getFloorIndex(markerIndex: number): number {
-  return Math.max(0, Math.min(7, Math.floor(markerIndex / 3)));
+  return Math.max(0, Math.min(8, Math.floor(markerIndex / 3)));
 }

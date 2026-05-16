@@ -560,7 +560,15 @@ async function rollHandler(
   //
   // Each crew member's execute() fires left-to-right (slot 0 → 4), each one
   // seeing the TurnContext as modified by all previous crew members.
-  const cascadeResult = resolveCascade(crewSlots, poseidonCtx, rollDice, bossHooks, bossParams);
+  //
+  // For CONVERGENCE: inject bossSevenOutCount into TurnContext so the hook
+  // (and any future crew that reads it) has the PRE-roll seven-out counter.
+  const isConvergenceBoss = activeBossRule === 'CONVERGENCE' && isBossMarker(run.currentMarkerIndex);
+  const preCascadeCtx = isConvergenceBoss
+    ? { ...poseidonCtx, bossSevenOutCount: run.bossPointHits }
+    : poseidonCtx;
+
+  const cascadeResult = resolveCascade(crewSlots, preCascadeCtx, rollDice, bossHooks, bossParams, bossState);
   const { finalContext, events, updatedCrewSlots } = cascadeResult;
 
   // ── 8b. The Vig comp — scale crew additive bonuses by 1.20 ──────────────
@@ -853,6 +861,7 @@ function computeNextState(
   const activeBossRule  = GAUNTLET[currentMarkerIndex]?.boss?.rule ?? null;
   const isTidalSurge    = activeBossRule === 'TIDAL_SURGE';
   const isOrbitalDecay  = activeBossRule === 'ORBITAL_DECAY' && isBossMarker(currentMarkerIndex);
+  const isConvergence   = activeBossRule === 'CONVERGENCE'   && isBossMarker(currentMarkerIndex);
   const tidalCycleTotal = isTidalSurge
     ? (() => {
         const p = GAUNTLET[currentMarkerIndex]!.boss!.ruleParams as
@@ -979,7 +988,12 @@ function computeNextState(
         currentMarkerIndex:   hitMarker ? currentMarkerIndex + 1 : currentMarkerIndex,
         // Streak resets on marker clear (new chapter); otherwise increments.
         consecutivePointHits:  hitMarker ? 0 : run.consecutivePointHits + 1,
-        bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, hitMarker),
+        // CONVERGENCE: counter only changes on SEVEN_OUT; hold steady on POINT_HIT.
+        bossPointHits: hitMarker
+          ? 0
+          : isConvergence
+            ? run.bossPointHits
+            : nextBossCounter(run.bossPointHits, rollResult, false),
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
@@ -1053,6 +1067,7 @@ function computeNextState(
         nextHype = Math.max(1.0, seaLegsBaseline + cascadeHypeDelta);
       }
 
+      const markerCleared = nextMarkerIndex !== currentMarkerIndex;
       return {
         status:               nextStatus,
         phase:                'COME_OUT',
@@ -1063,7 +1078,11 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex:   nextMarkerIndex,
         consecutivePointHits:  0,  // Seven Out kills the streak
-        bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, nextMarkerIndex !== currentMarkerIndex),
+        // CONVERGENCE: increment the seven-out counter on SEVEN_OUT (cap at 5).
+        // All other rules: delegate to nextBossCounter (resets on marker clear).
+        bossPointHits: (isConvergence && !markerCleared)
+          ? Math.min(5, run.bossPointHits + 1)
+          : nextBossCounter(run.bossPointHits, rollResult, markerCleared),
         // New shooter: counters reset. Blocked seven-out: shooter survives, counters continue.
         previousRollTotal:     shooterLost ? null : finalCtx.diceTotal,
         shooterRollCount:      shooterLost ? 0 : run.shooterRollCount + 1,

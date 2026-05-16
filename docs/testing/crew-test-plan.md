@@ -13,7 +13,9 @@ Before testing begins, the following discrepancies were found between in-game de
 | Crew | Description | Actual Code Implementation | Status |
 |------|-------------|---------------------------|--------|
 | "Hype-Train" Holly | "+0.3× Hype on every **Point Hit**" | Previously triggered on NATURAL (×1.2/×1.5). Fixed — now correctly triggers on POINT_HIT, additive +0.3. Description matches implementation. | ✅ Resolved |
-| Big Spender | "+$100 flat to Hardway wins" | Code adds **10,000¢ = $100**. Both `seed.ts` and `PubScreen.tsx` correctly say $100. No mismatch. | ✅ Matches implementation |
+| Big Spender | "+$100 flat to Hardway wins" | Code uses **dynamic additive: 1.5× max-bet**, scaled to current marker target. The flat "$100" description is stale from before FB-024 (Dynamic Additive Scaling). At Marker 0 ($50 target, $5 max-bet) the bonus is ~$8; at Marker 2 ($250 target, $25 max-bet) the bonus is ~$38. | ⚠ Description needs update |
+| The Shark | "+$100 flat bonus on Point Hit" | Code uses **dynamic additive: 2.0× max-bet**, scaled to current marker target. Flat "$100" description is stale from before FB-024. At Marker 2 ($250 target, $25 max-bet) the bonus is ~$50. | ⚠ Description needs update |
+| The Old Pro | "+1 shooter per marker cleared" | Code is a **no-op execute()**. The Old Pro's actual ability is raising the table bet ceiling from 10% to 15% of the marker target — detected server-side at bet-validation time. The "+1 shooter" description is legacy; the live implementation is the 15% ceiling. | ✅ Resolved |
 | Drunk Uncle | "33% chance to add +0.5× Hype — or subtract 0.1× Hype" | Confirmed correct. d1 ≤ 2 (33%) triggers Uncle each roll; odd d2 → +0.5 hype, even d2 → −0.1 hype. **No cooldown** (`cooldownType: 'none'`). Fires every roll subject to the 33% probability. | ✅ Matches implementation |
 | The Mechanic | "Set one die to 6" | Sets the **lower-valued** die to 6. Can cause a Seven Out if the other die is 1 (e.g., [1,1] → [6,1] = 7). This is a known risk, not a bug. | ✅ Matches implementation |
 | Nervous Intern | "+0.2× Hype on Natural 7/11" | Matches description. Fires on NATURAL only. Additive. | ✅ Matches implementation |
@@ -36,6 +38,8 @@ POST /api/v1/dev/bootstrap
 Crew is seeded directly via `startingCrew` — no need to play through the Pub flow. `startingHype` sets the initial Hype multiplier (default 1.0).
 
 To observe cascade events: inspect the API roll response's `roll.cascadeEvents` array AND the `roll.rollResult` and `run.hype` values. Also observe UI for portrait flash animation and bark text.
+
+**Dynamic additive formula (FB-024):** Additive crew use `Math.round(ADDITIVE_MULT × Math.floor(markerTargetCents × 0.10) / 100) × 100`. This rounds to the nearest dollar. For test cases that reference specific dollar amounts, calculate from the marker target in use.
 
 ---
 
@@ -284,7 +288,7 @@ To observe cascade events: inspect the API roll response's `roll.cascadeEvents` 
 **Stated Ability:** Grants a free Odds bonus equal to the Pass Line bet on a Natural.
 **Actual Implementation:** Triggers on `rollResult === 'NATURAL'` when `bets.passLine > 0`. Adds `ctx.bets.passLine` (in cents) to `additives`. Amplified by Hype and multipliers in `settleTurn()`. No cooldown.
 
-**Design niche:** The Shark covers POINT_HIT flat bonuses; The Regular covers NATURAL wins with a scaling bonus (bet-size dependent, not flat). Together they cover both positive win conditions without overlapping.
+**Design niche:** The Shark covers POINT_HIT dynamic bonuses; The Regular covers NATURAL wins with a scaling bonus (bet-size dependent, not flat). Together they cover both positive win conditions without overlapping.
 
 #### Happy Path
 
@@ -332,26 +336,27 @@ To observe cascade events: inspect the API roll response's `roll.cascadeEvents` 
 ---
 
 ### Crew 7 — Big Spender ($100)
-**Stated Ability:** "+$100 flat to Hardway wins."
-**Actual Implementation:** Triggers when `baseHardwaysPayout > 0`. Adds **10,000 cents ($100)** to `additives`. This bonus IS amplified by Hype and multipliers in `settleTurn()`.
+**Stated Ability:** Bonus on Hardway wins.
+**Actual Implementation:** Triggers when `baseHardwaysPayout > 0`. Adds **1.5× current max-bet** to `additives` (dynamic, scaled to marker target). This bonus IS amplified by Hype and multipliers in `settleTurn()`.
+
+**⚠ VERIFY:** In-game description may still say "+$100 flat" — this is stale from before FB-024 (Dynamic Additive Scaling). The code uses `ADDITIVE_MULT = 1.5` with `maxBet = Math.floor(markerTargetCents × 0.10)`. Expected bonus at Marker 2 ($250 target): `Math.round(1.5 × 250 / 100) × 100 = $400` (not $100).
 
 #### Happy Path
 
-**HP-BIG-01: Hard 8 hit — flat $100 bonus added to payout**
-- Setup: Recruit Big Spender. Place Hard 8 bet ($10). Roll [4,4]=8 (Hard 8).
-- Expected: Hard 8 pays 9:1 = $90 on $10 bet. Big Spender adds $100. With Hype 1.0× and no multipliers: total win = $90 + $100 = $190.
-- Verify: Big Spender in `cascadeEvents`. Payout delta = $190.
+**HP-BIG-01: Hard 8 hit — dynamic bonus added to payout**
+- Setup: Recruit Big Spender. Use Marker 0 ($50 target, maxBet = $5). Place Hard 8 bet ($5 max). Roll [4,4]=8 (Hard 8).
+- Expected: Hard 8 pays 9:1 = $45 on $5 bet. Big Spender adds `Math.round(1.5 × 500 / 100) × 100 = 800¢ = $8` (rounded to nearest dollar). With Hype 1.0× and no other multipliers: total win ≈ $45 + $8 = $53.
+- Verify: Big Spender in `cascadeEvents`. Payout delta includes the additive.
 
 **HP-BIG-02: Big Spender fires on any hardway hit (Hard 4, 6, 8, 10)**
 - Setup: Recruit Big Spender. Test each hardway: Hard 4 ([2,2]=4), Hard 6 ([3,3]=6), Hard 10 ([5,5]=10).
-- Expected: Big Spender fires for each. Flat bonus added to each.
-- Verify: Consistent bonus across all four hardways.
+- Expected: Big Spender fires for each. Dynamic additive added to each.
+- Verify: Consistent bonus across all four hardways at same marker level.
 
-**HP-BIG-03: Flat bonus is amplified by Hype**
-- Setup: Recruit Big Spender + Nervous Intern (to build Hype). After 2 Naturals (Hype = 1.4×), hit Hard 8.
-- Note: Technically interaction testing — skip this or use a bootstrapped Hype value.
-- Alternative: Bootstrap with Hype > 1.0 (if the bootstrap API supports it) and verify bonus amplification.
-- Verify: `(baseHardwaysPayout + additives) × hype` in settlement.
+**HP-BIG-03: Additive is amplified by Hype**
+- Setup: Bootstrap with Hype > 1.0 (e.g., 1.5×) and verify additive amplification on Hard 8 hit.
+- Expected: `(baseHardwaysPayout + additives) × hype` in settlement.
+- Verify: Combined multiplier effect observed. Additive grows with Hype.
 
 #### Edge Cases
 
@@ -371,27 +376,34 @@ To observe cascade events: inspect the API roll response's `roll.cascadeEvents` 
 ---
 
 ### Crew 8 — The Shark ($100)
-**Stated Ability:** "+$100 flat bonus on Point Hit."
-**Actual Implementation:** Triggers on `rollResult === 'POINT_HIT'`. Adds 10,000¢ ($100) to `additives`. IS amplified by Hype and multipliers.
+**Stated Ability:** Bonus on Point Hit.
+**Actual Implementation:** Triggers on `rollResult === 'POINT_HIT'`. Adds **2.0× current max-bet** to `additives` (dynamic, scaled to marker target). IS amplified by Hype and multipliers.
+
+**⚠ VERIFY:** In-game description may still say "+$100 flat" — this is stale from before FB-024 (Dynamic Additive Scaling). The code uses `ADDITIVE_MULT = 2.0`. Expected bonus at Marker 0 ($50 target, maxBet = $5): `Math.round(2.0 × 500 / 100) × 100 = 1000¢ = $10`. At Marker 2 ($250 target, maxBet = $25): `Math.round(2.0 × 2500 / 100) × 100 = 5000¢ = $50`.
 
 #### Happy Path
 
-**HP-SHARK-01: Point Hit — flat $100 bonus**
-- Setup: Recruit The Shark. Set a point. Hit the point.
-- Expected: Shark fires. Flat $100 added to payout. At Hype 1.0×: total payout = Pass Line win + Odds win + $100.
-- Verify: Shark in `cascadeEvents`. Roll Log shows extra $100 in payout breakdown. Bankroll increases by expected amount.
+**HP-SHARK-01: Point Hit — dynamic bonus added**
+- Setup: Recruit The Shark. Use Marker 0 ($50 target). Set a point. Hit the point.
+- Expected: Shark fires. Additive = `Math.round(2.0 × 500 / 100) × 100 = $10`. At Hype 1.0×: total payout = Pass Line win + Odds win + $10.
+- Verify: Shark in `cascadeEvents`. Roll Log shows extra bonus in payout breakdown. Bankroll increases by expected amount.
 
 **HP-SHARK-02: Shark fires on any point number**
 - Setup: Test with points 4, 5, 6, 8, 9, 10 separately.
 - Expected: Shark fires every time. Point number doesn't matter.
 - Verify: Consistent behavior across all point values.
 
+**HP-SHARK-03: Bonus scales with marker target**
+- Setup: Bootstrap at different floors/markers (e.g., Marker 0 and Marker 6). Hit a point at each.
+- Expected: Shark additive grows proportionally: 2× maxBet at each respective marker.
+- Verify: Higher-floor bonus is meaningfully larger.
+
 #### Edge Cases
 
 **EC-SHARK-01: Natural 7/11 does NOT trigger Shark**
 - Setup: Recruit Shark. Roll Natural on COME_OUT.
 - Expected: `rollResult === 'NATURAL'`, not 'POINT_HIT'. Shark does NOT fire.
-- Verify: `cascadeEvents` empty. No $100 bonus.
+- Verify: `cascadeEvents` empty. No bonus.
 
 **EC-SHARK-02: Seven Out does NOT trigger Shark**
 - Setup: Recruit Shark. Roll Seven Out.
@@ -400,7 +412,7 @@ To observe cascade events: inspect the API roll response's `roll.cascadeEvents` 
 
 **EC-SHARK-03: Bonus amplified at elevated Hype**
 - Setup: Bootstrap with a run where Hype is 2.0× (or build Hype via naturals first). Hit a point.
-- Expected: Flat $100 bonus is doubled to $200 effective contribution.
+- Expected: Dynamic additive (e.g., $10 at Marker 0) is effectively doubled to $20 contribution.
 - Verify: `(basePassLinePayout + baseOddsPayout + additives) × hype` in settlement.
 
 ---
@@ -597,34 +609,32 @@ To observe cascade events: inspect the API roll response's `roll.cascadeEvents` 
 ---
 
 ### Crew 14 — The Old Pro ($250)
-**Stated Ability:** "+1 shooter per marker cleared."
-**Actual Implementation:** Server-side check in `computeNextState()` — when status transitions to TRANSITION, if Old Pro is on the rail, `shooters += 1`. Executed BEFORE Pub screen loads.
+**Stated Ability:** Raises the table bet ceiling from 10% to 15% of the marker target.
+**Actual Implementation:** No-op `execute()`. The Old Pro's ability is entirely server-side: detected in the crew slots before bet validation, passes `ceilingPct = 0.15` (instead of 0.10) to `getMaxBet()`. This allows players to bet up to 15% of marker target on Pass Line and Hardways.
 
 #### Happy Path
 
-**HP-OLDPRO-01: Marker cleared — receive 6 shooters instead of 5**
-- Setup: Recruit Old Pro. Clear Marker 1 (bankroll ≥ $400).
-- Expected: Instead of normal 5-shooter reset at Pub, player gets 6 shooters. Pub screen shows 6 shooters.
-- Verify: `run.shooters === 6` in the transition. Pub screen displays 6 ++++++.
+**HP-OLDPRO-01: Old Pro on rail — max bet ceiling raised to 15%**
+- Setup: Recruit Old Pro at Marker 0 ($50 target). Without Old Pro, max bet = $5 (10% of $50). With Old Pro, max bet should be $7.50 (15% of $50 → rounded down = $7).
+- Expected: Player can place Pass Line bets up to the 15% ceiling, verified by the server accepting a bet that would otherwise be rejected.
+- Verify: API accepts a bet of $7 (or the floor-rounded 15% amount). Without Old Pro, same bet is rejected as over-limit.
 
-**HP-OLDPRO-02: Pub screen after Old Pro bonus — start next segment with 6**
-- Setup: Continue from HP-OLDPRO-01. Skip Pub or hire crew. Return to table.
-- Expected: Table shows 6 shooter indicators (not 5).
-- Verify: Shooter display in HUD shows 6 filled circles.
+**HP-OLDPRO-02: Bet ceiling applies to both Pass Line and Hardway bets**
+- Setup: Recruit Old Pro. Attempt to place Pass Line and Hardway bets at the elevated ceiling.
+- Expected: Both Pass Line and Hardway max bets are governed by the 15% ceiling.
+- Verify: Maximum bet amounts accepted by the server match `Math.floor(markerTargetCents × 0.15)`.
+
+**HP-OLDPRO-03: Old Pro execute() is always a no-op**
+- Setup: Recruit Old Pro. Roll any outcome.
+- Expected: Old Pro does NOT appear in `cascadeEvents`. His ability is not per-roll; it is applied at bet-validation time only.
+- Verify: `cascadeEvents` never contains Old Pro entry across Natural, Point Hit, Seven Out, etc.
 
 #### Edge Cases
 
-**EC-OLDPRO-01: Known implementation issue — verify Old Pro bonus actually applies**
-- Note: From code inspection, the Old Pro check IS implemented in rolls.ts (lines 303-311). It does add the +1. Earlier code review notes said it was "unimplemented" — this should be re-verified.
-- Setup: Recruit Old Pro. Clear a marker.
-- Expected: `run.shooters` in transition state reflects +1 bonus.
-- Verify: Confirm the fix is working or whether the "unimplemented" note was stale.
-
-**EC-OLDPRO-02: Multiple markers cleared with Old Pro — cumulative?**
-- Setup: Recruit Old Pro early (Marker 1 Pub). Keep Old Pro for Marker 2 clear.
-- Expected: Each marker clear grants +1. After 2 clears: does the Pub reset to 5+1=6, then 6+1=7? Or just 5+1=6 each time?
-- Verify: Whether the +1 is applied to the reset value (5+1=6 each time) or cumulative (5, 6, 7, 8…).
-- Note: Interaction with multiple markers is out of scope for this plan but worth noting for a future test.
+**EC-OLDPRO-01: Without Old Pro, bets above 10% are rejected**
+- Setup: No Old Pro on rail. Attempt to place Pass Line bet at 12% of marker target.
+- Expected: API returns validation error (bet too high).
+- Verify: Bet is rejected. With Old Pro on rail, same bet is accepted.
 
 ---
 
@@ -663,6 +673,712 @@ To observe cascade events: inspect the API roll response's `roll.cascadeEvents` 
 
 ---
 
+## STARTER CREW — DICE
+
+---
+
+### Crew 16 — The Lookout
+**Stated Ability:** +0.15 Hype whenever a 6 appears on either die.
+**Actual Implementation:** Triggers when `ctx.dice[0] === 6 || ctx.dice[1] === 6`. Adds 0.15 to Hype, rounded to 4 decimal places. No cooldown. Fires on ~31% of all rolls (11 of 36 combinations include at least one 6).
+
+#### Happy Path
+
+**HP-LOOKOUT-01: Die shows 6 — Hype increases by 0.15**
+- Setup: Recruit The Lookout. Bootstrap Hype = 1.0. Roll [6,3]=9 (NO_RESOLUTION during POINT_ACTIVE).
+- Expected: Lookout fires. Hype: 1.0 + 0.15 = 1.15.
+- Verify: Lookout in `cascadeEvents`. `run.hype === 1.15` after roll.
+
+**HP-LOOKOUT-02: Both dice show 6 — still +0.15 (no double trigger)**
+- Setup: Recruit The Lookout. Roll [6,6]=12 (Craps Out on come-out or NO_RESOLUTION in point phase).
+- Expected: Lookout fires once, regardless of both dice being 6. Hype += 0.15 only.
+- Verify: Only one Lookout entry in `cascadeEvents`. Hype increases by exactly 0.15.
+
+**HP-LOOKOUT-03: Lookout fires on come-out rolls when a 6 appears**
+- Setup: Recruit The Lookout. Roll [6,5]=11 (Natural), [6,2]=8 (Point Set to 8).
+- Expected: Lookout fires on both — a 6 on either die triggers regardless of roll result (Natural, Point Set, etc.).
+- Verify: Lookout in `cascadeEvents` for each. Hype increases by 0.15 on each.
+
+**HP-LOOKOUT-04: Hype accumulates across multiple 6-die rolls**
+- Setup: Recruit The Lookout. Roll 4 successive rolls each containing at least one 6.
+- Expected: Hype: 1.0 → 1.15 → 1.30 → 1.45 → 1.60.
+- Verify: Additive accumulation. Rounding correct to 4 decimal places at each step.
+
+#### Edge Cases
+
+**EC-LOOKOUT-01: No 6 on either die — Lookout does NOT fire**
+- Setup: Recruit The Lookout. Roll [3,4]=7 (Seven Out or Natural 7).
+- Expected: `ctx.dice[0] !== 6 && ctx.dice[1] !== 6` — Lookout trigger fails. Lookout not in `cascadeEvents`.
+- Verify: `cascadeEvents` empty. Hype unchanged.
+
+**EC-LOOKOUT-02: Seven Out with a 6 die — Lookout fires but Hype resets**
+- Setup: Recruit The Lookout. During POINT_ACTIVE, roll [6,1]=7 (Seven Out).
+- Expected: Lookout fires (a 6 is present), adds 0.15 to Hype during the cascade. However, the Seven Out state transition resets Hype to 1.0 after settlement.
+- Verify: Lookout in `cascadeEvents`. After roll, `run.hype === 1.0` (Seven Out reset wins over Lookout's boost).
+
+**EC-LOOKOUT-03: Rounding — four Lookout triggers accumulate cleanly**
+- Setup: Recruit The Lookout. Roll 4 dice containing a 6 in sequence.
+- Expected: 1.0 + 0.15 + 0.15 + 0.15 + 0.15 = 1.60 exactly — no float drift.
+- Verify: `run.hype === 1.60` after 4 triggers. No rounding artifacts (code uses `Math.round(...× 10_000) / 10_000`).
+
+---
+
+### Crew 17 — "Ace" McGee
+**Stated Ability:** Dynamic additive (0.75× max-bet) whenever a 1 appears on either die.
+**Actual Implementation:** Triggers when `ctx.dice[0] === 1 || ctx.dice[1] === 1`. Adds `Math.round(0.75 × maxBet / 100) × 100` cents to `additives`. No cooldown. Fires on ~31% of all rolls (11 of 36 combinations include at least one 1). Additive is amplified by Hype and multipliers in `settleTurn()`.
+
+#### Happy Path
+
+**HP-ACE-01: Die shows 1 — additive added to payout**
+- Setup: Recruit "Ace" McGee at Marker 0 ($50 target, maxBet = 500¢). Roll [1,4]=5 (Point Set or NO_RESOLUTION in point phase).
+- Expected: Ace fires. `additive = Math.round(0.75 × 500 / 100) × 100 = Math.round(3.75) × 100 = 400¢ = $4`.
+- Verify: Ace in `cascadeEvents`. `roll.cascadeEvents[n].contextDelta.additives` reflects the new total.
+
+**HP-ACE-02: Ace fires on come-out rolls with a 1**
+- Setup: Recruit "Ace" McGee. Roll [1,6]=7 (Natural) on COME_OUT.
+- Expected: Ace fires — a 1 on die[0] triggers regardless of roll result. Additive added.
+- Verify: Ace in `cascadeEvents`. Pass Line Natural payout includes the additive bonus.
+
+**HP-ACE-03: Additive scales with marker target**
+- Setup: Recruit "Ace" McGee. Test at Marker 0 ($50 target) and Marker 3 ($1,500 target).
+- Expected: At Marker 3, maxBet = 15,000¢. Additive = `Math.round(0.75 × 15000 / 100) × 100 = Math.round(112.5) × 100 = 11300¢ = $113`.
+- Verify: Additive grows proportionally with floor stakes.
+
+#### Edge Cases
+
+**EC-ACE-01: No 1 on either die — Ace does NOT fire**
+- Setup: Recruit "Ace" McGee. Roll [3,4]=7 (Seven Out).
+- Expected: `ctx.dice[0] !== 1 && ctx.dice[1] !== 1` — Ace trigger fails.
+- Verify: `cascadeEvents` empty for Ace. No additive bonus.
+
+**EC-ACE-02: Both dice show 1 — still fires once (no double bonus)**
+- Setup: Recruit "Ace" McGee. Roll [1,1]=2 (Craps Out on COME_OUT).
+- Expected: Ace fires once. Additive added once only, despite both dice showing 1.
+- Verify: Single Ace entry in `cascadeEvents`. Additive added exactly once.
+
+**EC-ACE-03: Seven Out with a 1 die — Ace fires but loss resolves normally**
+- Setup: Recruit "Ace" McGee. Roll [1,6]=7 (Seven Out in POINT_ACTIVE, since diceTotal=7).
+- Expected: Ace fires (die[0]=1), adds additive. However, since the roll is a Seven Out (basePassLinePayout=0, baseOddsPayout=0), the additive is ignored by `settleTurn()` — there are no base wins to amplify.
+- ⚠ VERIFY: Does `settleTurn()` apply additives on a pure-loss roll? If gross wins are 0, additive + 0 = additive but there are no positive components for the multiplier to apply to. Confirm additive payout behavior on Seven Out.
+- Verify: Check if any payout occurs despite Seven Out. Expected behavior: additive is lost along with bets.
+
+---
+
+### Crew 18 — The Close Call
+**Stated Ability:** Dynamic additive (1.25× max-bet) whenever dice show consecutive values.
+**Actual Implementation:** Triggers when `Math.abs(ctx.dice[0] - ctx.dice[1]) === 1`. Covers [1,2], [2,3], [3,4], [4,5], [5,6] in either order. Fires on ~28% of all rolls (10 of 36 combinations). Additive = `Math.round(1.25 × maxBet / 100) × 100`. Amplified by Hype and multipliers.
+
+#### Happy Path
+
+**HP-CLOSE-01: Consecutive dice — additive added**
+- Setup: Recruit The Close Call at Marker 0 ($50 target, maxBet = 500¢). Roll [3,4]=7 (Seven Out in POINT_ACTIVE).
+- Expected: Close Call fires (`Math.abs(3-4) === 1`). `additive = Math.round(1.25 × 500 / 100) × 100 = Math.round(6.25) × 100 = 600¢ = $6`.
+- Verify: Close Call in `cascadeEvents`. `additives` increased by 600¢.
+
+**HP-CLOSE-02: All five consecutive pairs trigger Close Call**
+- Setup: Recruit The Close Call. Roll [1,2], [2,3], [3,4], [4,5], [5,6] in successive rolls (in either order).
+- Expected: Close Call fires on each. All five combinations are valid triggers.
+- Verify: Consistent behavior across all consecutive pairs.
+
+**HP-CLOSE-03: Additive amplified by Hype**
+- Setup: Bootstrap Hype = 2.0×. Recruit Close Call. Roll consecutive dice on a winning roll.
+- Expected: additive × Hype multiplied into final payout.
+- Verify: Payout delta reflects additive amplification.
+
+#### Edge Cases
+
+**EC-CLOSE-01: Non-consecutive dice — Close Call does NOT fire**
+- Setup: Recruit The Close Call. Roll [2,4]=6 (difference = 2, not 1).
+- Expected: `Math.abs(2-4) === 2 !== 1` — trigger fails. No Close Call in `cascadeEvents`.
+- Verify: No cascade event. No additive added.
+
+**EC-CLOSE-02: Paired dice [3,3] — difference is 0, not 1 — does NOT fire**
+- Setup: Recruit The Close Call. Roll [3,3]=6 (Hard 6 — a pair).
+- Expected: `Math.abs(3-3) === 0 !== 1` — trigger fails. Close Call does NOT fire on pairs.
+- Verify: No Close Call entry in cascade.
+
+**EC-CLOSE-03: [5,6]=11 is a Natural and a consecutive roll — both resolve**
+- Setup: Recruit The Close Call. Roll [5,6]=11 on COME_OUT (Natural).
+- Expected: Close Call fires (consecutive) AND Natural payout applies. Additive stacks onto the Natural win.
+- Verify: Close Call in `cascadeEvents`. Natural Pass Line payout + additive in total payout.
+
+**EC-CLOSE-04: Seven Out via [3,4]=7 — Close Call fires on a loss roll**
+- Setup: Recruit The Close Call. POINT_ACTIVE. Roll [3,4]=7 (Seven Out, consecutive).
+- Expected: Close Call fires. However, additive may not contribute to payout on a pure loss (see ⚠ from EC-ACE-03).
+- ⚠ VERIFY: Confirm additive on Seven Out. Expected behavior is additive is effectively zero-value on a net-loss roll.
+
+---
+
+## STARTER CREW — HYPE
+
+---
+
+### Crew 19 — The Momentum
+**Stated Ability:** +0.2 Hype whenever this roll's total is higher than the last.
+**Actual Implementation:** Triggers when `ctx.previousRollTotal !== null && ctx.diceTotal > ctx.previousRollTotal`. Adds 0.2 to Hype, rounded to 4 decimal places. No cooldown. Does NOT fire on the shooter's first roll (`previousRollTotal === null`). `previousRollTotal` resets to null when a new shooter begins.
+
+#### Happy Path
+
+**HP-MOM-01: Roll total higher than previous — Hype increases by 0.2**
+- Setup: Recruit The Momentum. Bootstrap a run already in POINT_ACTIVE. First roll: [2,3]=5. Second roll: [4,4]=8 (8 > 5).
+- Expected: On second roll, Momentum fires. Hype: 1.0 → 1.2.
+- Verify: Momentum in `cascadeEvents`. `run.hype === 1.2` after second roll.
+
+**HP-MOM-02: Ascending sequence — Hype grows with each increase**
+- Setup: Recruit The Momentum. Roll sequence: 5, 7, 9 (each higher than the last).
+- Expected: Momentum fires on the 7 roll (7>5) and the 9 roll (9>7). Hype: 1.0 → 1.2 → 1.4.
+- Verify: Momentum in `cascadeEvents` on the ascending rolls. Hype grows.
+
+**HP-MOM-03: Momentum fires regardless of roll result**
+- Setup: Recruit The Momentum. Roll 5 (NO_RESOLUTION), then roll 8 (Point Hit or NO_RESOLUTION, 8 > 5).
+- Expected: Momentum fires because diceTotal increased, independent of roll result category.
+- Verify: Momentum in `cascadeEvents` on any result type where total ascended.
+
+#### Edge Cases
+
+**EC-MOM-01: First roll of a shooter — Momentum does NOT fire**
+- Setup: Recruit The Momentum. New shooter begins (previousRollTotal === null). First roll of shooter: any total.
+- Expected: `ctx.previousRollTotal === null` — Momentum trigger fails. No Hype change from Momentum.
+- Verify: Momentum NOT in `cascadeEvents` on first roll of shooter.
+
+**EC-MOM-02: Equal totals — Momentum does NOT fire**
+- Setup: Recruit The Momentum. Roll 7, then roll 7 again.
+- Expected: `diceTotal <= previousRollTotal` (7 ≤ 7) — trigger fails. Momentum does not fire on ties.
+- Verify: Momentum NOT in `cascadeEvents`. Hype unchanged.
+
+**EC-MOM-03: Descending total — Momentum does NOT fire**
+- Setup: Recruit The Momentum. Roll 9, then roll 5 (5 < 9).
+- Expected: `diceTotal (5) <= previousRollTotal (9)` — trigger fails. Momentum does not fire.
+- Verify: Momentum NOT in `cascadeEvents`.
+
+**EC-MOM-04: New shooter resets previousRollTotal — Momentum cannot fire on first roll**
+- Setup: Recruit The Momentum. Shooter 1 ends (Seven Out). Shooter 2 begins.
+- Expected: `previousRollTotal` is reset to null on shooter change. Momentum does not fire on Shooter 2's first roll, even if its total would have been higher than Shooter 1's last roll.
+- Verify: No Momentum in `cascadeEvents` on first roll of new shooter.
+
+---
+
+### Crew 20 — The Echo
+**Stated Ability:** +0.4 Hype when the dice repeat the same total as the last roll.
+**Actual Implementation:** Triggers when `ctx.previousRollTotal !== null && ctx.diceTotal === ctx.previousRollTotal`. Adds 0.4 to Hype, rounded to 4 decimal places. No cooldown. Does NOT fire on the shooter's first roll. Fires on ~17% of rolls after the first (probability of matching a specific prior total).
+
+#### Happy Path
+
+**HP-ECHO-01: Repeat total — Hype increases by 0.4**
+- Setup: Recruit The Echo. Roll 8, then roll 8 again.
+- Expected: Echo fires on second 8 roll. Hype: 1.0 → 1.4.
+- Verify: Echo in `cascadeEvents`. `run.hype === 1.4`.
+
+**HP-ECHO-02: Echo fires regardless of roll result category**
+- Setup: Recruit The Echo. Roll [4,3]=7 (Seven Out), then immediately a new shooter rolls [3,4]=7 on come-out (Natural).
+- Expected: On the new shooter's first roll, previousRollTotal is null — Echo does not fire. If same shooter had two successive 7s (e.g., Seven Out then... but shooter is gone), this can't happen. Instead: COME_OUT roll of 8 (POINT_SET), then next roll in POINT_ACTIVE also 8 (POINT_HIT or NO_RESOLUTION).
+- Expected outcome: Echo fires on second 8.
+- Verify: Echo in `cascadeEvents`. Hype += 0.4.
+
+**HP-ECHO-03: Multiple consecutive repeat totals**
+- Setup: Recruit The Echo. Roll 6, 6, 6 in succession (within same shooter).
+- Expected: Echo fires on 2nd roll (6=6) and 3rd roll (6=6). Hype: 1.0 → 1.4 → 1.8.
+- Verify: Echo in `cascadeEvents` on 2nd and 3rd rolls. Hype accumulates correctly.
+
+#### Edge Cases
+
+**EC-ECHO-01: First roll of shooter — Echo does NOT fire**
+- Setup: Recruit The Echo. New shooter starts. First roll: any total.
+- Expected: `ctx.previousRollTotal === null` — Echo trigger fails.
+- Verify: Echo NOT in `cascadeEvents` on first roll.
+
+**EC-ECHO-02: Ascending total — Echo does NOT fire**
+- Setup: Recruit The Echo. Roll 5, then 8 (8 ≠ 5).
+- Expected: `diceTotal (8) !== previousRollTotal (5)` — trigger fails.
+- Verify: Echo NOT in `cascadeEvents`.
+
+**EC-ECHO-03: Seven Out resets previousRollTotal via new shooter**
+- Setup: Recruit The Echo. Last roll of Shooter 1: [4,3]=7 (Seven Out). Shooter 2 begins, rolls [3,4]=7 on come-out.
+- Expected: Shooter 2's first roll has `previousRollTotal === null` — Echo does NOT fire on this roll even though both 7s match.
+- Verify: Echo NOT in `cascadeEvents` on Shooter 2's first roll.
+
+---
+
+### Crew 21 — The Silver Lining
+**Stated Ability:** +0.6 Hype on a CRAPS_OUT (come-out roll of 2, 3, or 12).
+**Actual Implementation:** Triggers when `ctx.rollResult === 'CRAPS_OUT'`. Adds 0.6 to Hype, rounded to 4 decimal places. No cooldown. Fires on ~11% of come-out rolls (4 of 36 combinations: [1,1], [1,2], [2,1], [6,6]).
+
+#### Happy Path
+
+**HP-SILVER-01: Craps 2 on come-out — Hype increases by 0.6**
+- Setup: Recruit The Silver Lining. Bootstrap Hype = 1.0. Roll [1,1]=2 on COME_OUT.
+- Expected: Silver Lining fires. Hype: 1.0 → 1.6. Pass Line bet is lost (normal Craps Out behavior).
+- Verify: Silver Lining in `cascadeEvents`. `run.hype === 1.6`. Bankroll reflects Pass Line loss.
+
+**HP-SILVER-02: All Craps results trigger Silver Lining**
+- Setup: Recruit The Silver Lining. Roll craps 2 ([1,1]), craps 3 ([1,2] or [2,1]), craps 12 ([6,6]) on separate COME_OUT rolls.
+- Expected: Silver Lining fires on each. Hype += 0.6 on each.
+- Verify: Consistent trigger across 2, 3, and 12.
+
+**HP-SILVER-03: Silver Lining turns the worst come-out into a Hype builder**
+- Setup: Recruit The Silver Lining. Start with Hype 1.0. Roll 3 craps-outs in a row.
+- Expected: Hype: 1.0 → 1.6 → 2.2 → 2.8. Despite repeated losses, Hype builds significantly.
+- Verify: Hype accumulates correctly. Game is still losing money but Hype grows.
+
+#### Edge Cases
+
+**EC-SILVER-01: Natural (7/11) does NOT trigger Silver Lining**
+- Setup: Recruit The Silver Lining. Roll Natural 7 on COME_OUT.
+- Expected: `rollResult === 'NATURAL'` ≠ 'CRAPS_OUT'. Silver Lining does NOT fire.
+- Verify: Silver Lining NOT in `cascadeEvents`. Hype unchanged by Silver Lining.
+
+**EC-SILVER-02: Seven Out in POINT_ACTIVE does NOT trigger Silver Lining**
+- Setup: Recruit The Silver Lining. Set a point. Roll [1,6]=7 (Seven Out in POINT_ACTIVE).
+- Expected: `rollResult === 'SEVEN_OUT'` ≠ 'CRAPS_OUT'. Silver Lining does NOT fire.
+- Verify: Silver Lining NOT in `cascadeEvents`.
+
+**EC-SILVER-03: CRAPS_OUT only occurs on COME_OUT — cannot trigger during POINT_ACTIVE**
+- Note: By game rules, once a point is established, rolling 2/3/12 is NO_RESOLUTION (not Craps Out). So `rollResult === 'CRAPS_OUT'` is structurally limited to COME_OUT phase.
+- Verify: Silver Lining does not fire during POINT_ACTIVE on rolls of 2/3/12 (they produce NO_RESOLUTION, not CRAPS_OUT).
+
+---
+
+### Crew 22 — The Odd Couple
+**Stated Ability:** +0.2 Hype whenever both dice show odd faces (1, 3, or 5).
+**Actual Implementation:** Triggers when `ctx.dice[0] % 2 === 1 && ctx.dice[1] % 2 === 1`. Adds 0.2 to Hype, rounded to 4 decimal places. No cooldown. Fires on 25% of all rolls (9 of 36 combinations: both dice odd).
+
+#### Happy Path
+
+**HP-ODD-01: Both dice odd — Hype increases by 0.2**
+- Setup: Recruit The Odd Couple. Roll [1,3]=4 (POINT_HIT if point is 4, or NO_RESOLUTION otherwise).
+- Expected: Odd Couple fires. Hype: 1.0 → 1.2.
+- Verify: Odd Couple in `cascadeEvents`. `run.hype === 1.2`.
+
+**HP-ODD-02: All nine odd-odd combinations trigger Odd Couple**
+- Setup: Recruit The Odd Couple. Test: [1,1], [1,3], [1,5], [3,1], [3,3], [3,5], [5,1], [5,3], [5,5].
+- Expected: All nine combinations trigger Odd Couple.
+- Verify: Consistent +0.2 Hype across all nine combinations.
+
+**HP-ODD-03: Hype accumulates across multiple odd-die rolls**
+- Setup: Recruit The Odd Couple. Roll 3 rolls with both dice odd.
+- Expected: Hype: 1.0 → 1.2 → 1.4 → 1.6.
+- Verify: Additive accumulation confirmed.
+
+#### Edge Cases
+
+**EC-ODD-01: One odd die, one even die — Odd Couple does NOT fire**
+- Setup: Recruit The Odd Couple. Roll [1,4]=5 (one odd, one even).
+- Expected: `ctx.dice[1] % 2 === 0` — trigger fails. Odd Couple does NOT fire.
+- Verify: No Odd Couple in `cascadeEvents`.
+
+**EC-ODD-02: Both dice even — Odd Couple does NOT fire**
+- Setup: Recruit The Odd Couple. Roll [2,4]=6 (both even).
+- Expected: Both dice fail the odd check. Odd Couple does NOT fire.
+- Verify: No Odd Couple in `cascadeEvents`. (This is where The Even Keel would fire.)
+
+**EC-ODD-03: Natural 7 via [3,4] — one odd, one even — does NOT trigger Odd Couple**
+- Setup: Recruit The Odd Couple. Roll [3,4]=7 (Natural 7 on COME_OUT).
+- Expected: [3,4] has one odd (3) and one even (4). Trigger fails.
+- Verify: No Odd Couple in cascade. Normal Natural payout.
+
+**EC-ODD-04: [5,5]=10 — both odd — Odd Couple fires (also a pair)**
+- Setup: Recruit The Odd Couple. Roll [5,5]=10.
+- Expected: Both dice are odd (5%2===1) — Odd Couple fires. Hype += 0.2.
+- Note: This is also a paired roll where Physics Professor would fire. In solo testing, only Odd Couple is present.
+- Verify: Odd Couple in `cascadeEvents`. Hype += 0.2.
+
+---
+
+## STARTER CREW — TABLE
+
+---
+
+### Crew 23 — The Even Keel
+**Stated Ability:** Dynamic additive (1.0× max-bet) whenever both dice show even faces.
+**Actual Implementation:** Triggers when `ctx.dice[0] % 2 === 0 && ctx.dice[1] % 2 === 0`. Adds `Math.round(1.0 × maxBet / 100) × 100` cents to `additives`. No cooldown. Fires on 25% of all rolls (9 of 36: both dice even). Additive is amplified by Hype and multipliers.
+
+#### Happy Path
+
+**HP-KEEL-01: Both dice even — additive added**
+- Setup: Recruit The Even Keel at Marker 0 ($50 target, maxBet = 500¢). Roll [2,4]=6 (NO_RESOLUTION in point phase).
+- Expected: Even Keel fires. `additive = Math.round(1.0 × 500 / 100) × 100 = 500¢ = $5`.
+- Verify: Even Keel in `cascadeEvents`. `additives` increased by 500¢.
+
+**HP-KEEL-02: All nine even-even combinations trigger Even Keel**
+- Setup: Recruit The Even Keel. Test: [2,2], [2,4], [2,6], [4,2], [4,4], [4,6], [6,2], [6,4], [6,6].
+- Expected: All nine combinations trigger Even Keel. Consistent additive on each.
+- Verify: Even Keel fires for all nine combinations.
+
+**HP-KEEL-03: Additive scales with marker target**
+- Setup: Recruit The Even Keel. Test at Marker 0 ($50 target) and Marker 6 ($250k target).
+- Expected: At Marker 6, maxBet = $25,000. Additive = `Math.round(1.0 × 25000 / 100) × 100 = 25000¢ = $250`.
+- Verify: Additive grows proportionally. Meaningful income at higher floors.
+
+#### Edge Cases
+
+**EC-KEEL-01: One even die, one odd die — Even Keel does NOT fire**
+- Setup: Recruit The Even Keel. Roll [2,3]=5 (one even, one odd).
+- Expected: `ctx.dice[1] % 2 !== 0` — trigger fails.
+- Verify: No Even Keel in `cascadeEvents`.
+
+**EC-KEEL-02: Both dice odd — Even Keel does NOT fire**
+- Setup: Recruit The Even Keel. Roll [3,5]=8 (both odd).
+- Expected: Both dice fail the even check. Even Keel does NOT fire. (This is where The Odd Couple would fire.)
+- Verify: No Even Keel in `cascadeEvents`.
+
+**EC-KEEL-03: [6,6]=12 — both even — Even Keel fires (on Craps Out)**
+- Setup: Recruit The Even Keel. Roll [6,6]=12 on COME_OUT (Craps Out).
+- Expected: Both dice are even. Even Keel fires, additive added. However, this is a CRAPS_OUT (Pass Line lost), and additives may not yield a net payout on a pure-loss roll.
+- ⚠ VERIFY: Confirm whether additive contributes to payout on a CRAPS_OUT where basePassLinePayout = 0. Expected: additive is effectively lost since there are no positive base payouts to amplify.
+- Verify: Even Keel in `cascadeEvents`. Net bankroll delta reflects loss (or minimal gain if additive is applied).
+
+**EC-KEEL-04: [4,4]=8 — both even — Even Keel fires alongside a potential hardway win**
+- Setup: Recruit The Even Keel. Hard 8 bet active. Roll [4,4]=8 (Hard 8 win, point phase).
+- Expected: Even Keel fires (4%2===0 on both dice). Additive adds on top of Hard 8 payout.
+- Verify: Both Hard 8 payout and Even Keel additive in final settlement. Even Keel in `cascadeEvents`.
+
+---
+
+### Crew 24 — The Doorman
+**Stated Ability:** Dynamic additive (0.5× max-bet) on every come-out roll.
+**Actual Implementation:** Triggers on any of: `NATURAL`, `CRAPS_OUT`, or `POINT_SET`. Adds `Math.round(0.5 × maxBet / 100) × 100` cents to `additives`. No cooldown. Fires on 100% of come-out rolls (all 36 combinations result in one of these three outcomes during COME_OUT).
+
+#### Happy Path
+
+**HP-DOOR-01: NATURAL on come-out — additive added**
+- Setup: Recruit The Doorman at Marker 0 ($50 target, maxBet = 500¢). Roll [3,4]=7 (Natural on COME_OUT).
+- Expected: Doorman fires. `additive = Math.round(0.5 × 500 / 100) × 100 = 200¢ = $2` (rounded to nearest dollar: `Math.round(2.5) = 3` → 300¢ = $3 — verify actual rounding behavior).
+- ⚠ VERIFY: `Math.round(0.5 × 500 / 100) = Math.round(2.5) = 3` → `3 × 100 = 300¢ = $3`. Confirm whether JS `Math.round(2.5)` gives 3 (rounds half-up) or 2 (banker's rounding). Standard JS `Math.round` rounds half-up, so expect $3.
+- Verify: Doorman in `cascadeEvents`. Natural Pass Line win includes the additive.
+
+**HP-DOOR-02: CRAPS_OUT on come-out — additive added despite the loss**
+- Setup: Recruit The Doorman. Roll [1,2]=3 (Craps Out on COME_OUT).
+- Expected: Doorman fires. Additive added. Even though Pass Line is lost, the additive still contributes to settlement.
+- ⚠ VERIFY: On a CRAPS_OUT, basePassLinePayout = 0 (loss, stake already deducted). Does the additive alone produce a positive payout? Check `settleTurn()` behavior when `additives > 0` but all base payouts are 0. Likely the additive is only meaningful when there is a base win to attach to.
+- Verify: Doorman in `cascadeEvents`. Confirm net payout behavior on Craps Out + additive.
+
+**HP-DOOR-03: POINT_SET on come-out — additive added**
+- Setup: Recruit The Doorman. Roll [4,2]=6 (POINT_SET — establishes point 6).
+- Expected: Doorman fires on POINT_SET. Additive added. Note: POINT_SET produces no base payout (Pass Line stays for later resolution). The additive on a POINT_SET may not contribute to net payout until a win occurs.
+- ⚠ VERIFY: On POINT_SET, basePassLinePayout = 0 and no other payout. Additive behavior is ambiguous here — confirm whether it carries forward or is applied immediately.
+- Verify: Doorman in `cascadeEvents`. Observe net payout (likely $0 after additive since no base wins).
+
+**HP-DOOR-04: Doorman fires on ALL come-out roll types**
+- Setup: Recruit The Doorman. Roll a Natural, then a Craps Out, then a Point Set in sequence.
+- Expected: Doorman fires on all three come-out rolls. Does NOT fire on subsequent POINT_ACTIVE rolls.
+- Verify: Doorman in `cascadeEvents` on all three come-out types.
+
+#### Edge Cases
+
+**EC-DOOR-01: NO_RESOLUTION (point phase) — Doorman does NOT fire**
+- Setup: Recruit The Doorman. Set a point. Roll a number that is neither the point nor 7 (e.g., [3,2]=5 when point is 8).
+- Expected: `rollResult === 'NO_RESOLUTION'` — Doorman trigger fails. No additive from Doorman.
+- Verify: Doorman NOT in `cascadeEvents` during POINT_ACTIVE.
+
+**EC-DOOR-02: POINT_HIT — Doorman does NOT fire**
+- Setup: Recruit The Doorman. Set a point. Hit it.
+- Expected: `rollResult === 'POINT_HIT'` — Doorman trigger fails. Doorman is come-out only.
+- Verify: Doorman NOT in `cascadeEvents` on POINT_HIT.
+
+**EC-DOOR-03: SEVEN_OUT — Doorman does NOT fire**
+- Setup: Recruit The Doorman. Roll Seven Out.
+- Expected: `rollResult === 'SEVEN_OUT'` — Doorman trigger fails.
+- Verify: Doorman NOT in `cascadeEvents`.
+
+---
+
+### Crew 25 — The Grinder
+**Stated Ability:** Dynamic additive (0.75× max-bet) on every NO_RESOLUTION.
+**Actual Implementation:** Triggers when `ctx.rollResult === 'NO_RESOLUTION'`. Adds `Math.round(0.75 × maxBet / 100) × 100` cents to `additives`. No cooldown. `NO_RESOLUTION` can only occur during POINT_ACTIVE phase. Fires on ~65–70% of point-phase rolls.
+
+#### Happy Path
+
+**HP-GRIND-01: NO_RESOLUTION — additive added**
+- Setup: Recruit The Grinder at Marker 0 ($50 target, maxBet = 500¢). Set point 8. Roll [3,2]=5 (NO_RESOLUTION — not a 7, not the point).
+- Expected: Grinder fires. `additive = Math.round(0.75 × 500 / 100) × 100 = Math.round(3.75) × 100 = 400¢ = $4`.
+- Verify: Grinder in `cascadeEvents`. `additives` increased by 400¢.
+
+**HP-GRIND-02: Grinder fires on multiple consecutive NO_RESOLUTION rolls**
+- Setup: Recruit The Grinder. Set a point. Roll 4 successive NO_RESOLUTION results.
+- Expected: Grinder fires on every NO_RESOLUTION. Additives accumulate each roll (applied individually at settlement per roll, not combined).
+- Verify: Grinder in `cascadeEvents` on all 4 rolls.
+
+**HP-GRIND-03: Additive amplified by Hype**
+- Setup: Bootstrap Hype = 1.5×. Recruit The Grinder. Roll NO_RESOLUTION.
+- Expected: Grinder additive is amplified by 1.5× in `settleTurn()`.
+- Verify: Payout delta reflects Hype amplification of the additive.
+
+**HP-GRIND-04: Additive scales with marker target**
+- Setup: Recruit The Grinder at Marker 3 ($1,500 target, maxBet = $150). Roll NO_RESOLUTION.
+- Expected: `additive = Math.round(0.75 × 15000 / 100) × 100 = Math.round(112.5) × 100 = 11300¢ = $113`.
+- Verify: Grinder income grows meaningfully at higher floors.
+
+#### Edge Cases
+
+**EC-GRIND-01: POINT_HIT — Grinder does NOT fire**
+- Setup: Recruit The Grinder. Set a point. Hit it.
+- Expected: `rollResult === 'POINT_HIT'` ≠ 'NO_RESOLUTION'. Grinder does NOT fire.
+- Verify: Grinder NOT in `cascadeEvents`.
+
+**EC-GRIND-02: SEVEN_OUT — Grinder does NOT fire**
+- Setup: Recruit The Grinder. Roll Seven Out.
+- Expected: `rollResult === 'SEVEN_OUT'` ≠ 'NO_RESOLUTION'. Grinder does NOT fire.
+- Verify: Grinder NOT in `cascadeEvents`.
+
+**EC-GRIND-03: Come-out rolls — Grinder does NOT fire (NO_RESOLUTION is point-phase only)**
+- Setup: Recruit The Grinder. Roll NATURAL, CRAPS_OUT, POINT_SET on COME_OUT.
+- Expected: None of these are 'NO_RESOLUTION'. Grinder does NOT fire on any come-out result.
+- Verify: Grinder NOT in `cascadeEvents` on come-out rolls.
+
+---
+
+## STARTER CREW — PAYOUT
+
+---
+
+### Crew 26 — The Handicapper
+**Stated Ability:** +Hype on POINT_SET — scaled to the difficulty of the point.
+**Actual Implementation:** Triggers when `ctx.rollResult === 'POINT_SET' && ctx.activePoint !== null`. Hype delta is point-dependent:
+- Points 4 or 10 → +0.3 Hype (hardest to hit: 3/36 probability each)
+- Points 5 or 9 → +0.2 Hype (medium: 4/36 probability each)
+- Points 6 or 8 → +0.1 Hype (easiest to hit: 5/36 probability each)
+
+No cooldown. Fires on ~67% of come-out rolls (24/36 combinations establish a point).
+
+#### Happy Path
+
+**HP-HANDI-01: Point 4 or 10 established — Hype increases by 0.3**
+- Setup: Recruit The Handicapper. Roll [2,2]=4 (POINT_SET, establishes point 4).
+- Expected: Handicapper fires. Hype: 1.0 → 1.3.
+- Verify: Handicapper in `cascadeEvents`. `run.hype === 1.3`. `ctx.activePoint === 4`.
+
+**HP-HANDI-02: Point 5 or 9 established — Hype increases by 0.2**
+- Setup: Recruit The Handicapper. Roll [3,2]=5 (POINT_SET, establishes point 5).
+- Expected: Handicapper fires. Hype: 1.0 → 1.2.
+- Verify: Handicapper in `cascadeEvents`. `run.hype === 1.2`.
+
+**HP-HANDI-03: Point 6 or 8 established — Hype increases by 0.1**
+- Setup: Recruit The Handicapper. Roll [4,2]=6 (POINT_SET, establishes point 6).
+- Expected: Handicapper fires. Hype: 1.0 → 1.1.
+- Verify: Handicapper in `cascadeEvents`. `run.hype === 1.1`.
+
+**HP-HANDI-04: All six point values produce correct Hype deltas**
+- Setup: Recruit The Handicapper. Establish each of the six point values in separate shooters.
+- Expected: 4→+0.3, 5→+0.2, 6→+0.1, 8→+0.1, 9→+0.2, 10→+0.3.
+- Verify: All six variants produce the documented Hype delta.
+
+#### Edge Cases
+
+**EC-HANDI-01: NATURAL on come-out — Handicapper does NOT fire**
+- Setup: Recruit The Handicapper. Roll Natural 7 or 11 on COME_OUT.
+- Expected: `rollResult === 'NATURAL'` ≠ 'POINT_SET'. Handicapper does NOT fire.
+- Verify: Handicapper NOT in `cascadeEvents`.
+
+**EC-HANDI-02: CRAPS_OUT on come-out — Handicapper does NOT fire**
+- Setup: Recruit The Handicapper. Roll [1,2]=3 (Craps Out).
+- Expected: `rollResult === 'CRAPS_OUT'` ≠ 'POINT_SET'. Handicapper does NOT fire.
+- Verify: Handicapper NOT in `cascadeEvents`.
+
+**EC-HANDI-03: POINT_HIT — Handicapper does NOT fire (fires on SET, not HIT)**
+- Setup: Recruit The Handicapper. Establish a point. Hit it.
+- Expected: POINT_HIT ≠ POINT_SET. Handicapper does NOT fire.
+- Verify: Handicapper NOT in `cascadeEvents` on the hit.
+
+**EC-HANDI-04: Symmetry — point 4 and point 10 both yield +0.3**
+- Setup: Recruit The Handicapper. Establish point 4 in one shooter, point 10 in another.
+- Expected: Both yield Hype +0.3. Symmetric by design (both have 3/36 probability).
+- Verify: Identical Hype delta for both.
+
+---
+
+### Crew 27 — The Mirror
+**Stated Ability:** +0.2 Hype on any roll totalling 7, regardless of phase.
+**Actual Implementation:** Triggers when `ctx.diceTotal === 7`. Adds 0.2 to Hype, rounded to 4 decimal places. No cooldown. Fires on ~17% of all rolls (6 of 36 combinations sum to 7). Fires on both NATURAL (come-out 7) and SEVEN_OUT (point-phase 7) — Seven Outs still lose, but the shooter retains the Hype boost.
+
+#### Happy Path
+
+**HP-MIRROR-01: Natural 7 on come-out — Mirror fires, Hype increases**
+- Setup: Recruit The Mirror. Roll [3,4]=7 on COME_OUT (Natural).
+- Expected: Mirror fires. Hype: 1.0 → 1.2. Natural payout resolves normally.
+- Verify: Mirror in `cascadeEvents`. `run.hype === 1.2`. Pass Line pays 1:1.
+
+**HP-MIRROR-02: Seven Out in point phase — Mirror fires, Hype increases but then resets**
+- Setup: Recruit The Mirror. Set a point. Roll [3,4]=7 (Seven Out).
+- Expected: Mirror fires during cascade (diceTotal=7). Hype += 0.2 in cascade context. However, Seven Out resets Hype to 1.0 after settlement.
+- ⚠ VERIFY: Confirm Hype reset on Seven Out overrides Mirror's boost. The cascade runs before the Seven Out state transition, so Mirror's boost is applied then wiped. Expected: `run.hype === 1.0` after Seven Out even when Mirror fires.
+- Verify: Mirror in `cascadeEvents`. `run.hype === 1.0` after the roll (not 1.2).
+
+**HP-MIRROR-03: Mirror fires on all six 7-combos**
+- Setup: Recruit The Mirror. Test: [1,6], [2,5], [3,4], [4,3], [5,2], [6,1].
+- Expected: Mirror fires on all six. Hype += 0.2 on each.
+- Verify: Consistent trigger across all six dice combinations.
+
+#### Edge Cases
+
+**EC-MIRROR-01: Non-7 total — Mirror does NOT fire**
+- Setup: Recruit The Mirror. Roll [4,4]=8 (Hard 8 or NO_RESOLUTION).
+- Expected: `diceTotal (8) !== 7` — trigger fails. Mirror does NOT fire.
+- Verify: Mirror NOT in `cascadeEvents`.
+
+**EC-MIRROR-02: Phase-agnostic — Mirror fires on any 7, come-out or point phase**
+- Setup: Recruit The Mirror. Roll a Natural 7 on come-out, then a Seven Out in point phase.
+- Expected: Mirror fires on BOTH (both have diceTotal=7). Unlike most crew, the Mirror is entirely total-based, not result-based.
+- Verify: Mirror in `cascadeEvents` on both rolls.
+
+**EC-MIRROR-03: Hype after Seven Out with Mirror — reset wins**
+- Setup: Recruit The Mirror. Hype = 1.8. Roll Seven Out ([2,5]=7).
+- Expected: Mirror fires in cascade: Hype = 1.8 + 0.2 = 2.0. Then Seven Out reset: Hype → 1.0.
+- Verify: `run.hype === 1.0` after. Mirror appears in cascade but Hype boost does not persist.
+
+---
+
+## STARTER CREW — WILDCARD
+
+---
+
+### Crew 28 — The Bookkeeper
+**Stated Ability:** Dynamic additive (1.0× max-bet) on every 3rd roll of the shooter.
+**Actual Implementation:** Triggers when `ctx.shooterRollCount % 3 === 0`. `shooterRollCount` is incremented BEFORE the cascade (1-based), so the cascade always sees the current roll's position. Fires on rolls 3, 6, 9, 12… of each shooter. Counter resets to 1 on new shooter. No cooldown. Additive = `Math.round(1.0 × maxBet / 100) × 100`. Amplified by Hype and multipliers.
+
+#### Happy Path
+
+**HP-BOOK-01: 3rd roll of shooter — additive added**
+- Setup: Recruit The Bookkeeper at Marker 0 ($50 target, maxBet = 500¢). Shooter roll 1: any. Roll 2: any. Roll 3 (shooterRollCount = 3, 3%3===0).
+- Expected: Bookkeeper fires on roll 3. `additive = Math.round(1.0 × 500 / 100) × 100 = 500¢ = $5`.
+- Verify: Bookkeeper in `cascadeEvents` on roll 3. `additives` increased by 500¢. NOT in cascade on rolls 1 and 2.
+
+**HP-BOOK-02: Pattern repeats — fires every 3 rolls**
+- Setup: Recruit The Bookkeeper. Track shooterRollCount across many rolls.
+- Expected: Bookkeeper fires on rolls 3, 6, 9, 12, etc. Silent on all other rolls.
+- Verify: Bookkeeper in `cascadeEvents` at intervals of 3. Not in cascade on rolls 1, 2, 4, 5, 7, 8, etc.
+
+**HP-BOOK-03: Counter resets on new shooter**
+- Setup: Recruit The Bookkeeper. Shooter A makes 4 rolls, then Seven Outs. Shooter B begins.
+- Expected: `shooterRollCount` resets to 1 for Shooter B. Bookkeeper does not fire on Shooter B's roll 1. Fires on Shooter B's roll 3.
+- Verify: No Bookkeeper in cascade on Shooter B's rolls 1 and 2. Bookkeeper fires on roll 3.
+
+**HP-BOOK-04: Additive scales with marker target**
+- Setup: Recruit The Bookkeeper at Marker 6 ($250k target, maxBet = $25,000). Roll 3 (3rd shooter roll).
+- Expected: `additive = Math.round(1.0 × 25000 / 100) × 100 = 25000¢ = $250`.
+- Verify: High-floor additive is meaningful income.
+
+#### Edge Cases
+
+**EC-BOOK-01: Roll 1 and 2 — Bookkeeper does NOT fire**
+- Setup: Recruit The Bookkeeper. New shooter. Roll 1 (shooterRollCount=1, 1%3≠0). Roll 2 (2%3≠0).
+- Expected: Bookkeeper silent on rolls 1 and 2.
+- Verify: Bookkeeper NOT in `cascadeEvents` on first two rolls.
+
+**EC-BOOK-02: Roll 3 is a Seven Out — Bookkeeper fires on the losing roll**
+- Setup: Recruit The Bookkeeper. Make 2 rolls (shooter still alive). Roll 3 is a Seven Out.
+- Expected: Bookkeeper fires (3%3===0) on the Seven Out roll. Additive added to context. However, on a Seven Out, base payouts are 0 — additive may not yield net payout.
+- ⚠ VERIFY: Confirm additive behavior on a Seven Out roll (same question as EC-ACE-03). Expected: additive is effectively lost since no base wins exist to amplify.
+- Verify: Bookkeeper in `cascadeEvents`. Net bankroll delta reflects the Seven Out loss.
+
+**EC-BOOK-03: shooterRollCount is 1-based and set before cascade**
+- Setup: Recruit The Bookkeeper. Confirm via API response that `shooterRollCount` on a new shooter's first roll is 1, not 0.
+- Expected: 1%3 ≠ 0 → Bookkeeper does not fire on roll 1. Confirms the 1-based counting.
+- Verify: `run.shooterRollCount === 1` on first roll of shooter.
+
+---
+
+### Crew 29 — The Pressure Cooker
+**Stated Ability:** +0.5 Hype AND dynamic additive (1.5× max-bet) after 5 consecutive blank point-phase rolls.
+**Actual Implementation:** Triggers when `ctx.rollResult === 'NO_RESOLUTION' && ctx.pointPhaseBlankStreak === 4`. `pointPhaseBlankStreak` is the PREVIOUS consecutive blank count (before this roll). A value of 4 means this roll is the 5th consecutive blank. After triggering, `computeNextState()` resets `pointPhaseBlankStreak` to 0. On any non-NO_RESOLUTION result, streak also resets to 0. No cooldown.
+
+#### Happy Path
+
+**HP-COOK-01: 5th consecutive NO_RESOLUTION — Pressure Cooker fires**
+- Setup: Recruit The Pressure Cooker at Marker 0 ($50 target, maxBet = 500¢). Set a point. Roll 5 consecutive NO_RESOLUTION results.
+- Expected: Pressure Cooker does NOT fire on rolls 1–4 (streak = 0, 1, 2, 3). On roll 5 (streak = 4 entering the roll): fires. Hype += 0.5. `additive = Math.round(1.5 × 500 / 100) × 100 = Math.round(7.5) × 100 = 800¢ = $8`.
+- Verify: Pressure Cooker NOT in `cascadeEvents` on rolls 1–4. Pressure Cooker IS in cascade on roll 5. `run.hype` increases by 0.5. Additive added.
+
+**HP-COOK-02: Streak resets after firing — 5 more blanks needed for next trigger**
+- Setup: Recruit The Pressure Cooker. Fire it (5 consecutive blanks). The streak resets to 0. Roll more NO_RESOLUTION results.
+- Expected: Pressure Cooker does not fire again until 5 more consecutive blanks accumulate.
+- Verify: No Pressure Cooker in `cascadeEvents` on rolls 6–9 after the reset. Fires again on roll 10 (rolls 6–10 as the new 5-blank sequence).
+
+**HP-COOK-03: Additive and Hype boost both apply on trigger**
+- Setup: Recruit The Pressure Cooker. Fire on 5th blank. Observe both Hype and additive changes.
+- Expected: Single cascade event includes both Hype delta (+0.5) and additives delta (+additive amount). Both visible in `contextDelta`.
+- Verify: Both `contextDelta.hype` and `contextDelta.additives` are present in the Pressure Cooker cascade event.
+
+#### Edge Cases
+
+**EC-COOK-01: Streak interrupted by POINT_HIT — resets to 0**
+- Setup: Recruit The Pressure Cooker. Roll 3 NO_RESOLUTION, then hit the point (POINT_HIT). Streak resets. Roll 4 more NO_RESOLUTION.
+- Expected: Pressure Cooker did not fire during the 3-blank sequence (not enough). After POINT_HIT resets streak, must accumulate 5 more blanks. Does NOT fire on the 4th blank after reset.
+- Verify: No Pressure Cooker in cascade after 4 post-reset blanks.
+
+**EC-COOK-02: Streak interrupted by SEVEN_OUT — resets to 0**
+- Setup: Recruit The Pressure Cooker. Roll 4 NO_RESOLUTION (streak = 4), then roll Seven Out (SEVEN_OUT). Streak resets to 0.
+- Expected: Pressure Cooker does NOT fire on the Seven Out (not NO_RESOLUTION). Streak resets. A new shooter must build from 0.
+- Verify: No Pressure Cooker in cascade on Seven Out roll.
+
+**EC-COOK-03: pointPhaseBlankStreak is a COME_OUT streak, not POINT_ACTIVE streak**
+- Note: `pointPhaseBlankStreak` only counts consecutive NO_RESOLUTION within point phase. Come-out rolls (NATURAL, CRAPS_OUT, POINT_SET) reset it. This ensures the Pressure Cooker tracks sustained point-phase grinding, not overall rolls.
+- Setup: Set point, roll 3 blanks (streak=3). Point hit — new come-out. Roll Natural (streak resets). Set new point. Roll 2 more blanks.
+- Expected: Streak is 2 after the NATURAL reset. Pressure Cooker needs 3 more blanks to fire. Does not carry streak across come-out cycles.
+- Verify: `run.pointPhaseBlankStreak` shows correct count in state.
+
+**EC-COOK-04: Roll 4 blanks exactly (streak=4 entering roll 4) — does NOT fire unless roll 4 is also NO_RESOLUTION**
+- Note: The trigger checks `ctx.pointPhaseBlankStreak === 4` (the count BEFORE this roll) AND `ctx.rollResult === 'NO_RESOLUTION'` (this roll must also be blank). If roll 5 is POINT_HIT instead, Pressure Cooker does not fire.
+- Setup: Roll 4 blanks. On the 5th roll (when streak=4 entering), roll POINT_HIT instead.
+- Expected: Pressure Cooker does NOT fire because `ctx.rollResult !== 'NO_RESOLUTION'`. Streak resets after POINT_HIT.
+- Verify: No Pressure Cooker in cascade on the POINT_HIT.
+
+---
+
+### Crew 30 — The Contrarian
+**Stated Ability:** Dynamic additive (1.0× max-bet) whenever this roll total is lower than the last.
+**Actual Implementation:** Triggers when `ctx.previousRollTotal !== null && ctx.diceTotal < ctx.previousRollTotal`. Adds `Math.round(1.0 × maxBet / 100) × 100` cents to `additives`. No cooldown. Does NOT fire on the shooter's first roll. Fires on ~40% of rolls after the first (probability that the next roll is strictly lower than the previous).
+
+**Design note:** Together with The Momentum (fires on ascent) and The Echo (fires on repeat), these three crew cover nearly every roll of a shooter:
+- Momentum: current total > previous total (~45%)
+- Echo: current total = previous total (~17%)
+- Contrarian: current total < previous total (~40%)
+- (Gaps: some edge distributions not covered 100% due to variance in probabilities)
+
+#### Happy Path
+
+**HP-CONTRA-01: Roll total lower than previous — additive added**
+- Setup: Recruit The Contrarian at Marker 0 ($50 target, maxBet = 500¢). Roll 9, then roll 5 (5 < 9).
+- Expected: Contrarian fires on the 5 roll. `additive = Math.round(1.0 × 500 / 100) × 100 = 500¢ = $5`.
+- Verify: Contrarian in `cascadeEvents`. `additives` increased by 500¢.
+
+**HP-CONTRA-02: Descending sequence — Contrarian fires on each drop**
+- Setup: Recruit The Contrarian. Roll sequence: 10, 8, 5 (each lower than the last).
+- Expected: Contrarian fires on the 8 roll (8<10) and the 5 roll (5<8). Additive added on each.
+- Verify: Contrarian in `cascadeEvents` on the two descending rolls.
+
+**HP-CONTRA-03: Contrarian fires on descending total regardless of roll result**
+- Setup: Recruit The Contrarian. Roll 9 (any result), then roll 6 (if point is 8, this is NO_RESOLUTION). 6 < 9, Contrarian fires.
+- Expected: Contrarian fires based on total comparison, not roll result category.
+- Verify: Contrarian in `cascadeEvents`. Additive added.
+
+**HP-CONTRA-04: Additive scales with marker target**
+- Setup: Recruit The Contrarian at Marker 6 ($250k target, maxBet = $25,000). Roll a descending total.
+- Expected: `additive = Math.round(1.0 × 25000 / 100) × 100 = 25000¢ = $250`.
+- Verify: High-floor additive is meaningful.
+
+#### Edge Cases
+
+**EC-CONTRA-01: First roll of shooter — Contrarian does NOT fire**
+- Setup: Recruit The Contrarian. New shooter begins. First roll: any total.
+- Expected: `ctx.previousRollTotal === null` — Contrarian trigger fails.
+- Verify: Contrarian NOT in `cascadeEvents` on first roll of shooter.
+
+**EC-CONTRA-02: Equal totals — Contrarian does NOT fire**
+- Setup: Recruit The Contrarian. Roll 7, then roll 7 again.
+- Expected: `diceTotal (7) >= previousRollTotal (7)` (not strictly less) — trigger fails.
+- Verify: Contrarian NOT in `cascadeEvents` on the repeat-7 roll. (This is where The Echo would fire.)
+
+**EC-CONTRA-03: Ascending total — Contrarian does NOT fire**
+- Setup: Recruit The Contrarian. Roll 5, then 9 (9 > 5).
+- Expected: `diceTotal (9) >= previousRollTotal (5)` — trigger fails. (This is where The Momentum would fire.)
+- Verify: Contrarian NOT in `cascadeEvents`.
+
+**EC-CONTRA-04: New shooter resets previousRollTotal — Contrarian cannot fire on first roll**
+- Setup: Recruit The Contrarian. Shooter 1's last roll: 10 (high). Seven Out. Shooter 2 begins, first roll: 4.
+- Expected: `previousRollTotal === null` for Shooter 2's first roll — Contrarian does NOT fire on roll 1, even though 4 < 10.
+- Verify: Contrarian NOT in `cascadeEvents` on Shooter 2's first roll.
+
+---
+
 ## Test Execution Notes
 
 ### Bootstrap Setup Needed
@@ -676,6 +1392,13 @@ To seed crew for testing without playing through the full Pub flow, the bootstra
 }
 ```
 This avoids replaying the full game flow for each crew member test. Work with the API bootstrap route to add these optional parameters before testing begins.
+
+### Additive Crew Notes
+Starter crew that add to `additives` (IDs 17, 18, 23, 24, 25, 28, 30) follow the FB-024 dynamic scaling formula:
+```
+additive = Math.round(ADDITIVE_MULT × Math.floor(markerTargetCents × 0.10) / 100) × 100
+```
+This rounds to the nearest $1. Calculate expected values per marker target when verifying payouts.
 
 ### Verification Method
 For each test:
@@ -692,21 +1415,36 @@ All defects discovered during crew testing should be appended to `crew-test-resu
 
 ## Test Case Count Summary
 
-| Crew | Happy Path | Edge Cases | Total |
-|------|-----------|-----------|-------|
-| Lefty McGuffin | 3 | 5 | 8 |
-| Physics Prof | 3 | 5 | 8 |
-| The Mechanic | 3 | 5 | 8 |
-| The Mathlete | 2 | 4 | 6 |
-| Floor Walker | 2 | 4 | 6 |
-| The Regular | 4 | 3 | 7 |
-| Big Spender | 3 | 3 | 6 |
-| The Shark | 2 | 3 | 5 |
-| The Whale | 3 | 3 | 6 |
-| Nervous Intern | 4 | 2 | 6 |
-| Hype-Train Holly | 3 | 2 | 5 |
-| Drunk Uncle | 4 | 2 | 6 |
-| The Mimic | 2 | 1 | 3 |
-| The Old Pro | 2 | 2 | 4 |
-| Lucky Charm | 3 | 2 | 5 |
-| **TOTAL** | **43** | **46** | **89** |
+| Crew | ID | Happy Path | Edge Cases | Total |
+|------|----|-----------|-----------|-------|
+| Lefty McGuffin | 1 | 3 | 5 | 8 |
+| Physics Prof | 2 | 3 | 5 | 8 |
+| The Mechanic | 3 | 3 | 5 | 8 |
+| The Mathlete | 4 | 2 | 4 | 6 |
+| Floor Walker | 5 | 2 | 4 | 6 |
+| The Regular | 6 | 4 | 3 | 7 |
+| Big Spender | 7 | 3 | 3 | 6 |
+| The Shark | 8 | 3 | 3 | 6 |
+| The Whale | 9 | 3 | 3 | 6 |
+| Nervous Intern | 10 | 4 | 2 | 6 |
+| Hype-Train Holly | 11 | 3 | 2 | 5 |
+| Drunk Uncle | 12 | 4 | 2 | 6 |
+| The Mimic | 13 | 2 | 1 | 3 |
+| The Old Pro | 14 | 3 | 1 | 4 |
+| Lucky Charm | 15 | 3 | 2 | 5 |
+| The Lookout | 16 | 4 | 3 | 7 |
+| "Ace" McGee | 17 | 3 | 3 | 6 |
+| The Close Call | 18 | 3 | 4 | 7 |
+| The Momentum | 19 | 3 | 4 | 7 |
+| The Echo | 20 | 3 | 3 | 6 |
+| The Silver Lining | 21 | 3 | 3 | 6 |
+| The Odd Couple | 22 | 3 | 4 | 7 |
+| The Even Keel | 23 | 3 | 4 | 7 |
+| The Doorman | 24 | 4 | 3 | 7 |
+| The Grinder | 25 | 4 | 3 | 7 |
+| The Handicapper | 26 | 4 | 4 | 8 |
+| The Mirror | 27 | 3 | 3 | 6 |
+| The Bookkeeper | 28 | 4 | 3 | 7 |
+| The Pressure Cooker | 29 | 3 | 4 | 7 |
+| The Contrarian | 30 | 4 | 4 | 8 |
+| **TOTAL** | | **98** | **97** | **195** |

@@ -30,6 +30,14 @@ export async function requireClerkAuth(
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<void> {
+  if (process.env['NODE_ENV'] === 'test') {
+    const testClerkId = request.headers['x-test-user-id'];
+    if (typeof testClerkId === 'string' && testClerkId.length > 0) {
+      request.clerkId = testClerkId;
+      return;
+    }
+  }
+
   const authHeader = request.headers['authorization'];
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 

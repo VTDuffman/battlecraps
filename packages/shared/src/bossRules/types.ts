@@ -50,8 +50,12 @@ export interface BossRuleHooks {
    * in what order) the cascade will visit. Return [] to skip the entire loop.
    *
    * Used by: DISABLE_CREW — returns [] to fully suppress crew cascade.
+   *          CONVERGENCE — returns [0..N-1] where N shrinks each seven-out.
+   *
+   * `state` carries the live per-fight runtime values (bossPointHits, etc.),
+   * passed through from the roll handler so hooks can react to accumulated state.
    */
-  modifyCascadeOrder?(slotCount: number, params: BossRuleParams): number[];
+  modifyCascadeOrder?(slotCount: number, params: BossRuleParams, state?: BossRuleState): number[];
 
   /**
    * Called after settleTurn() returns the raw payout but before it is applied

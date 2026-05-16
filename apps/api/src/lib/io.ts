@@ -26,6 +26,11 @@ export function initIO(io: SocketIOServer): void {
   _io = io;
 }
 
+/** Resets the singleton — used in tests to allow re-initialisation between suites. */
+export function resetIO(): void {
+  _io = null;
+}
+
 /**
  * Returns the Socket.IO server instance.
  * Throws if called before initIO() — this is a programmer error, not a runtime

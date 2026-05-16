@@ -19,6 +19,7 @@ import { tributeHooks }        from './tribute.js';
 import { tidalSurgeHooks }     from './tidalSurge.js';
 import { orbitalDecayHooks }          from './orbitalDecay.js';
 import { firstContactProtocolHooks }  from './firstContactProtocol.js';
+import { convergenceHooks }           from './convergence.js';
 
 export const BOSS_RULE_HOOKS: Record<BossRuleType, BossRuleHooks> = {
   EXTORTION_FEE:           extortionFeeHooks,
@@ -29,6 +30,7 @@ export const BOSS_RULE_HOOKS: Record<BossRuleType, BossRuleHooks> = {
   TIDAL_SURGE:             tidalSurgeHooks,
   ORBITAL_DECAY:           orbitalDecayHooks,
   FIRST_CONTACT_PROTOCOL:  firstContactProtocolHooks,
+  CONVERGENCE:             convergenceHooks,
 };
 
 export type { BossRuleHooks, BossRuleState } from './types.js';

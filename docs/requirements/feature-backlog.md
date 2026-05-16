@@ -756,7 +756,7 @@ A new `leaderboard_entries` table to avoid expensive aggregate logic on the `run
 
 **Type:** Feature / Content  
 **Area:** Progression / `packages/shared/src/config.ts` / `apps/web/src/lib/floorThemes.ts`  
-**Status:** In Progress (Floor 1 — The Loading Dock implemented; Floors 5–9 pending design)
+**Status:** Implemented
 
 ### Summary  
 Expand the game's core progression gauntlet from the MVP 3 floors to a full 9-floor experience. This requires defining new aesthetics, marker targets, boss rules, and comp rewards for each new venue.   
@@ -765,34 +765,76 @@ This ticket serves as the living master tracker for the 9-floor gauntlet. It wil
 
 ### Floor Progression Tracker  
 
-| **1** | The Loading Dock | 🟡 Designed | 🔴 Pending | Specs in `floors.md` & `floor-aesthetics.md` |
-| **2** | VFW Hall | 🟢 Designed | 🟢 Implemented | Legacy Floor 1 |
-| **3** | Riverboat | 🟢 Designed | 🟢 Implemented | Legacy Floor 2 |
-| **4** | The Strip | 🟢 Designed | 🟢 Implemented | Legacy Floor 3 |
-| **5** | The Lodge | 🟢 Designed | 🟢 Implemented | Boss: The Hierophant / Rule: `TRIBUTE` |
-| **6** | Atlantis | 🟢 Designed | 🔴 Pending | Boss: The Sovereign / Rule: `TIDAL_SURGE` |
-| **7** | The Station | 🟢 Designed | 🔴 Pending | Boss: The Commander / Rule: `ORBITAL_DECAY` |
-| **8** | The Signal | 🟢 Designed | 🔴 Pending | Boss: The Emissary / Rule: `FIRST_CONTACT_PROTOCOL` |
-| **9** | The Singularity | 🟢 Designed | 🔴 Pending | Boss: The Architect / Rule: `CONVERGENCE` — Final Boss |
+| Floor | Name | Status | Boss | Rule | Comp |
+|---|---|---|---|---|---|
+| **1** | The Loading Dock | 🟢 Implemented | The Foreman | `EXTORTION_FEE` | The Vig |
+| **2** | VFW Hall | 🟢 Implemented | Sarge | `RISING_MIN_BETS` | Member's Jacket |
+| **3** | Riverboat | 🟢 Implemented | Mme. Le Prix | `DISABLE_CREW` | Sea Legs |
+| **4** | The Strip | 🟢 Implemented | The Executive | `FOURS_INSTANT_LOSS` | Golden Touch |
+| **5** | The Lodge | 🟢 Implemented | The Hierophant | `TRIBUTE` | The Covenant |
+| **6** | Atlantis | 🟢 Implemented | The Sovereign | `TIDAL_SURGE` | Poseidon's Favor |
+| **7** | The Station | 🟢 Implemented | The Commander | `ORBITAL_DECAY` | Zero Point |
+| **8** | The Signal | 🟢 Implemented | The Emissary | `FIRST_CONTACT_PROTOCOL` | The Frequency |
+| **9** | The Null Space | 🟢 Implemented | The Architect | `CONVERGENCE` | *(none — final floor)* |
 
-*(Note: Marker targets for Floors 5–9 are design estimates and require balancing during implementation. Exact ordering of legacy floors vs. new floors may also shift.)*
+### Implementation Details
 
-### Loading Dock Implementation Details
+**Boss rule hook architecture extensions (shared across all new floors):**
+- `BossRuleHooks` interface extended with two new optional hooks:
+  - `modifyPayout(payoutCents, baseStakeReturned, params, state): number` — called after `settleTurn()`, before bankroll credit; only fires on winning rolls. Used by `EXTORTION_FEE`.
+  - `modifySevenOut(bankrollAfterLoss, params, state): number` — called after bet-loss is deducted on a SEVEN_OUT, before `computeNextState`. Used by `TRIBUTE`.
+- `modifyCascadeOrder` signature extended to `(slotCount, params, state?: BossRuleState)` — the optional `state` arg lets `CONVERGENCE` read `bossPointHits` without coupling the hook to `TurnContext`.
+- `resolveCascade()` gains a 6th parameter `bossState?: BossRuleState` passed through to the hook.
+- `BossRuleState` gains `covenantActive: boolean` — indicates the player holds THE_COVENANT comp, which halves the TRIBUTE drain.
 
-**New boss mechanic — EXTORTION_FEE:**
-- `BossRuleType` union extended with `'EXTORTION_FEE'`
-- `BossRuleParams` union extended with `{ rule: 'EXTORTION_FEE'; taxPct: number }`
-- New `modifyPayout` hook added to `BossRuleHooks` interface — called after `settleTurn()` returns raw payout, before bankroll update; only fires on winning rolls
-- `packages/shared/src/bossRules/extortionFee.ts` created; deducts `floor(profit × taxPct)` from each winning payout
-- `rolls.ts`: `rawPayout = settleTurn(...)` → `payout = bossHooks?.modifyPayout?.(...)` pattern mirrors existing hook call style
+**Floor 1 — The Loading Dock (`EXTORTION_FEE`):**
+- Targets: $50 / $100 / $250. Boss at index 2.
+- `packages/shared/src/bossRules/extortionFee.ts` — `modifyPayout` deducts `floor(profit × 0.20)` from each winning payout.
+- Floor theme: sodium-vapor orange / concrete palette. `FloorAtmosphere: 'exposed'`. FloorEmblem: Share Tech Mono.
+- Comp: THE_VIG — crew cash abilities pay out 20% more.
+- All legacy floors renumbered +1. `floorThemes.ts` constants renamed (`FLOOR_1_THEME` → `FLOOR_2_THEME`, etc.).
+- Tutorial beats updated to reference 4 floors/12 markers and The Foreman.
 
-**New comp — THE_VIG:**
-- `CompRewardType` extended with `'THE_VIG'`; `COMP_PERK_IDS.THE_VIG = 4` added
-- Enforcement is deferred (crew cash +20% logic not yet wired); comp is awarded and displayed correctly
+**Floor 5 — The Lodge (`TRIBUTE`):**
+- Targets: $20,000 / $30,000 / $45,000. Boss at index 14.
+- `packages/shared/src/bossRules/tribute.ts` — `modifySevenOut` seizes `floor(bankroll × tributePct)`. THE_COVENANT comp halves the drain.
+- Floor theme: dark oak / amber. `FloorAtmosphere: 'occult'`.
+- Comp: THE_COVENANT — direct bankroll drains from boss mechanics permanently reduced by 50%.
+- TDD: `docs/design/fb-015-floor-5-lodge-tdd.md` (if present).
 
-**Floor renumbering:** All existing floors incremented by 1 (`floor` field in `GAUNTLET[]` and `id` in `FLOORS[]`). `getFloorByMarkerIndex()` examples updated. `floorThemes.ts` constants renamed (`FLOOR_1_THEME` → `FLOOR_2_THEME`, etc.).
+**Floor 6 — Atlantis (`TIDAL_SURGE`):**
+- Targets: $70,000 / $120,000 / $175,000. Boss at index 17.
+- No hook file — tide counter is tracked via `bossPointHits` inline in `computeNextState` in `rolls.ts`. On POINT_HIT the counter increments; at `cycleLength` (5) the surge window opens for `surgeDuration` (2) rolls with a min-bet of `surgePct` (15%) of target; then resets.
+- `BossRoomHeader` shows tide pip track (5 normal + 2 surge pips) and status line.
+- Floor theme: deep ocean / teal-gold. `FloorAtmosphere: 'ancient'`.
+- Comp: POSEIDON'S_FAVOR — first come-out per shooter can never craps-out (treated as blank re-roll).
 
-**Tutorial updates (beats 8, 10, 13):** Removed hardcoded "$301" reference; updated gauntlet description to "4 floors, 12 markers"; updated boss roster copy to include The Foreman.
+**Floor 7 — The Station (`ORBITAL_DECAY`):**
+- Targets: $250,000 / $425,000 / $650,000. Boss at index 20.
+- No hook file — hype decay is applied inline in `computeNextState` SEVEN_OUT branch: `hype = Math.max(hypeFloor, hype - decayAmount)`. `hypeFloor = 0.5`, `decayAmount = 0.5`. Below 1.0× hype the payout is penalized.
+- `BossRoomHeader` shows current hype multiplier with yellow/red warning at <1.25× and <1.0×.
+- Floor theme: midnight blue / steel. `FloorAtmosphere: 'cosmic'`.
+- Comp: ZERO_POINT — hype multiplier permanently floored at 1.25× for all future floors.
+- TDD: `docs/design/fb-015-floor-7-station-tdd.md`.
+
+**Floor 8 — The Signal (`FIRST_CONTACT_PROTOCOL`):**
+- Targets: $1,000,000 / $1,750,000 / $2,500,000. Boss at index 23.
+- No hook file — natural nullification applied inline in `rollHandler()` in `rolls.ts`, *before* the base-game hype tick. Rolls that are NATURAL on 7 or 11 become NO_RESOLUTION blank rolls. `naturalBlocked: true` flag added to `TurnContextFlags`; `computeNextState` returns IDLE_TABLE / COME_OUT (not POINT_ACTIVE) on the NO_RESOLUTION branch when this flag is set.
+- Pre-hype-tick placement is critical — placing it after the tick would incorrectly award +0.10 momentum for a blank.
+- Floor theme: deep space / alien green. `FloorAtmosphere: 'alien'`.
+- Comp: THE_FREQUENCY — come-out naturals award a flat bonus equal to 3% of current marker target.
+- TDD: `docs/design/fb-015-floor-8-signal-tdd.md`.
+
+**Floor 9 — The Null Space (`CONVERGENCE`):**
+- Targets: $5,000,000 / $10,000,000 / $20,000,000. Boss at index 26 (final marker in gauntlet).
+- `packages/shared/src/bossRules/convergence.ts` — `modifyCascadeOrder(slotCount, params, state)` returns `Array.from({ length: Math.max(0, 5 - sevenOutCount) }, (_, i) => i)`. Returns `[]` at sevenOutCount ≥ 5 (naked craps).
+- `bossPointHits` repurposed as seven-out counter for this boss — increments on SEVEN_OUT (capped at 5), held on POINT_HIT. This deviates from the standard counter behavior (which normally increments on POINT_HIT).
+- `TurnContext` gains optional field `bossSevenOutCount?: number`; injected by `rolls.ts` pre-cascade for CONVERGENCE only. `resolveCascade` receives `bossState` and passes it to the hook.
+- Floor theme: pure black / phosphor green. `FloorAtmosphere: 'digital'`.
+- `CompRewardType: 'NONE'` sentinel — no comp awarded. `BossVictoryCompPhase` calls `onAdvance()` via `useEffect` (not during render) and returns `null` immediately.
+- Final marker transitions to `GAME_OVER` (not `TRANSITION`) — the recruit/comp flow is never reached.
+
+**Marker count:** `GAUNTLET[]` now contains 27 entries across 9 floors (indices 0–26).
 
 ### Definition of Done (per Floor)  
 For a floor to be marked as **Implemented**, the following components must be complete:  

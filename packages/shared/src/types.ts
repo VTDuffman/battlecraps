@@ -351,6 +351,14 @@ export interface TurnContext {
    * Defaults to 5 in test contexts where the field is not explicitly set.
    */
   readonly shooters: number;
+
+  /**
+   * The number of seven-outs accumulated so far in the current CONVERGENCE boss fight.
+   * Equals run.bossPointHits at the start of the roll (PRE-resolution).
+   * undefined for all non-CONVERGENCE boss fights and non-boss markers.
+   * Used by the CONVERGENCE hook to determine how many crew slots to suppress.
+   */
+  readonly bossSevenOutCount?: number;
 }
 
 // ---------------------------------------------------------------------------

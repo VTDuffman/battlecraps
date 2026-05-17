@@ -1022,23 +1022,28 @@ No changes to `rolls.ts` — the server's existing section 4b auto-clear logic (
 
 ## KI-050 — No boss intro cinematic for The Foreman (Loading Dock, marker 2)
 
-**Area:** `apps/web/src/transitions/TransitionOrchestrator.tsx`, `apps/web/src/transitions/phases/BossEntryDreadPhase.tsx`, `apps/web/src/transitions/phases/BossEntryPhase.tsx`
+**Area:** `apps/web/src/transitions/TransitionOrchestrator.tsx`
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed
 **Source:** Playtest observation (05/13/2026)
 
 **Issue:**
 When the player clears marker 1 on the Loading Dock and advances to marker 2 (The Foreman), no `BOSS_ENTRY` cinematic plays. The dread phase and rule-briefing screen that appear before Sarge, Mme. Le Prix, and The Executive are absent for The Foreman — the player goes directly from the pub to the table with no introduction.
 
 **Root Cause:**
-The Foreman's boss config in `GAUNTLET[2]` is complete (`dreadTagline`, `entryLines`, `ruleBlurb`, etc.) and the `BossEntryDreadPhase` / `BossEntryPhase` components read from live GAUNTLET data, so content is not the issue. The `TransitionOrchestrator` Priority 2 check (`isBossMarker(currentMarkerIndex) && bossEntryShownFor !== currentMarkerIndex`) appears correct at a code-review level.
+`applyPendingSettlement()` atomically sets `currentMarkerIndex = 2` AND `pendingTransition = true` in a single Zustand `set()` call. React re-renders and the orchestrator's `useEffect` fires (because `currentMarkerIndex` is in the deps array). The only guard at that point was `if (activeTransition !== null) return` — but `activeTransition` is still `null` during chip-rain. Priority 2 matched (`isBossMarker(2)` = true, `bossEntryShownFor` = null), so the effect prematurely called `setBossEntryShownFor(2)` and `setActiveTransition('BOSS_ENTRY')`. When `triggerChipRainComplete()` subsequently fired, it overwrote `activeTransition` to `'MARKER_CLEAR'`. By the time the player arrived at The Foreman's table after the pub, `bossEntryShownFor === 2` caused Priority 2 to skip permanently — no cinematic.
 
-The likely cause is a state-machine edge case unique to Floor 1: The Loading Dock is the only floor without a `FLOOR_REVEAL` transition (the `TITLE` phase at index 0 covers it). The other three boss markers (5, 8, 11) are always entered immediately after a `FLOOR_REVEAL` at the preceding index (3, 6, 9), which advances the orchestrator through a known state path before `BOSS_ENTRY` is evaluated. Marker 2 is the only boss marker entered directly after a within-floor `MARKER_INTRO` (index 1), making its `IDLE_TABLE` → `BOSS_ENTRY` path distinct. The orchestrator's `bossEntryShownForMarker` may be set prematurely or the effect dependency chain for this state path may not re-fire correctly.
+This same premature-fire path also silently dropped `FLOOR_REVEAL` and `MARKER_INTRO` cinematics for any marker entered during chip-rain (e.g., marker 3's `FLOOR_REVEAL` when crossing from Floor 1 to Floor 2 after a boss victory). The Foreman was the most reliably reproducible case because it occurs in the first uninterrupted session before any page refresh that would reset `bossEntryShownForMarker`.
 
-**Proposed fix:**
-1. Add runtime logging to `TransitionOrchestrator.tsx` to trace the effect firing sequence at marker 2 and compare it against a working boss (e.g., Sarge at marker 5). Confirm whether `isBossMarker(2)` evaluates to `true` and whether `bossEntryShownFor !== 2` holds at the time the effect runs.
-2. Audit the `clearTransition('MARKER_CLEAR')` → pub exit → `status: 'IDLE_TABLE'` handoff for an intra-floor transition (markers 0→1→2 on Floor 1) vs. a cross-floor transition (e.g., 2→3 with `FLOOR_REVEAL`). If the state at `activeTransition === null && status === 'IDLE_TABLE'` is reached differently, the orchestrator effect's dependency array or initial-mount timing may need a guard.
-3. As a targeted fix: if `bossEntryShownForMarker` is being set to 2 before the effect evaluates the Priority 2 condition, reset it to `null` in `connectToRun` only after the run has passed that marker, not on all rehydrations.
+**Fix applied:**
+Added `pendingTransition` to the early-return guard in the transition-detection `useEffect` and to its dependency array in `TransitionOrchestrator.tsx`:
+
+```diff
+- if (activeTransition !== null) return;
++ if (activeTransition !== null || pendingTransition) return;
+```
+
+When chip rain is running (`pendingTransition = true`), `currentMarkerIndex` has already advanced but the player has not left the table. All transition detection is suppressed until `triggerChipRainComplete()` clears `pendingTransition` — at which point `activeTransition` is simultaneously set to `'MARKER_CLEAR'` or `'BOSS_VICTORY'`, so the second guard (`activeTransition !== null`) takes over and the effect still returns early. Detection fires correctly only after the player clears the celebration and the pub sets `status = 'IDLE_TABLE'` with `activeTransition = null` and `pendingTransition = false`.
 
 **Note:** This is the same class of gap as KI-038 — the FB-015 Loading Dock integration introduced a new first floor but the transition system was designed around the original three-floor structure where boss markers always follow floor-opening markers.
 
@@ -1068,7 +1073,7 @@ Post-cascade in `rolls.ts` (step 8b): after `resolveCascade()` returns `finalCon
 
 **Area:** `apps/api/src/routes/rolls.ts` (`isBelowMinBet`, section 4b auto-clear guard), `apps/web/src/store/useGameStore.ts` (`removeBet`, `autoCollect`)
 **Severity:** High
-**Status:** Open
+**Status:** Fixed (05/16/2026)
 **Source:** Playtest observation (05/13/2026) — believed regression from KI-042 win-condition changes
 
 **Issue:**
@@ -1089,24 +1094,27 @@ When the player's bankroll drops below the minimum Pass Line bet with no bets re
 2. Add a server-side guard at the top of the roll handler (after section 4b) that checks `isBelowMinBet(run.bankrollCents, run.bets as Bets, run.currentMarkerIndex)` before attempting validation. If true, immediately persist and return `status: 'GAME_OVER'` — this acts as a catch-all for any stuck state that reaches the roll endpoint.
 3. Alternatively, add a client-side check in `removeBet()` and `autoCollect()` completion: after updating bankroll, if `bankroll < getMinBet(currentMarkerIndex) && sumBets(bets) === 0`, dispatch a game-over action without waiting for a server roll.
 
+**Fix applied:**
+Added a "section 3c" stuck-state catch-all guard in `rollHandler` (after the boss-hooks setup, before bet validation). Fires when `isBelowMinBet(run.bankrollCents, run.bets, run.currentMarkerIndex)` returns true: immediately persists `status: 'GAME_OVER'`, emits `turn:settled` with `runStatus: 'GAME_OVER'` to the run's WS room, submits a leaderboard entry, and returns a synthetic `autoClear` response. This prevents the 422 validation loop and ensures the game-over screen appears regardless of which code path left the run in the stuck state.
+
 ---
 
 ## KI-053 — Roll Log does not display The Heirphant's Tribute bankroll deduction
 
-**Area:** `apps/web/src/components/RollLog.tsx`, `apps/api/src/routes/rolls.ts`
+**Area:** `packages/shared/src/crapsEngine.ts`, `apps/api/src/routes/rolls.ts`
 **Severity:** Medium
-**Status:** Open
+**Status:** Resolved
 **Source:** Design review — FB-015 The Lodge integration
 
 **Issue:**
-When The Heirphant's Tribute boss rule fires on Floor 5 (The Lodge), it deducts 15% of the player's current bankroll as tribute. This deduction is applied silently — it does not appear as a line item in the Roll Log. The player sees their bankroll drop but has no in-log explanation attributing the loss to The Heirphant, creating confusion that looks identical to a game bug.
+When The Heirphant's Tribute boss rule fires on Floor 5 (The Lodge), it deducts 15% of the player's current bankroll as tribute. This deduction was applied silently — it did not appear as a line item in the Roll Log. The player saw their bankroll drop but had no in-log explanation attributing the loss to The Heirphant, creating confusion that looked identical to a game bug.
 
-This is the same class of omission as the KI-044 fix (Foreman extortion fee not shown in roll log), but that fix only wired up the `bossDeduction` field for `modifyPayout`-style deductions. The Tribute mechanic operates via a `modifyBankroll` hook rather than `modifyPayout`, so it is not captured by `buildRollReceipt()`'s existing `bossDeduction` parameter.
+This is the same class of omission as the KI-044 fix (Foreman extortion fee not shown in roll log), but that fix only wired up the `bossDeduction` field for `modifyPayout`-style deductions. The Tribute mechanic operates via a `modifySevenOut` hook rather than `modifyPayout`, so it was not captured by `buildRollReceipt()`'s existing `bossDeduction` parameter.
 
-**Proposed fix:**
-1. Extend `buildRollReceipt()` in `crapsEngine.ts` (or its call site in `rolls.ts`) to accept a second deduction source, or make `bossDeduction` an array so multiple deduction lines can be appended.
-2. In `rolls.ts`, after the Tribute hook fires and computes its deduction amount, pass it into `buildRollReceipt` alongside any existing `modifyPayout` deduction so a `loss` line appears in the receipt (e.g., "The Heirphant: $X.XX tribute").
-3. Confirm the deduction amount surfaced in the receipt matches the actual bankroll delta persisted to the DB.
+**Fix applied:**
+- `buildRollReceipt()` `bossDeduction` parameter changed from a single `{ amount, source }` object to `bossDeductions?: ReadonlyArray<{ amount, source, label }>` — supports any number of deduction sources.
+- `rolls.ts` now computes `tributeAmount = newBankroll - tributedBankroll` after the `modifySevenOut` hook fires and pushes `{ amount: tributeAmount, source: boss.name, label: 'tribute' }` into the deductions array alongside any extortion fee entry.
+- `netDelta` in the receipt sums all deduction amounts so the Roll Log Net figure matches the actual bankroll delta.
 
 ---
 
@@ -1114,17 +1122,14 @@ This is the same class of omission as the KI-044 fix (Foreman extortion fee not 
 
 **Area:** `apps/api/src/routes/rolls.ts`
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed
 **Source:** Code audit
 
 **Issue:**
 The Golden Touch comp (awarded for defeating The Executive, Floor 4) is defined in config, awarded to `users.comp_perk_ids`, and displayed correctly in the `CompCard` / `CompCardFan` HUD — but it is never enforced in the roll handler. No code in `rolls.ts` reads `COMP_PERK_IDS.GOLDEN_TOUCH` or forces a Natural on the first come-out roll of a new segment. The comp is a dead perk with no mechanical effect, identical to the pre-fix state of The Vig (KI-051).
 
-**Proposed fix:**
-Mirror the Sea Legs / Vig enforcement pattern in `rolls.ts`:
-1. Derive `hasGoldenTouch` from `user.compPerkIds` at the top of `rollHandler` (alongside the existing `hasSeaLegs` check).
-2. Add a per-run flag (on the `runs` row or derived from `run.shootersUsed / shooterIndex`) that tracks whether the first come-out of the current segment has been taken. Reset this flag on each segment start (Seven-Out → new shooter).
-3. When `hasGoldenTouch && isFirstComeOut && phase === 'COME_OUT'`, override the RNG result with a Natural (7 or 11 — pick randomly between the two, or always 7 for simplicity) before the cascade runs. Mark the flag consumed so subsequent come-outs in the same segment roll normally.
+**Fix applied:**
+Added step 6b in `rollHandler` (between RNG and `resolveRoll`): derives `hasGoldenTouch` from `user.compPerkIds`, then when the condition `hasGoldenTouch && run.shooterRollCount === 0 && run.phase === 'COME_OUT'` holds, rejection-samples `rollDice()` until a Natural (7 or 11) is produced. `shooterRollCount` resets to 0 on each SEVEN_OUT, so the guarantee renews for every new shooter with no separate per-run flag needed.
 
 ---
 
@@ -1132,7 +1137,7 @@ Mirror the Sea Legs / Vig enforcement pattern in `rolls.ts`:
 
 **Area:** `apps/web/src/lib/floorThemes.ts`
 **Severity:** Medium
-**Status:** Open
+**Status:** Resolved (2026-05-16)
 **Source:** Manual playtest observation
 
 **Issue:**
@@ -1162,7 +1167,7 @@ Replace all color tokens in `FLOOR_9_THEME` with a white-ground, black-ink palet
 
 **Area:** `apps/web/src/components/CompCard.tsx` (`COMP_DEFS`, `getCompForBossMarker`), `apps/web/src/components/CompCardFan.tsx`
 **Severity:** Medium
-**Status:** Open
+**Status:** Resolved
 **Source:** Manual playtest observation — FB-015 integration audit (2026-05-15)
 
 **Issue:**
@@ -1199,7 +1204,7 @@ Add four new entries to `COMP_DEFS` for the FB-015 comps: The Covenant (boss mar
 
 **Area:** `apps/web/src/components/BettingGrid.tsx` — `BASE_CHIPS`, `FLOOR_CHIPS`, `chipsForFloor()`
 **Severity:** High
-**Status:** Open
+**Status:** Resolved
 **Source:** Manual playtest observation — FB-015 nine-floor integration QA (2026-05-15)
 
 **Issue:**
@@ -1277,3 +1282,110 @@ For the redesign: the `bossPointHits` counter in `computeNextState` will need to
 
 **Design Note (captured from QA session):**
 The user-proposed redesign intent is explicitly a binary oscillation — Low Tide (normal) / High Tide (elevated minimum) — rather than the current 5+2 roll-counter model. The High Tide minimum should be high enough to create genuine tension but remain beatable: "a meaningfully elevated minimum bet that creates a tense, challenging moment — but one that remains beatable, not a death sentence." RISING_MIN_BETS (Sarge / Floor 2) already owns the progressively-escalating-minimum design space; TIDAL_SURGE should occupy the rhythmic/oscillating space and feel distinct from it.
+
+---
+
+## KI-059 — Comp card fan overlaps BossRoomHeader during boss fights
+
+**Area:** `apps/web/src/components/CompCardFan.tsx`, `apps/web/src/components/BossRoomHeader.tsx`
+**Severity:** Medium
+**Status:** Resolved (2026-05-16)
+**Source:** Manual playtest observation (2026-05-15)
+
+**Issue:**
+During boss fight markers, the `CompCardFan` component covers the left portion of the `BossRoomHeader` banner. The comp card stack renders on top of the boss name, the "HIGH LIMIT ROOM" label, and the red alert visual chrome, partially obscuring the most readable section of the boss bar. The overlap only occurs on boss markers — on non-boss markers the `BossRoomHeader` returns null and the fan's position is uncontested.
+
+**Steps to Reproduce:**
+1. Begin a run and defeat at least one boss to earn a comp (any floor).
+2. Clear two non-boss markers on the next floor and advance to the boss marker.
+3. Observe the `CompCardFan` in the top-left of the `TableBoard` — it sits on top of the left portion of the `BossRoomHeader`, obscuring the boss identity section.
+4. Click the comp stack to open the fan; note that expanded cards extend further down into the boss bar region.
+
+**Expected Behavior:**
+The comp card fan should be vertically offset to sit below the `BossRoomHeader` when a boss bar is present. In the negative space to the left of the "Battle Craps" title and the bankroll figure — below the boss bar — there is sufficient room to display the fan without any overlap.
+
+**Actual Behavior:**
+The comp card fan is anchored at `top-12` (48px from the top of the board container), which was sized to clear the mute button and standard HUD controls only. The `BossRoomHeader` is a `w-full flex-none` block that sits above the board area and can reach approximately 70–80px in height. The 48px offset is not sufficient to clear it, so the fan's top edge begins inside the boss bar's bounding box.
+
+**Likely Affected Area:**
+`apps/web/src/components/CompCardFan.tsx` — the `absolute top-12 left-2` positioning of the fan's outermost wrapper `div`. The `BossRoomHeader` height is not a fixed Tailwind class and will vary slightly with content (e.g., the multi-line tide counter in TIDAL_SURGE vs. the simpler MIN BET display). A static additional offset may not be robust across all boss rule variants.
+
+**High-Level Fix:**
+The `CompCardFan` needs to read whether a boss bar is currently active and adjust its top offset accordingly. The cleanest approach is to have `CompCardFan` subscribe to `currentMarkerIndex` (already imported via `selectDisplayMarkerIndex`) and call `isBossMarker(currentMarkerIndex)` from `@battlecraps/shared` to detect the boss state. When a boss bar is present, increase the top offset from `top-12` to a value that clears the boss bar's full height — approximately `top-24` or `top-28` depending on final rendered measurements. Alternatively, the `BossRoomHeader` could expose its height via a CSS custom property or a shared layout context so the fan can position itself dynamically regardless of which boss rule variant is active. The simpler static-offset approach is acceptable if verified against all nine boss bar variants (especially TIDAL_SURGE with its multi-line pip row, which is the tallest variant).
+
+---
+
+## KI-060 — Floor Emblem watermark absent on floors 5–9
+
+**Area:** `apps/web/src/components/FloorEmblem.tsx`
+**Severity:** Medium
+**Status:** Resolved
+**Source:** Manual playtest observation — FB-015 nine-floor integration QA (2026-05-15)
+
+**Issue:**
+The `FloorEmblem` component renders a semi-transparent casino-table watermark on the felt in the dice travel zone. The component's `FLOOR_CONFIGS` record is keyed 1–4 only. When `floorNum` resolves to 5, 6, 7, 8, or 9, `cfg` is `undefined` and the early-return guard fires — rendering nothing. Floors 5–9 (The Lodge, Atlantis, The Station, The Signal, The Null Space) show a blank dice zone with no identity branding. This is a direct omission from the FB-015 nine-floor expansion: `FloorEmblem.tsx` was not updated when the five new floors were added.
+
+**Steps to Reproduce:**
+1. Start a new run and play through to Floor 5 (advance past all three Strip markers, clear the Floor 4 boss fight, and enter The Lodge).
+2. Observe the dice travel zone on the `TableBoard` — no floor watermark is present.
+3. Repeat for Floors 6–9 (Atlantis, The Station, The Signal, The Null Space) — none display a watermark.
+
+**Expected Behavior:**
+Each of the nine floors should display a thematically appropriate `FloorEmblem` watermark on the felt, consistent with the treatment applied to Floors 1–4. The font, color, decorative elements, and copy should reflect each floor's visual identity (e.g., occult motifs for The Lodge, deep-sea for Atlantis, cosmic/industrial for The Station, alien for The Signal, void/digital for The Null Space).
+
+**Actual Behavior:**
+`FLOOR_CONFIGS` contains entries only for floors 1–4. For any `floorNum` in the range 5–9, `cfg` is `undefined` and the component returns `null`, leaving the dice zone without any floor identity watermark.
+
+**Likely Affected Area:**
+`apps/web/src/components/FloorEmblem.tsx` — the `FLOOR_CONFIGS` record (line 47). The component's render logic and `FloorConfig` interface are well-structured and require no changes; the fix is purely additive: five new entries keyed 5–9 need to be authored and appended to `FLOOR_CONFIGS`.
+
+**High-Level Fix:**
+Add five new `FloorConfig` entries to `FLOOR_CONFIGS` in `FloorEmblem.tsx`, one for each of floors 5–9. Each entry should draw from the corresponding floor's established visual identity in `apps/web/src/lib/floorThemes.ts` — matching the accent color, atmosphere, and aesthetic to the theme tokens already defined there (`occult`, `ancient`, `cosmic`, `alien`, `digital`). Font choices should follow the same logic as floors 1–4: select a Google Font (already imported via the project's font stack or added to `index.html`) that evokes the floor's setting — for example, a gothic serif for The Lodge (occult), a weathered display face for Atlantis (ancient), a geometric sans for The Station/Signal (cosmic/alien), and a monospace or glitchy face for The Null Space (digital/void). Decorative elements (`decorTop`, `decorBottom`) and `subLabel` copy should match each floor's thematic language. Colors should be drawn from the existing `floorThemes.ts` accent values at a low opacity (consistent with the 0.18–0.20 opacity range used by floors 1–4) to maintain the watermark's unobtrusive character.
+
+---
+
+## KI-061 — No floor-addition checklist; FB-015 expansion silently broke 8+ floor-scoped sites
+
+**Area:** Cross-cutting — `apps/web/src/components/FloorEmblem.tsx`, `apps/web/src/components/GameOverScreen.tsx`, `apps/web/src/components/tutorial/sections/BattleCrapsRulesSection.tsx`, `apps/web/src/components/tutorial/sections/CrewAndBossesSection.tsx`, `apps/web/src/lib/floorThemes.ts`, `apps/web/src/components/CompCard.tsx`, `apps/web/src/components/BettingGrid.tsx` (chip denominations), `apps/web/src/components/CompCardFan.tsx`
+**Severity:** Medium
+**Status:** Open
+**Source:** Pattern identified during FB-015 nine-floor integration QA pass (2026-05-15)
+
+**Issue:**
+When FB-015 expanded the gauntlet from 4 floors to 9 floors, no checklist existed enumerating the files that must be updated when a new floor is added. As a result, at least eight distinct floor-scoped sites were left covering only floors 1–4. Each produced silent visual or functional gaps for floors 5–9 — no build error, no runtime exception, and no automated test caught any of them. The gaps were discovered only through manual QA and were logged individually as KI-055 through KI-060. The root cause is a process defect: floor-scoped hardcoding exists in multiple layers of the codebase (engine config, display data, UI copy, component data tables) with no single document serving as the authoritative "update these N files when a floor is added" checklist.
+
+**Related Issues:** KI-055 (floorThemes.ts floors 5–9 palette gap), KI-056 (COMP_DEFS missing floors 5–8), KI-057 (chip denominations not scaled for floors 5–9), KI-059 (CompCardFan BossRoomHeader overlap), KI-060 (FloorEmblem absent floors 5–9)
+
+**Steps to Reproduce:**
+1. Add a hypothetical Floor 10 entry to `packages/shared/src/config.ts` (`GAUNTLET`) and `packages/shared/src/floors.ts` (`FLOORS` registry) only.
+2. Navigate to the new floor in a test run.
+3. Observe: floor watermark absent (FloorEmblem), incorrect or missing game-over tagline (GameOverScreen), floor count off in tutorial copy (BattleCrapsRulesSection), boss card list truncated (CrewAndBossesSection), missing floor theme tokens (floorThemes.ts), no comp card entry (CompCard/COMP_DEFS), chip denominations unscaled for the new target, comp fan layout potentially broken (CompCardFan).
+4. Note that none of these gaps produce a thrown error — they all fail silently or render stale/empty UI.
+
+**Expected Behavior:**
+Every floor-scoped data structure, copy string, component config table, and display map should be updated atomically with any new floor entry in the shared config. A canonical checklist document should exist so that any developer adding a floor can verify completeness before merging.
+
+**Actual Behavior:**
+No checklist exists. Floor-scoped sites are scattered across the frontend component tree, the tutorial subtree, and the theme library. Each was authored independently and each was independently missed when FB-015 shipped. The pattern recurred across every layer: engine-adjacent config (floorThemes.ts), display data (COMP_DEFS, FLOOR_CONFIGS in FloorEmblem), copy strings (BattleCrapsRulesSection, CrewAndBossesSection, GameOverScreen), layout logic (CompCardFan boss offset), and UX tuning (chip denominations).
+
+**Known Floor-Addition Checklist (as of 2026-05-15):**
+The following files have been confirmed to require updates when a new floor is added to the gauntlet. This list should be maintained as the authoritative checklist and moved into a permanent developer-facing doc (e.g., `docs/frameworks/floor-addition-checklist.md`) once ratified.
+
+| File | What to update |
+|---|---|
+| `packages/shared/src/config.ts` | Add `GAUNTLET` entry (marker targets, boss rule, comp reward) |
+| `packages/shared/src/floors.ts` | Add `FLOORS` registry entry (floor name, narrative, `FloorAtmosphere`) |
+| `apps/web/src/lib/floorThemes.ts` | Add theme token object for the new floor's atmosphere (accent, glow, particle colors, CSS class names) |
+| `apps/web/src/components/FloorEmblem.tsx` | Add entry to `FLOOR_CONFIGS` record (font, copy, colors, decorative elements) |
+| `apps/web/src/components/CompCard.tsx` | Add entry to `COMP_DEFS` (emoji, comp name, benefit description) for the comp awarded at the new floor's boss |
+| `apps/web/src/components/GameOverScreen.tsx` | Extend `getToneTagline()` floor-range branches and `FLOOR_PIP_THEMES` to cover the new floor |
+| `apps/web/src/components/tutorial/sections/BattleCrapsRulesSection.tsx` | Extend `FLOOR_NAMES` array and floors map |
+| `apps/web/src/components/tutorial/sections/CrewAndBossesSection.tsx` | Extend boss card list to include the new boss entry |
+| `apps/web/src/components/BettingGrid.tsx` | Verify chip denomination constants remain appropriate for the new floor's marker target range |
+| `apps/web/src/components/CompCardFan.tsx` | Verify boss-bar offset logic accounts for the new floor's boss rule variant (especially multi-line boss bars) |
+
+**Likely Affected Area:**
+All files enumerated in the checklist table above. No single component or module owns the problem — this is a documentation and process gap that manifests as a defect pattern across the entire frontend layer.
+
+**High-Level Fix:**
+Two parallel actions are needed. First, extract the checklist table above into a permanent developer document at `docs/frameworks/floor-addition-checklist.md` and link it from the main `CLAUDE.md` architecture section so it is visible during any floor-addition implementation pass. Second, audit `packages/shared/src/config.ts` and `packages/shared/src/floors.ts` to identify whether a TypeScript type or constant could be derived from the canonical floor count — for example, a union type `FloorNum = 1 | 2 | ... | 9` that, if widened to include `10`, would cause a `tsc` error at every floor-scoped lookup site that is not exhaustive. Making floor omissions a compile-time error rather than a silent runtime gap would be the most robust long-term mitigation and would complement the documentation checklist.

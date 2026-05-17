@@ -114,7 +114,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
             color:    `${theme.accentPrimary}70`,
           }}
         >
-          Three floors. Nine markers. One shooter standing.
+          Nine floors. Twenty-seven markers. One shooter standing.
         </p>
       </div>
 

@@ -18,7 +18,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { SignIn, useUser, useAuth }    from '@clerk/react';
 import { TableBoard }                  from './components/TableBoard.js';
-import { useGameStore }                from './store/useGameStore.js';
+import { useGameStore, selectDisplayMarkerIndex } from './store/useGameStore.js';
 import { TransitionOrchestrator }      from './transitions/TransitionOrchestrator.js';
 import { TitleLobbyScreen }            from './components/TitleLobbyScreen.js';
 import { UnlockModal }                  from './components/UnlockModal.js';
@@ -27,6 +27,7 @@ import { TutorialOverlay }            from './components/tutorial/TutorialOverla
 import { AliasPickerModal }            from './components/AliasPickerModal.js';
 import type { StoredCrewSlots }        from './store/useGameStore.js';
 import type { Bets }                   from '@battlecraps/shared';
+import { getFloorIndex }               from './lib/floorThemes.js';
 
 const IS_TEST = import.meta.env['VITE_TEST_MODE'] === 'true';
 const TEST_CLERK_ID = 'test_user_e2e';
@@ -85,6 +86,8 @@ const AuthenticatedApp: React.FC = () => {
   const connectToRun = useGameStore((s) => s.connectToRun);
   const disconnect   = useGameStore((s) => s.disconnect);
   const setGetToken  = useGameStore((s) => s.setGetToken);
+  const displayMarkerIndex = useGameStore(selectDisplayMarkerIndex);
+  const isNullSpace  = getFloorIndex(displayMarkerIndex) === 8;
 
   // Inject the Clerk getToken function into the store on mount so all fetch
   // actions can get fresh JWTs without depending on React context.
@@ -462,7 +465,10 @@ const AuthenticatedApp: React.FC = () => {
 
   // ── Game screens ────────────────────────────────────────────────────────
   return (
-    <main className="h-[100dvh] overflow-hidden flex items-start justify-center bg-black">
+    <main
+      className="h-[100dvh] overflow-hidden flex items-start justify-center bg-black"
+      style={isNullSpace ? { filter: 'grayscale(1)' } : undefined}
+    >
       <TransitionOrchestrator onPlayAgain={() => void bootstrap(true)}>
         <TableBoard onNewRun={() => void bootstrap(true)} onReturnToTitle={handleReturnToTitle} />
       </TransitionOrchestrator>

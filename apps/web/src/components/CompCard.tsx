@@ -58,6 +58,38 @@ export const COMP_DEFS: CompDef[] = [
     effect:      'Guaranteed Natural on the first come-out of each segment. The Executive reward.',
     accentColor: '#f5c842',  // gold — The Strip floor
   },
+  {
+    perkId:      5,
+    threshold:   15,
+    name:        'The Covenant',
+    icon:        '🩸',
+    effect:      'Direct bankroll drains reduced by 50%. The Hierophant reward.',
+    accentColor: '#9a6e28',  // aged amber gold — The Lodge floor
+  },
+  {
+    perkId:      6,
+    threshold:   18,
+    name:        "Poseidon's Favor",
+    icon:        '🔱',
+    effect:      "First come-out of each segment cannot craps-out. The Sovereign's reward.",
+    accentColor: '#009070',  // aquamarine — Atlantis floor
+  },
+  {
+    perkId:      7,
+    threshold:   21,
+    name:        'Zero Point',
+    icon:        '🌌',
+    effect:      'Hype is permanently floored at 1.25×. The Commander reward.',
+    accentColor: '#8098b0',  // steel blue — The Station floor
+  },
+  {
+    perkId:      8,
+    threshold:   24,
+    name:        'The Frequency',
+    icon:        '📡',
+    effect:      'Come-out naturals award a bonus equal to 3% of the marker target. The Emissary reward.',
+    accentColor: '#20cc00',  // acid green — The Signal floor
+  },
 ];
 
 /**

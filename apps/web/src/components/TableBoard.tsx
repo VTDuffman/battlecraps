@@ -56,6 +56,7 @@ import { CompCardFan }         from './CompCardFan.js';
 import { HypeFlash }           from './HypeFlash.js';
 import { FloorEmblem }         from './FloorEmblem.js';
 import { useTutorialContext }  from '../contexts/TutorialContext.js';
+import { getFloorIndex }        from '../lib/floorThemes.js';
 
 const selectFlash    = (s: GameState) => ({ flashType: s.flashType, _flashKey: s._flashKey });
 const selectWallFlash = (s: GameState) => ({ wallFlash: s.wallFlash, _wallFlashKey: s._wallFlashKey });
@@ -822,6 +823,7 @@ const HypeParticleEl: React.FC<HypeParticleData> = ({ startX, startY, endX, endY
 const HypeFlow: React.FC = () => {
   const lastHypeSource = useGameStore((s) => s.lastHypeSource);
   const _hypeKey       = useGameStore((s) => s._hypeKey);
+  const isNullSpace    = getFloorIndex(useGameStore(selectDisplayMarkerIndex)) === 8;
   const [particle, setParticle] = useState<HypeParticleData | null>(null);
 
   useEffect(() => {
@@ -854,7 +856,9 @@ const HypeFlow: React.FC = () => {
   if (!particle) return null;
 
   return createPortal(
-    <HypeParticleEl key={particle.id} {...particle} />,
+    <div style={isNullSpace ? { filter: 'grayscale(1)' } : undefined}>
+      <HypeParticleEl key={particle.id} {...particle} />
+    </div>,
     document.body,
   );
 };

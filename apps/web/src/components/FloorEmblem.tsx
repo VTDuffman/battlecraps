@@ -11,6 +11,11 @@
 //   2 — VFW Hall         : Special Elite (typewriter/stencil, military)
 //   3 — The Riverboat    : IM Fell English Italic (1800s broadsheet, old-money)
 //   4 — The Strip        : Bebas Neue (tall condensed Las Vegas marquee)
+//   5 — The Lodge        : UnifrakturMaguntia (occult gothic blackletter)
+//   6 — Atlantis         : Cinzel (classical Roman marble-inscription serif)
+//   7 — The Station      : Orbitron Bold (geometric space-station sans)
+//   8 — The Signal       : Audiowide (alien-tech geometric sans)
+//   9 — The Null Space   : Share Tech Mono (phosphor terminal monospace)
 //
 // Rendered at low opacity so the felt breathing overlay (z-[1]) passes over it
 // naturally. pointer-events-none so dice interactions are never blocked.
@@ -125,6 +130,116 @@ const FLOOR_CONFIGS: Record<number, FloorConfig> = {
     color:       'rgba(245, 200, 66, 0.18)',
     textShadow:  '0 0 60px rgba(245, 200, 66, 0.30), 0 0 20px rgba(255, 80, 180, 0.20)',
     subLabel:    'GAUNTLET FLOOR IV',
+  },
+
+  5: {
+    roman:         'V',
+    displayName:   'THE LODGE',
+    fontFamily:    '"UnifrakturMaguntia", serif',
+    fontWeight:    400,
+    letterSpacing: '0.06em',
+    nameSize:      'clamp(32px, 6dvh, 50px)',
+    decorTop: (
+      <span style={{ fontSize: '0.85em', letterSpacing: '0.30em' }}>
+        ✦ &nbsp; ✦ &nbsp; ✦
+      </span>
+    ),
+    decorBottom: (
+      <span style={{ fontSize: '0.65em', letterSpacing: '0.18em', opacity: 0.75 }}>
+        — THE INNER SANCTUM —
+      </span>
+    ),
+    color:      'rgba(201, 148, 58, 0.18)',
+    textShadow: '0 0 40px rgba(201, 148, 58, 0.22)',
+    subLabel:   'GAUNTLET FLOOR V',
+  },
+
+  6: {
+    roman:         'VI',
+    displayName:   'ATLANTIS',
+    fontFamily:    '"Cinzel", serif',
+    fontWeight:    400,
+    letterSpacing: '0.22em',
+    nameSize:      'clamp(38px, 7dvh, 58px)',
+    decorTop: (
+      <span style={{ fontSize: '0.8em', letterSpacing: '0.30em', opacity: 0.85 }}>
+        ≈ &nbsp; ≈ &nbsp; ≈ &nbsp; ≈ &nbsp; ≈
+      </span>
+    ),
+    decorBottom: (
+      <span style={{ fontSize: '0.65em', letterSpacing: '0.14em', opacity: 0.72 }}>
+        ∼ THE THRONE ROOM ∼
+      </span>
+    ),
+    color:      'rgba(0, 201, 160, 0.18)',
+    textShadow: '0 0 50px rgba(0, 201, 160, 0.24)',
+    subLabel:   'GAUNTLET FLOOR VI',
+  },
+
+  7: {
+    roman:         'VII',
+    displayName:   'THE STATION',
+    fontFamily:    '"Orbitron", sans-serif',
+    fontWeight:    700,
+    letterSpacing: '0.18em',
+    nameSize:      'clamp(22px, 4dvh, 36px)',
+    decorTop: (
+      <span style={{ fontSize: '0.8em', letterSpacing: '0.45em', opacity: 0.80 }}>
+        ◦ ○ ◦ ○ ◦
+      </span>
+    ),
+    decorBottom: (
+      <span style={{ fontSize: '0.60em', letterSpacing: '0.20em', opacity: 0.70 }}>
+        ⊕ COMMAND MODULE ⊕
+      </span>
+    ),
+    color:      'rgba(200, 216, 232, 0.18)',
+    textShadow: '0 0 40px rgba(200, 216, 232, 0.20)',
+    subLabel:   'GAUNTLET FLOOR VII',
+  },
+
+  8: {
+    roman:         'VIII',
+    displayName:   'THE SIGNAL',
+    fontFamily:    '"Audiowide", sans-serif',
+    fontWeight:    400,
+    letterSpacing: '0.14em',
+    nameSize:      'clamp(26px, 4.5dvh, 40px)',
+    decorTop: (
+      <span style={{ fontSize: '0.75em', letterSpacing: '0.35em', opacity: 0.80 }}>
+        / / / / / / /
+      </span>
+    ),
+    decorBottom: (
+      <span style={{ fontSize: '0.62em', letterSpacing: '0.16em', opacity: 0.72 }}>
+        {'>> RECEIVING CHAMBER <<'}
+      </span>
+    ),
+    color:      'rgba(57, 255, 20, 0.16)',
+    textShadow: '0 0 40px rgba(57, 255, 20, 0.20)',
+    subLabel:   'GAUNTLET FLOOR VIII',
+  },
+
+  9: {
+    roman:         'IX',
+    displayName:   'THE NULL SPACE',
+    fontFamily:    '"Share Tech Mono", monospace',
+    fontWeight:    400,
+    letterSpacing: '0.14em',
+    nameSize:      'clamp(20px, 3.8dvh, 34px)',
+    decorTop: (
+      <span style={{ fontSize: '0.75em', letterSpacing: '0.30em', opacity: 0.75 }}>
+        _ _ _ _ _ _ _
+      </span>
+    ),
+    decorBottom: (
+      <span style={{ fontSize: '0.62em', letterSpacing: '0.18em', opacity: 0.68 }}>
+        NULL : CONVERGENCE
+      </span>
+    ),
+    color:      'rgba(57, 255, 20, 0.16)',
+    textShadow: '0 0 50px rgba(57, 255, 20, 0.18)',
+    subLabel:   'GAUNTLET FLOOR IX',
   },
 };
 

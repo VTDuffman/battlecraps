@@ -253,6 +253,62 @@ async function rollHandler(
   const hasTheCovenant = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_COVENANT);
   const bossState: BossRuleState = { bossPointHits: run.bossPointHits, markerIndex: run.currentMarkerIndex, covenantActive: hasTheCovenant };
 
+  // ── 3c. Stuck-state catch-all ─────────────────────────────────────────────
+  // If the run has already drifted into an unrecoverable state (bankroll below
+  // the minimum bet, no chips on the table to recover from), end it now rather
+  // than producing a confusing 422 validation loop. This is a defensive guard
+  // for any edge case where computeNextState's isBelowMinBet check was bypassed.
+  if (isBelowMinBet(run.bankrollCents, run.bets as Bets, run.currentMarkerIndex)) {
+    const stuckRun = await db
+      .update(runs)
+      .set({ status: 'GAME_OVER', updatedAt: new Date() })
+      .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
+      .returning();
+
+    if (!stuckRun[0]) {
+      return reply.status(409).send({ error: 'Conflict: run was modified by another request. Please retry.' });
+    }
+
+    void submitLeaderboardEntry(user as UserRow, stuckRun[0]).catch((err: unknown) => {
+      request.log.error({ err }, '[leaderboard] submission error (stuck-state)');
+    });
+
+    const stuckIO = getIO();
+    const stuckPayload: WsTurnSettledPayload = {
+      runId,
+      dice:                    [1, 1],
+      diceTotal:               2,
+      rollResult:              'CRAPS_OUT',
+      bankrollDelta:           0,
+      newBankroll:             run.bankrollCents,
+      newShooters:             run.shooters,
+      newHype:                 run.hype,
+      newPhase:                run.phase as GamePhase,
+      newPoint:                run.currentPoint ?? null,
+      runStatus:               'GAME_OVER',
+      newMarkerIndex:          run.currentMarkerIndex,
+      newBets:                 run.bets as Bets,
+      newConsecutivePointHits: run.consecutivePointHits,
+      newBossPointHits:        run.bossPointHits,
+      payoutBreakdown:         { passLine: 0, odds: 0, hardways: 0 },
+    };
+    stuckIO.to(`run:${runId}`).emit('turn:settled', stuckPayload);
+
+    return reply.status(200).send({
+      run: stuckRun[0],
+      roll: {
+        autoClear:       true,
+        dice:            [1, 1] as [number, number],
+        diceTotal:       2,
+        rollResult:      'CRAPS_OUT' as const,
+        bankrollDelta:   0,
+        resolvedBets:    run.bets as Bets,
+        payoutBreakdown: { passLine: 0, odds: 0, hardways: 0 },
+        mechanicFreeze:  null,
+      },
+    });
+  }
+
   // ── 4. Bet validation ──────────────────────────────────────────────────────
   //
   // Deduct-on-placement model: the DB bankroll already reflects bets placed in
@@ -419,10 +475,18 @@ async function rollHandler(
   // cheat_dice is only honoured when the requesting user has not yet completed
   // the tutorial. This prevents the field being used to rig rolls in real runs.
   const cheatDice = request.body.cheat_dice;
-  const dice: [number, number] =
+  let dice: [number, number] =
     cheatDice !== undefined && !user.tutorialCompleted
       ? cheatDice
       : rollDice();
+
+  // ── 6b. GOLDEN_TOUCH — guarantee a Natural on first come-out roll ──────────
+  // shooterRollCount resets to 0 on each SEVEN_OUT, so the guarantee renews
+  // for every new shooter. Rejection-sample loop converges in ~4.5 rolls on average.
+  const hasGoldenTouch = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.GOLDEN_TOUCH);
+  if (hasGoldenTouch && run.shooterRollCount === 0 && run.phase === 'COME_OUT') {
+    do { dice = rollDice(); } while (dice[0] + dice[1] !== 7 && dice[0] + dice[1] !== 11);
+  }
 
   // ── 7. Resolve roll — classify outcome and compute base payouts ────────────
   const initialCtx = resolveRoll(dice, {
@@ -627,10 +691,15 @@ async function rollHandler(
 
   // Build the QA receipt with per-crew attribution and boss deduction breakdown.
   const bossDeductionAmount = rawPayout - payout;
-  const bossDeduction = bossDeductionAmount > 0 && bossMarkerConfig?.boss
-    ? { amount: bossDeductionAmount, source: bossMarkerConfig.boss.name }
-    : undefined;
-  const receipt = buildRollReceipt(viggedContext, events, bossDeduction);
+  const tributeAmount = newBankroll - tributedBankroll;
+  const bossDeductions: Array<{ amount: number; source: string; label: string }> = [];
+  if (bossDeductionAmount > 0 && bossMarkerConfig?.boss) {
+    bossDeductions.push({ amount: bossDeductionAmount, source: bossMarkerConfig.boss.name, label: 'extortion fee' });
+  }
+  if (tributeAmount > 0 && bossMarkerConfig?.boss) {
+    bossDeductions.push({ amount: tributeAmount, source: bossMarkerConfig.boss.name, label: 'tribute' });
+  }
+  const receipt = buildRollReceipt(viggedContext, events, bossDeductions.length > 0 ? bossDeductions : undefined);
 
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);

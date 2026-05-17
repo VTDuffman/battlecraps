@@ -182,7 +182,7 @@ export const TRANSITION_REGISTRY: Record<TransitionType, TransitionPhase[]> = {
     },
   ],
 
-  // ── VICTORY — all 9 markers cleared ─────────────────────────────────────
+  // ── VICTORY — all 27 markers cleared ────────────────────────────────────
   // Phase 1 (auto 3s + tap): "YOU WIN" explosion with floor badges
   // Phase 2 (gated):         final stats recap — markers, bankroll, personal best
   // Phase 3 (gated):         unlock recap — any crew unlocked this run (skips if none)

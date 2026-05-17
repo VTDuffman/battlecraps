@@ -78,7 +78,7 @@ export const TitleScreenPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
             color:    `${theme.accentPrimary}70`,
           }}
         >
-          Three floors. Nine markers. One shooter standing.
+          Nine floors. Twenty-seven markers. One shooter standing.
         </p>
       </div>
 
@@ -96,7 +96,7 @@ export const TitleScreenPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
           color:    `${theme.accentPrimary}50`,
         }}
       >
-        Climb from the VFW Hall to the Penthouse.
+        Climb from the Loading Dock to the Null Space.
         Beat the bosses. Clear the markers.
         Don't seven out.
       </p>

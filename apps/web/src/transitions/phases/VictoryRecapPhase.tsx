@@ -6,10 +6,10 @@
 // explosion reveal. Gated — the player advances when ready.
 //
 // Shows:
-//   • MARKERS CLEARED: 9 / 9
+//   • MARKERS CLEARED: 27 / 27
 //   • FINAL BANKROLL: $X
 //   • PERSONAL BEST indicator (★ NEW if this run set a new record)
-//   • Three floor checkmarks confirming all floors conquered
+//   • All nine floor checkmarks confirming all floors conquered
 //   • CTA to continue to the send-off
 //
 // Reads from the live store — game is over, no race condition risk.
@@ -21,7 +21,7 @@ import { useGameStore, selectBankrollDisplay } from '../../store/useGameStore.js
 import { GAUNTLET, FLOORS }                    from '@battlecraps/shared';
 import { getFloorTheme }                       from '../../lib/floorThemes.js';
 
-const theme = getFloorTheme(8); // Floor 3 victory palette
+const theme = getFloorTheme(8); // Floor 9 victory palette
 
 export const VictoryRecapPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) => {
   const bankrollDisplay  = useGameStore(selectBankrollDisplay);

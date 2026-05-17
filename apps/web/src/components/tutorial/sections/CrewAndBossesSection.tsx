@@ -7,10 +7,8 @@
 // - Bosses: reads from GAUNTLET config; blurred until player has reached that floor
 //
 // currentMarkerIndex from store gates boss reveal:
-//   - Boss 1 (Floor 1): visible once currentMarkerIndex >= 2
-//   - Boss 2 (Floor 2): visible once currentMarkerIndex >= 5
-//   - Boss 3 (Floor 3): visible once currentMarkerIndex >= 8
-//   - Boss 4 (Floor 4): visible once currentMarkerIndex >= 11
+//   Bosses at marker indices 2, 5, 8, 11, 14, 17, 20, 23, 26 — one per floor.
+//   A boss card is revealed once currentMarkerIndex >= that boss's marker index.
 // =============================================================================
 
 import React, { useEffect } from 'react';
@@ -120,7 +118,7 @@ const CrewCard: React.FC<{ crew: CrewRosterEntry }> = ({ crew }) => {
 // ---------------------------------------------------------------------------
 
 interface BossCardProps {
-  markerIndex: number;   // 2, 5, or 8
+  markerIndex: number;   // 2, 5, 8, 11, 14, 17, 20, 23, 26 — one per floor
   revealed:    boolean;
 }
 
@@ -219,10 +217,9 @@ export const CrewAndBossesSection: React.FC = () => {
         comp perk. Bosses are revealed as you progress.
       </p>
       <div className="space-y-2 mt-1">
-        <BossCard markerIndex={2}  revealed={bossRevealed(2)} />
-        <BossCard markerIndex={5}  revealed={bossRevealed(5)} />
-        <BossCard markerIndex={8}  revealed={bossRevealed(8)} />
-        <BossCard markerIndex={11} revealed={bossRevealed(11)} />
+        {[2, 5, 8, 11, 14, 17, 20, 23, 26].map((idx) => (
+          <BossCard key={idx} markerIndex={idx} revealed={bossRevealed(idx)} />
+        ))}
       </div>
 
       {/* ── Crew ───────────────────────────────────────────────────────────── */}

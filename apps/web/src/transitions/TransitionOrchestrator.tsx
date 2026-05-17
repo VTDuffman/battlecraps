@@ -76,10 +76,16 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
   //   1. TITLE        — marker 0, brand-new player
   //   2. BOSS_ENTRY   — arrived at a boss marker
   //   3. FLOOR_REVEAL — arrived at floor 2/3 opener (indices 3, 6)
-  //   4. VICTORY      — status=GAME_OVER, all 9 markers cleared
+  //   4. VICTORY      — status=GAME_OVER, all 27 markers cleared
   //   5. MARKER_INTRO — any other non-boss marker not yet introduced
   useEffect(() => {
-    if (activeTransition !== null) return;
+    // Guard: chip rain is still running — currentMarkerIndex has already advanced
+    // but the player hasn't left the table yet. Firing any transition detection
+    // here sets bossEntryShownFor / markerIntroShownFor / floorRevealShownFor
+    // prematurely, and triggerChipRainComplete() immediately overwrites
+    // activeTransition with MARKER_CLEAR, so the BOSS_ENTRY / FLOOR_REVEAL is
+    // lost. All detection must wait until pendingTransition clears.
+    if (activeTransition !== null || pendingTransition) return;
 
     // Priority 1 — Title splash (new player, marker 0, never shown before)
     if (
@@ -162,6 +168,7 @@ export const TransitionOrchestrator: React.FC<TransitionOrchestratorProps> = ({
     status,
     currentMarkerIndex,
     activeTransition,
+    pendingTransition,
     titleShown,
     bossEntryShownFor,
     floorRevealShownFor,

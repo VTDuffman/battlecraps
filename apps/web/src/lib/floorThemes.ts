@@ -529,54 +529,54 @@ const FLOOR_8_THEME: FloorTheme = {
 // =============================================================================
 // Floor 9 — The Null Space (The Zero Chamber)
 // =============================================================================
-// Pure absence. No felt texture, no ambient light, no atmosphere.
-// The Architect's table exists in a void built from the data of every run played.
-// Phosphor green terminal glow. Deletion red for the penalty. Nothing else.
+// Inverted void: white ground, black ink, total absence of color.
+// Where Floor 8 is neon-green on black, Floor 9 is the inverse — pure white
+// surfaces, near-black accents, no glow, no atmosphere. Finality as a blank page.
 
 const FLOOR_9_THEME: FloorTheme = {
-  // Felt — pure black, no tint, no texture (void is void)
-  feltPrimary: '#000000',
-  feltRail:    '#000000',
-  feltTexture: feltTextureUri('#000000', '#000000', '#050505'),
+  // Felt — near-white, like blank paper; rail slightly darker
+  feltPrimary: '#f0f0f0',
+  feltRail:    '#e0e0e0',
+  feltTexture: feltTextureUri('#f0f0f0', '#d8d8d8', '#fafafa'),
 
-  // Accents — phosphor green terminal
-  accentBright:  '#39ff14',
-  accentPrimary: '#20cc00',
-  accentDim:     '#0a5500',
+  // Accents — near-black (inverted from the neon floors)
+  accentBright:  '#111111',
+  accentPrimary: '#333333',
+  accentDim:     '#aaaaaa',
 
-  // Borders — phosphor green at low opacity
-  borderHigh: 'rgba(32,204,0,0.28)',
-  borderLow:  'rgba(32,204,0,0.18)',
+  // Borders — black at low opacity
+  borderHigh: 'rgba(0,0,0,0.25)',
+  borderLow:  'rgba(0,0,0,0.14)',
 
-  // Breathing — void is still / phosphor surge / deletion red
-  breatheCold: 'rgba(0,0,0,0.0)',
-  breatheWarm: 'rgba(32,204,0,0.10)',
-  breatheHot:  'rgba(200,20,20,0.20)',
+  // Breathing — barely perceptible; void is still
+  breatheCold: 'rgba(0,0,0,0.04)',
+  breatheWarm: 'rgba(0,0,0,0.08)',
+  breatheHot:  'rgba(0,0,0,0.14)',
 
-  // Screen flash — phosphor surge / deletion void
-  flashWin:  'rgba(40,255,20,0.35)',
+  // Screen flash — white surge on win / hard black cut on lose
+  flashWin:  'rgba(255,255,255,0.70)',
   flashLose: 'rgba(0,0,0,0.80)',
 
   // Pub — The Terminal
   pubName:         'THE TERMINAL',
-  pubBg:           '#000000',
-  pubAccentBar:    'linear-gradient(90deg, transparent, #0a5500 30%, #39ff14 50%, #0a5500 70%, transparent)',
-  pubOverlayBg:    'radial-gradient(ellipse at 50% 50%, rgba(32,204,0,0.03) 0%, transparent 70%)',
-  pubTitleColor:   '#39ff14',
-  pubTitleShadow:  '0 0 20px #20cc00, 0 0 40px #0a5500',
-  pubSubtextColor: 'rgba(57,255,20,0.50)',
+  pubBg:           'radial-gradient(ellipse at 50% 50%, #ffffff 0%, #f0f0f0 60%, #e8e8e8 100%)',
+  pubAccentBar:    'linear-gradient(90deg, transparent, #aaaaaa 30%, #111111 50%, #aaaaaa 70%, transparent)',
+  pubOverlayBg:    'radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.02) 0%, transparent 70%)',
+  pubTitleColor:   '#000000',
+  pubTitleShadow:  '0 1px 3px rgba(0,0,0,0.20)',
+  pubSubtextColor: 'rgba(0,0,0,0.40)',
 
   // Boss — The Zero Chamber (The Architect)
-  bossBg:          'radial-gradient(ellipse at 50% 50%, #020802 0%, #010401 50%, #000000 100%)',
-  bossAccentBar:   'linear-gradient(90deg, transparent, #0a5500 30%, #20cc00 50%, #0a5500 70%, transparent)',
-  bossGlow:        'radial-gradient(ellipse at 50% 40%, rgba(32,204,0,0.06) 0%, transparent 65%)',
-  bossTextColor:   '#39ff14',
-  bossTitleShadow: '0 0 30px rgba(57,255,20,0.40), 0 0 80px rgba(10,85,0,0.25)',
-  bossBorderColor: 'rgba(32,204,0,0.30)',
-  bossStarColor:   '#39ff14',
-  bossStarBg:      'rgba(10,85,0,0.35)',
-  bossStarBorder:  '2px solid rgba(57,255,20,0.40)',
-  bossStarGlow:    '0 0 20px 4px rgba(32,204,0,0.18)',
+  bossBg:          'radial-gradient(ellipse at 50% 40%, #ffffff 0%, #f0f0f0 60%, #e8e8e8 100%)',
+  bossAccentBar:   'linear-gradient(90deg, transparent, #888888 30%, #111111 50%, #888888 70%, transparent)',
+  bossGlow:        'radial-gradient(ellipse at 50% 40%, rgba(0,0,0,0.04) 0%, transparent 65%)',
+  bossTextColor:   '#000000',
+  bossTitleShadow: '0 1px 4px rgba(0,0,0,0.25)',
+  bossBorderColor: 'rgba(0,0,0,0.22)',
+  bossStarColor:   '#000000',
+  bossStarBg:      'rgba(0,0,0,0.08)',
+  bossStarBorder:  '2px solid rgba(0,0,0,0.22)',
+  bossStarGlow:    '0 0 12px 2px rgba(0,0,0,0.10)',
 };
 
 // =============================================================================

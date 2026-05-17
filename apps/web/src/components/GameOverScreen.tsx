@@ -10,7 +10,7 @@
 //
 // Displays:
 //   - "GAME OVER" header with neon bleed + tone-calibrated tagline
-//   - Gauntlet pip strip — 9 pips (3 per floor) showing exactly how far they got
+//   - Gauntlet pip strip — 27 pips (3 per floor × 9 floors) showing how far they got
 //   - Run stats: markers cleared, final bankroll
 //   - The crew that was on the rail when the run ended
 //   - A prominent PLAY AGAIN button (calls onPlayAgain → bootstrap)
@@ -38,14 +38,10 @@ const CREW_NAMES: Record<number, string> = {
 };
 
 // ---------------------------------------------------------------------------
-// Floor themes for pip strip — indexed by floorIdx (0 = Floor 1, etc.)
+// Floor themes for pip strip — one entry per floor (0 = Floor 1, etc.)
 // ---------------------------------------------------------------------------
 
-const FLOOR_PIP_THEMES = [
-  getFloorTheme(0),  // Floor 1 — VFW Hall
-  getFloorTheme(3),  // Floor 2 — Riverboat
-  getFloorTheme(6),  // Floor 3 — The Strip
-] as const;
+const FLOOR_PIP_THEMES = Array.from({ length: 9 }, (_, i) => getFloorTheme(i * 3));
 
 // ---------------------------------------------------------------------------
 // Tone-calibrated tagline — shifts based on how far the player got.
@@ -53,12 +49,16 @@ const FLOOR_PIP_THEMES = [
 // ---------------------------------------------------------------------------
 
 function getToneTagline(cleared: number): string {
-  if (cleared === 0) return "The house didn't even break a sweat.";
-  if (cleared <= 2)  return "Floor 1 had your number.";
-  if (cleared === 3) return "You cleared the VFW. The Riverboat cut you short.";
-  if (cleared <= 5)  return "The Riverboat cut the run short.";
-  if (cleared === 6) return "Two floors down. The Strip finished it.";
-  return "You made it to The Strip. So close."; // 7–8
+  if (cleared === 0)  return "The house didn't even break a sweat.";
+  if (cleared <= 2)   return "The Loading Dock had your number.";
+  if (cleared <= 5)   return "The VFW Hall cut the run short.";
+  if (cleared <= 8)   return "The Riverboat finished it.";
+  if (cleared <= 11)  return "The Strip took you out.";
+  if (cleared <= 14)  return "The Lodge collected its debt.";
+  if (cleared <= 17)  return "Atlantis pulled you under.";
+  if (cleared <= 20)  return "The Station killed your momentum.";
+  if (cleared <= 23)  return "The Signal blocked the run.";
+  return "Nine floors deep. The Null Space had the last word."; // 24–26
 }
 
 // Category colors for the crew badge in the end screen
@@ -236,7 +236,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
         </button>
 
         <p className="mt-3 text-center font-pixel text-[5px] text-red-900/60 tracking-wider">
-          NEW RUN · $250 BANKROLL · FRESH CREW SLOTS
+          NEW RUN · $30 BANKROLL · FRESH CREW SLOTS
         </p>
       </footer>
     </div>
@@ -274,70 +274,58 @@ const StatRow: React.FC<{
 // ---------------------------------------------------------------------------
 // Gauntlet pip strip
 //
-// 9 pips grouped 3-3-3 by floor, separated by thin vertical rules.
-// Cleared pips use the floor's felt/accent palette; boss pips (★) use the
-// bright accent so they stand out. Uncleared pips are near-invisible.
+// 27 pips grouped 3-per-floor across 9 floors. Smaller pips (14×14) keep the
+// full strip within the max-w-lg container. Boss pips (★) use the bright accent.
 // ---------------------------------------------------------------------------
 
 const GauntletPips: React.FC<{ cleared: number }> = ({ cleared }) => (
-  <div className="flex items-center justify-center gap-3">
+  <div className="flex items-center justify-center gap-1.5 flex-wrap">
     {FLOOR_PIP_THEMES.map((ft, floorIdx) => (
-      <React.Fragment key={floorIdx}>
-        {/* Floor separator — thin vertical rule between floors */}
-        {floorIdx > 0 && (
-          <div
-            className="h-5 w-px flex-none"
-            style={{ background: 'rgba(255,255,255,0.08)' }}
-          />
-        )}
+      <div key={floorIdx} className="flex items-center gap-0.5">
+        {[0, 1, 2].map((markerInFloor) => {
+          const markerIdx = floorIdx * 3 + markerInFloor;
+          const isBoss    = markerInFloor === 2;
+          const isCleared = markerIdx < cleared;
 
-        {/* 3 pips for this floor */}
-        <div className="flex items-center gap-1.5">
-          {[0, 1, 2].map((markerInFloor) => {
-            const markerIdx = floorIdx * 3 + markerInFloor;
-            const isBoss    = markerInFloor === 2;   // boss = 3rd of each floor (indices 2, 5, 8)
-            const isCleared = markerIdx < cleared;
-
-            return (
-              <div
-                key={markerInFloor}
-                className="flex items-center justify-center rounded-sm flex-none"
+          return (
+            <div
+              key={markerInFloor}
+              className="flex items-center justify-center rounded-sm flex-none"
+              style={{
+                width:      14,
+                height:     14,
+                background: isCleared
+                  ? isBoss
+                    ? `${ft.accentBright}cc`
+                    : `${ft.feltPrimary}dd`
+                  : 'rgba(0,0,0,0.45)',
+                border: `1px solid ${
+                  isCleared
+                    ? isBoss ? ft.accentBright : `${ft.accentPrimary}aa`
+                    : 'rgba(255,255,255,0.06)'
+                }`,
+                boxShadow: isCleared
+                  ? `0 0 5px 1px ${ft.accentPrimary}30`
+                  : 'none',
+              }}
+            >
+              <span
+                className="font-pixel leading-none select-none"
                 style={{
-                  width:      22,
-                  height:     22,
-                  background: isCleared
+                  fontSize: isBoss ? '6px' : '5px',
+                  color: isCleared
                     ? isBoss
-                      ? `${ft.accentBright}cc`
-                      : `${ft.feltPrimary}dd`
-                    : 'rgba(0,0,0,0.45)',
-                  border: `1px solid ${
-                    isCleared
-                      ? isBoss ? ft.accentBright : `${ft.accentPrimary}aa`
-                      : 'rgba(255,255,255,0.06)'
-                  }`,
-                  boxShadow: isCleared
-                    ? `0 0 8px 1px ${ft.accentPrimary}35`
-                    : 'none',
+                      ? ft.feltPrimary
+                      : ft.accentBright
+                    : 'rgba(255,255,255,0.10)',
                 }}
               >
-                <span
-                  className="font-pixel leading-none select-none"
-                  style={{
-                    fontSize: isBoss ? '8px' : '7px',
-                    color: isCleared
-                      ? isBoss
-                        ? ft.feltPrimary           // ★ on bright boss pip — use felt for contrast
-                        : ft.accentBright          // ● on normal pip
-                      : 'rgba(255,255,255,0.10)',  // dim for uncleared
-                  }}
-                >
-                  {isBoss ? '★' : '●'}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </React.Fragment>
+                {isBoss ? '★' : '●'}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     ))}
   </div>
 );

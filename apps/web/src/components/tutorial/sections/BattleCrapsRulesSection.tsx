@@ -7,11 +7,7 @@
 // =============================================================================
 
 import React from 'react';
-import { GAUNTLET } from '@battlecraps/shared';
-
-// ── Floor names ────────────────────────────────────────────────────────────
-
-const FLOOR_NAMES = ['The Loading Dock', 'VFW Hall', 'The Riverboat', 'The Strip'] as const;
+import { GAUNTLET, FLOORS } from '@battlecraps/shared';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -40,9 +36,9 @@ const Row: React.FC<{ label: string; value: string; valueColor?: string }> = ({
 
 export const BattleCrapsRulesSection: React.FC = () => {
   // Build floor data from the shared GAUNTLET constant
-  const floors = [0, 1, 2, 3].map((f) => {
-    const markers = GAUNTLET.filter((m) => m.floor === f + 1);
-    return { name: FLOOR_NAMES[f]!, markers };
+  const floors = FLOORS.map((floor) => {
+    const markers = GAUNTLET.filter((m) => m.floor === floor.id);
+    return { name: floor.name, markers };
   });
 
   return (
@@ -51,8 +47,8 @@ export const BattleCrapsRulesSection: React.FC = () => {
       {/* ── Gauntlet Structure ─────────────────────────────────────────────── */}
       <SectionHeader>The Gauntlet</SectionHeader>
       <p className="text-white/50 leading-relaxed py-2">
-        Twelve markers across four floors. Each floor ends with a boss fight.
-        Clear all twelve to win the run.
+        Twenty-seven markers across nine floors. Each floor ends with a boss fight.
+        Clear all twenty-seven to win the run.
       </p>
 
       {floors.map((floor, fi) => (
@@ -125,12 +121,13 @@ export const BattleCrapsRulesSection: React.FC = () => {
         multiplier. It boosts the profit portion of every winning payout.
       </p>
       <div className="space-y-0.5">
-        <Row label="Starting Hype"      value="1.00×" />
-        <Row label="Tick (1st hit)"     value="+0.05×" valueColor="text-green-400" />
-        <Row label="Tick (2nd hit)"     value="+0.10×" valueColor="text-green-400" />
-        <Row label="Tick (3rd hit)"     value="+0.15×" valueColor="text-green-400" />
-        <Row label="Tick (4th+ hit)"    value="+0.20×" valueColor="text-green-400" />
-        <Row label="Seven Out"          value="Resets to 1.00×" valueColor="text-red-400" />
+        <Row label="Starting Hype"       value="1.00×" />
+        <Row label="Point Hit"           value="+0.25×" valueColor="text-green-400" />
+        <Row label="Natural (7 or 11)"   value="+0.10×" valueColor="text-green-400" />
+        <Row label="Craps Out"           value="−0.05×" valueColor="text-yellow-500" />
+        <Row label="Seven Out"           value="Resets to 1.00×" valueColor="text-red-400" />
+        <Row label="Heating Up (tier 2)" value="≥ 1.50×" valueColor="text-amber-400" />
+        <Row label="On Fire (tier 3)"    value="≥ 2.50×" valueColor="text-orange-400" />
       </div>
       <div className="mt-2 border border-amber-900/40 rounded bg-amber-950/20 p-3">
         <div className="font-pixel text-[7px] text-amber-300 mb-1">PAYOUT FORMULA</div>

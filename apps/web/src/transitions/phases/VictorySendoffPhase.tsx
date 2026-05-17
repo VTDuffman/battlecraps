@@ -17,7 +17,7 @@ import type { PhaseComponentProps } from '../types.js';
 import { useGameStore }            from '../../store/useGameStore.js';
 import { getFloorTheme }           from '../../lib/floorThemes.js';
 
-const theme = getFloorTheme(8); // Floor 3 — where it ended
+const theme = getFloorTheme(8); // Floor 9 — where it ended
 
 export const VictorySendoffPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) => {
   const bankroll = useGameStore((s) => s.bankroll);
@@ -72,8 +72,8 @@ export const VictorySendoffPhase: React.FC<PhaseComponentProps> = ({ onAdvance }
           className="font-mono leading-relaxed"
           style={{ fontSize: '10px', color: `${theme.accentPrimary}bb` }}
         >
-          VFW Hall. The Riverboat. The Penthouse.
-          Three floors, nine markers, one shooter left standing.
+          The Loading Dock. The Lodge. The Null Space.
+          Nine floors, twenty-seven markers, one shooter left standing.
         </p>
         <p
           className="font-mono leading-relaxed"
@@ -108,7 +108,7 @@ export const VictorySendoffPhase: React.FC<PhaseComponentProps> = ({ onAdvance }
         className="font-pixel text-[5px] tracking-wider text-center px-10"
         style={{ color: `${theme.accentDim}50` }}
       >
-        NEW RUN · $250 BANKROLL · FRESH CREW SLOTS
+        NEW RUN · $30 BANKROLL · FRESH CREW SLOTS
       </p>
 
       {/* Bottom accent bar */}

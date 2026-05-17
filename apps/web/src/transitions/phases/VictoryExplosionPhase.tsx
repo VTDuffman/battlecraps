@@ -2,18 +2,18 @@
 // BATTLECRAPS — VICTORY EXPLOSION PHASE (auto, 3000ms)
 // apps/web/src/transitions/phases/VictoryExplosionPhase.tsx
 //
-// First phase of the VICTORY transition. Fires when all 9 gauntlet markers
-// have been cleared (the floor 3 boss is defeated). Auto-advances after 3s
+// First phase of the VICTORY transition. Fires when all 27 gauntlet markers
+// have been cleared (the floor 9 boss is defeated). Auto-advances after 3s
 // with tap-to-skip.
 //
 // Shows:
 //   • "✦ GAUNTLET CLEARED ✦" header badge
 //   • "YOU WIN" title — maximum weight, electric gold glow
-//   • Three floor badges confirming all floors were conquered
+//   • All nine floor badges confirming all floors were conquered
 //
-// Visual tone: the darkness of Floor 3 (near-black obsidian) with the electric
-// gold that only The Strip uses at full brightness. Three floors of colour
-// visible in the floor badges — a visual summary of the whole run.
+// Visual tone: the darkness of Floor 9 (The Null Space) with the electric
+// gold that only The Strip uses at full brightness. All nine floor badges
+// visible — a visual summary of the whole run.
 // =============================================================================
 
 import React from 'react';
@@ -21,7 +21,7 @@ import type { PhaseComponentProps } from '../types.js';
 import { FLOORS }                  from '@battlecraps/shared';
 import { getFloorTheme }           from '../../lib/floorThemes.js';
 
-// Use Floor 3 as the dominant victory palette.
+// Use Floor 9 as the dominant victory palette.
 const theme = getFloorTheme(8);
 
 export const VictoryExplosionPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) => {
@@ -68,7 +68,7 @@ export const VictoryExplosionPhase: React.FC<PhaseComponentProps> = ({ onAdvance
         YOU<br />WIN
       </h1>
 
-      {/* Three floor badges — all conquered */}
+      {/* Floor badges — all conquered */}
       <div className="flex items-center gap-3">
         {FLOORS.map((floor) => {
           const ft = getFloorTheme((floor.id - 1) * 3);

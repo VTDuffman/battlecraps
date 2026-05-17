@@ -12,9 +12,10 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useGameStore, selectHypeTier } from '../store/useGameStore.js';
+import { useGameStore, selectHypeTier, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 import { useParticleEmitter } from '../hooks/useParticleEmitter.js';
 import { isBossMarker, getBossMinBet, getMinBet } from '@battlecraps/shared';
+import { getFloorIndex } from '../lib/floorThemes.js';
 
 // ---------------------------------------------------------------------------
 // Roll result metadata
@@ -112,6 +113,7 @@ export const DiceZone: React.FC = () => {
   const celebrationSnapshot = useGameStore((s) => s.celebrationSnapshot);
   const dreadDice           = useGameStore((s) => s.dreadDice);
   const hypeTier            = useGameStore(selectHypeTier);
+  const isNullSpace         = getFloorIndex(useGameStore(selectDisplayMarkerIndex)) === 8;
 
   // ── Throw animation state ─────────────────────────────────────────────────
   const [throwPhase, setThrowPhase]   = useState<ThrowPhase>('idle');
@@ -459,7 +461,11 @@ export const DiceZone: React.FC = () => {
   return (
     <div ref={containerRef} className="relative z-[2]">
       {createPortal(
-        <canvas ref={particleCanvasRef} className="fixed inset-0 z-[1] pointer-events-none" />,
+        <canvas
+          ref={particleCanvasRef}
+          className="fixed inset-0 z-[1] pointer-events-none"
+          style={isNullSpace ? { filter: 'grayscale(1)' } : undefined}
+        />,
         document.body
       )}
 

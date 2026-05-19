@@ -17,9 +17,12 @@ npm run typecheck    # tsc --noEmit across all workspaces
 npm run test         # vitest on packages/shared only
 
 # Database
-npm run db:migrate   # push Drizzle schema to Postgres
+npm run db:migrate   # apply pending migration files (safe — never generates DROP)
+npm run db:generate  # snapshot schema changes into a new migration file (run before db:migrate)
 npm run db:seed      # seed crew + boss config
 npm run db:studio    # Drizzle Studio live inspector
+
+# ⚠️  NEVER run: npm run db:push-unsafe  (drizzle-kit push — can DROP tables and wipe data)
 
 # Per-workspace (from workspace root)
 npm run test:watch -w @battlecraps/shared   # vitest watch mode
@@ -144,7 +147,8 @@ This project uses strict TypeScript. Whenever you write or modify TypeScript cod
 ```
 docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–024), tutorial-user-journey.md,
                       #   vibe-ideas.md, floor-aesthetics.md
-docs/frameworks/      # crew_framework.md (30 crew — 15 Starter + 15 unlock-gated), floors.md, boss_framework.md
+docs/frameworks/      # crew_framework.md (30 crew — 15 Starter + 15 unlock-gated), floors.md, boss_framework.md,
+                      #   floor-addition-checklist.md (canonical update checklist — use this when adding any new floor)
 docs/design/          # crew-sprites-tdd.md (asset spec), crew-implementation-design.md (FB-012 TDD),
                       #   transition_framework TDD, boss-mechanic-technical-design.md,
                       #   title-screen-technical-design.md, tutorial-technical-design.md (FB-007 TDD),

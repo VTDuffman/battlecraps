@@ -129,6 +129,16 @@ export interface CelebrationSnapshot {
 export type FloorAtmosphere = 'exposed' | 'gritty' | 'elegant' | 'electric' | 'occult' | 'ancient' | 'cosmic' | 'alien' | 'digital';
 
 /**
+ * The 1-indexed floor number union. Add the next integer here when adding a floor.
+ * Any Record<FloorId, …> will then produce a compile-time error at every
+ * floor-scoped lookup site that is missing the new floor — making omissions
+ * a build failure rather than a silent runtime gap.
+ *
+ * Keep this in sync with FLOORS below and docs/frameworks/floor-addition-checklist.md.
+ */
+export type FloorId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
+/**
  * The complete narrative and display configuration for a single floor.
  *
  * This is the DISPLAY layer — it contains everything transition components

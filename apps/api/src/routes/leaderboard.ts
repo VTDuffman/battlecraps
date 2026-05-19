@@ -2,14 +2,14 @@
 // BATTLECRAPS — Leaderboard routes (FB-014)
 // apps/api/src/routes/leaderboard.ts
 //
-// GET  /api/v1/leaderboard?view=global    → winners + nonWinners Top 25 each
+// GET  /api/v1/leaderboard?view=global    → winners (top 25) + nonWinners (top 10) + trailblazers (top 10)
 // GET  /api/v1/leaderboard?view=personal  → caller's Top 25 (auth required)
 //
 // submitLeaderboardEntry() is called internally from rolls.ts at GAME_OVER.
 // =============================================================================
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { eq, desc, inArray } from 'drizzle-orm';
+import { eq, desc, gte, lt, and, inArray } from 'drizzle-orm';
 
 import { db } from '../db/client.js';
 import {
@@ -54,16 +54,22 @@ async function leaderboardHandler(
   const { view } = request.query;
 
   if (view === 'global') {
-    const [winnersRows, nonWinnersRows] = await Promise.all([
+    const [winnersRows, nonWinnersRows, trailblazersRows] = await Promise.all([
+      // Hall of Fame: 9-floor completions only (highestMarkerIndex >= current GAUNTLET.length)
       db
         .select()
         .from(leaderboardEntries)
-        .where(eq(leaderboardEntries.didWinRun, true))
+        .where(and(
+          eq(leaderboardEntries.didWinRun, true),
+          gte(leaderboardEntries.highestMarkerIndex, GAUNTLET.length),
+        ))
         .orderBy(
           desc(leaderboardEntries.finalBankrollCents),
           desc(leaderboardEntries.shootersRemaining),
         )
         .limit(25),
+
+      // Gone but Not Forgotten: all non-completions, any era
       db
         .select()
         .from(leaderboardEntries)
@@ -72,12 +78,24 @@ async function leaderboardHandler(
           desc(leaderboardEntries.highestMarkerIndex),
           desc(leaderboardEntries.finalBankrollCents),
         )
-        .limit(25),
+        .limit(10),
+
+      // Trailblazers: original-era completions (beat the pre-expansion game)
+      db
+        .select()
+        .from(leaderboardEntries)
+        .where(and(
+          eq(leaderboardEntries.didWinRun, true),
+          lt(leaderboardEntries.highestMarkerIndex, GAUNTLET.length),
+        ))
+        .orderBy(desc(leaderboardEntries.finalBankrollCents))
+        .limit(10),
     ]);
 
     return reply.status(200).send({
-      winners:    winnersRows,
-      nonWinners: nonWinnersRows,
+      winners:      winnersRows,
+      nonWinners:   nonWinnersRows,
+      trailblazers: trailblazersRows,
     });
   }
 

@@ -1234,7 +1234,7 @@ Replace the static `BASE_CHIPS` / `FLOOR_CHIPS` approach with a `chipsForMarker(
 
 **Area:** `apps/web/src/components/BettingGrid.tsx`, `packages/shared/src/bossRules/tidalSurge.ts`, `apps/api/src/routes/rolls.ts` (`computeNextState` — `nextBossCounter` / tide cycle logic), `packages/shared/src/config.ts` (`getMinBet` — TIDAL_SURGE branch)
 **Severity:** High (functional bug) / Medium (design defect) — logged together as both will be resolved in a single TIDAL_SURGE rework
-**Status:** Open
+**Status:** No Longer Applicable (2026-05-18) — TIDAL_SURGE mechanic replaced with the High/Low Tide binary oscillation design. The original roll-counter model and associated bugs are moot; the redesigned mechanic owns this design space going forward.
 **Source:** Manual playtest observation — FB-015 nine-floor integration QA (2026-05-15)
 
 **Issue:**
@@ -1348,7 +1348,7 @@ Add five new `FloorConfig` entries to `FLOOR_CONFIGS` in `FloorEmblem.tsx`, one 
 
 **Area:** Cross-cutting — `apps/web/src/components/FloorEmblem.tsx`, `apps/web/src/components/GameOverScreen.tsx`, `apps/web/src/components/tutorial/sections/BattleCrapsRulesSection.tsx`, `apps/web/src/components/tutorial/sections/CrewAndBossesSection.tsx`, `apps/web/src/lib/floorThemes.ts`, `apps/web/src/components/CompCard.tsx`, `apps/web/src/components/BettingGrid.tsx` (chip denominations), `apps/web/src/components/CompCardFan.tsx`
 **Severity:** Medium
-**Status:** Open
+**Status:** Resolved (2026-05-18)
 **Source:** Pattern identified during FB-015 nine-floor integration QA pass (2026-05-15)
 
 **Issue:**
@@ -1389,3 +1389,40 @@ All files enumerated in the checklist table above. No single component or module
 
 **High-Level Fix:**
 Two parallel actions are needed. First, extract the checklist table above into a permanent developer document at `docs/frameworks/floor-addition-checklist.md` and link it from the main `CLAUDE.md` architecture section so it is visible during any floor-addition implementation pass. Second, audit `packages/shared/src/config.ts` and `packages/shared/src/floors.ts` to identify whether a TypeScript type or constant could be derived from the canonical floor count — for example, a union type `FloorNum = 1 | 2 | ... | 9` that, if widened to include `10`, would cause a `tsc` error at every floor-scoped lookup site that is not exhaustive. Making floor omissions a compile-time error rather than a silent runtime gap would be the most robust long-term mitigation and would complement the documentation checklist.
+
+---
+
+## KI-062 — Final-marker SEVEN_OUT and auto-clear wins misclassified as losses in leaderboard
+
+**Area:** `apps/api/src/routes/rolls.ts` — pre-roll auto-clear path (approx. line 419), `computeNextState` SEVEN_OUT last-shooter-meets-target branch (approx. line 1095), and `computeNextState` SEVEN_OUT remaining-shooters-bankroll-meets-target branch (approx. line 1114); `apps/api/src/routes/leaderboard.ts` — `submitLeaderboardEntry` (`didWinRun` derivation)
+**Severity:** High
+**Status:** Resolved (2026-05-18)
+**Source:** Root cause analysis of leaderboard Trailblazers section (2026-05-18) — player observed fewer entries than expected, including a confirmed $100k+ winning run absent from the winners category
+
+**Fix applied:**
+Three lines in `rolls.ts` changed from `isLastMarker ? currentMarkerIndex : currentMarkerIndex + 1` to unconditionally `currentMarkerIndex + 1`. The conditional was correct for `nextStatus` (still uses `isLastMarker` to choose GAME_OVER vs TRANSITION) but was wrong for `nextMarkerIndex` — it withheld the increment on the final marker, leaving `currentMarkerIndex = GAUNTLET.length - 1` instead of `GAUNTLET.length`, which caused `submitLeaderboardEntry`'s `didWinRun = persistedRun.currentMarkerIndex >= GAUNTLET.length` to resolve to `false`. POINT_HIT and NATURAL were already correct (both use unconditional `currentMarkerIndex + 1`). A one-time DB migration script was added at `apps/api/src/db/migrate-fix-did-win-run.ts` to retroactively correct historical leaderboard entries from the original 9-marker era that were affected.
+
+**Issue:**
+When a player clears the final gauntlet marker (index 26, `GAUNTLET[26]`) via a SEVEN_OUT that meets the target or via the pre-roll auto-clear path, `currentMarkerIndex` is left at `GAUNTLET.length - 1` (26) rather than being advanced to `GAUNTLET.length` (27). `submitLeaderboardEntry` derives `didWinRun = persistedRun.currentMarkerIndex >= GAUNTLET.length`, which evaluates `26 >= 27` as `false`. The run is consequently routed to "Gone but Not Forgotten" instead of Hall of Fame or Trailblazers. Only the POINT_HIT and NATURAL win paths correctly write `currentMarkerIndex = GAUNTLET.length`, making `didWinRun = true`. All three defective paths share the same conditional pattern: `nextMarkerIndex = isLastMarker ? currentMarkerIndex : currentMarkerIndex + 1`, which correctly suppresses incrementing for non-final markers but incorrectly withholds the final increment that signals run completion.
+
+The bug has retroactive impact: any legitimate winning run cleared via SEVEN_OUT or auto-clear before the fix is applied will have a persisted `did_win_run = false` in the `leaderboard_entries` table. A one-time data migration is required to correct these rows — targeting entries with `created_at < 2026-05-13T04:53:52Z`, `highest_marker_index = 26` (0-indexed), and `final_bankroll_cents >= 125000000` (the minimum bankroll to have cleared the final Floor 9 marker at $1.25M).
+
+**Steps to Reproduce:**
+1. Start a run and progress to the final gauntlet marker (Floor 9, marker 3, target $20M).
+2. Accumulate enough bankroll through hardway or other bets to exceed the marker target before the point is made.
+3. Roll a seven-out on the come-out or during the point phase; the bankroll at seven-out meets or exceeds the target.
+4. Observe the run-end sequence and check the leaderboard — the run appears in "Gone but Not Forgotten" rather than Hall of Fame or Trailblazers.
+5. Alternatively: reach the final marker with a bankroll already exceeding the target before a roll is thrown (pre-roll auto-clear path) and observe the same misclassification.
+
+**Expected Behavior:**
+All win mechanisms — POINT_HIT, NATURAL, SEVEN_OUT, and pre-roll auto-clear — should persist `currentMarkerIndex = GAUNTLET.length` when the final marker is cleared. `submitLeaderboardEntry` should then compute `didWinRun = true` and route the entry to the appropriate winners category.
+
+**Actual Behavior:**
+SEVEN_OUT and auto-clear wins on the final marker persist `currentMarkerIndex = GAUNTLET.length - 1`. `submitLeaderboardEntry` evaluates `didWinRun = false` and writes the entry to "Gone but Not Forgotten," silently discarding the player's legitimate run completion from the winners board.
+
+**Likely Affected Area:**
+- `apps/api/src/routes/rolls.ts` — three code paths all containing the pattern `isLastMarker ? currentMarkerIndex : currentMarkerIndex + 1`; the true branch must be changed to `currentMarkerIndex + 1` unconditionally when the final marker is cleared
+- `apps/api/src/routes/leaderboard.ts` — `submitLeaderboardEntry`; `didWinRun` derivation is correct in isolation but depends on the upstream index being written accurately
+
+**High-Level Fix:**
+In all three affected paths in `rolls.ts`, replace the conditional `isLastMarker ? currentMarkerIndex : currentMarkerIndex + 1` with an unconditional `currentMarkerIndex + 1` whenever a final-marker clear is confirmed — the `isLastMarker` guard that withholds the increment is the root defect. After deploying the code fix, execute a targeted SQL migration against the `leaderboard_entries` table to flip `did_win_run` from `false` to `true` for all historical rows where `highest_marker_index = 26` and `final_bankroll_cents >= 125000000` and `created_at < 2026-05-13T04:53:52Z` (the approximate epoch before this code path existed). The migration should also be applied to the `runs` table's `current_marker_index` column for any affected run rows still persisted, so that run-state recovery does not reconstruct a stale index. A regression test covering all four win-path types (POINT_HIT, NATURAL, SEVEN_OUT, auto-clear) on the final marker should be added to prevent silent reintroduction.

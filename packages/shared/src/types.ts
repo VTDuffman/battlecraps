@@ -626,8 +626,9 @@ export interface LeaderboardEntry {
 
 /** Response shape for GET /api/v1/leaderboard?view=global */
 export interface GlobalLeaderboardResponse {
-  winners:    LeaderboardEntry[];  // Top 25, ORDER BY finalBankrollCents DESC, shootersRemaining DESC
-  nonWinners: LeaderboardEntry[];  // Top 25, ORDER BY highestMarkerIndex DESC, finalBankrollCents DESC
+  winners:      LeaderboardEntry[];  // Top 25, 9-floor completions only (highestMarkerIndex >= GAUNTLET.length)
+  nonWinners:   LeaderboardEntry[];  // Top 10, all non-completions, ORDER BY highestMarkerIndex DESC, finalBankrollCents DESC
+  trailblazers: LeaderboardEntry[];  // Top 10, original-era completions (highestMarkerIndex < GAUNTLET.length)
 }
 
 /** Response shape for GET /api/v1/leaderboard?view=personal (requires auth) */

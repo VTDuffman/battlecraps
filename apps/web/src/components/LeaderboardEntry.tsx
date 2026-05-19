@@ -36,9 +36,10 @@ const CREW_EMOJI: Record<number, string> = {
 };
 
 interface LeaderboardEntryProps {
-  entry:       LeaderboardEntryData;
-  rank:        number;
-  showMarker?: boolean;
+  entry:        LeaderboardEntryData;
+  rank:         number;
+  showMarker?:  boolean;
+  trailblazer?: boolean;
 }
 
 const theme = getFloorTheme(0);
@@ -51,8 +52,11 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
 }
 
-export function LeaderboardEntry({ entry, rank, showMarker }: LeaderboardEntryProps) {
+export function LeaderboardEntry({ entry, rank, showMarker, trailblazer }: LeaderboardEntryProps) {
   const [expanded, setExpanded] = useState(false);
+
+  const nameColor = trailblazer ? `${theme.accentPrimary}90` : theme.accentBright;
+  const floorNum  = Math.min(Math.floor(entry.highestMarkerIndex / 3) + 1, 9);
 
   return (
     <div
@@ -76,7 +80,7 @@ export function LeaderboardEntry({ entry, rank, showMarker }: LeaderboardEntryPr
         {/* Name */}
         <span
           className="font-pixel text-[9px] flex-1 truncate"
-          style={{ color: theme.accentBright }}
+          style={{ color: nameColor }}
         >
           {entry.displayName}
         </span>
@@ -86,13 +90,13 @@ export function LeaderboardEntry({ entry, rank, showMarker }: LeaderboardEntryPr
           {fmtDollars(entry.finalBankrollCents)}
         </span>
 
-        {/* Marker badge or WIN star */}
+        {/* Floor badge (non-winners) or WIN star (winners) */}
         {showMarker ? (
           <span
             className="font-pixel text-[7px] px-1.5 py-0.5 rounded"
             style={{ background: `${theme.accentDim}20`, color: `${theme.accentPrimary}70` }}
           >
-            MKR {Math.min(entry.highestMarkerIndex, 8) + 1}
+            FLOOR {floorNum}
           </span>
         ) : entry.didWinRun ? (
           <span className="font-pixel text-[7px]" style={{ color: theme.accentBright }}>★</span>

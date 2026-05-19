@@ -22,7 +22,7 @@
 // =============================================================================
 
 import React from 'react';
-import { GAUNTLET } from '@battlecraps/shared';
+import { GAUNTLET, type FloorId } from '@battlecraps/shared';
 import { useGameStore, type GameState } from '../store/useGameStore.js';
 
 // ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ interface FloorConfig {
   subLabel?:    string;
 }
 
-const FLOOR_CONFIGS: Record<number, FloorConfig> = {
+const FLOOR_CONFIGS: Record<FloorId, FloorConfig> = {
   1: {
     roman:         'I',
     displayName:   'LOADING DOCK',
@@ -252,7 +252,7 @@ const selectMarker = (s: GameState) => s.currentMarkerIndex;
 export const FloorEmblem: React.FC = () => {
   const currentMarkerIndex = useGameStore(selectMarker);
 
-  const floorNum = GAUNTLET[currentMarkerIndex]?.floor ?? 1;
+  const floorNum = (GAUNTLET[currentMarkerIndex]?.floor ?? 1) as FloorId;
   const cfg      = FLOOR_CONFIGS[floorNum];
   if (!cfg) return null;
 

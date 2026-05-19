@@ -5,8 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1774237890999,
-      "tag": "0000_add_consecutive_point_hits",
+      "when": 1779155444399,
+      "tag": "0000_daily_sentry",
       "breakpoints": true
     }
   ]

@@ -416,7 +416,7 @@ async function rollHandler(
     const bankrollDelta  = sumBets(run.bets as Bets);   // total of all previously-placed bets returned
     const isLastMarker   = run.currentMarkerIndex >= MARKER_TARGETS.length - 1;
     const nextStatus     = isLastMarker ? 'GAME_OVER' : 'TRANSITION';
-    const nextMkrIndex   = isLastMarker ? run.currentMarkerIndex : run.currentMarkerIndex + 1;
+    const nextMkrIndex   = run.currentMarkerIndex + 1;
     const zeroBets: Bets = { passLine: 0, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } };
 
     const autoRun = await db
@@ -1092,7 +1092,7 @@ function computeNextState(
         if (meetsTarget) {
           const isLastMarker = currentMarkerIndex >= MARKER_TARGETS.length - 1;
           nextStatus      = isLastMarker ? 'GAME_OVER' : 'TRANSITION';
-          nextMarkerIndex = isLastMarker ? currentMarkerIndex : currentMarkerIndex + 1;
+          nextMarkerIndex = currentMarkerIndex + 1;
         } else {
           nextStatus = 'GAME_OVER';
         }
@@ -1111,7 +1111,7 @@ function computeNextState(
         if (meetsTarget) {
           const isLastMarker = currentMarkerIndex >= MARKER_TARGETS.length - 1;
           nextStatus      = isLastMarker ? 'GAME_OVER' : 'TRANSITION';
-          nextMarkerIndex = isLastMarker ? currentMarkerIndex : currentMarkerIndex + 1;
+          nextMarkerIndex = currentMarkerIndex + 1;
         } else {
           nextStatus = 'IDLE_TABLE';
         }

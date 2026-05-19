@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getFloorTheme }              from '../lib/floorThemes.js';
 import { LeaderboardEntry }           from './LeaderboardEntry.js';
-import { GAUNTLET }                   from '@battlecraps/shared';
 import type {
   GlobalLeaderboardResponse,
   PersonalLeaderboardResponse,
@@ -13,7 +12,10 @@ interface LeaderboardScreenProps {
 
 type Tab = 'global' | 'personal';
 
-const theme = getFloorTheme(GAUNTLET.length - 1);
+// Floor 4 — The Strip Penthouse: electric gold on near-black obsidian.
+// Pinned to marker index 9 so the leaderboard keeps its Vegas high-roller
+// aesthetic regardless of how many floors are added to the gauntlet.
+const theme = getFloorTheme(9);
 
 const API_BASE = (import.meta as { env: Record<string, string> }).env['VITE_API_URL'] ?? '';
 
@@ -125,7 +127,7 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
 
       {/* Content */}
       {tab === 'global' ? (
-        <div className="flex-1 flex flex-col overflow-hidden p-4 gap-4">
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5">
           {loading && (
             <p
               className="font-mono text-center text-[9px]"
@@ -139,29 +141,58 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
           )}
           {globalData && !loading && (
             <>
-              <div
-                className="lb-scroll overflow-y-scroll rounded p-3 border"
-                style={{ flex: '2 1 0', borderColor: theme.borderHigh }}
-              >
+              {/* ── 1. Hall of Fame — 9-floor completions only ─────────────── */}
+              <div>
                 <SectionHeader label="THE HALL OF FAME" />
-                {globalData.winners.length === 0
-                  ? <EmptyState label="No victors yet. Be the first." />
-                  : globalData.winners.slice(0, 25).map((entry, i) => (
-                      <LeaderboardEntry key={entry.id} entry={entry} rank={i + 1} />
-                    ))
-                }
+                <div
+                  className="lb-scroll max-h-[320px] overflow-y-auto rounded p-3 border"
+                  style={{ borderColor: theme.borderHigh }}
+                >
+                  {globalData.winners.length === 0
+                    ? <EmptyState label="No victors yet. Be the first." />
+                    : globalData.winners.map((entry, i) => (
+                        <LeaderboardEntry key={entry.id} entry={entry} rank={i + 1} />
+                      ))
+                  }
+                </div>
               </div>
-              <div
-                className="lb-scroll overflow-y-scroll rounded p-3 border"
-                style={{ flex: '1 1 0', borderColor: `${theme.accentDim}60` }}
-              >
+
+              {/* ── 2. Gone but Not Forgotten — non-completions, all eras ─── */}
+              <div>
                 <SectionHeader label="GONE BUT NOT FORGOTTEN" />
-                {globalData.nonWinners.length === 0
-                  ? <EmptyState label="No fallen runners yet." />
-                  : globalData.nonWinners.slice(0, 10).map((entry, i) => (
-                      <LeaderboardEntry key={entry.id} entry={entry} rank={i + 1} showMarker />
-                    ))
-                }
+                <div
+                  className="lb-scroll max-h-[320px] overflow-y-auto rounded p-3 border"
+                  style={{ borderColor: `${theme.accentDim}60` }}
+                >
+                  {globalData.nonWinners.length === 0
+                    ? <EmptyState label="No fallen runners yet." />
+                    : globalData.nonWinners.map((entry, i) => (
+                        <LeaderboardEntry key={entry.id} entry={entry} rank={i + 1} showMarker />
+                      ))
+                  }
+                </div>
+              </div>
+
+              {/* ── 3. Trailblazers — original-era completions ────────────── */}
+              <div>
+                <SectionHeader label="TRAILBLAZERS" />
+                <p
+                  className="font-mono text-[8px] mb-2"
+                  style={{ color: `${theme.accentPrimary}40` }}
+                >
+                  The originals. Beat the game before the real game began.
+                </p>
+                <div
+                  className="lb-scroll max-h-[320px] overflow-y-auto rounded p-3 border"
+                  style={{ borderColor: `${theme.accentDim}40`, opacity: 0.85 }}
+                >
+                  {globalData.trailblazers.length === 0
+                    ? <EmptyState label="The ledger is sealed." />
+                    : globalData.trailblazers.map((entry, i) => (
+                        <LeaderboardEntry key={entry.id} entry={entry} rank={i + 1} trailblazer />
+                      ))
+                  }
+                </div>
               </div>
             </>
           )}

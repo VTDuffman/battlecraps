@@ -14,7 +14,8 @@
     "test": "npm run test -w @battlecraps/shared",
     "test:integration": "npm run test:integration -w @battlecraps/api",
     "test:e2e": "npm run test:e2e -w @battlecraps/web",
-    "db:migrate": "npm run db:push -w @battlecraps/api",
+    "db:migrate": "npm run db:migrate -w @battlecraps/api",
+    "db:generate": "npm run db:generate -w @battlecraps/api",
     "db:seed": "npx tsx --env-file=.env apps/api/src/db/seed.ts",
     "db:studio": "npm run db:studio -w @battlecraps/api"
   },

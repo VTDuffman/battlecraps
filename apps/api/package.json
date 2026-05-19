@@ -7,9 +7,11 @@
     "dev": "tsx watch --env-file=.env src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "db:push": "drizzle-kit push",
+    "db:migrate": "drizzle-kit migrate",
+    "db:generate": "drizzle-kit generate",
     "db:migrate:test": "tsx --env-file=.env.test src/db/migrateTest.ts",
     "db:studio": "drizzle-kit studio",
+    "db:push-unsafe": "drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
     "pino-pretty": "pino-pretty",
     "test:integration": "vitest run --config vitest.config.ts src/__tests__/integration"

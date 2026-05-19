@@ -5,9 +5,9 @@ metadata:
   type: project
 ---
 
-## Highest KI number assigned: KI-061
+## Highest KI number assigned: KI-062
 
-Last assigned: KI-061 — No floor-addition checklist; FB-015 expansion silently broke 8+ floor-scoped sites (2026-05-15)
+Last assigned: KI-062 — Final-marker SEVEN_OUT and auto-clear wins misclassified as losses in leaderboard (2026-05-18)
 
 **Why:** Issue numbering must be strictly sequential across conversations to avoid gaps or collisions in the known-issues log.
 
@@ -19,7 +19,7 @@ Last assigned: KI-061 — No floor-addition checklist; FB-015 expansion silently
 
 - `apps/web/src/components/CompCard.tsx` — `COMP_DEFS` array; twice failed to be extended after gauntlet expansion (KI-045, KI-056)
 - `apps/web/src/lib/floorThemes.ts` — floor theme tokens (KI-055: Floor 9/8 palette collision)
-- `apps/api/src/routes/rolls.ts` — main roll handler; boss hook enforcement, comp enforcement, win-condition logic (KI-051, KI-054, KI-052, KI-049, KI-043)
+- `apps/api/src/routes/rolls.ts` — main roll handler; boss hook enforcement, comp enforcement, win-condition logic (KI-051, KI-054, KI-052, KI-049, KI-043, KI-062)
 - `apps/web/src/store/useGameStore.ts` — Zustand store; animation sequencing, flash/audio state (KI-004, KI-008, KI-025)
 - `packages/shared/src/cascade.ts` — crew cascade; ability firing order and delta propagation (KI-028, KI-032)
 
@@ -37,12 +37,13 @@ Last assigned: KI-061 — No floor-addition checklist; FB-015 expansion silently
 - Boss mechanic client-side input state mismatch — server rejects submission correctly but client locks input entirely (KI-058)
 - Boss-context layout collisions — HUD elements positioned without accounting for the dynamic presence of BossRoomHeader (KI-059)
 - Process/documentation gaps enabling silent floor-scoped regressions — KI-061 is the canonical reference; a floor-addition checklist was embedded in the KI entry and should be extracted to docs/frameworks/
+- **Data integrity / leaderboard classification** — win-path asymmetry in rolls.ts can silently misclassify legitimate run completions; requires both a code fix and a DB migration for historical rows (KI-062)
 
 ---
 
-## Active Testing Focus (2026-05-15)
+## Active Testing Focus (2026-05-18)
 
-FB-015 nine-floor integration QA — comp card display for Floors 5–8, floor theming, boss mechanics.
+Root cause analysis of leaderboard misclassification — SEVEN_OUT and auto-clear win paths on the final marker.
 
 ---
 

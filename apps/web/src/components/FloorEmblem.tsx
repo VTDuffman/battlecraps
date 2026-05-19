@@ -237,8 +237,8 @@ const FLOOR_CONFIGS: Record<FloorId, FloorConfig> = {
         NULL : CONVERGENCE
       </span>
     ),
-    color:      'rgba(57, 255, 20, 0.16)',
-    textShadow: '0 0 50px rgba(57, 255, 20, 0.18)',
+    color:      'rgba(0, 0, 0, 0.11)',
+    textShadow: '0 1px 4px rgba(0, 0, 0, 0.05)',
     subLabel:   'GAUNTLET FLOOR IX',
   },
 };

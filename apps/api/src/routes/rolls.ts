@@ -798,6 +798,14 @@ async function rollHandler(
       request.log.error({ err }, '[roll] Failed to update maxBankrollCents');
     });
 
+  void db
+    .update(runs)
+    .set({ peakBankrollCents: postFrequencyBankroll })
+    .where(and(eq(runs.id, runId), lt(runs.peakBankrollCents, postFrequencyBankroll)))
+    .catch((err: unknown) => {
+      request.log.error({ err }, '[roll] Failed to update peakBankrollCents');
+    });
+
   // ── 13. WebSocket — emit cascade events + settlement summary ────────────────
   //
   // Emitted AFTER persistence so the client never receives events for a roll

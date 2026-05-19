@@ -23,7 +23,7 @@ import {
 } from '@battlecraps/shared';
 import { useGameStore, selectBankrollDisplay } from '../store/useGameStore.js';
 import type { CrewRosterEntry, PubDraftEntry } from '../store/useGameStore.js';
-import { useFloorTheme } from '../hooks/useFloorTheme.js';
+import { getFloorTheme } from '../lib/floorThemes.js';
 import { CREW_EMOJI } from './CrewPortrait.js';
 
 // ---------------------------------------------------------------------------
@@ -307,9 +307,10 @@ export const PubScreen: React.FC = () => {
   const recruitCrew        = useGameStore((s) => s.recruitCrew);
   const fireCrew           = useGameStore((s) => s.fireCrew);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
-  // currentMarkerIndex is already incremented on transition, so this correctly
-  // returns the theme for the floor the player is about to enter.
-  const theme              = useFloorTheme();
+  // The pub belongs to the floor just cleared, not the floor about to start.
+  // Theme from prevMarkerIndex so cross-floor pubs stay in the completed floor's
+  // aesthetic — the next floor's look is revealed by the cinematic, not the pub.
+  const theme              = getFloorTheme(Math.max(0, currentMarkerIndex - 1));
 
   // ── Roster from store ─────────────────────────────────────────────────────
   // clearTransition() triggers fetchCrewRoster() before setting status=TRANSITION,

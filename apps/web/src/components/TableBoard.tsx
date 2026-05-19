@@ -461,6 +461,7 @@ const GameStatus: React.FC = () => {
   const displayMarkerIndex  = useGameStore(selectDisplayMarkerIndex);
   const _hypeKey            = useGameStore((s) => s._hypeKey);
   const theme               = useFloorTheme();
+  const isNullSpace         = getFloorIndex(displayMarkerIndex) === 8;
 
   // Brief scale-pop on the thermometer when the hype particle arrives (~600ms after roll).
   const [impactActive, setImpactActive] = useState(false);
@@ -576,7 +577,7 @@ const GameStatus: React.FC = () => {
 
           {/* Bankroll — directly beneath logo */}
           <div className="mt-1.5 text-center">
-            <div className="font-pixel text-[6px] text-white/40 mb-0.5">BANKROLL</div>
+            <div className="font-pixel text-[6px] mb-0.5" style={{ color: isNullSpace ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.40)' }}>BANKROLL</div>
             <div data-testid="bankroll" className={`font-pixel text-sm transition-colors duration-150 ${bankrollColor}`}>
               {bankrollStr}
             </div>
@@ -587,7 +588,7 @@ const GameStatus: React.FC = () => {
         <div className="flex flex-col items-center gap-2">
           {/* Hype */}
           <div className="text-center" data-tutorial-zone="hype-meter">
-            <div className="font-pixel text-[6px] text-white/40 mb-0.5">
+            <div className="font-pixel text-[6px] mb-0.5" style={{ color: isNullSpace ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.40)' }}>
               HYPE{streak >= 2 ? ` ${'🔥'.repeat(Math.min(streak, 4))}` : ''}
             </div>
             <div className="flex items-center justify-center gap-1.5">
@@ -615,7 +616,7 @@ const GameStatus: React.FC = () => {
 
           {/* Shooters */}
           <div data-testid="shooters" className="text-center">
-            <div className="font-pixel text-[6px] text-white/40 mb-0.5">SHOOTERS</div>
+            <div className="font-pixel text-[6px] mb-0.5" style={{ color: isNullSpace ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.40)' }}>SHOOTERS</div>
             <div className="flex gap-1 justify-center">
               {(() => {
                 const hasExtraShooterComp = currentMarkerIndex > 2; // Sarge is Marker 2
@@ -625,10 +626,9 @@ const GameStatus: React.FC = () => {
                     key={i}
                     className={[
                       'w-2 h-2 rounded-full border',
-                      i < shooters
-                        ? 'bg-gold border-gold/80'
-                        : 'bg-transparent border-white/20',
+                      i < shooters ? 'bg-gold border-gold/80' : 'bg-transparent',
                     ].join(' ')}
+                    style={i >= shooters ? { borderColor: isNullSpace ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.20)' } : undefined}
                   />
                 ));
               })()}
@@ -665,14 +665,16 @@ const GameStatus: React.FC = () => {
               'w-10 h-10 rounded-full border-2 flex items-center justify-center',
               'font-pixel text-[9px] transition-colors duration-300',
               phase === 'POINT_ACTIVE' && point !== null
-                ? 'bg-white border-white text-black shadow-[0_0_10px_2px_rgba(255,255,255,0.6)]'
+                ? isNullSpace
+                  ? 'bg-gray-900 border-gray-700 text-white shadow-[0_0_10px_2px_rgba(0,0,0,0.5)]'
+                  : 'bg-white border-white text-black shadow-[0_0_10px_2px_rgba(255,255,255,0.6)]'
                 : 'bg-black border-white/20 text-white/20',
             ].join(' ')}
           >
             {phase === 'POINT_ACTIVE' && point !== null ? point : 'OFF'}
           </div>
         </div>
-        <span className="font-pixel text-[7px] text-white/30">
+        <span className="font-pixel text-[7px]" style={{ color: isNullSpace ? 'rgba(0,0,0,0.40)' : 'rgba(255,255,255,0.30)' }}>
           {phase === 'POINT_ACTIVE' ? 'POINT ACTIVE' : 'COME OUT'}
         </span>
       </div>
@@ -696,6 +698,7 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
   const label     = isBoss ? '★ BOSS' : `MARKER ${markerIndex + 1}`;
   const pct       = Math.round(progress * 100);
   const theme     = useFloorTheme();
+  const isNullSpace = getFloorIndex(markerIndex) === 8;
 
   return (
     <div className="w-full px-2 space-y-1" data-tutorial-zone="marker-progress">
@@ -706,12 +709,12 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
         >
           {label}
         </span>
-        <span className="font-pixel text-[6px] text-white/30">
+        <span className="font-pixel text-[6px]" style={{ color: isNullSpace ? 'rgba(0,0,0,0.40)' : 'rgba(255,255,255,0.30)' }}>
           ${(bankroll / 100).toFixed(0)} / ${(target / 100).toFixed(0)}
         </span>
       </div>
 
-      <div className="h-1.5 w-full rounded-full border border-white/10 overflow-hidden" style={{ backgroundColor: theme.feltRail }}>
+      <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: theme.feltRail, border: `1px solid ${isNullSpace ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.10)'}` }}>
         <div
           className={[
             'h-full rounded-full transition-all duration-500',
@@ -742,6 +745,7 @@ const ChipRail: React.FC = () => {
   const bossPointHits      = useGameStore((s) => s.bossPointHits);
   const maxBet             = getMaxBet(currentMarkerIndex, bossPointHits);
   const theme              = useFloorTheme();
+  const isNullSpace        = getFloorIndex(currentMarkerIndex) === 8;
   const tutorialCtx        = useTutorialContext();
 
   return (
@@ -754,7 +758,7 @@ const ChipRail: React.FC = () => {
         paddingBottom: 'clamp(4px,0.6dvh,8px)',
       }}
     >
-      <div className="text-center font-pixel text-[7px] text-white/30" style={{ marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
+      <div className="text-center font-pixel text-[7px]" style={{ color: isNullSpace ? 'rgba(0,0,0,0.40)' : 'rgba(255,255,255,0.30)', marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
         TABLE MAX: ${maxBet / 100}
       </div>
       <ChipSelector activeChip={activeChip} disabled={isRolling || tutorialCtx?.activeBeatMode === 'manual-roll'} />

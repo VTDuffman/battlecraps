@@ -96,7 +96,7 @@ export const FloorRevealConfirmPhase: React.FC<PhaseComponentProps> = ({ onAdvan
       >
         <div
           className="font-pixel text-[5px] tracking-widest mb-1.5"
-          style={{ color: `${theme.bossTextColor}80` }}
+          style={{ color: 'rgba(255,255,255,0.70)' }}
         >
           ★ {floor.bossName.toUpperCase()} — {floor.bossTitle.toUpperCase()}
         </div>
@@ -104,7 +104,7 @@ export const FloorRevealConfirmPhase: React.FC<PhaseComponentProps> = ({ onAdvan
           className="font-mono italic"
           style={{
             fontSize: '9px',
-            color:    `${theme.bossTextColor}90`,
+            color:    'rgba(255,255,255,0.88)',
           }}
         >
           {floor.bossTeaser}

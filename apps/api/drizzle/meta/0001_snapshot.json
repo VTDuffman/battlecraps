@@ -1,0 +1,732 @@
+{
+  "id": "aec41f35-3ca8-4c9d-9e63-722ce6afe8dd",
+  "prevId": "400933d6-24d2-4ffe-87c7-8fa3e8693db7",
+  "version": "6",
+  "dialect": "postgresql",
+  "tables": {
+    "public.crew_definitions": {
+      "name": "crew_definitions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ability_category": {
+          "name": "ability_category",
+          "type": "ability_category",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cooldown_type": {
+          "name": "cooldown_type",
+          "type": "cooldown_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "visual_id": {
+          "name": "visual_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rarity": {
+          "name": "rarity",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Common'"
+        },
+        "brief_description": {
+          "name": "brief_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "detailed_description": {
+          "name": "detailed_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unlock_description": {
+          "name": "unlock_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "unlock_quote": {
+          "name": "unlock_quote",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_starter_roster": {
+          "name": "is_starter_roster",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.feedback_submissions": {
+      "name": "feedback_submissions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rating": {
+          "name": "rating",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "comment": {
+          "name": "comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "context": {
+          "name": "context",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitted_at": {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "feedback_submissions_user_id_users_id_fk": {
+          "name": "feedback_submissions_user_id_users_id_fk",
+          "tableFrom": "feedback_submissions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.leaderboard_entries": {
+      "name": "leaderboard_entries",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "final_bankroll_cents": {
+          "name": "final_bankroll_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "highest_roll_amplified_cents": {
+          "name": "highest_roll_amplified_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "peak_bankroll_cents": {
+          "name": "peak_bankroll_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "highest_marker_index": {
+          "name": "highest_marker_index",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shooters_remaining": {
+          "name": "shooters_remaining",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "crew_layout": {
+          "name": "crew_layout",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "did_win_run": {
+          "name": "did_win_run",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "leaderboard_entries_run_id_idx": {
+          "name": "leaderboard_entries_run_id_idx",
+          "columns": [
+            "run_id"
+          ],
+          "isUnique": true
+        },
+        "leaderboard_entries_winners_idx": {
+          "name": "leaderboard_entries_winners_idx",
+          "columns": [
+            "final_bankroll_cents",
+            "shooters_remaining"
+          ],
+          "isUnique": false
+        },
+        "leaderboard_entries_nonwinners_idx": {
+          "name": "leaderboard_entries_nonwinners_idx",
+          "columns": [
+            "highest_marker_index",
+            "final_bankroll_cents"
+          ],
+          "isUnique": false
+        },
+        "leaderboard_entries_user_bankroll_idx": {
+          "name": "leaderboard_entries_user_bankroll_idx",
+          "columns": [
+            "user_id",
+            "final_bankroll_cents"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "leaderboard_entries_user_id_users_id_fk": {
+          "name": "leaderboard_entries_user_id_users_id_fk",
+          "tableFrom": "leaderboard_entries",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "leaderboard_entries_run_id_runs_id_fk": {
+          "name": "leaderboard_entries_run_id_runs_id_fk",
+          "tableFrom": "leaderboard_entries",
+          "tableTo": "runs",
+          "columnsFrom": [
+            "run_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.runs": {
+      "name": "runs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "run_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'IDLE_TABLE'"
+        },
+        "phase": {
+          "name": "phase",
+          "type": "game_phase",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'COME_OUT'"
+        },
+        "bankroll_cents": {
+          "name": "bankroll_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 25000
+        },
+        "shooters": {
+          "name": "shooters",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 5
+        },
+        "current_marker_index": {
+          "name": "current_marker_index",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "floor": {
+          "name": "floor",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "current_point": {
+          "name": "current_point",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hype": {
+          "name": "hype",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "consecutive_point_hits": {
+          "name": "consecutive_point_hits",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "boss_roll_count": {
+          "name": "boss_roll_count",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "bets": {
+          "name": "bets",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"passLine\":0,\"odds\":0,\"hardways\":{\"hard4\":0,\"hard6\":0,\"hard8\":0,\"hard10\":0}}'::jsonb"
+        },
+        "crew_slots": {
+          "name": "crew_slots",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[null,null,null,null,null]'::jsonb"
+        },
+        "previous_roll_total": {
+          "name": "previous_roll_total",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shooter_roll_count": {
+          "name": "shooter_roll_count",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "point_phase_blank_streak": {
+          "name": "point_phase_blank_streak",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "per_run_unlock_counters": {
+          "name": "per_run_unlock_counters",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"naturalsThisRun\":0,\"hardwayWinBitsThisRun\":0,\"hardwayWinsThisRun\":0,\"consecutivePairedStreak\":0,\"sevenOutsThisRun\":0,\"repeatingDiceRef\":0,\"repeatingDiceStreak\":0}'::jsonb"
+        },
+        "guaranteed_pub_draft_ids": {
+          "name": "guaranteed_pub_draft_ids",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::integer[]"
+        },
+        "crew_unlocked_this_run": {
+          "name": "crew_unlocked_this_run",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::integer[]"
+        },
+        "mechanic_freeze": {
+          "name": "mechanic_freeze",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "rewards_finalised": {
+          "name": "rewards_finalised",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "highest_roll_amplified_cents": {
+          "name": "highest_roll_amplified_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "peak_bankroll_cents": {
+          "name": "peak_bankroll_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "runs_user_id_idx": {
+          "name": "runs_user_id_idx",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
+        },
+        "runs_active_idx": {
+          "name": "runs_active_idx",
+          "columns": [
+            "user_id",
+            "status"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "runs_user_id_users_id_fk": {
+          "name": "runs_user_id_users_id_fk",
+          "tableFrom": "runs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "clerk_id": {
+          "name": "clerk_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unlocked_crew_ids": {
+          "name": "unlocked_crew_ids",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::integer[]"
+        },
+        "unacknowledged_unlock_ids": {
+          "name": "unacknowledged_unlock_ids",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::integer[]"
+        },
+        "unlock_progress": {
+          "name": "unlock_progress",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "comp_perk_ids": {
+          "name": "comp_perk_ids",
+          "type": "integer[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::integer[]"
+        },
+        "lifetime_earnings_cents": {
+          "name": "lifetime_earnings_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "max_bankroll_cents": {
+          "name": "max_bankroll_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "tutorial_completed": {
+          "name": "tutorial_completed",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "alias_chosen": {
+          "name": "alias_chosen",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "users_email_idx": {
+          "name": "users_email_idx",
+          "columns": [
+            "email"
+          ],
+          "isUnique": true
+        },
+        "users_username_idx": {
+          "name": "users_username_idx",
+          "columns": [
+            "username"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_clerk_id_unique": {
+          "name": "users_clerk_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "clerk_id"
+          ]
+        }
+      }
+    }
+  },
+  "enums": {
+    "public.ability_category": {
+      "name": "ability_category",
+      "schema": "public",
+      "values": [
+        "DICE",
+        "TABLE",
+        "PAYOUT",
+        "HYPE",
+        "WILDCARD"
+      ]
+    },
+    "public.cooldown_type": {
+      "name": "cooldown_type",
+      "schema": "public",
+      "values": [
+        "none",
+        "per_roll",
+        "per_shooter"
+      ]
+    },
+    "public.game_phase": {
+      "name": "game_phase",
+      "schema": "public",
+      "values": [
+        "COME_OUT",
+        "POINT_ACTIVE"
+      ]
+    },
+    "public.run_status": {
+      "name": "run_status",
+      "schema": "public",
+      "values": [
+        "IDLE_TABLE",
+        "POINT_ACTIVE",
+        "RESOLUTION",
+        "TRANSITION",
+        "GAME_OVER"
+      ]
+    }
+  },
+  "schemas": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -529,54 +529,54 @@ const FLOOR_8_THEME: FloorTheme = {
 // =============================================================================
 // Floor 9 — The Null Space (The Zero Chamber)
 // =============================================================================
-// Inverted void: white ground, black ink, total absence of color.
-// Where Floor 8 is neon-green on black, Floor 9 is the inverse — pure white
-// surfaces, near-black accents, no glow, no atmosphere. Finality as a blank page.
+// White paper — inverted from every other floor. Light felt, dark ink.
+// Components that hardcode text-white/* swap to text-black/* when isNullSpace
+// is true so those labels stay readable on the light background.
 
 const FLOOR_9_THEME: FloorTheme = {
-  // Felt — near-white, like blank paper; rail slightly darker
+  // Felt — near-white, like blank paper
   feltPrimary: '#f0f0f0',
   feltRail:    '#e0e0e0',
   feltTexture: feltTextureUri('#f0f0f0', '#d8d8d8', '#fafafa'),
 
-  // Accents — near-black (inverted from the neon floors)
-  accentBright:  '#111111',
-  accentPrimary: '#333333',
-  accentDim:     '#aaaaaa',
+  // Accents — pure black / dark grey so any opacity tint stays readable on white
+  accentBright:  '#000000',
+  accentPrimary: '#111111',
+  accentDim:     '#666666',
 
   // Borders — black at low opacity
-  borderHigh: 'rgba(0,0,0,0.25)',
-  borderLow:  'rgba(0,0,0,0.14)',
+  borderHigh: 'rgba(0,0,0,0.22)',
+  borderLow:  'rgba(0,0,0,0.12)',
 
   // Breathing — barely perceptible; void is still
-  breatheCold: 'rgba(0,0,0,0.04)',
-  breatheWarm: 'rgba(0,0,0,0.08)',
-  breatheHot:  'rgba(0,0,0,0.14)',
+  breatheCold: 'rgba(0,0,0,0.03)',
+  breatheWarm: 'rgba(0,0,0,0.06)',
+  breatheHot:  'rgba(0,0,0,0.12)',
 
   // Screen flash — white surge on win / hard black cut on lose
   flashWin:  'rgba(255,255,255,0.70)',
   flashLose: 'rgba(0,0,0,0.80)',
 
-  // Pub — The Terminal
-  pubName:         'THE TERMINAL',
+  // Pub — white paper terminal (mid-Floor-9 pub stops)
+  pubName:         'THE NULL SPACE',
   pubBg:           'radial-gradient(ellipse at 50% 50%, #ffffff 0%, #f0f0f0 60%, #e8e8e8 100%)',
   pubAccentBar:    'linear-gradient(90deg, transparent, #aaaaaa 30%, #111111 50%, #aaaaaa 70%, transparent)',
   pubOverlayBg:    'radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0.02) 0%, transparent 70%)',
   pubTitleColor:   '#000000',
   pubTitleShadow:  '0 1px 3px rgba(0,0,0,0.20)',
-  pubSubtextColor: 'rgba(0,0,0,0.40)',
+  pubSubtextColor: 'rgba(0,0,0,0.55)',
 
-  // Boss — The Zero Chamber (The Architect)
+  // Boss — The Architect / The Zero Chamber (white paper, black ink)
   bossBg:          'radial-gradient(ellipse at 50% 40%, #ffffff 0%, #f0f0f0 60%, #e8e8e8 100%)',
   bossAccentBar:   'linear-gradient(90deg, transparent, #888888 30%, #111111 50%, #888888 70%, transparent)',
-  bossGlow:        'radial-gradient(ellipse at 50% 40%, rgba(0,0,0,0.04) 0%, transparent 65%)',
-  bossTextColor:   '#000000',
-  bossTitleShadow: '0 1px 4px rgba(0,0,0,0.25)',
-  bossBorderColor: 'rgba(0,0,0,0.22)',
-  bossStarColor:   '#000000',
-  bossStarBg:      'rgba(0,0,0,0.08)',
-  bossStarBorder:  '2px solid rgba(0,0,0,0.22)',
-  bossStarGlow:    '0 0 12px 2px rgba(0,0,0,0.10)',
+  bossGlow:        'radial-gradient(ellipse at 50% 40%, rgba(0,0,0,0.03) 0%, transparent 65%)',
+  bossTextColor:   '#111111',
+  bossTitleShadow: '0 1px 4px rgba(0,0,0,0.20)',
+  bossBorderColor: 'rgba(0,0,0,0.18)',
+  bossStarColor:   '#222222',
+  bossStarBg:      'rgba(0,0,0,0.07)',
+  bossStarBorder:  '2px solid rgba(0,0,0,0.18)',
+  bossStarGlow:    '0 0 12px 2px rgba(0,0,0,0.08)',
 };
 
 // =============================================================================

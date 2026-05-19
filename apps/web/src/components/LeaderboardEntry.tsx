@@ -36,10 +36,9 @@ const CREW_EMOJI: Record<number, string> = {
 };
 
 interface LeaderboardEntryProps {
-  entry:        LeaderboardEntryData;
-  rank:         number;
-  showMarker?:  boolean;
-  trailblazer?: boolean;
+  entry:       LeaderboardEntryData;
+  rank:        number;
+  showMarker?: boolean;
 }
 
 const theme = getFloorTheme(0);
@@ -52,11 +51,11 @@ function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
 }
 
-export function LeaderboardEntry({ entry, rank, showMarker, trailblazer }: LeaderboardEntryProps) {
+export function LeaderboardEntry({ entry, rank, showMarker }: LeaderboardEntryProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const nameColor = trailblazer ? `${theme.accentPrimary}90` : theme.accentBright;
-  const floorNum  = Math.min(Math.floor(entry.highestMarkerIndex / 3) + 1, 9);
+  const floorNum      = Math.min(Math.floor(entry.highestMarkerIndex / 3) + 1, 9);
+  const markerInFloor = (entry.highestMarkerIndex % 3) + 1;
 
   return (
     <div
@@ -80,14 +79,14 @@ export function LeaderboardEntry({ entry, rank, showMarker, trailblazer }: Leade
         {/* Name */}
         <span
           className="font-pixel text-[9px] flex-1 truncate"
-          style={{ color: nameColor }}
+          style={{ color: theme.accentBright }}
         >
           {entry.displayName}
         </span>
 
-        {/* Bankroll */}
+        {/* Bankroll — peak for non-winners, final for winners */}
         <span className="font-mono text-[9px]" style={{ color: theme.accentPrimary }}>
-          {fmtDollars(entry.finalBankrollCents)}
+          {fmtDollars(showMarker ? entry.peakBankrollCents : entry.finalBankrollCents)}
         </span>
 
         {/* Floor badge (non-winners) or WIN star (winners) */}
@@ -96,7 +95,7 @@ export function LeaderboardEntry({ entry, rank, showMarker, trailblazer }: Leade
             className="font-pixel text-[7px] px-1.5 py-0.5 rounded"
             style={{ background: `${theme.accentDim}20`, color: `${theme.accentPrimary}70` }}
           >
-            FLOOR {floorNum}
+            F{floorNum} MKR {markerInFloor}
           </span>
         ) : entry.didWinRun ? (
           <span className="font-pixel text-[7px]" style={{ color: theme.accentBright }}>★</span>

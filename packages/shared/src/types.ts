@@ -617,18 +617,19 @@ export interface LeaderboardEntry {
   lastName:                  string | null;
   finalBankrollCents:        number;
   highestRollAmplifiedCents: number;
-  highestMarkerIndex:        number;  // 0–8 for non-winners; 9 for winners
+  highestMarkerIndex:        number;  // 0–26 for non-winners; 27 for winners
   shootersRemaining:         number;
   crewLayout:                ({ id: number; name: string } | null)[];  // 5 elements
   didWinRun:                 boolean;
   createdAt:                 string;  // ISO 8601
+  /** Max bankroll reached at any point during the run. Primary sort key for non-winners. */
+  peakBankrollCents:         number;
 }
 
 /** Response shape for GET /api/v1/leaderboard?view=global */
 export interface GlobalLeaderboardResponse {
-  winners:      LeaderboardEntry[];  // Top 25, 9-floor completions only (highestMarkerIndex >= GAUNTLET.length)
-  nonWinners:   LeaderboardEntry[];  // Top 10, all non-completions, ORDER BY highestMarkerIndex DESC, finalBankrollCents DESC
-  trailblazers: LeaderboardEntry[];  // Top 10, original-era completions (highestMarkerIndex < GAUNTLET.length)
+  winners:    LeaderboardEntry[];  // Top 25, 9-floor completions only (highestMarkerIndex >= GAUNTLET.length)
+  nonWinners: LeaderboardEntry[];  // Top 10, all non-completions, ORDER BY peakBankrollCents DESC
 }
 
 /** Response shape for GET /api/v1/leaderboard?view=personal (requires auth) */

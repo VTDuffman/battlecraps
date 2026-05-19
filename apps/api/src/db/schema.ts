@@ -438,6 +438,16 @@ export const runs = pgTable(
      * Migration: server.ts startup block (highest_roll_amplified_cents)
      */
     highestRollAmplifiedCents: integer('highest_roll_amplified_cents').notNull().default(0),
+
+    /**
+     * The highest bankroll reached at any point during this run, in cents.
+     * Updated via fire-and-forget after every roll when the new bankroll exceeds
+     * the stored peak. Read at GAME_OVER for leaderboard submission.
+     * Allows "Gone but Not Forgotten" to sort by best-ever rather than final (usually $0).
+     *
+     * Migration: server.ts startup block (peak_bankroll_cents)
+     */
+    peakBankrollCents: integer('peak_bankroll_cents').notNull().default(0),
   },
   (t) => ({
     userIdIdx: index('runs_user_id_idx').on(t.userId),
@@ -598,6 +608,15 @@ export const leaderboardEntries = pgTable(
      * Displayed as "Highest Single Roll Win" in the leaderboard entry.
      */
     highestRollAmplifiedCents: integer('highest_roll_amplified_cents').notNull().default(0),
+
+    /**
+     * Peak bankroll reached at any point during the run, from runs.peak_bankroll_cents.
+     * Primary sort key for "Gone but Not Forgotten" — final bankroll is almost always $0.
+     * Defaults to 0 for entries created before this column was added.
+     *
+     * Migration: server.ts startup block (peak_bankroll_cents on leaderboard_entries)
+     */
+    peakBankrollCents: integer('peak_bankroll_cents').notNull().default(0),
 
     /**
      * Index into GAUNTLET (0–8) at the time of GAME_OVER.

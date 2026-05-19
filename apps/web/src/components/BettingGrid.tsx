@@ -14,9 +14,10 @@
 // =============================================================================
 
 import React, { useCallback, useEffect, useRef } from 'react';
-import { useGameStore } from '../store/useGameStore.js';
+import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 import type { BetField } from '../store/useGameStore.js';
 import { getMaxBet } from '@battlecraps/shared';
+import { getFloorIndex } from '../lib/floorThemes.js';
 import { useTutorialContext } from '../contexts/TutorialContext.js';
 
 // ---------------------------------------------------------------------------
@@ -151,9 +152,10 @@ const BetZone: React.FC<BetZoneProps> = ({
   streakCount = 0,
   tutorialZone,
 }) => {
-  const placeBet   = useGameStore((s) => s.placeBet);
-  const removeBet  = useGameStore((s) => s.removeBet);
-  const activeChip = useGameStore((s) => s.activeChip);
+  const placeBet        = useGameStore((s) => s.placeBet);
+  const removeBet       = useGameStore((s) => s.removeBet);
+  const activeChip      = useGameStore((s) => s.activeChip);
+  const isNullSpace     = getFloorIndex(useGameStore(selectDisplayMarkerIndex)) === 8;
 
   // A bet is "locked" when the entire amount is committed from the last roll.
   // Right-click is a no-op in this state — nothing pending to undo.
@@ -234,9 +236,9 @@ const BetZone: React.FC<BetZoneProps> = ({
       ].join(' ')}
       style={{ height: 'clamp(46px,6.8dvh,64px)' }}
     >
-      <span className="text-[7px] text-white/80 leading-tight">{label}</span>
+      <span className="text-[7px] leading-tight" style={{ color: isNullSpace ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.80)' }}>{label}</span>
       {sublabel && (
-        <span className="text-[6px] text-white/40 mt-0.5">{sublabel}</span>
+        <span className="text-[6px] mt-0.5" style={{ color: isNullSpace ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.40)' }}>{sublabel}</span>
       )}
 
       {/* Chip stack overlay */}

@@ -173,27 +173,6 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
                 </div>
               </div>
 
-              {/* ── 3. Trailblazers — original-era completions ────────────── */}
-              <div>
-                <SectionHeader label="TRAILBLAZERS" />
-                <p
-                  className="font-mono text-[8px] mb-2"
-                  style={{ color: `${theme.accentPrimary}40` }}
-                >
-                  The originals. Beat the game before the real game began.
-                </p>
-                <div
-                  className="lb-scroll max-h-[320px] overflow-y-auto rounded p-3 border"
-                  style={{ borderColor: `${theme.accentDim}40`, opacity: 0.85 }}
-                >
-                  {globalData.trailblazers.length === 0
-                    ? <EmptyState label="The ledger is sealed." />
-                    : globalData.trailblazers.map((entry, i) => (
-                        <LeaderboardEntry key={entry.id} entry={entry} rank={i + 1} trailblazer />
-                      ))
-                  }
-                </div>
-              </div>
             </>
           )}
         </div>

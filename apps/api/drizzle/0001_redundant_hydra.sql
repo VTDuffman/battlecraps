@@ -1,0 +1,2 @@
+ALTER TABLE "leaderboard_entries" ADD COLUMN IF NOT EXISTS "peak_bankroll_cents" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "runs" ADD COLUMN IF NOT EXISTS "peak_bankroll_cents" integer DEFAULT 0 NOT NULL;

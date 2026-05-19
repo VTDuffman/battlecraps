@@ -244,6 +244,18 @@ await db.execute(sql`
 `);
 app.log.info('[migrate] crew_unlocked_this_run ensured');
 
+// Peak bankroll reached during the run — primary sort key for "Gone but Not Forgotten".
+// Defaults to 0 for entries created before this column was added.
+await db.execute(sql`
+  ALTER TABLE runs ADD COLUMN IF NOT EXISTS peak_bankroll_cents integer NOT NULL DEFAULT 0
+`);
+app.log.info('[migrate] peak_bankroll_cents on runs ensured');
+
+await db.execute(sql`
+  ALTER TABLE leaderboard_entries ADD COLUMN IF NOT EXISTS peak_bankroll_cents integer NOT NULL DEFAULT 0
+`);
+app.log.info('[migrate] peak_bankroll_cents on leaderboard_entries ensured');
+
 // ---------------------------------------------------------------------------
 // Start listening
 // ---------------------------------------------------------------------------

@@ -19,6 +19,7 @@
 // =============================================================================
 
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { GAUNTLET } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
 
 // ---------------------------------------------------------------------------
@@ -158,9 +159,13 @@ export function useCrowdAudio(): { muted: boolean; toggleMute: () => void } {
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
 
-  const flashType = useGameStore((s) => s.flashType);
-  const _flashKey = useGameStore((s) => s._flashKey);
-  const _rollKey  = useGameStore((s) => s._rollKey);
+  const flashType          = useGameStore((s) => s.flashType);
+  const _flashKey          = useGameStore((s) => s._flashKey);
+  const _rollKey           = useGameStore((s) => s._rollKey);
+  const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
+
+  const isNullSpaceRef = useRef(false);
+  isNullSpaceRef.current = GAUNTLET[currentMarkerIndex]?.floor === 9;
 
   // flashType ref: keeps the _flashKey effect from capturing a stale value
   const flashTypeRef = useRef(flashType);
@@ -182,6 +187,7 @@ export function useCrowdAudio(): { muted: boolean; toggleMute: () => void } {
   // ── Event stings: cheer on win flash, groan on lose flash ───────────────
   useEffect(() => {
     if (_flashKey === 0 || _flashKey === initialFlashKey.current) return;
+    if (isNullSpaceRef.current) return;
     const ctx = getCtx();
     if (!ctx) return;
     const ft = flashTypeRef.current;
@@ -192,6 +198,7 @@ export function useCrowdAudio(): { muted: boolean; toggleMute: () => void } {
   // ── Dice rattle on throw ────────────────────────────────────────────────
   useEffect(() => {
     if (_rollKey === 0 || _rollKey === initialRollKey.current) return;
+    if (isNullSpaceRef.current) return;
     const ctx = getCtx();
     if (!ctx) return;
     void playDiceRattle(ctx);

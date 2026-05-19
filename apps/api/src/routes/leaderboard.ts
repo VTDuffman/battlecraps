@@ -9,7 +9,7 @@
 // =============================================================================
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { eq, desc, gte, lt, and, inArray } from 'drizzle-orm';
+import { eq, desc, gte, and, inArray } from 'drizzle-orm';
 
 import { db } from '../db/client.js';
 import {
@@ -54,7 +54,7 @@ async function leaderboardHandler(
   const { view } = request.query;
 
   if (view === 'global') {
-    const [winnersRows, nonWinnersRows, trailblazersRows] = await Promise.all([
+    const [winnersRows, nonWinnersRows] = await Promise.all([
       // Hall of Fame: 9-floor completions only (highestMarkerIndex >= current GAUNTLET.length)
       db
         .select()
@@ -69,33 +69,21 @@ async function leaderboardHandler(
         )
         .limit(25),
 
-      // Gone but Not Forgotten: all non-completions, any era
+      // Gone but Not Forgotten: all non-completions, sorted by peak bankroll; ties broken by highest marker
       db
         .select()
         .from(leaderboardEntries)
         .where(eq(leaderboardEntries.didWinRun, false))
         .orderBy(
+          desc(leaderboardEntries.peakBankrollCents),
           desc(leaderboardEntries.highestMarkerIndex),
-          desc(leaderboardEntries.finalBankrollCents),
         )
-        .limit(10),
-
-      // Trailblazers: original-era completions (beat the pre-expansion game)
-      db
-        .select()
-        .from(leaderboardEntries)
-        .where(and(
-          eq(leaderboardEntries.didWinRun, true),
-          lt(leaderboardEntries.highestMarkerIndex, GAUNTLET.length),
-        ))
-        .orderBy(desc(leaderboardEntries.finalBankrollCents))
         .limit(10),
     ]);
 
     return reply.status(200).send({
-      winners:      winnersRows,
-      nonWinners:   nonWinnersRows,
-      trailblazers: trailblazersRows,
+      winners:    winnersRows,
+      nonWinners: nonWinnersRows,
     });
   }
 
@@ -166,6 +154,7 @@ export async function submitLeaderboardEntry(
       lastName:                  user.lastName ?? null,
       finalBankrollCents:        persistedRun.bankrollCents,
       highestRollAmplifiedCents: persistedRun.highestRollAmplifiedCents,
+      peakBankrollCents:         persistedRun.peakBankrollCents,
       highestMarkerIndex:        persistedRun.currentMarkerIndex,
       shootersRemaining:         persistedRun.shooters,
       crewLayout,

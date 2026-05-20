@@ -355,7 +355,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
         {/* Rail header */}
         <div className="flex items-center gap-2" style={{ marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
           <div className="h-px flex-1" style={{ backgroundColor: theme.borderLow }} />
-          <span className="font-pixel text-[9.375px] tracking-widest" style={{ color: theme.accentPrimary }}>
+          <span className="font-pixel text-[11.72px] tracking-widest" style={{ color: theme.accentPrimary }}>
             CREW
           </span>
           <div className="h-px flex-1" style={{ backgroundColor: theme.borderLow }} />

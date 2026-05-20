@@ -33,6 +33,7 @@ interface CrewPortraitProps {
   cooldownState:  number;
   isTriggering:   boolean;
   barkSeq:        number | null;   // changes → re-mounts bark element
+  barkCrewId:     number | null;   // when set (Mimic), use this ID for bark text lookup
   onAnimationEnd: () => void;
   /** Called after the 1-second hold-to-fire completes. Undefined = no fire button shown. */
   onFire?:        () => void;
@@ -223,6 +224,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   cooldownState,
   isTriggering,
   barkSeq,
+  barkCrewId,
   onAnimationEnd,
   onFire,
   onSetFreeze,
@@ -376,7 +378,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
               pointer-events-none z-20
             "
           >
-            {getBark(crewId, crewName)}
+            {getBark(barkCrewId ?? crewId, crewName)}
           </motion.div>
         )}
       </AnimatePresence>

@@ -42,6 +42,12 @@ export interface CascadeEvent {
   crewName: string;
 
   /**
+   * When set, the client should use this crew ID for the bark text instead of
+   * `crewId`. Used by The Mimic so its bark shows the copied crew's line.
+   */
+  barkCrewId?: number;
+
+  /**
    * The fields of TurnContext that changed as a result of this crew firing.
    * Only the changed fields are included (sparse object).
    *
@@ -235,21 +241,24 @@ export function resolveCascade(
     // Record cooldown — always based on the ACTUAL slot member (not effectiveMember).
     updatedCrewSlots[i] = { ...member, cooldownState: result.newCooldown } as CrewMember;
 
-    // Track who fired last (for The Mimic at a later slot).
-    // We track `member` (the slot occupant), not `effectiveMember`, so that
-    // two consecutive Mimics don't chain infinitely off each other.
-    if (member.id !== MIMIC_ID) {
-      lastFiredMember = member;
-    }
-
     // Build the diff and emit event if anything changed.
     const delta = computeContextDelta(prevCtx, ctx);
     if (Object.keys(delta).length > 0) {
+      // Only crew that visibly changed the context are eligible to be copied.
+      // Mimic never updates lastFiredMember (prevents chaining between Mimics).
+      if (member.id !== MIMIC_ID) {
+        lastFiredMember = member;
+      }
+
       events.push({
         slotIndex:    i,
         crewId:       member.id,
         crewName:     member.name,
         contextDelta: delta,
+        // Mimic borrows the copied crew's bark so the player hears the right line.
+        ...(member.id === MIMIC_ID && effectiveMember !== member
+          ? { barkCrewId: effectiveMember.id }
+          : {}),
       });
     }
   }

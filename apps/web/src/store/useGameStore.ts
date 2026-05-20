@@ -1621,7 +1621,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           activeTransition:     snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR',
           transitionPhaseIndex: 0,
         });
-      }, hasPops ? 3000 : 400);
+      }, hasPops ? 3000 : pendingCascadeQueue.length > 0 ? 1500 : 400);
     }
   },
 
@@ -1710,12 +1710,17 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   triggerChipRainComplete() {
     // No-op if this isn't a marker-clear win-animation window.
     if (!get().pendingTransition) return;
-    const { celebrationSnapshot: snap } = get();
-    set({
-      pendingTransition:    false,
-      activeTransition:     snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR',
-      transitionPhaseIndex: 0,
-    });
+    // Brief pause after chip rain so the player can read the win and any
+    // remaining portrait animations can finish before the screen cuts.
+    setTimeout(() => {
+      if (!get().pendingTransition) return;
+      const { celebrationSnapshot: snap } = get();
+      set({
+        pendingTransition:    false,
+        activeTransition:     snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR',
+        transitionPhaseIndex: 0,
+      });
+    }, 1500);
   },
 
   async rollDice(cheatDice?: [number, number]) {
@@ -2135,9 +2140,9 @@ export const selectActiveSlot = (s: GameState): number =>
   s.cascadeQueue[0]?.slotIndex ?? -1;
 
 /** The bark text for the currently-animating crew member, or null. */
-export const selectActiveBark = (s: GameState): { seq: number; crewName: string } | null => {
+export const selectActiveBark = (s: GameState): { seq: number; crewName: string; barkCrewId?: number } | null => {
   const head = s.cascadeQueue[0];
-  return head ? { seq: head.seq, crewName: head.crewName } : null;
+  return head ? { seq: head.seq, crewName: head.crewName, barkCrewId: head.barkCrewId } : null;
 };
 
 /** Formatted bankroll string: "$12.50" */

@@ -392,6 +392,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
                     cooldownState={slot?.cooldownState ?? 0}
                     isTriggering={activeSlot === i}
                     barkSeq={activeSlot === i ? (activeBark?.seq ?? null) : null}
+                    barkCrewId={activeSlot === i ? (activeBark?.barkCrewId ?? null) : null}
                     onAnimationEnd={handleAnimationEnd}
                     onFire={!isRolling && slot !== null ? () => { void fireCrew(i); } : undefined}
                     onSetFreeze={

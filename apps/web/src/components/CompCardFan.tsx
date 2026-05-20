@@ -17,7 +17,6 @@
 // =============================================================================
 
 import React, { useEffect, useState } from 'react';
-import { isBossMarker }                           from '@battlecraps/shared';
 import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 import { COMP_DEFS, CompCard }                    from './CompCard.js';
 
@@ -30,7 +29,6 @@ export const CompCardFan: React.FC = () => {
   const seenCompCount      = useGameStore((s) => s.seenCompCount);
   const markCompsAnimated  = useGameStore((s) => s.markCompsAnimated);
 
-  const isBoss      = isBossMarker(currentMarkerIndex);
   const earnedComps = COMP_DEFS.filter((c) => currentMarkerIndex >= c.threshold);
 
   const [isOpen,    setIsOpen]    = useState(false);
@@ -52,7 +50,7 @@ export const CompCardFan: React.FC = () => {
 
   return (
     // Absolute within the board container; top-32 clears HUD + BossRoomHeader when active
-    <div className={`absolute ${isBoss ? 'top-32' : 'top-12'} left-2 z-50 select-none`}>
+    <div className="relative z-50 select-none">
       {/* ── Tap-outside backdrop ─────────────────────────────────────────────── */}
       {isOpen && (
         <div

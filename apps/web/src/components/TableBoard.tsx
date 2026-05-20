@@ -289,9 +289,6 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
       {/* ── Boss Room Header — self-hides when not in a boss marker ──────── */}
       <BossRoomHeader />
 
-      {/* ── Comp Card Fan — boss-defeat rewards, top-left corner ─────────── */}
-      <CompCardFan />
-
       {/* ── GAME STATUS (back wall / far end) ────────────────────────────── */}
       <section
         aria-label="Game Status"
@@ -522,11 +519,16 @@ const GameStatus: React.FC = () => {
   return (
     <div className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.5dvh,8px)' }}>
 
-      {/* ── 2-column header: logo + bankroll (left) | hype + shooters (right) ── */}
-      <div className="flex items-center gap-3 px-1" data-tutorial-zone="bankroll-zone">
+      {/* ── 3-column header: comp card (left) | logo (center) | hype + shooters (right) ── */}
+      <div className="grid grid-cols-[1fr_2fr_1fr] items-start gap-1 px-1" data-tutorial-zone="bankroll-zone">
 
-        {/* LEFT column — Vegas logo stack + bankroll beneath */}
-        <div className="flex-1 flex flex-col items-center">
+        {/* LEFT cell — comp card fan */}
+        <div className="flex justify-center pt-1">
+          <CompCardFan />
+        </div>
+
+        {/* CENTER cell — Vegas logo stack + bankroll beneath */}
+        <div className="flex flex-col items-center">
           {/* Decorative star row */}
           <div className="flex items-center justify-center gap-1.5 mb-1">
             <div className="h-px w-6 bg-gradient-to-r from-transparent to-gold/40" />
@@ -578,7 +580,7 @@ const GameStatus: React.FC = () => {
           </div>
         </div>
 
-        {/* RIGHT column — hype on top, shooters below */}
+        {/* RIGHT cell — hype on top, shooters below */}
         <div className="flex flex-col items-center gap-2">
           {/* Hype */}
           <div className="text-center" data-tutorial-zone="hype-meter">

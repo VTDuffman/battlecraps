@@ -48,13 +48,13 @@ export const FloorRevealConfirmPhase: React.FC<PhaseComponentProps> = ({ onAdvan
       {/* Header */}
       <div className="flex flex-col items-center gap-1 text-center">
         <div
-          className="font-pixel text-[6px] tracking-[0.4em]"
+          className="font-pixel text-[7.5px] tracking-[0.4em]"
           style={{ color: `${theme.accentBright}80` }}
         >
           FLOOR {floor.id}
         </div>
         <h2
-          className="font-pixel text-[18px] tracking-wide"
+          className="font-pixel text-[22.5px] tracking-wide"
           style={{
             color:      theme.accentBright,
             textShadow: `0 0 20px ${theme.accentBright}60`,
@@ -77,8 +77,8 @@ export const FloorRevealConfirmPhase: React.FC<PhaseComponentProps> = ({ onAdvan
             key={i}
             className="font-mono leading-relaxed"
             style={{
-              fontSize: '10px',
-              color:    `${theme.accentBright}${i === 0 ? 'cc' : i === 1 ? '99' : '8c'}`,
+              fontSize: '15.625px',
+              color:    `${theme.accentBright}cc`,
             }}
           >
             {line}
@@ -95,7 +95,7 @@ export const FloorRevealConfirmPhase: React.FC<PhaseComponentProps> = ({ onAdvan
         }}
       >
         <div
-          className="font-pixel text-[5px] tracking-widest mb-1.5"
+          className="font-pixel text-[7.8px] tracking-widest mb-1.5"
           style={{ color: 'rgba(255,255,255,0.70)' }}
         >
           ★ {floor.bossName.toUpperCase()} — {floor.bossTitle.toUpperCase()}
@@ -103,7 +103,7 @@ export const FloorRevealConfirmPhase: React.FC<PhaseComponentProps> = ({ onAdvan
         <p
           className="font-mono italic"
           style={{
-            fontSize: '9px',
+            fontSize: '14px',
             color:    'rgba(255,255,255,0.88)',
           }}
         >

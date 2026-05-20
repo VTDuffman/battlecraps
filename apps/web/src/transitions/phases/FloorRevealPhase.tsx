@@ -51,7 +51,7 @@ export const FloorRevealPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
 
       {/* Floor number badge */}
       <div
-        className="font-pixel text-[6px] tracking-[0.5em] border px-5 py-1.5 rounded"
+        className="font-pixel text-[7.5px] tracking-[0.5em] border px-5 py-1.5 rounded"
         style={{
           color:       `${theme.accentBright}cc`,
           borderColor: `${theme.accentDim}50`,
@@ -65,7 +65,7 @@ export const FloorRevealPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
       <h1
         className="font-pixel text-center px-6"
         style={{
-          fontSize:   'clamp(28px, 8vw, 44px)',
+          fontSize:   'clamp(35px, 10vw, 55px)',
           color:      theme.accentBright,
           textShadow: `0 0 40px ${theme.accentBright}80, 0 0 100px ${theme.accentPrimary}40`,
           lineHeight: 1.1,
@@ -78,7 +78,7 @@ export const FloorRevealPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
       <p
         className="font-mono text-center tracking-widest px-10"
         style={{
-          fontSize: '11px',
+          fontSize: '14px',
           color:    `${theme.accentBright}99`,
         }}
       >

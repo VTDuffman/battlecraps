@@ -22,7 +22,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { runs, users, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
+import { runs, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
 import { isBossMarker, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, type CrewRarity } from '@battlecraps/shared';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
@@ -103,19 +103,20 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
       let compShooterBonus = 0;
       if (bossConfig?.compReward === 'EXTRA_SHOOTER') {
         compShooterBonus = 1;
+      }
 
-        // Stub: write the comp perk ID to the user's permanent record so the
-        // meta-progression system can read it once it's wired up.
-        // Non-fatal — a failure here should never block game progression.
+      // Persist the comp perk ID onto the run (not the user) so enforcement is
+      // scoped to this run only. Non-fatal — must never block game progression.
+      if (bossConfig && bossConfig.compReward !== 'NONE' && bossConfig.compPerkId !== undefined) {
         try {
           await db
-            .update(users)
+            .update(runs)
             .set({
               compPerkIds: sql`array_append(comp_perk_ids, ${bossConfig.compPerkId}::integer)`,
             })
-            .where(eq(users.id, userId));
+            .where(eq(runs.id, runId));
         } catch {
-          // Intentionally swallowed — perk tracking is a stub.
+          // Intentionally swallowed.
         }
       }
 

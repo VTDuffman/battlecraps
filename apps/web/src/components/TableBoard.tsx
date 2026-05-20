@@ -691,14 +691,17 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
   markerIndex,
   liveMarkerIndex,
 }) => {
-  const target    = MARKER_TARGETS[markerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
-  const isBoss    = isBossMarker(markerIndex);
-  const isCleared = markerIndex !== liveMarkerIndex; // display index behind live = in transition window
-  const progress  = isCleared ? 1 : Math.min(bankroll / target, 1);
-  const label     = isBoss ? '★ BOSS' : `MARKER ${markerIndex + 1}`;
-  const pct       = Math.round(progress * 100);
-  const theme     = useFloorTheme();
+  const target      = MARKER_TARGETS[markerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
+  const isBoss      = isBossMarker(markerIndex);
+  const isCleared   = markerIndex !== liveMarkerIndex; // display index behind live = in transition window
+  const progress    = isCleared ? 1 : Math.min(bankroll / target, 1);
+  const label       = isBoss ? '★ BOSS' : `MARKER ${markerIndex + 1}`;
+  const pct         = Math.round(progress * 100);
+  const theme       = useFloorTheme();
   const isNullSpace = getFloorIndex(markerIndex) === 8;
+  const targetMet   = !isCleared && bankroll >= target;
+  const autoCollect = useGameStore((s) => s.autoCollect);
+  const isRolling   = useGameStore((s) => s.isRolling);
 
   return (
     <div className="w-full px-2 space-y-1" data-tutorial-zone="marker-progress">
@@ -730,6 +733,24 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
           }}
         />
       </div>
+
+      {targetMet && (
+        <button
+          type="button"
+          onClick={() => { void autoCollect(); }}
+          disabled={isRolling}
+          className="
+            w-full py-0.5 rounded
+            font-pixel text-[6px] tracking-widest
+            border border-green-500/50 bg-green-950/60
+            text-green-400 hover:text-green-300 hover:bg-green-900/60
+            disabled:opacity-40 disabled:cursor-not-allowed
+            transition-colors
+          "
+        >
+          ✓ TARGET MET — ADVANCE
+        </button>
+      )}
     </div>
   );
 };

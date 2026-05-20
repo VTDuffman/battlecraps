@@ -1426,3 +1426,336 @@ SEVEN_OUT and auto-clear wins on the final marker persist `currentMarkerIndex = 
 
 **High-Level Fix:**
 In all three affected paths in `rolls.ts`, replace the conditional `isLastMarker ? currentMarkerIndex : currentMarkerIndex + 1` with an unconditional `currentMarkerIndex + 1` whenever a final-marker clear is confirmed — the `isLastMarker` guard that withholds the increment is the root defect. After deploying the code fix, execute a targeted SQL migration against the `leaderboard_entries` table to flip `did_win_run` from `false` to `true` for all historical rows where `highest_marker_index = 26` and `final_bankroll_cents >= 125000000` and `created_at < 2026-05-13T04:53:52Z` (the approximate epoch before this code path existed). The migration should also be applied to the `runs` table's `current_marker_index` column for any affected run rows still persisted, so that run-state recovery does not reconstruct a stale index. A regression test covering all four win-path types (POINT_HIT, NATURAL, SEVEN_OUT, auto-clear) on the final marker should be added to prevent silent reintroduction.
+
+---
+
+## KI-063 — Boss comp perk IDs never written to DB for 7 of 8 comps; entire comp meta-progression system non-functional
+
+**Area:** `apps/api/src/routes/recruit.ts` (lines 95–120) — comp perk ID persistence gate; `apps/api/src/routes/rolls.ts` (approx. line 641) — `hasTheVig` check and all equivalent comp enforcement reads
+**Severity:** High
+**Status:** Fixed (2026-05-19)
+**Source:** Root cause analysis of The Vig payout discrepancy (2026-05-19) — post-boss additive boost confirmed absent in live play despite KI-051 fix; traced to perk ID never reaching `user.compPerkIds`
+
+**Issue:**
+The `array_append` call that writes a boss comp perk ID to `users.comp_perk_ids` is gated behind `if (bossConfig?.compReward === 'EXTRA_SHOOTER')` in `recruit.ts`. Member's Jacket (EXTRA_SHOOTER, perk ID 1) is correctly persisted because it also needs the shooter-count side-effect handled in that same branch. However, every other comp type — THE_VIG, SEA_LEGS, GOLDEN_TOUCH, THE_COVENANT, POSEIDONS_FAVOR, ZERO_POINT, and THE_FREQUENCY — falls through without writing anything to the database. All downstream enforcement reads in `rolls.ts` (e.g., `user.compPerkIds.includes(COMP_PERK_IDS.THE_VIG)`) therefore always return false, silently suppressing the comp's mechanical effect for the remainder of the run. This affects 7 of 8 boss comps across Floors 1 and 3–8. A player can defeat every boss in the gauntlet and receive zero persistent benefit beyond the Floor 2 Member's Jacket.
+
+**Steps to Reproduce:**
+1. Start a fresh run and progress to the end of Floor 1 (marker 3 — The Foreman boss fight).
+2. Clear the marker; proceed through the boss victory transition to the Pub/recruit screen.
+3. In the DB, query `SELECT comp_perk_ids FROM users WHERE id = <userId>` — `{4}` (THE_VIG perk ID) should be present but is absent.
+4. Return to gameplay on Floor 2. Hire The Doorman or The Grinder and observe that crew additive payouts receive no 20% uplift despite THE_VIG being displayed in the CompCardFan HUD.
+5. Repeat with any boss floor (3–8) — SEA_LEGS, GOLDEN_TOUCH, THE_COVENANT, POSEIDONS_FAVOR, ZERO_POINT, and THE_FREQUENCY are all unwritten and non-functional.
+
+**Expected Behavior:**
+After any boss victory with a non-NONE comp reward, the boss's `compPerkId` should be appended to `users.comp_perk_ids`. On subsequent rolls, `rolls.ts` should read the persisted perk IDs and apply the corresponding mechanical effect (additive scaling, hype reset, forced natural, bankroll-drain reduction, craps-out immunity, hype floor, natural bonus).
+
+**Actual Behavior:**
+Only EXTRA_SHOOTER (Member's Jacket, Floor 2) is persisted. All other comp perk IDs are never written. The `CompCardFan` HUD correctly displays earned comps because it derives its display state from the boss victory history stored on the run, not from `user.compPerkIds` — creating a false impression that the comp is active. All seven affected comps are permanently inert for the duration of any run.
+
+**Likely Affected Area:**
+- `apps/api/src/routes/recruit.ts` — the `if (bossConfig?.compReward === 'EXTRA_SHOOTER')` gate (lines 104–120) must be restructured so `array_append` runs for all comps where `compReward !== 'NONE'` and `compReward !== 'EXTRA_SHOOTER'` is not the only condition; the shooter-count side-effect should remain scoped to the EXTRA_SHOOTER branch
+- `apps/api/src/routes/rolls.ts` — all comp enforcement reads (THE_VIG post-cascade check, SEA_LEGS hype reset, GOLDEN_TOUCH forced natural, THE_COVENANT tribute halving, POSEIDONS_FAVOR craps-out guard, ZERO_POINT hype floor, THE_FREQUENCY natural bonus) are structurally correct but are permanently short-circuited by the empty `compPerkIds` array
+
+**High-Level Fix:**
+In `recruit.ts`, lift the `array_append` call out of the `EXTRA_SHOOTER`-specific branch and apply it unconditionally whenever `wasBossVictory` is true and `bossConfig?.compPerkId` is defined and `bossConfig?.compReward !== 'NONE'`. The EXTRA_SHOOTER branch should retain only the `compShooterBonus = 1` assignment as its exclusive logic. After this fix, all seven non-functioning comps will begin persisting correctly for new runs. Existing runs in progress that have already cleared a boss without the perk being written will remain broken for those sessions; a targeted DB backfill is not practical here (unlike KI-062) because run progress cannot be reliably correlated to which comps should have been awarded without consulting the full run history. Note that GOLDEN_TOUCH (KI-054) and THE_VIG enforcement (KI-051) are separately tracked issues — the fix here is a prerequisite for those comp-specific enforcement fixes to have any effect.
+
+---
+
+## KI-064 — Comp card tooltip only activates on CSS hover; not persistently readable in expanded mode
+
+**Area:** `apps/web/src/components/CompCard.tsx` — fan variant tooltip block (approx. line 156–178); `apps/web/src/components/CompCardFan.tsx` — `showTooltip` prop and card rendering
+**Severity:** Low
+**Status:** Open
+**Source:** 05/19/2026 playtest session
+
+**Issue:**
+When the comp card fan is expanded (tapped open), each card displays its comp name and icon but its mechanical description (the `effect` field) is only accessible via CSS hover — the tooltip `div` uses `opacity-0 group-hover:opacity-100`. On touch devices where hover is not available, and on desktop when the player does not hover over a specific card, the effect text is never visible. Players in expanded mode have no persistent way to read what each earned comp actually does.
+
+**Steps to Reproduce:**
+1. Defeat at least one boss to earn a comp (e.g., defeat The Foreman to earn The Vig).
+2. During any subsequent table or pub screen, tap the comp card stack to expand it.
+3. Observe the expanded cards — the comp name and icon are visible but no mechanical description appears without separately hovering over each individual card.
+4. On a touch device, note that no hover state is reachable at all.
+
+**Expected Behavior:**
+In expanded mode, each comp card should persistently display its mechanical effect text so the player can read what each earned comp does without an additional hover interaction. The tooltip content should be immediately legible as soon as the fan is open.
+
+**Actual Behavior:**
+The effect tooltip is controlled by `opacity-0 group-hover:opacity-100` in the fan variant of `CompCard`. When `showTooltip` is `true` (i.e., the fan is open), the tooltip `div` is rendered in the DOM but remains invisible until the parent card receives a CSS hover event. On touch-only devices the tooltip is permanently inaccessible.
+
+**Likely Affected Area:**
+- `apps/web/src/components/CompCard.tsx` — fan variant tooltip (lines 155–178): the `opacity-0 group-hover:opacity-100` classes should be replaced with always-visible styling when `showTooltip` is true
+- `apps/web/src/components/CompCardFan.tsx` — `showTooltip={isOpen}` is already passed correctly; the receiving component is the only change site
+
+**High-Level Fix:**
+In `CompCard`'s fan variant tooltip block, replace the CSS-hover-only approach with a conditional driven by the existing `showTooltip` prop. When `showTooltip` is true, render the tooltip as persistently visible (`opacity-100`) rather than hover-gated. The tooltip can use a fixed position or remain absolutely positioned to the right of the card — the current layout already provides the necessary offset (`left-full ml-2`). If a hover-only state is still desired for a subtlety when the fan is closed, keep `group-hover:opacity-100` as a fallback, but the `showTooltip=true` state should unconditionally force visibility.
+
+---
+
+## KI-065 — No mechanism for players to manually verify marker-clear status mid-marker
+
+**Area:** `apps/web/src/components/TableBoard.tsx`; `apps/api/src/routes/rolls.ts`; `apps/web/src/store/useGameStore.ts`
+**Severity:** Low
+**Status:** Resolved — Three-part fix: (1) `MarkerProgress` in `TableBoard.tsx` renders a "✓ TARGET MET — ADVANCE" button when `bankroll >= target`; (2) `autoCollect()` in `useGameStore.ts` calls `/roll` without incrementing `_rollKey` so no dice animation plays, and uses a 400ms fallback timeout when `hasPops` is false; (3) the auto-clear block in `rolls.ts` was moved to run before all bet validation (immediately after `betDelta` is computed), fixing a 422 error that occurred when the player was in COME_OUT phase with no passLine bet placed.
+**Source:** 05/19/2026 playtest session
+
+**Issue:**
+There is no in-game affordance for a player to check whether their current bankroll already meets the marker target without placing a bet and rolling. The auto-clear gate in `rolls.ts` fires automatically when `postBetBankroll >= postBetMarkerTarget` at bet-submission time, but this is invisible to the player until they actually submit a roll. A player who has accumulated bankroll through hardway wins, crew bonuses, or other off-roll events may not realize they have already cleared the marker and are waiting unnecessarily. A "Call The Pit Boss" button — triggering an explicit marker-clear check — would give players an on-demand way to confirm their standing without committing to a roll.
+
+**Steps to Reproduce:**
+1. Begin a marker with a bankroll near the target threshold.
+2. Accumulate additional bankroll via hardway wins or crew additives during mid-point-phase rolls.
+3. Observe that there is no visible indicator or button that tells the player their bankroll now meets the target.
+4. Note that the player must place a bet and attempt to roll to trigger the auto-clear gate; until they do, there is no way to confirm marker status.
+
+**Expected Behavior:**
+Players should have an explicit affordance — a "Call The Pit Boss" (or equivalent) button — that triggers a marker-clear evaluation and surfaces the result in a brief modal or notification. If the marker is already cleared, the player should receive confirmation and the game should proceed to the transition as if they had rolled. If not cleared, the modal should display how far the player still needs to go.
+
+**Actual Behavior:**
+The only way to trigger the auto-clear check is to submit a roll (which calls `POST /runs/:id/roll`). There is no dedicated "check marker status" endpoint or UI affordance. Players who do not know about the auto-clear mechanic may continue rolling unnecessarily after already meeting the target, wasting time and shooter lives.
+
+**Likely Affected Area:**
+- `apps/web/src/components/TableBoard.tsx` — a new "Call The Pit Boss" button in the HUD, visible during `IDLE_TABLE` phase when bankroll is within a reasonable threshold of the marker target
+- `apps/api/src/routes/rolls.ts` — the existing auto-clear logic could be extracted into a shared helper and reused by a new `GET /runs/:id/marker-status` endpoint (or equivalent)
+- Alternatively, the client could derive the check locally using the stored `bankrollCents` and `MARKER_TARGETS[currentMarkerIndex]` from shared config without a round-trip
+
+**High-Level Fix:**
+Add a "CALL THE PIT BOSS" button to the `TableBoard` HUD, rendered only during `COME_OUT` phase and only when the player's bankroll is within striking distance of (or already meeting) the current marker target. On click, the client performs a local check against `MARKER_TARGETS[currentMarkerIndex]` using the current store bankroll — if the bankroll meets the target, automatically initiate a skip-roll by calling `POST /runs/:id/recruit` with an empty body (skip), or by triggering the same auto-clear path in `rolls.ts` via a lightweight dedicated endpoint. Present the outcome (cleared / not yet, $X remaining) in a brief modal overlay with thematic copy ("THE PIT BOSS CONFIRMS…"). If a server round-trip is preferred for correctness, a lightweight `GET /runs/:id/marker-status` endpoint can perform the same `postBetBankroll >= markerTarget` check server-side and return the result without mutating any state.
+
+---
+
+## KI-066 — Crew unlock cinematic fires during boss-floor transition, creating a confusing sequence
+
+**Area:** `apps/web/src/transitions/phases/UnlockRecapPhase.tsx` (inferred); `apps/api/src/lib/unlocks.ts` — `evaluateUnlocks()` emit path; `apps/web/src/store/useGameStore.ts` — `unlocks:granted` socket listener and transition orchestration
+**Severity:** Medium
+**Status:** Open
+**Source:** 05/19/2026 playtest session
+
+**Issue:**
+When a crew member is unlocked on the final non-boss marker of a floor (e.g., Mimic unlocked on marker 11), the unlock is guaranteed to appear in the following pub draft. If the player then hires the newly-unlocked crew member in that pub, the game progresses to the boss marker. The boss marker's `TRANSITION` sequence then fires the `UnlockRecapPhase` cinematic — but the newly-hired crew was already unlocked one marker earlier and the player has already seen and acted on it. The unlock cinematic firing immediately before or during a boss entry feels jarring and thematically misplaced; it interrupts the boss dread sequence with an unrelated celebration.
+
+**Steps to Reproduce:**
+1. Progress to a floor's second non-boss marker (e.g., marker 11 in a 1-indexed count).
+2. Trigger the unlock condition for a crew member (e.g., Mimic — 4+ distinct crew fire in one cascade).
+3. Observe the unlock notification and proceed through the pub; hire the newly-unlocked crew member.
+4. Clear the boss marker (marker 12 in the same counting scheme).
+5. Observe that the `UnlockRecapPhase` cinematic fires during the boss-defeat transition sequence, showing the unlock for a crew the player already hired two markers ago.
+
+**Expected Behavior:**
+The unlock cinematic should fire in the transition immediately following the marker where the unlock was earned — not be deferred to a later transition. If the unlock was earned on a non-boss marker, it should appear in that marker's pub/transition sequence. Unlocks should not appear in a boss-defeat transition unless the boss fight itself was the trigger event.
+
+**Actual Behavior:**
+`evaluateUnlocks()` writes new unlock IDs to `guaranteedPubDraftIds` and emits `unlocks:granted` via WebSocket, but the `UnlockRecapPhase` fires based on transition sequencing in the client orchestrator. If the transition orchestrator defers the recap phase or the unlock event arrives during a boss-fight transition, the cinematic fires out of order — after the boss fight — rather than in the non-boss marker transition where the unlock occurred.
+
+**Likely Affected Area:**
+- `apps/web/src/store/useGameStore.ts` — `unlocks:granted` WebSocket listener; how received unlock IDs are queued and when they gate the `UnlockRecapPhase`
+- `apps/web/src/transitions/phases/UnlockRecapPhase.tsx` — rendering logic for the cinematic; may need to be gated by whether the current transition is a boss transition
+- Transition orchestrator (inferred — `TransitionOrchestrator` in `App.tsx` or equivalent) — phase sequencing logic that determines when `UnlockRecapPhase` fires relative to boss entry phases
+
+**High-Level Fix:**
+The unlock cinematic should be suppressed when the current transition is a boss-marker transition (`isBossMarker(currentMarkerIndex - 1)` — i.e., the marker just cleared was a boss). Boss transitions already have a rich sequence (BossVictory → BossVictoryComp → Pub) and the unlock cinematic adds noise at the wrong moment. Any unlocks earned during a boss fight should be queued and displayed in the next non-boss pub transition instead. Alternatively, the orchestrator can check whether the unlock was earned during the current transition's marker or a prior one — if prior, the cinematic fires silently (notification only, no full recap phase). Storing the `markerIndexAtUnlock` alongside the unlock record in the Zustand store would make this check straightforward.
+
+---
+
+## KI-067 — Floor intro screen text is too dim to read on dark-accent floors
+
+**Area:** `apps/web/src/transitions/phases/FloorRevealPhase.tsx`; `apps/web/src/transitions/phases/FloorRevealConfirmPhase.tsx`; `apps/web/src/lib/floorThemes.ts`
+**Severity:** Medium
+**Status:** Resolved — `FloorRevealPhase` badge and tagline, and `FloorRevealConfirmPhase` FLOOR N label and all intro lines, now use `accentBright` as the base color instead of `accentPrimary`/`accentDim`. Dimmest intro line opacity raised from 40% (`65`) to 55% (`8c`); other lines adjusted to `cc`/`99`/`8c` for lines 1–3.
+**Source:** 05/19/2026 playtest session
+
+**Issue:**
+On floors with dark `accentPrimary` values — particularly Floor 5 (The Lodge, `accentPrimary: '#9a6e28'`), Floor 6 (Atlantis, `accentPrimary: '#009070'`), and potentially others — the text on the floor intro screens is rendered at opacity suffixes that make it effectively unreadable against the near-black background. In `FloorRevealConfirmPhase`, `introLines` text uses `${theme.accentPrimary}bb` (73%), `${theme.accentPrimary}90` (56%), and `${theme.accentPrimary}65` (40%) — a dark amber like `#9a6e28` at 40% opacity renders as near-invisible on a `#030303` background. The "FLOOR N" badge in `FloorRevealPhase` uses `${theme.accentPrimary}cc` (80%), which is similarly compromised on dark-accent floors. The tagline in `FloorRevealPhase` uses `${theme.accentPrimary}80` (50%), effectively invisible on most floors below Floor 4.
+
+**Steps to Reproduce:**
+1. Start a new run and progress to Floor 5 (The Lodge — defeat The Executive boss fight and enter the Floor 5 cinematic).
+2. Observe the `FloorRevealPhase` — the "FLOOR 5" badge and tagline text are dim and difficult to read.
+3. Tap through to `FloorRevealConfirmPhase` — the intro lines fade from dim to nearly invisible (third line at 40% opacity of a dark amber).
+4. Repeat at Floor 6 (Atlantis) and other floors with dark `accentPrimary` tokens.
+
+**Expected Behavior:**
+All text on the floor intro screens (both `FloorRevealPhase` and `FloorRevealConfirmPhase`) should be clearly legible against the dark background at minimum readability standards. The atmospheric hierarchy (first line brighter, subsequent lines progressively softer) is appropriate, but even the dimmest line should remain readable.
+
+**Actual Behavior:**
+Text is progressively dimmed using opacity suffixes applied to already-dark `accentPrimary` hex values. On floors where `accentPrimary` is a dark hue (amber, teal, steel blue), the compounded darkness makes lower-opacity lines illegible in practice. The title (`accentBright`) remains readable because it uses the bright variant, but all secondary and body text is affected.
+
+**Likely Affected Area:**
+- `apps/web/src/transitions/phases/FloorRevealPhase.tsx` — `FLOOR N` badge color (`${theme.accentPrimary}cc`) and tagline color (`${theme.accentPrimary}80`)
+- `apps/web/src/transitions/phases/FloorRevealConfirmPhase.tsx` — `FLOOR N` label (`${theme.accentDim}aa`), intro lines (`${theme.accentPrimary}bb/90/65`), and CTA button text
+- `apps/web/src/lib/floorThemes.ts` — `accentPrimary` values on Floors 5–7 are significantly darker than on Floors 1–4; the opacity-suffix approach that works on bright-accent floors breaks on dark-accent ones
+
+**High-Level Fix:**
+Replace the opacity-suffix approach for secondary text on floor intro screens with values derived from `accentBright` (the brighter variant) at reduced opacity, or define new theme tokens (`introTextPrimary`, `introTextSecondary`, `introTextDim`) that are pre-computed per floor to guarantee minimum contrast against the black background. As a simpler immediate fix, clamp the opacity floor: the dimmest intro line should use no lower than 55–60% opacity, and the base color should be `accentBright` rather than `accentPrimary` for all body text. The hero title already uses `accentBright` and is correctly readable — apply the same base color consistently to the tagline and intro lines, varying only the opacity to create the atmospheric hierarchy.
+
+---
+
+## KI-068 — Mimic ability description implies "immediate left" behavior; actual behavior is "last crew to fire"
+
+**Area:** `apps/web/src/components/CrewPortrait.tsx` or equivalent crew description display; `packages/shared/src/crew/mimic.ts`; `packages/shared/src/cascade.ts` — `lastFiredMember` tracking
+**Severity:** Low
+**Status:** Open
+**Source:** 05/19/2026 playtest session
+
+**Issue:**
+Players observing The Mimic in play report that it copies the crew member immediately to its left rather than the last crew member to have fired before it in the cascade. The implementation in `cascade.ts` is correct: `lastFiredMember` is updated only when a non-Mimic crew member's `execute()` actually fires (i.e., they are not on cooldown and their ability produces a context change). In many common configurations, however, the crew member immediately to Mimic's left is also the last one to fire — especially when earlier slots are on cooldown — making the behavior look identical to "copy immediate left." The gap between the designed behavior ("last crew to fire") and the player's observed behavior ("immediate left") suggests either a misleading ability description in the pub/crew UI, or an edge-case cascade ordering issue in which `lastFiredMember` is not being set as expected.
+
+**Steps to Reproduce:**
+1. Hire The Mimic and place it in slot 4. Place crew members with multi-roll cooldowns in slots 1–2 and an active crew member in slot 3.
+2. Roll until the slot 1–2 crew enter their cooldown windows.
+3. Roll again with slots 1–2 on cooldown. Observe which crew's ability The Mimic fires.
+4. Confirm via the cascade event stream (floating text barks or roll log) whether Mimic copied slot 3's crew (last to fire) or a slot further left.
+
+**Expected Behavior:**
+The Mimic copies whichever crew member most recently fired before it in the current cascade — regardless of slot adjacency. If slot 0's crew is the only one not on cooldown and fires before Mimic in slot 4, Mimic copies slot 0, not slot 3. The `cascade.ts` implementation already enforces this; the player's mental model should match.
+
+**Actual Behavior:**
+Players perceive Mimic as always copying the crew member in the slot immediately to its left. This may be accurate in limited configurations (e.g., when all slots to the left are always active), or may indicate that the crew description text shown in the pub draft or crew portrait tooltip inaccurately describes the mechanic as "copies the crew to its left." Verification is required to confirm whether this is a description bug, a cascade bug under specific cooldown conditions, or a player perception issue.
+
+**Likely Affected Area:**
+- `packages/shared/src/crew/mimic.ts` — `briefDescription` field (sourced from DB via `crewDefinitions`): if this text says "copies the crew to its left" rather than "copies the last crew to fire," it is the root of the miscommunication
+- `packages/shared/src/cascade.ts` — `lastFiredMember` tracking (lines 188–241): verify that the update guard (`if (member.id !== MIMIC_ID)`) correctly handles all edge cases, including Mimics in adjacent slots and crews that pass through silently (no context delta but still "fired")
+
+**High-Level Fix:**
+First, confirm the text displayed to players in the pub draft card and crew portrait. If `briefDescription` or any in-game label says "copies the crew to its left," update it to accurately reflect "copies the last crew to fire before it in the cascade." Second, add a unit test in `packages/shared` that places Mimic in slot 4, puts a crew with a per-roll cooldown in slot 3, and verifies that when slot 3 is on cooldown, Mimic copies whichever earlier slot last fired — not slot 3. This test will confirm whether the cascade implementation matches the intended design or exposes a real behavioral defect.
+
+---
+
+## KI-069 — Golden Touch and Member's Jacket comp mechanics unverifiable post-KI-063; may have independent enforcement bugs
+
+**Area:** `apps/api/src/routes/rolls.ts` — GOLDEN_TOUCH enforcement (approx. line 486–488); `apps/api/src/routes/recruit.ts` — `compShooterBonus` logic (lines 104–106, 181); `apps/web/src/components/TableBoard.tsx` or equivalent — shooter pip display
+**Severity:** Medium
+**Status:** Open
+**Source:** 05/19/2026 playtest session
+
+**Issue:**
+Two comp mechanical failures were observed during the 05/19/2026 playtest session. Both comps may be downstream of the KI-063 persistence gap (now fixed), but each has characteristics that suggest independent enforcement or display bugs beyond the persistence layer.
+
+**Golden Touch (Floor 4 comp — guaranteed first come-out Natural per shooter):**
+The GOLDEN_TOUCH enforcement in `rolls.ts` (line 486–488) reads `(user.compPerkIds as number[]).includes(COMP_PERK_IDS.GOLDEN_TOUCH)`. This comp was non-functional for the entire KI-063 lifetime (perk ID never written to DB). Now that KI-063 is fixed, the enforcement code should activate — but it has not been re-verified in a full end-to-end playthrough with the fix live. There is a risk that the guard condition `run.shooterRollCount === 0 && run.phase === 'COME_OUT'` does not reset correctly across shooters if `shooterRollCount` is not reliably zeroed on every new-shooter event.
+
+**Member's Jacket (Floor 2 comp — +1 Shooter per segment):**
+Member's Jacket was the one comp that WAS correctly persisted through the KI-063 bug (EXTRA_SHOOTER handled its own write path). The observed symptom — "I see the empty shooter pip under the hype marker, but I just started the marker and should have all 6 shooters" — suggests either: (a) the shooter count was correctly set to 6 by `recruit.ts` (`shooters: 5 + compShooterBonus`) but the hype-area pip display does not render a 6th pip, or (b) the `compShooterBonus` branch in `recruit.ts` is not firing correctly because `isBossMarker(prevMarkerIndex)` or `compReward === 'EXTRA_SHOOTER'` is not evaluating as expected. The `PubScreen` also derives `upcomingShooters` client-side using the same `prevMarkerIndex` / `compReward` lookup — a discrepancy between the client display and the server state could explain the observation.
+
+**Steps to Reproduce (Golden Touch):**
+1. Clear Floor 4 boss fight (The Executive), receive Golden Touch comp.
+2. Begin Floor 5, Marker 1 come-out phase (first come-out of the first new shooter).
+3. Roll — the result should be forced to a Natural (7 or 11).
+4. Seven-out; observe whether the next shooter's first come-out is also a forced Natural.
+
+**Steps to Reproduce (Member's Jacket):**
+1. Clear Floor 2 boss fight (Sarge), receive Member's Jacket comp.
+2. Proceed through the pub to the next marker.
+3. Observe the shooter pip display in the hype area — it should show 6 pips filled, not 5 with one empty.
+4. Confirm via the run state (`GET /runs/:id`) that `shooters` is 6 after the transition.
+
+**Expected Behavior:**
+Golden Touch: each new shooter's first come-out roll resolves as a Natural (7 or 11). Member's Jacket: 6 shooter pips are visible and filled at the start of every new segment after Floor 2.
+
+**Actual Behavior:**
+Golden Touch: first come-out rolls are not observed to produce guaranteed Naturals. Member's Jacket: the hype pip display shows what appears to be 5 filled pips and 1 empty pip (or 5 pips total), suggesting either the shooter count is 5 in the database or the pip display does not support a 6th pip.
+
+**Likely Affected Area:**
+- `apps/api/src/routes/rolls.ts` — GOLDEN_TOUCH enforcement guard (line 486–488); `shooterRollCount` reset on new-shooter events
+- `apps/api/src/routes/recruit.ts` — `compShooterBonus` branch condition; `shooters: 5 + compShooterBonus` persistence
+- `apps/web/src/components/TableBoard.tsx` (or the HUD component hosting the shooter pip display) — whether the pip row supports rendering more than 5 pips and whether it reads from live store `shooters` state
+
+**High-Level Fix:**
+For Golden Touch: re-verify end-to-end with KI-063 fix live. If still non-functional, audit `shooterRollCount` to confirm it is zeroed correctly in `computeNextState` on every SEVEN_OUT event, and verify that `user.compPerkIds` is re-read from the database on each roll (not cached from session start). For Member's Jacket: query the run state immediately after the Sarge boss transition to confirm whether `shooters = 6` in the database; if so, the bug is purely in the client pip display, and the display component needs to be updated to render up to 6 pips. If `shooters = 5`, the `compShooterBonus` branch in `recruit.ts` is not activating and the `isBossMarker` / `compReward` evaluation chain should be debugged.
+
+---
+
+## KI-070 — TIDAL_SURGE High/Low Tide binary redesign never implemented; BossRoomHeader shows stale roll-counter UI
+
+**Area:** `apps/web/src/components/BossRoomHeader.tsx` — TIDAL_SURGE display block (lines 87–130); `apps/api/src/routes/rolls.ts` — `computeNextState` `isTidalSurge` branch (approx. lines 939–958); `packages/shared/src/config.ts` — Floor 6 boss `ruleHeaderText` and `ruleParams`
+**Severity:** Medium
+**Status:** Fixed (2026-05-19)
+**Source:** 05/19/2026 playtest session
+
+**Issue:**
+KI-058 documented two TIDAL_SURGE defects and proposed a redesign to a binary High/Low Tide oscillation model as the resolution. KI-058 was closed with status "No Longer Applicable (2026-05-18)" with the note that the redesigned mechanic owns the design space going forward. However, the actual implementation in `rolls.ts` still uses the original roll-counter model (`(current + 1) % tidalCycleTotal`), `config.ts` still carries `ruleHeaderText: 'TIDE SURGES EVERY 5 ROLLS — MIN BET 15% OF TARGET FOR 2 ROLLS'`, and `BossRoomHeader.tsx` still renders the pip-counter UI with "SURGE IN X" / "MIN / N ROLLS" status text. No binary High Tide / Low Tide toggle has been implemented anywhere in the codebase. Players encountering the Floor 6 (Atlantis) boss fight see the original counter-based mechanic and UI, not the redesigned version that was committed to in KI-058.
+
+**Steps to Reproduce:**
+1. Progress to Floor 6, Marker 3 (The Sovereign — Atlantis boss fight).
+2. Observe the `BossRoomHeader` — it shows a pip counter with "SURGE IN X" status text and a 7-pip progress row (5 normal + 2 surge pips).
+3. Roll 5 times; observe the counter reach the surge window and display "⚠ SURGE" with a min-bet and roll count.
+4. Compare the observed mechanic against the binary High Tide / Low Tide design described in KI-058's High-Level Fix section — no such alternation exists.
+
+**Expected Behavior:**
+Per the design intent captured in KI-058, the TIDAL_SURGE mechanic should oscillate between a Low Tide state (standard floor minimum applies) and a High Tide state (elevated minimum applies), on a rhythm that is legible and predictable to the player. The `BossRoomHeader` should display the current tide state (HIGH TIDE / LOW TIDE) and the number of rolls or point-hits until the next transition, rather than a raw roll-counter pip strip.
+
+**Actual Behavior:**
+The mechanic and UI are unchanged from the original KI-058 design. `bossPointHits` advances by 1 each roll, modulo `cycleLength + surgeDuration` (7). At positions 0–4, "SURGE IN X" is shown; at positions 5–6, the surge min-bet is enforced and "X ROLLS" remaining is shown. The binary oscillation redesign was captured as design intent in KI-058 but was never translated into code.
+
+**Likely Affected Area:**
+- `apps/api/src/routes/rolls.ts` — `isTidalSurge` block in `computeNextState` (`nextBossCounter` logic); needs to be replaced with binary oscillation logic rather than the modulo counter
+- `packages/shared/src/config.ts` — Floor 6 boss `ruleParams` and `ruleHeaderText`; `ruleParams` will need new shape to express binary toggle (e.g., `{ rule: 'TIDAL_SURGE'; lowTideDuration: number; highTideDuration: number; highTideMinMultiplier: number }`)
+- `packages/shared/src/bossRules/tidalSurge.ts` — `validateBet` hook; min-bet enforcement logic needs to read the new binary state
+- `apps/web/src/components/BossRoomHeader.tsx` — TIDAL_SURGE display block; replace pip counter with HIGH TIDE / LOW TIDE label + rolls-until-next-transition indicator
+
+**High-Level Fix:**
+Implement the binary High/Low Tide alternation as described in KI-058: `bossPointHits` should track the number of rolls remaining in the current tide state rather than a raw modulo counter. On each roll, decrement by 1; when it reaches 0, toggle the tide state and reset to the opposite duration. Store the current tide state (HIGH or LOW) explicitly — either as a new column in the `runs` table or encoded into `bossPointHits` (e.g., positive = Low Tide rolls remaining, negative = High Tide rolls remaining). The `validateBet` hook reads the state to enforce the elevated minimum only during High Tide. The `BossRoomHeader` renders "LOW TIDE — X ROLLS" or "HIGH TIDE — X ROLLS" with appropriate color coding (teal for Low, amber/red for High). The `ruleParams` shape in `config.ts` must be updated to carry `lowTideDuration`, `highTideDuration`, and `highTideMultiplier` instead of `cycleLength` / `surgeDuration` / `surgePct`. Update `ruleHeaderText` accordingly.
+
+---
+
+## KI-071 — Floor 9 pub screens use Null Space greyscale theme, spoiling the floor reveal before the cinematic fires
+
+**Area:** `apps/web/src/components/PubScreen.tsx` — `theme` derivation (line 313); `apps/web/src/lib/floorThemes.ts` — `FLOOR_9_THEME.pubName`, `pubBg`, `pubTitleColor`
+**Severity:** Medium
+**Status:** Open
+**Source:** 05/19/2026 playtest session
+
+**Issue:**
+`PubScreen` derives its floor theme using `getFloorTheme(Math.max(0, currentMarkerIndex - 1))`. For pub visits within Floor 9 — after clearing marker 24 (transition to pub before marker 25) and marker 25 (transition to pub before the boss at marker 26) — this resolves to `FLOOR_9_THEME`, the white/greyscale Null Space aesthetic. The player encounters a stark white-paper pub screen ("THE NULL SPACE") mid-floor before the `FloorRevealPhase` and `FloorRevealConfirmPhase` cinematics have had a chance to formally introduce the Null Space's visual identity. The Floor 8 "THE INTERFACE" pub (acid-green, The Signal theme) correctly precedes the Floor 9 cinematic reveal, but the two pubs within Floor 9 itself immediately expose the inverted greyscale palette — undermining the intended "you step through into something completely different" reveal moment.
+
+**Steps to Reproduce:**
+1. Clear the Floor 8 boss fight (The Emissary). Proceed through the boss victory sequence and the pub (which correctly shows THE INTERFACE / acid-green theme).
+2. Progress to Floor 9 and clear marker 24 (the first non-boss Null Space marker).
+3. Enter the pub — observe that the pub background, title text, and accent bar all render in the white/greyscale `FLOOR_9_THEME` palette, labelled "THE NULL SPACE."
+4. Note that the player has not yet seen the FloorReveal cinematic for Floor 9 (that cinematic only fires at the floor's entry transition, before marker 24). The Floor 9 greyscale aesthetic was already shown by this pub.
+
+**Expected Behavior:**
+The pub screens for the two mid-floor markers within Floor 9 (after markers 24 and 25) should use a neutral or transitional theme — either the preceding floor's theme (Floor 8 / acid-green) or a distinct liminal aesthetic that does not fully expose the Null Space's inverted palette before the player has had a chance to absorb it organically during gameplay. The surprise of the white-paper void should be owned by the FloorReveal cinematic and the first look at the table board, not pre-empted by the pub.
+
+**Actual Behavior:**
+The theme computation `getFloorTheme(currentMarkerIndex - 1)` correctly resolves to `FLOOR_9_THEME` for any pub visit during Floor 9 (marker indices 24–26). This is technically accurate — the pub belongs to the floor just cleared — but the `FLOOR_9_THEME`'s dramatically inverted white aesthetic is too distinctive to serve as a background reveal. The white pub appears before the player has had the full cinematic floor-reveal moment, diluting the intended impact.
+
+**Likely Affected Area:**
+- `apps/web/src/components/PubScreen.tsx` — `theme` derivation (line 313); the `Math.max(0, currentMarkerIndex - 1)` expression needs an additional guard for Floor 9 mid-floor pubs
+- `apps/web/src/lib/floorThemes.ts` — `FLOOR_9_THEME` pub tokens (`pubBg`, `pubName`, `pubTitleColor`, `pubAccentBar`, `pubOverlayBg`) could be made less dramatically inverted if a softer transitional palette is preferred, or a new `FLOOR_9_PUB_THEME` variant can be introduced
+
+**High-Level Fix:**
+The cleanest fix is to cap the theme index used for `PubScreen` at Floor 8 when the current marker is within Floor 9 but is not the floor-entry marker. Concretely: if `getFloorIndex(currentMarkerIndex - 1) === 8` (i.e., the pub belongs to Floor 9), use `getFloorTheme` with a capped index of 7 (Floor 8 / The Signal / acid-green) instead. This preserves the Floor 8 aesthetic for all mid-Floor-9 pub visits while the Null Space reveal is owned by the FloorReveal cinematic and the table board transition. Alternatively, define a bespoke `FLOOR_9_PUB_THEME` in `floorThemes.ts` that uses a muted, liminal palette (deep grey rather than white, subtle ink rather than stark black) that hints at the void without fully exposing the inverted Null Space aesthetic before the cinematic.
+
+---
+
+## KI-072 — Comp perks from a prior run persist into new runs, causing cross-run comp bleed
+
+**Area:** `apps/api/src/routes/rolls.ts` — all 7 `user.compPerkIds` enforcement reads; `apps/api/src/routes/recruit.ts` — boss comp persistence block; `apps/api/src/db/schema.ts` — `users` table `comp_perk_ids` column; DB migration required to add `comp_perk_ids` to the `runs` table
+**Severity:** High
+**Status:** Fixed (2026-05-19)
+**Source:** 05/19/2026 playtest session — hype not resetting to 1.0× on 7-out during a new run on The Loading Dock
+
+**Issue:**
+Comp perks earned in one run bleed into subsequent runs because all comp enforcement in `rolls.ts` reads from `user.compPerkIds` — a column on the `users` table — rather than the `runs` table. When a new run is created via `POST /runs`, the `users` row is never cleared, so any comp perk IDs written during a prior run remain active. The KI-063 fix (shipped 2026-05-19) correctly began writing comp perk IDs to `users.comp_perk_ids` on boss victory via `recruit.ts`; this made the bleed immediately observable for the first time, because perk IDs are now actually being written. The specific symptom — 7-outs not resetting hype to 1.0× on a fresh Floor 1 run with no active comps — is consistent with either ZERO_POINT (enforces a 1.25× hype floor, overriding the standard 7-out reset to 1.0×) or SEA_LEGS (replaces the 7-out reset with a 50%-of-current-hype value), both of which would have been earned in a prior run.
+
+**Steps to Reproduce:**
+1. Complete a full run in which at least one boss is defeated — earning at least one comp perk (e.g., clear The Foreman to earn The Vig, or progress far enough to earn SEA_LEGS at Floor 3 or ZERO_POINT at Floor 7).
+2. Start a new run (The Loading Dock, Floor 1). The new run begins with no crew upgrades and no comps in the run record.
+3. Roll until a 7-out occurs during the come-out phase.
+4. Observe that hype does not reset to 1.0×. If SEA_LEGS is bleeding in, hype resets to 50% of its current value instead. If ZERO_POINT is bleeding in, hype resets toward 1.0× but is immediately floored at 1.25×.
+5. Confirm no comps are displayed in the client UI for the new run — the comp fan should be empty — confirming the enforcement mismatch is server-side only.
+
+**Expected Behavior:**
+Comps are per-run. A new run begins with zero active comp perks regardless of what was earned in any prior run. A 7-out on Floor 1 with no comps must reset hype to exactly 1.0×.
+
+**Actual Behavior:**
+`rolls.ts` reads comp enforcement from `user.compPerkIds`, which retains perk IDs from all previous runs in which bosses were defeated. A 7-out on Floor 1 applies the enforcement logic of comps the player has not yet earned in the current run — producing incorrect hype resets, incorrect payout taxes, incorrect shooter counts, and other downstream behavioral deviations depending on which perks are persisted.
+
+**Likely Affected Area:**
+- `apps/api/src/routes/rolls.ts` — all 7 `compPerkIds` enforcement reads (`hasSeaLegs`, `hasZeroPoint`, `hasGoldenTouch`, `hasTheVig`, `hasTheFrequency`, `hasPoseidonsFavor`, `hasTheCovenant`); must be redirected from `user.compPerkIds` to `run.compPerkIds`
+- `apps/api/src/routes/recruit.ts` — boss comp persistence block; the `array_append` write must target `runs` (by `runId`) rather than `users` (by `userId`)
+- `apps/api/src/db/schema.ts` — `runs` table requires a new `compPerkIds` integer array column (default `'{}'::integer[]`); the existing `compPerkIds` column on `users` becomes unused for gameplay (can be retained for a future meta-progression system but must no longer be written or read in the roll pipeline)
+- DB migration — a new migration file must add the `comp_perk_ids` column to the `runs` table before the code changes are deployed
+
+**High-Level Fix:**
+Move comp perk ID tracking from the user record to the run record. Add a `compPerkIds` integer array column (defaulting to an empty array) to the `runs` table via a new migration file — this is the only schema change required, and because new runs default to an empty array, no explicit clearing logic is needed anywhere. In `recruit.ts`, redirect the `array_append` write from `users` to `runs`, keyed on `runId`. In `rolls.ts`, replace all seven `user.compPerkIds` reads with `run.compPerkIds`; the `run` object is already in scope at all call sites. The existing `compPerkIds` column on the `users` table should be left in place but should no longer be written or read in the gameplay path — it was originally designed for a meta-progression system and can be revisited if that feature is ever scoped.

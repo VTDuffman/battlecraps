@@ -3,7 +3,7 @@
 // FB-015 — The Loading Dock (Floor 1)
 //
 // Run with:
-//   cd apps/api && npx tsx --env-file=../../.env src/db/migrate-loading-dock.ts
+//   cd apps/api && npx tsx --env-file=.env src/db/migrate-loading-dock.ts
 //
 // Operations:
 //   1. runs              — shift current_marker_index +3 on all non-terminal runs

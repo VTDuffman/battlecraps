@@ -250,7 +250,7 @@ async function rollHandler(
   const bossMarkerConfig = GAUNTLET[run.currentMarkerIndex];
   const bossHooks        = bossMarkerConfig?.boss ? BOSS_RULE_HOOKS[bossMarkerConfig.boss.ruleParams.rule] : undefined;
   const bossParams       = bossMarkerConfig?.boss ? bossMarkerConfig.boss.ruleParams : undefined;
-  const hasTheCovenant = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_COVENANT);
+  const hasTheCovenant = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_COVENANT);
   const bossState: BossRuleState = { bossPointHits: run.bossPointHits, markerIndex: run.currentMarkerIndex, covenantActive: hasTheCovenant };
 
   // ── 3c. Stuck-state catch-all ─────────────────────────────────────────────
@@ -320,6 +320,71 @@ async function rollHandler(
   // Pass Line is locked once set; it cannot be reduced mid-roll.
   const incomingBets = request.body.bets;
   const betDelta = sumBets(incomingBets) - sumBets(run.bets);
+
+  // ── 4b. Post-bet marker clear guard ──────────────────────────────────────
+  // Check this BEFORE any bet validation so players whose bankroll already
+  // meets the marker target can advance via the ADVANCE button regardless of
+  // their current bet state (e.g., no passLine during COME_OUT phase).
+  //
+  // finalBankroll = postBetBankroll + sumBets(incomingBets)
+  //              = run.bankrollCents + sumBets(run.bets)   [total player wealth]
+  // No deductions apply — returned bets are not winnings.
+  const postBetBankroll     = run.bankrollCents - betDelta;
+  const postBetMarkerTarget = MARKER_TARGETS[run.currentMarkerIndex];
+  if (postBetMarkerTarget !== undefined && postBetBankroll >= postBetMarkerTarget) {
+    const remainingBets  = sumBets(incomingBets);
+    const finalBankroll  = postBetBankroll + remainingBets;
+    const bankrollDelta  = sumBets(run.bets as Bets);   // total of all previously-placed bets returned
+    const isLastMarker   = run.currentMarkerIndex >= MARKER_TARGETS.length - 1;
+    const nextStatus     = isLastMarker ? 'GAME_OVER' : 'TRANSITION';
+    const nextMkrIndex   = run.currentMarkerIndex + 1;
+    const zeroBets: Bets = { passLine: 0, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } };
+
+    const autoRun = await db
+      .update(runs)
+      .set({
+        status:                nextStatus,
+        phase:                 'COME_OUT',
+        bankrollCents:         finalBankroll,
+        currentPoint:          null,
+        bets:                  zeroBets,
+        currentMarkerIndex:    nextMkrIndex,
+        consecutivePointHits:  0,
+        bossPointHits:         0,
+        pointPhaseBlankStreak: 0,
+        mechanicFreeze:        null,
+        hype:                  run.hype,
+        shooters:              run.shooters,
+        highestRollAmplifiedCents: run.highestRollAmplifiedCents,
+        updatedAt:             new Date(),
+      })
+      .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
+      .returning();
+
+    if (!autoRun[0]) {
+      return reply.status(409).send({ error: 'Conflict: run was modified by another request. Please retry.' });
+    }
+
+    if (nextStatus === 'GAME_OVER') {
+      void submitLeaderboardEntry(user as UserRow, autoRun[0]).catch((err: unknown) => {
+        request.log.error({ err }, '[leaderboard] submission error (auto-clear)');
+      });
+    }
+
+    return reply.status(200).send({
+      run: autoRun[0],
+      roll: {
+        autoClear:       true,
+        dice:            [1, 6] as [number, number],
+        diceTotal:       7,
+        rollResult:      'POINT_HIT' as const,
+        bankrollDelta:   bankrollDelta,
+        resolvedBets:    zeroBets,
+        payoutBreakdown: { passLine: 0, odds: 0, hardways: 0 },
+        mechanicFreeze:  null,
+      },
+    });
+  }
 
   // Pass Line is locked once placed — it may not be reduced.
   if (incomingBets.passLine < run.bets.passLine) {
@@ -398,73 +463,6 @@ async function rollHandler(
     }
   }
 
-  // ── 4b. Post-bet marker clear guard ──────────────────────────────────────
-  // After all bet changes are validated, the player's effective cash is
-  // (bankrollCents - betDelta). A negative betDelta means working bets were
-  // taken down and cash returned; if that alone meets the marker target, clear
-  // it without rolling. Also fires when bankroll already exceeded the target
-  // with no bet changes (betDelta === 0).
-  //
-  // finalBankroll = postBetBankroll + sumBets(incomingBets)
-  //              = run.bankrollCents + sumBets(run.bets)   [total player wealth]
-  // No deductions apply — returned bets are not winnings.
-  const postBetBankroll    = run.bankrollCents - betDelta;
-  const postBetMarkerTarget = MARKER_TARGETS[run.currentMarkerIndex];
-  if (postBetMarkerTarget !== undefined && postBetBankroll >= postBetMarkerTarget) {
-    const remainingBets  = sumBets(incomingBets);
-    const finalBankroll  = postBetBankroll + remainingBets;
-    const bankrollDelta  = sumBets(run.bets as Bets);   // total of all previously-placed bets returned
-    const isLastMarker   = run.currentMarkerIndex >= MARKER_TARGETS.length - 1;
-    const nextStatus     = isLastMarker ? 'GAME_OVER' : 'TRANSITION';
-    const nextMkrIndex   = run.currentMarkerIndex + 1;
-    const zeroBets: Bets = { passLine: 0, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } };
-
-    const autoRun = await db
-      .update(runs)
-      .set({
-        status:                nextStatus,
-        phase:                 'COME_OUT',
-        bankrollCents:         finalBankroll,
-        currentPoint:          null,
-        bets:                  zeroBets,
-        currentMarkerIndex:    nextMkrIndex,
-        consecutivePointHits:  0,
-        bossPointHits:         0,
-        pointPhaseBlankStreak: 0,
-        mechanicFreeze:        null,
-        hype:                  run.hype,
-        shooters:              run.shooters,
-        highestRollAmplifiedCents: run.highestRollAmplifiedCents,
-        updatedAt:             new Date(),
-      })
-      .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
-      .returning();
-
-    if (!autoRun[0]) {
-      return reply.status(409).send({ error: 'Conflict: run was modified by another request. Please retry.' });
-    }
-
-    if (nextStatus === 'GAME_OVER') {
-      void submitLeaderboardEntry(user as UserRow, autoRun[0]).catch((err: unknown) => {
-        request.log.error({ err }, '[leaderboard] submission error (auto-clear)');
-      });
-    }
-
-    return reply.status(200).send({
-      run: autoRun[0],
-      roll: {
-        autoClear:       true,
-        dice:            [1, 6] as [number, number],
-        diceTotal:       7,
-        rollResult:      'POINT_HIT' as const,
-        bankrollDelta:   bankrollDelta,
-        resolvedBets:    zeroBets,
-        payoutBreakdown: { passLine: 0, odds: 0, hardways: 0 },
-        mechanicFreeze:  null,
-      },
-    });
-  }
-
   // ── 5. Hydrate crew slots ─────────────────────────────────────────────────
   //
   // The database stores { crewId, cooldownState } pairs. We reconstruct full
@@ -483,7 +481,7 @@ async function rollHandler(
   // ── 6b. GOLDEN_TOUCH — guarantee a Natural on first come-out roll ──────────
   // shooterRollCount resets to 0 on each SEVEN_OUT, so the guarantee renews
   // for every new shooter. Rejection-sample loop converges in ~4.5 rolls on average.
-  const hasGoldenTouch = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.GOLDEN_TOUCH);
+  const hasGoldenTouch = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.GOLDEN_TOUCH);
   if (hasGoldenTouch && run.shooterRollCount === 0 && run.phase === 'COME_OUT') {
     do { dice = rollDice(); } while (dice[0] + dice[1] !== 7 && dice[0] + dice[1] !== 11);
   }
@@ -609,7 +607,7 @@ async function rollHandler(
   // ── 7e. POSEIDONS_FAVOR — block craps-out on first shooter roll ───────────────
   // Fires after classifyRoll() and boss modifyOutcome() but BEFORE the cascade so
   // crew never see a CRAPS_OUT that was suppressed by this comp.
-  const hasPoseidonsFavor = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.POSEIDONS_FAVOR);
+  const hasPoseidonsFavor = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.POSEIDONS_FAVOR);
   const poseidonCtx = (
     hasPoseidonsFavor &&
     run.shooterRollCount === 0 &&
@@ -638,7 +636,7 @@ async function rollHandler(
   // ── 8b. The Vig comp — scale crew additive bonuses by 1.20 ──────────────
   // Applied post-cascade so individual crew execute() functions stay unaware.
   // Rounds to the nearest dollar (100 cents) per project convention.
-  const hasTheVig = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_VIG);
+  const hasTheVig = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_VIG);
   const viggedContext = hasTheVig && finalContext.additives > 0
     ? { ...finalContext, additives: Math.round(finalContext.additives * 1.2 / 100) * 100 }
     : finalContext;
@@ -672,7 +670,7 @@ async function rollHandler(
   // during COME_OUT. "Real" means not blocked by FCP (finalContext.rollResult
   // would be NO_RESOLUTION for blocked naturals). Applied before computeNextState
   // so the marker-clear check uses the fully settled bankroll.
-  const hasTheFrequency = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_FREQUENCY);
+  const hasTheFrequency = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_FREQUENCY);
   const frequencyBonus = (
     hasTheFrequency &&
     finalContext.rollResult === 'NATURAL' &&
@@ -702,11 +700,11 @@ async function rollHandler(
   const receipt = buildRollReceipt(viggedContext, events, bossDeductions.length > 0 ? bossDeductions : undefined);
 
   // ── 11. Advance state machine ─────────────────────────────────────────────
-  const hasSeaLegs = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
+  const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
   const nextState = computeNextState(run, viggedContext, postFrequencyBankroll, incomingBets, hasSeaLegs);
 
   // ── 11b. ZERO_POINT comp — permanent 1.25× hype floor ────────────────────
-  const hasZeroPoint = (user.compPerkIds as number[]).includes(COMP_PERK_IDS.ZERO_POINT);
+  const hasZeroPoint = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.ZERO_POINT);
   if (hasZeroPoint && nextState.hype < 1.25) {
     nextState.hype = 1.25;
   }
@@ -943,7 +941,7 @@ function computeNextState(
     ? (() => {
         const p = GAUNTLET[currentMarkerIndex]!.boss!.ruleParams as
           Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>;
-        return p.cycleLength + p.surgeDuration;
+        return p.lowTideDuration + p.highTideDuration;
       })()
     : 0;
 

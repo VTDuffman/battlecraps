@@ -94,7 +94,7 @@ export type BossRuleParams =
   | { rule: 'DISABLE_CREW' }
   | { rule: 'FOURS_INSTANT_LOSS'; triggerTotal: number }
   | { rule: 'TRIBUTE';            tributePct: number }
-  | { rule: 'TIDAL_SURGE';        cycleLength: number; surgeDuration: number; surgePct: number }
+  | { rule: 'TIDAL_SURGE';        lowTideDuration: number; highTideDuration: number; highTideMinMultiplier: number }
   | { rule: 'ORBITAL_DECAY';      decayAmount: number; hypeFloor: number }
   | { rule: 'FIRST_CONTACT_PROTOCOL' }   // Floor 8 — no params; binary toggle
   | { rule: 'CONVERGENCE' };             // Floor 9 — no params; counter tracked via bossPointHits
@@ -478,13 +478,13 @@ export const GAUNTLET: readonly MarkerConfig[] = [
         "My table runs on a tide. Five rolls calm, two rolls flood.",
         "You can see it coming. That was never the point.",
       ],
-      ruleBlurb:          "Every 5 rolls the minimum Pass Line bet floods to 15% of the marker target for 2 rolls, then recedes. The tide is visible. The tide is inevitable.",
+      ruleBlurb:          "The tide alternates — 5 rolls of calm, 2 rolls of flood. High Tide raises the minimum bet. The rhythm is visible. The rhythm is inevitable.",
       victoryQuote:       "…the tide will return. It always does.",
       defeatAnnouncement: 'THE TIDE RECEDES',
       // Mechanic
       rule:           'TIDAL_SURGE',
-      ruleHeaderText: 'TIDE SURGES EVERY 5 ROLLS — MIN BET 15% OF TARGET FOR 2 ROLLS',
-      ruleParams:     { rule: 'TIDAL_SURGE', cycleLength: 5, surgeDuration: 2, surgePct: 0.15 },
+      ruleHeaderText: 'TIDE ALTERNATES — HIGH TIDE RAISES MINIMUM BET FOR 2 ROLLS',
+      ruleParams:     { rule: 'TIDAL_SURGE', lowTideDuration: 5, highTideDuration: 2, highTideMinMultiplier: 3 },
       // Comp
       compReward:      'POSEIDONS_FAVOR',
       compPerkId:      COMP_PERK_IDS.POSEIDONS_FAVOR,
@@ -687,11 +687,12 @@ export function getBossMinBet(markerIndex: number, bossPointHits: number): numbe
 
   if (boss.rule === 'TIDAL_SURGE') {
     const params = boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>;
-    if (bossPointHits >= params.cycleLength) {
-      // In surge window — return the surge minimum (rounded up to nearest dollar).
-      return Math.ceil(targetCents * params.surgePct / 100) * 100;
+    if (bossPointHits >= params.lowTideDuration) {
+      // High Tide — enforce a multiplier of the standard floor minimum (not a % of target).
+      // Rounded to nearest $5 so it aligns with chip denominations.
+      return Math.round(getMinBet(markerIndex) * params.highTideMinMultiplier / 500) * 500;
     }
-    return null; // Normal tide — no elevated minimum
+    return null; // Low Tide — no elevated minimum
   }
 
   if (!boss.risingMinBets) return null;

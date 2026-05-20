@@ -13,19 +13,16 @@
 // =============================================================================
 
 import type { BossRuleHooks } from './types.js';
-import { GAUNTLET } from '../config.js';
+import { getMinBet } from '../config.js';
 
 export const tidalSurgeHooks: BossRuleHooks = {
   validateBet(bets, params, state) {
     if (params.rule !== 'TIDAL_SURGE') return null;
-    if (state.bossPointHits < params.cycleLength) return null; // Normal tide — no minimum
+    if (state.bossPointHits < params.lowTideDuration) return null; // Low Tide — no minimum
 
-    const markerConfig = GAUNTLET[state.markerIndex];
-    if (!markerConfig) return null;
-
-    const surgeMinCents = Math.ceil(markerConfig.targetCents * params.surgePct / 100) * 100;
-    if (bets.passLine < surgeMinCents) {
-      return `Tide surge active — Pass Line minimum is $${surgeMinCents / 100}. Current bet: $${bets.passLine / 100}.`;
+    const highTideMinCents = Math.round(getMinBet(state.markerIndex) * params.highTideMinMultiplier / 500) * 500;
+    if (bets.passLine < highTideMinCents) {
+      return `High Tide — Pass Line minimum is $${highTideMinCents / 100}. Current bet: $${bets.passLine / 100}.`;
     }
     return null;
   },

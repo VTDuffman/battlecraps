@@ -16,3 +16,18 @@ Observations:
 11. All the tooltip descriptions for the flat payout crew are incorrect now post adjustment. They should account for the scaling we implemented.
     - Ideally, it should dynamically calculate and display whatever the actual payout is for that marker (As opposed to a percentage)
 12. On the Riverboat "Floor Intro" Page, Mme. Le Prix's description is wrong, it talks about "Reversing the Order" but she makes the crew not work. 
+
+Testing Date: 05/19/2026
+
+Observations:
+
+1. The comp cards should have a tooltip when hovered over in "Expanded" mode that tells the user what the comp does.
+2. "Call The Pit Boss" button under the marker that forces a check to see if the marker has cleared or not. This should have a modal window or something with the pit boss's decsion.
+3. It looks like I unlocked the mimic on marker 11, which made it available in the following pub. I hired them, and then on Marker 12 (mme. Le Prix boss level) the "Cinematic Unlock" fired, creating a confusing user experience.
+4. The Text on Floor 5 The Lodge Intro fades and is hard to read. This seems to applies to all floors. Also the "Floor x" at the top is hard to read. all of the text on the floor intro screens should be brighter.
+5. It looks like mimic only copies the crew member to their immediate left, not the "last one that fired."
+6. It doesn't look like "The Golden Touch" is working. It says the first come out roll of every shooter should be a natural.
+7. It doesn't look like "Members Jacket is working. I see the empty shooter pip under the hype marker, but I just started the marker and should have all 6 shooters. I don't know if I only have 5 shooters or if it's just not displaying properly.
+6. It doesn't look like the "High Tide/Low Tide" Mechanic that we implemented for THE SOVERIEGN boss fight is working. The display is still showing the old "Tide, surge in ..." indicator. I haven't been able to thrououghly test this yet, I usually only get one roll.
+7. The pub screen of THE INTERFACE before THE NULL POINT floor is still showing thematically the Greyscale, which ruins the suprise of the NULL POINT immediately after. It should just be styled like the other THE INTERFACE screens on the THE SIGNAL Level.
+

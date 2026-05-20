@@ -1074,15 +1074,25 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // HTTP response already applied the settlement — skip to avoid overwriting.
       // The WS event is kept as a fallback for cases where the HTTP response
       // parsing fails or is otherwise skipped.
+      //
+      // In test mode (VITE_TEST_MODE) we always replace pendingSettlement with
+      // the newest payload so that rapid exhaustShooters API calls — which fire
+      // many events back-to-back without waits — never lose the final GAME_OVER
+      // event. applyPendingSettlement reads whichever payload is current when the
+      // timer fires; duplicate timers after a replacement are no-ops (pendingSettlement=null).
+      // In production a new pendingSettlement can only arrive while the dice
+      // animation is playing for the PREVIOUS roll, which is impossible (the roll
+      // button is disabled while isRolling=true), so the original drop is correct.
       set((state) => {
-        if (state.pendingSettlement !== null) return {};
+        const isTestMode  = import.meta.env['VITE_TEST_MODE'] === 'true';
+        if (state.pendingSettlement !== null && !isTestMode) return {};
         const isLeftySave = payload.originalDice !== undefined;
         const isNudge     = payload.nudgedFrom   !== undefined;
 
         // In test mode, build a synthetic receipt for the roll log so tests can
         // assert on roll history without going through the full UI roll path.
         let extraState: Partial<typeof state> = {};
-        if (import.meta.env['VITE_TEST_MODE'] === 'true') {
+        if (isTestMode) {
           const rLines: RollReceiptLine[] = [
             { kind: 'roll', text: `${payload.rollResult.replace(/_/g, ' ')} [${payload.dice[0]}+${payload.dice[1]}=${payload.diceTotal}]` },
           ];
@@ -1103,10 +1113,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           ...extraState,
         };
       });
-      // In test mode there is no dice animation, so apply the settlement
-      // immediately (after one tick to let the set() above flush first).
+      // In test mode there is no dice animation — apply the settlement after one
+      // tick (0 ms) so the set() above has flushed. Scheduling a timer for EVERY
+      // event is intentional: if a later event replaced pendingSettlement before
+      // an earlier timer fired, the timer applies the newer payload. Duplicate
+      // fires after pendingSettlement is cleared are no-ops.
       if (import.meta.env['VITE_TEST_MODE'] === 'true') {
-        setTimeout(() => get().applyPendingSettlement(), 50);
+        setTimeout(() => get().applyPendingSettlement(), 0);
       }
     });
 
@@ -1594,11 +1607,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
     if (isTransition) {
       // Primary handoff: ChipRain.onComplete → triggerChipRainComplete() (below).
-      // Safety fallback: fires at 3 s if ChipRain never calls back (e.g. the
-      // component unmounted, or the payout was somehow zero cents).
-      // 3 s safely covers the longest torrent animation (~2.6 s max).
-      // If triggerChipRainComplete() already fired, pendingTransition will be
-      // false and this becomes a no-op.
+      // Safety fallback: fires if ChipRain never calls back (e.g. the component
+      // unmounted, zero payout, or auto-clear via the ADVANCE button).
+      // When hasPops=true, ChipRain will call back well before 3 s, so the 3 s
+      // covers the longest torrent animation (~2.6 s max) as a true safety net.
+      // When hasPops=false (no chip rain will ever fire), shorten to 400 ms so
+      // the transition follows the win-flash immediately instead of hanging.
       setTimeout(() => {
         if (!get().pendingTransition) return;
         const { celebrationSnapshot: snap } = get();
@@ -1607,7 +1621,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           activeTransition:     snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR',
           transitionPhaseIndex: 0,
         });
-      }, 3000);
+      }, hasPops ? 3000 : 400);
     }
   },
 

@@ -53,7 +53,7 @@ export const FloorRevealPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
       <div
         className="font-pixel text-[6px] tracking-[0.5em] border px-5 py-1.5 rounded"
         style={{
-          color:       `${theme.accentPrimary}cc`,
+          color:       `${theme.accentBright}cc`,
           borderColor: `${theme.accentDim}50`,
           background:  `${theme.feltPrimary}30`,
         }}
@@ -79,7 +79,7 @@ export const FloorRevealPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
         className="font-mono text-center tracking-widest px-10"
         style={{
           fontSize: '11px',
-          color:    `${theme.accentPrimary}80`,
+          color:    `${theme.accentBright}99`,
         }}
       >
         {floor.tagline}

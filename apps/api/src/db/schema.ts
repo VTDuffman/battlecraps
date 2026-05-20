@@ -153,8 +153,8 @@ export const users = pgTable(
       .default({}),
 
     /**
-     * IDs of permanent "Comp Perk" upgrades purchased with lifetime earnings.
-     * e.g., "+1 starting shooter", "extra odds multiplier cap".
+     * Reserved for future meta-progression (permanent cross-run upgrades).
+     * NOT used for per-run comp enforcement — see runs.compPerkIds instead.
      */
     compPerkIds: integer('comp_perk_ids').array().notNull().default(sql`'{}'::integer[]`),
 
@@ -414,6 +414,16 @@ export const runs = pgTable(
      */
     mechanicFreeze: jsonb('mechanic_freeze')
       .$type<{ lockedValue: number; rollsRemaining: number } | null>(),
+
+    /**
+     * Comp perk IDs earned during this specific run by defeating bosses.
+     * Written by recruit.ts when a boss victory yields a non-NONE comp reward.
+     * Read by rolls.ts to enforce per-run comp mechanics (SEA_LEGS, ZERO_POINT, etc.).
+     * Scoped to the run — starts empty, never carries over across runs.
+     *
+     * Migration: migrate-add-run-comp-perk-ids.ts
+     */
+    compPerkIds: integer('comp_perk_ids').array().notNull().default(sql`'{}'::integer[]`),
 
     // ── Meta ───────────────────────────────────────────────────────────────
 

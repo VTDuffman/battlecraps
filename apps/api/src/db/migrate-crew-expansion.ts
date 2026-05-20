@@ -3,7 +3,7 @@
 // Crew Expansion & Unlock System (FB-012)
 //
 // Run with:
-//   cd apps/api && npx tsx --env-file=../../.env src/db/migrate-crew-expansion.ts
+//   cd apps/api && npx tsx --env-file=.env src/db/migrate-crew-expansion.ts
 //
 // Operations (all idempotent via IF NOT EXISTS / safe UPDATE):
 //   1. runs         — add previous_roll_total, shooter_roll_count,

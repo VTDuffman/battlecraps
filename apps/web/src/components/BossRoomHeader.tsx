@@ -34,14 +34,11 @@ export const BossRoomHeader: React.FC = () => {
   const tidalParams = isTidalSurge
     ? (boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>)
     : null;
-  const tidePos          = bossPointHits;
-  const inSurge          = tidalParams !== null && tidePos >= tidalParams.cycleLength;
-  const rollsUntilSurge  = tidalParams !== null && !inSurge ? tidalParams.cycleLength - tidePos : 0;
-  const surgeRollsLeft   = tidalParams !== null && inSurge
-    ? (tidalParams.cycleLength + tidalParams.surgeDuration) - tidePos
-    : 0;
-  const surgeMinDollars  = tidalParams !== null && markerConfig !== undefined
-    ? Math.ceil(markerConfig.targetCents * tidalParams.surgePct / 100)
+  const tidalCycleTotal   = tidalParams !== null ? tidalParams.lowTideDuration + tidalParams.highTideDuration : 0;
+  const tidePos           = tidalParams !== null ? bossPointHits % tidalCycleTotal : 0;
+  const inHighTide        = tidalParams !== null && tidePos >= tidalParams.lowTideDuration;
+  const rollsUntilChange  = tidalParams !== null
+    ? (inHighTide ? tidalCycleTotal - tidePos : tidalParams.lowTideDuration - tidePos)
     : 0;
 
   return (
@@ -83,49 +80,23 @@ export const BossRoomHeader: React.FC = () => {
           </div>
         </div>
 
-        {/* Right: tide counter (TIDAL_SURGE) or min-bet display (RISING_MIN_BETS) */}
+        {/* Right: tide state (TIDAL_SURGE) or min-bet display (RISING_MIN_BETS) */}
         {isTidalSurge && tidalParams !== null ? (
           <div className="flex-none text-right">
-            {/* Label row */}
             <div className="font-pixel text-[5px] tracking-widest leading-none"
-              style={{ color: inSurge ? '#fbbf24' : 'rgba(0,201,160,0.70)' }}>
-              TIDE{inSurge ? ' ⚠ SURGE' : ''}
+              style={{ color: inHighTide ? '#fbbf24' : 'rgba(0,201,160,0.70)' }}>
+              {inHighTide ? '⚠ HIGH TIDE' : 'LOW TIDE'}
             </div>
-            {/* Pip row: cycleLength normal pips + surgeDuration surge pips */}
-            <div className="flex gap-0.5 mt-0.5 justify-end">
-              {Array.from({ length: tidalParams.cycleLength + tidalParams.surgeDuration }).map((_, i) => {
-                const isSurgePip = i >= tidalParams.cycleLength;
-                const isCurrent  = i === tidePos % (tidalParams.cycleLength + tidalParams.surgeDuration);
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: 1,
-                      background: isCurrent
-                        ? (isSurgePip ? '#fbbf24' : '#00c9a0')
-                        : isSurgePip
-                          ? 'rgba(251,191,36,0.25)'
-                          : 'rgba(0,201,160,0.20)',
-                      border: isCurrent
-                        ? `1px solid ${isSurgePip ? '#f59e0b' : '#00c9a0'}`
-                        : '1px solid rgba(255,255,255,0.08)',
-                    }}
-                  />
-                );
-              })}
+            <div className="font-pixel text-[8px] leading-tight"
+              style={{ color: inHighTide ? '#fbbf24' : 'rgba(0,201,160,0.85)' }}>
+              {inHighTide
+                ? `${rollsUntilChange} ROLL${rollsUntilChange !== 1 ? 'S' : ''} LEFT`
+                : `HIGH TIDE IN ${rollsUntilChange}`}
             </div>
-            {/* Status line */}
-            {inSurge ? (
+            {inHighTide && currentMinBet !== null && (
               <div className="font-pixel text-[5px] leading-none mt-0.5"
-                style={{ color: '#fbbf24' }}>
-                ${surgeMinDollars.toLocaleString()} MIN / {surgeRollsLeft} ROLL{surgeRollsLeft !== 1 ? 'S' : ''}
-              </div>
-            ) : (
-              <div className="font-pixel text-[5px] leading-none mt-0.5"
-                style={{ color: 'rgba(0,201,160,0.55)' }}>
-                SURGE IN {rollsUntilSurge}
+                style={{ color: 'rgba(251,191,36,0.70)' }}>
+                MIN ${(currentMinBet / 100).toLocaleString()}
               </div>
             )}
           </div>

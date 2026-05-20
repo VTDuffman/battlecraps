@@ -1630,7 +1630,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           activeTransition:     snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR',
           transitionPhaseIndex: 0,
         });
-      }, isAutoCollecting || !hasPops ? 400 : pendingCascadeQueue.length > 0 ? 1500 : 400);
+      }, isAutoCollecting || !hasPops ? 400 : pendingCascadeQueue.length > 0 ? 1500 : 3000);
     }
   },
 

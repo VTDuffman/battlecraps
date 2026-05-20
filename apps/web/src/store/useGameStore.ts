@@ -536,6 +536,9 @@ export interface GameState {
   /** Increments on every rollDice() call — React key to re-fire dice animations. */
   _rollKey: number;
 
+  /** Increments when dice land (throwPhase → idle). React key for emblem animations so they restart in sync with the dice glow. */
+  _settleSeq: number;
+
   /**
    * Increments each time a Lefty save ends the 1500ms dread window.
    * DiceZone watches this to restart the full throw animation so the player
@@ -775,6 +778,12 @@ export interface GameActions {
   triggerChipRainComplete(): void;
 
   /**
+   * Called by DiceZone when dice land (throwPhase → idle). Increments _settleSeq
+   * so FloorEmblem restarts its glow animations in sync with the dice idle glow.
+   */
+  onDiceSettled(): void;
+
+  /**
    * Fires the back-wall flash for ~300ms. Called by DiceZone when the throw
    * animation ends and the dice "hit" the far wall of the table.
    */
@@ -918,6 +927,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   lastHydratedAt: 0,
   _seqCounter:    0,
   _rollKey:       0,
+  _settleSeq:     0,
   _reRollKey:     0,
   rollHistory:    [],
   socketStatus:   'disconnected',
@@ -1612,6 +1622,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         });
       }, hasPops ? 3000 : pendingCascadeQueue.length > 0 ? 1500 : 400);
     }
+  },
+
+  onDiceSettled() {
+    set((s) => ({ _settleSeq: s._settleSeq + 1 }));
   },
 
   triggerWallFlash() {

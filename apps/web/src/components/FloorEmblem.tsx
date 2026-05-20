@@ -244,7 +244,8 @@ const FLOOR_CONFIGS: Record<FloorId, FloorConfig> = {
   },
 };
 
-const selectMarker = (s: GameState) => s.currentMarkerIndex;
+const selectMarker     = (s: GameState) => s.currentMarkerIndex;
+const selectSettleSeq  = (s: GameState) => s._settleSeq;
 
 // ---------------------------------------------------------------------------
 // Component
@@ -265,6 +266,7 @@ const EMBLEM_TEXT_ANIM: Record<2 | 3 | 4, string> = {
 export const FloorEmblem: React.FC = () => {
   const currentMarkerIndex = useGameStore(selectMarker);
   const hypeTier           = useGameStore(selectHypeTier);
+  const settleSeq          = useGameStore(selectSettleSeq);
 
   const floorNum = (GAUNTLET[currentMarkerIndex]?.floor ?? 1) as FloorId;
   const cfg      = FLOOR_CONFIGS[floorNum];
@@ -274,6 +276,10 @@ export const FloorEmblem: React.FC = () => {
   const animClass     = hypeTier !== 0 ? EMBLEM_ANIM[hypeTier] : '';
   const textAnimClass = hypeTier !== 0 ? EMBLEM_TEXT_ANIM[hypeTier] : '';
 
+  // settleSeq is used as React key so both animation elements restart from phase 0
+  // at the exact moment the dice land — keeping the glow and text pulse in sync.
+  const animKey = `${settleSeq}-${hypeTier}`;
+
   return (
     <div
       className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
@@ -281,6 +287,7 @@ export const FloorEmblem: React.FC = () => {
     >
       {/* ── Outer border frame — like the printed border on casino felt ─── */}
       <div
+        key={animKey}
         className={`flex flex-col items-center gap-1 px-6 py-4 ${animClass}`}
         style={{
           color:         cfg.color,
@@ -293,7 +300,7 @@ export const FloorEmblem: React.FC = () => {
         } as React.CSSProperties}
       >
         {/* ── Inner text wrapper — scales with hype pulse ────────────────── */}
-        <div className={`flex flex-col items-center gap-1 ${textAnimClass}`}>
+        <div key={animKey} className={`flex flex-col items-center gap-1 ${textAnimClass}`}>
           {/* ── Floor number label ───────────────────────────────────────── */}
           <div
             style={{

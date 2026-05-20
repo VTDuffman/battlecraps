@@ -101,6 +101,7 @@ export const DiceZone: React.FC = () => {
   const applyPendingSettlement = useGameStore((s) => s.applyPendingSettlement);
   const triggerWallFlash       = useGameStore((s) => s.triggerWallFlash);
   const triggerPointRing       = useGameStore((s) => s.triggerPointRing);
+  const onDiceSettled          = useGameStore((s) => s.onDiceSettled);
   const bets                = useGameStore((s) => s.bets);
   const lastDice            = useGameStore((s) => s.lastDice);
   const lastResult          = useGameStore((s) => s.lastRollResult);
@@ -170,6 +171,7 @@ export const DiceZone: React.FC = () => {
   function setPhase(p: ThrowPhase) {
     phaseRef.current = p;
     setThrowPhase(p);
+    if (p === 'idle') onDiceSettled();
   }
 
   // Stop face-flipping

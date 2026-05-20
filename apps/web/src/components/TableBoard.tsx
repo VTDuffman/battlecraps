@@ -72,8 +72,6 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
   const setMechanicFreeze = useGameStore((s) => s.setMechanicFreeze);
   const { flashType, _flashKey }           = useGameStore(selectFlash);
   const { wallFlash, _wallFlashKey }       = useGameStore(selectWallFlash);
-  const streak       = useGameStore((s) => s.consecutivePointHits);
-  const hype         = useGameStore((s) => s.hype);
   const reorderCrew  = useGameStore((s) => s.reorderCrew);
   const slotIds      = useGameStore((s) => s.slotIds);
   const isCascading  = useGameStore(selectIsCascading);
@@ -111,11 +109,6 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
     return () => clearTimeout(id);
   }, [hypeFlash, clearHypeFlash]);
 
-  const feltClass =
-    streak >= 3 || hype >= 2.0 ? 'animate-felt-hot'  :
-    streak >= 1 || hype >= 1.2 ? 'animate-felt-warm' :
-    'animate-felt-cold';
-
   // Stable callback passed to every portrait. The portrait that is currently
   // animating will call this; portraits that are not triggering never fire it.
   const handleAnimationEnd = useCallback(() => {
@@ -149,17 +142,10 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
         backgroundColor:   theme.feltPrimary,
         backgroundImage:   theme.feltTexture,
         borderColor:       theme.borderHigh,
-        // Per-floor CSS custom properties consumed by breathing + flash keyframes
-        '--breathe-cold-color': theme.breatheCold,
-        '--breathe-warm-color': theme.breatheWarm,
-        '--breathe-hot-color':  theme.breatheHot,
         '--flash-win-color':    theme.flashWin,
         '--flash-lose-color':   theme.flashLose,
       } as React.CSSProperties}
     >
-      {/* ── Felt breathing overlay (behind all content) ──────────────────── */}
-      <div className={`absolute inset-0 pointer-events-none z-[1] ${feltClass}`} />
-
       {/* ── Chip Rain particle system ─────────────────────────────────────── */}
       <ChipRain onTorrent={handleTorrent} onComplete={triggerChipRainComplete} />
 
@@ -743,9 +729,11 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
           className="
             w-full py-0.5 rounded
             font-pixel text-[6px] tracking-widest
-            border border-green-500/50 bg-green-950/60
+            border border-green-500/70 bg-green-950/60
             text-green-400 hover:text-green-300 hover:bg-green-900/60
-            disabled:opacity-40 disabled:cursor-not-allowed
+            shadow-[0_0_8px_2px_rgba(34,197,94,0.35)]
+            animate-pulse
+            disabled:opacity-40 disabled:cursor-not-allowed disabled:animate-none
             transition-colors
           "
         >

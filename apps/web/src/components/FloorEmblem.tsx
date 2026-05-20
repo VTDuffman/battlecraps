@@ -23,7 +23,8 @@
 
 import React from 'react';
 import { GAUNTLET, type FloorId } from '@battlecraps/shared';
-import { useGameStore, type GameState } from '../store/useGameStore.js';
+import { useGameStore, selectHypeTier, type GameState } from '../store/useGameStore.js';
+import { getFloorTheme } from '../lib/floorThemes.js';
 
 // ---------------------------------------------------------------------------
 // Per-floor emblem configuration
@@ -249,12 +250,29 @@ const selectMarker = (s: GameState) => s.currentMarkerIndex;
 // Component
 // ---------------------------------------------------------------------------
 
+const EMBLEM_ANIM: Record<2 | 3 | 4, string> = {
+  2: 'animate-emblem-heat',
+  3: 'animate-emblem-fire',
+  4: 'animate-emblem-nuclear',
+};
+
+const EMBLEM_TEXT_ANIM: Record<2 | 3 | 4, string> = {
+  2: 'animate-emblem-text-heat',
+  3: 'animate-emblem-text-fire',
+  4: 'animate-emblem-text-nuclear',
+};
+
 export const FloorEmblem: React.FC = () => {
   const currentMarkerIndex = useGameStore(selectMarker);
+  const hypeTier           = useGameStore(selectHypeTier);
 
   const floorNum = (GAUNTLET[currentMarkerIndex]?.floor ?? 1) as FloorId;
   const cfg      = FLOOR_CONFIGS[floorNum];
   if (!cfg) return null;
+
+  const theme         = getFloorTheme(currentMarkerIndex);
+  const animClass     = hypeTier !== 0 ? EMBLEM_ANIM[hypeTier] : '';
+  const textAnimClass = hypeTier !== 0 ? EMBLEM_TEXT_ANIM[hypeTier] : '';
 
   return (
     <div
@@ -263,63 +281,67 @@ export const FloorEmblem: React.FC = () => {
     >
       {/* ── Outer border frame — like the printed border on casino felt ─── */}
       <div
-        className="flex flex-col items-center gap-1 px-6 py-4"
+        className={`flex flex-col items-center gap-1 px-6 py-4 ${animClass}`}
         style={{
-          color:   cfg.color,
-          border:  `1px solid ${cfg.color}`,
-          borderRadius: '2px',
-          // Soft double-border effect via outline
-          outline: `3px solid ${cfg.color}`,
+          color:         cfg.color,
+          border:        `1px solid ${cfg.color}`,
+          borderRadius:  '2px',
+          outline:       `3px solid ${cfg.color}`,
           outlineOffset: '5px',
-        }}
+          // Used by animate-emblem-* keyframes for the glow color
+          '--emblem-color': theme.accentPrimary,
+        } as React.CSSProperties}
       >
-        {/* ── Floor number label ─────────────────────────────────────────── */}
-        <div
-          style={{
-            fontFamily:    '"Press Start 2P", monospace',
-            fontSize:      'clamp(5px, 1dvh, 7px)',
-            color:         cfg.color,
-            letterSpacing: '0.3em',
-            opacity:       0.9,
-          }}
-        >
-          {cfg.subLabel ?? `GAUNTLET FLOOR ${cfg.roman}`}
-        </div>
+        {/* ── Inner text wrapper — scales with hype pulse ────────────────── */}
+        <div className={`flex flex-col items-center gap-1 ${textAnimClass}`}>
+          {/* ── Floor number label ───────────────────────────────────────── */}
+          <div
+            style={{
+              fontFamily:    '"Press Start 2P", monospace',
+              fontSize:      'clamp(5px, 1dvh, 7px)',
+              color:         cfg.color,
+              letterSpacing: '0.3em',
+              opacity:       0.9,
+            }}
+          >
+            {cfg.subLabel ?? `GAUNTLET FLOOR ${cfg.roman}`}
+          </div>
 
-        {/* ── Top decoration ─────────────────────────────────────────────── */}
-        <div
-          style={{
-            fontFamily: cfg.fontFamily,
-            color:      cfg.color,
-          }}
-        >
-          {cfg.decorTop}
-        </div>
+          {/* ── Top decoration ───────────────────────────────────────────── */}
+          <div
+            style={{
+              fontFamily: cfg.fontFamily,
+              color:      cfg.color,
+            }}
+          >
+            {cfg.decorTop}
+          </div>
 
-        {/* ── Main floor name ────────────────────────────────────────────── */}
-        <div
-          style={{
-            fontFamily:    cfg.fontFamily,
-            fontStyle:     cfg.fontStyle   ?? 'normal',
-            fontWeight:    cfg.fontWeight  ?? 400,
-            fontSize:      cfg.nameSize,
-            letterSpacing: cfg.letterSpacing ?? '0.05em',
-            color:         cfg.color,
-            textShadow:    cfg.textShadow,
-            lineHeight:    1.0,
-          }}
-        >
-          {cfg.displayName}
-        </div>
+          {/* ── Main floor name ──────────────────────────────────────────── */}
+          <div
+            style={{
+              fontFamily:    cfg.fontFamily,
+              fontStyle:     cfg.fontStyle   ?? 'normal',
+              fontWeight:    cfg.fontWeight  ?? 400,
+              fontSize:      cfg.nameSize,
+              letterSpacing: cfg.letterSpacing ?? '0.05em',
+              color:         cfg.color,
+              textShadow:    cfg.textShadow,
+              lineHeight:    1.0,
+            }}
+          >
+            {cfg.displayName}
+          </div>
 
-        {/* ── Bottom decoration ──────────────────────────────────────────── */}
-        <div
-          style={{
-            fontFamily: cfg.fontFamily,
-            color:      cfg.color,
-          }}
-        >
-          {cfg.decorBottom}
+          {/* ── Bottom decoration ────────────────────────────────────────── */}
+          <div
+            style={{
+              fontFamily: cfg.fontFamily,
+              color:      cfg.color,
+            }}
+          >
+            {cfg.decorBottom}
+          </div>
         </div>
       </div>
     </div>

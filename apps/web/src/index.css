@@ -333,49 +333,55 @@
   animation: fire-countdown 1000ms linear forwards;
 }
 
-/* ── Felt table breathing — ambient atmosphere overlay ────────────────────────
-   Three tiers of radial shimmer that pulse over the table felt.
-   The overlay div is absolute/inset-0/pointer-events-none so it never
-   blocks interaction. Opacity is animated; background colour is baked into
-   the utility class so the tier change (class swap) also shifts the hue.
+/* ── Floor emblem hype glow — mirrors the dice animation system ───────────────
+   The emblem border frame glows and scales in sync with the dice hype beat.
+   --emblem-color is set inline per-floor (theme.accentPrimary).
 
-   Cold  — slow (5 s), cool green  — baseline, no streak
-   Warm  — medium (3 s), amber     — streak 1–2 or hype > 1.2
-   Hot   — fast (1.5 s), red-orange — streak 3+ or hype ≥ 2.0
+   Tier 2 (Heating Up) : 1200ms ease-in-out — matches dice-heat
+   Tier 3 (On Fire)    :  560ms linear      — matches dice-fire
+   Tier 4 (Nuclear)    :  800ms ease-in-out — matches dice-nuclear
    ────────────────────────────────────────────────────────────────────────── */
 
-@keyframes felt-breathe-cold {
-  0%, 100% { opacity: 0.25; }
-  50%       { opacity: 1.00; }
+/* Frame glow — box-shadow only, no transform */
+@keyframes emblem-heat {
+  0%, 100% { box-shadow: 0 0 6px  1px var(--emblem-color), 0 0 18px  4px var(--emblem-color); }
+  50%       { box-shadow: 0 0 20px 6px var(--emblem-color), 0 0 50px 14px var(--emblem-color); }
 }
 
-@keyframes felt-breathe-warm {
-  0%, 100% { opacity: 0.30; }
-  50%       { opacity: 1.00; }
+@keyframes emblem-fire {
+  0%   { box-shadow: 0 0 8px  2px var(--emblem-color), 0 0 22px  6px var(--emblem-color); }
+  25%  { box-shadow: 0 0 28px 8px var(--emblem-color), 0 0 55px 16px var(--emblem-color); }
+  50%  { box-shadow: 0 0 12px 3px var(--emblem-color), 0 0 30px  8px var(--emblem-color); }
+  75%  { box-shadow: 0 0 34px 10px var(--emblem-color), 0 0 65px 20px var(--emblem-color); }
+  100% { box-shadow: 0 0 8px  2px var(--emblem-color), 0 0 22px  6px var(--emblem-color); }
 }
 
-@keyframes felt-breathe-hot {
-  0%, 100% { opacity: 0.40; }
-  50%       { opacity: 1.00; }
+@keyframes emblem-nuclear {
+  0%, 100% { box-shadow: 0 0 10px 3px  var(--emblem-color), 0 0 35px 10px var(--emblem-color); }
+  50%       { box-shadow: 0 0 32px 10px var(--emblem-color), 0 0 80px 24px var(--emblem-color); }
 }
 
-.animate-felt-cold {
-  /* Color driven by --breathe-cold-color CSS var set per-floor on the table container */
-  background: radial-gradient(ellipse 85% 55% at 50% 22%, var(--breathe-cold-color) 0%, transparent 70%);
-  animation: felt-breathe-cold 5.0s ease-in-out infinite;
+.animate-emblem-heat    { animation: emblem-heat    1200ms ease-in-out infinite; }
+.animate-emblem-fire    { animation: emblem-fire     560ms linear      infinite; }
+.animate-emblem-nuclear { animation: emblem-nuclear  800ms ease-in-out infinite; }
+
+/* Text scale — applied to inner content wrapper, synced to the same beat */
+@keyframes emblem-text-pulse {
+  0%, 100% { transform: scale(1.00); }
+  50%       { transform: scale(1.07); }
 }
 
-.animate-felt-warm {
-  /* Color driven by --breathe-warm-color CSS var set per-floor on the table container */
-  background: radial-gradient(ellipse 85% 55% at 50% 22%, var(--breathe-warm-color) 0%, transparent 70%);
-  animation: felt-breathe-warm 3.0s ease-in-out infinite;
+@keyframes emblem-text-fire {
+  0%   { transform: scale(1.00); }
+  25%  { transform: scale(1.07); }
+  50%  { transform: scale(1.02); }
+  75%  { transform: scale(1.09); }
+  100% { transform: scale(1.00); }
 }
 
-.animate-felt-hot {
-  /* Color driven by --breathe-hot-color CSS var set per-floor on the table container */
-  background: radial-gradient(ellipse 85% 55% at 50% 22%, var(--breathe-hot-color) 0%, transparent 70%);
-  animation: felt-breathe-hot  1.5s ease-in-out infinite;
-}
+.animate-emblem-text-heat    { animation: emblem-text-pulse 1200ms ease-in-out infinite; }
+.animate-emblem-text-fire    { animation: emblem-text-fire   560ms linear      infinite; }
+.animate-emblem-text-nuclear { animation: emblem-text-pulse  800ms ease-in-out infinite; }
 
 /* ── Hype thermometer boil ────────────────────────────────────────────────────
    Applied to the fill div inside the thermometer track. Pulses the top-edge

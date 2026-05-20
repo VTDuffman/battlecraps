@@ -447,8 +447,14 @@ const GameStatus: React.FC = () => {
   const currentMarkerIndex  = useGameStore((s) => s.currentMarkerIndex);
   const displayMarkerIndex  = useGameStore(selectDisplayMarkerIndex);
   const _hypeKey            = useGameStore((s) => s._hypeKey);
+  const autoCollect         = useGameStore((s) => s.autoCollect);
+  const isRolling           = useGameStore((s) => s.isRolling);
   const theme               = useFloorTheme();
   const isNullSpace         = getFloorIndex(displayMarkerIndex) === 8;
+
+  const markerTarget  = MARKER_TARGETS[displayMarkerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
+  const isCleared     = displayMarkerIndex !== currentMarkerIndex;
+  const targetMet     = !isCleared && bankroll >= markerTarget;
 
   // Brief scale-pop on the thermometer when the hype particle arrives (~600ms after roll).
   const [impactActive, setImpactActive] = useState(false);
@@ -631,39 +637,62 @@ const GameStatus: React.FC = () => {
         style={{ background: `linear-gradient(to right, transparent, ${theme.accentPrimary}66, transparent)` }}
       />
 
-      {/* Marker progress bar */}
-      <MarkerProgress bankroll={bankroll} markerIndex={displayMarkerIndex} liveMarkerIndex={currentMarkerIndex} />
+      {/* Marker progress + point puck — relative so ADVANCE button can overlay the puck row */}
+      <div className="relative w-full">
+        <MarkerProgress bankroll={bankroll} markerIndex={displayMarkerIndex} liveMarkerIndex={currentMarkerIndex} targetMet={targetMet} />
 
-      {/* Point puck + phase label */}
-      <div className="flex items-center gap-2 justify-center" data-tutorial-zone="game-status">
-        <div className="relative">
-          {/* Ring animation overlay — re-mounts on _pointRingKey to re-fire */}
-          <div
-            key={_pointRingKey}
-            className={[
-              'absolute inset-0 rounded-full pointer-events-none',
-              pointRingType === 'set' ? 'animate-point-ring-set' :
-              pointRingType === 'hit' ? 'animate-point-ring-hit' :
-              '',
-            ].join(' ')}
-          />
-          <div
-            className={[
-              'w-10 h-10 rounded-full border-2 flex items-center justify-center',
-              'font-pixel text-[9px] transition-colors duration-300',
-              phase === 'POINT_ACTIVE' && point !== null
-                ? isNullSpace
-                  ? 'bg-gray-900 border-gray-700 text-white shadow-[0_0_10px_2px_rgba(0,0,0,0.5)]'
-                  : 'bg-white border-white text-black shadow-[0_0_10px_2px_rgba(255,255,255,0.6)]'
-                : 'bg-black border-white/20 text-white/20',
-            ].join(' ')}
-          >
-            {phase === 'POINT_ACTIVE' && point !== null ? point : 'OFF'}
+        {/* Point puck + phase label */}
+        <div className="flex items-center gap-2 justify-center" data-tutorial-zone="game-status">
+          <div className="relative">
+            {/* Ring animation overlay — re-mounts on _pointRingKey to re-fire */}
+            <div
+              key={_pointRingKey}
+              className={[
+                'absolute inset-0 rounded-full pointer-events-none',
+                pointRingType === 'set' ? 'animate-point-ring-set' :
+                pointRingType === 'hit' ? 'animate-point-ring-hit' :
+                '',
+              ].join(' ')}
+            />
+            <div
+              className={[
+                'w-10 h-10 rounded-full border-2 flex items-center justify-center',
+                'font-pixel text-[9px] transition-colors duration-300',
+                phase === 'POINT_ACTIVE' && point !== null
+                  ? isNullSpace
+                    ? 'bg-gray-900 border-gray-700 text-white shadow-[0_0_10px_2px_rgba(0,0,0,0.5)]'
+                    : 'bg-white border-white text-black shadow-[0_0_10px_2px_rgba(255,255,255,0.6)]'
+                  : 'bg-black border-white/20 text-white/20',
+              ].join(' ')}
+            >
+              {phase === 'POINT_ACTIVE' && point !== null ? point : 'OFF'}
+            </div>
           </div>
+          <span className="font-pixel text-[7px]" style={{ color: isNullSpace ? 'rgba(0,0,0,0.40)' : 'rgba(255,255,255,0.30)' }}>
+            {phase === 'POINT_ACTIVE' ? 'POINT ACTIVE' : 'COME OUT'}
+          </span>
         </div>
-        <span className="font-pixel text-[7px]" style={{ color: isNullSpace ? 'rgba(0,0,0,0.40)' : 'rgba(255,255,255,0.30)' }}>
-          {phase === 'POINT_ACTIVE' ? 'POINT ACTIVE' : 'COME OUT'}
-        </span>
+
+        {/* ADVANCE button — slides over the point puck row when target is met */}
+        {targetMet && (
+          <button
+            type="button"
+            onClick={() => { void autoCollect(); }}
+            disabled={isRolling}
+            className="
+              absolute bottom-0 inset-x-2
+              h-10
+              rounded font-pixel text-[7px] tracking-widest
+              bg-green-500 hover:bg-green-400
+              text-white
+              shadow-[0_0_16px_5px_rgba(34,197,94,0.55)]
+              disabled:opacity-40 disabled:cursor-not-allowed
+              transition-colors
+            "
+          >
+            ✓ TARGET MET — ADVANCE
+          </button>
+        )}
       </div>
     </div>
   );
@@ -673,61 +702,42 @@ const GameStatus: React.FC = () => {
 // Marker progress bar
 // ---------------------------------------------------------------------------
 
-const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMarkerIndex: number }> = ({
+const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMarkerIndex: number; targetMet: boolean }> = ({
   bankroll,
   markerIndex,
   liveMarkerIndex,
+  targetMet,
 }) => {
   const target      = MARKER_TARGETS[markerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
   const isBoss      = isBossMarker(markerIndex);
-  const isCleared   = markerIndex !== liveMarkerIndex; // display index behind live = in transition window
+  const isCleared   = markerIndex !== liveMarkerIndex;
   const progress    = isCleared ? 1 : Math.min(bankroll / target, 1);
   const label       = isBoss ? '★ BOSS' : `MARKER ${markerIndex + 1}`;
   const pct         = Math.round(progress * 100);
   const theme       = useFloorTheme();
   const isNullSpace = getFloorIndex(markerIndex) === 8;
-  const targetMet   = !isCleared && bankroll >= target;
-  const autoCollect = useGameStore((s) => s.autoCollect);
-  const isRolling   = useGameStore((s) => s.isRolling);
-
-  if (targetMet) {
-    return (
-      <div className="w-full px-2" data-tutorial-zone="marker-progress">
-        <button
-          type="button"
-          onClick={() => { void autoCollect(); }}
-          disabled={isRolling}
-          className="
-            w-full py-3 rounded
-            font-pixel text-[7px] tracking-widest
-            bg-green-500 hover:bg-green-400
-            text-white
-            shadow-[0_0_16px_5px_rgba(34,197,94,0.55)]
-            disabled:opacity-40 disabled:cursor-not-allowed
-            transition-colors
-          "
-        >
-          ✓ TARGET MET — ADVANCE
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full px-2 space-y-1" data-tutorial-zone="marker-progress">
       <div className="flex justify-between items-baseline">
         <span
-          className="font-pixel text-[6px]"
+          className={`font-pixel transition-all duration-300 ${targetMet ? 'text-[9px]' : 'text-[6px]'}`}
           style={{ color: isBoss ? '#f87171' : theme.accentPrimary }}
         >
           {label}
         </span>
-        <span className="font-pixel text-[6px]" style={{ color: isNullSpace ? 'rgba(0,0,0,0.40)' : 'rgba(255,255,255,0.30)' }}>
+        <span
+          className={`font-pixel transition-all duration-300 ${targetMet ? 'text-[8px]' : 'text-[6px]'}`}
+          style={{ color: isNullSpace ? 'rgba(0,0,0,0.40)' : 'rgba(255,255,255,0.30)' }}
+        >
           ${(bankroll / 100).toFixed(0)} / ${(target / 100).toFixed(0)}
         </span>
       </div>
 
-      <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: theme.feltRail, border: `1px solid ${isNullSpace ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.10)'}` }}>
+      <div
+        className={`w-full rounded-full overflow-hidden transition-all duration-300 ${targetMet ? 'h-2.5' : 'h-1.5'}`}
+        style={{ backgroundColor: theme.feltRail, border: `1px solid ${isNullSpace ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.10)'}` }}
+      >
         <div
           className={[
             'h-full rounded-full transition-all duration-500',

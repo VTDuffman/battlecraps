@@ -31,7 +31,7 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
         <button
           type="button"
           onClick={onAdvance}
-          className="font-pixel text-[9px] text-amber-400 border border-amber-600 px-8 py-3 rounded"
+          className="font-pixel text-[13.5px] text-amber-400 border border-amber-600 px-8 py-3 rounded"
         >
           ▶ VISIT THE PUB
         </button>
@@ -67,8 +67,8 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
 
       {/* Header badge */}
       <div
-        className="font-pixel text-[7px] tracking-[0.3em]"
-        style={{ color: `${theme.accentPrimary}99` }}
+        className="font-pixel text-[10.5px] tracking-[0.3em]"
+        style={{ color: `${theme.accentPrimary}cc` }}
       >
         ✦ MARKER CLEARED ✦
       </div>
@@ -76,7 +76,7 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
       {/* Main headline */}
       <div className="flex flex-col items-center gap-3 text-center">
         <h1
-          className="font-pixel text-[22px] tracking-wide"
+          className="font-pixel text-[33px] tracking-wide"
           style={{
             color:      theme.accentBright,
             textShadow: `0 0 30px ${theme.accentBright}80, 0 0 80px ${theme.accentPrimary}50`,
@@ -87,15 +87,15 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
 
         {/* Target beaten */}
         <div
-          className="font-pixel text-[9px] tracking-widest"
-          style={{ color: `${theme.accentPrimary}80` }}
+          className="font-pixel text-[13.5px] tracking-widest"
+          style={{ color: `${theme.accentPrimary}cc` }}
         >
           ${(targetCents / 100).toLocaleString()} TARGET CLEARED
         </div>
 
         {/* Current Bankroll */}
         <div
-          className="font-pixel text-[14px]"
+          className="font-pixel text-[21px]"
           style={{
             color:      theme.accentBright,
             textShadow: `0 0 16px ${theme.accentBright}60`,
@@ -108,8 +108,8 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
       {/* Floor pip progress */}
       <div className="flex flex-col items-center gap-3">
         <div
-          className="font-pixel text-[5px] tracking-widest"
-          style={{ color: `${theme.accentDim}80` }}
+          className="font-pixel text-[7.5px] tracking-widest"
+          style={{ color: `${theme.accentDim}cc` }}
         >
           FLOOR {floorId} — {floor.name.toUpperCase()}
         </div>
@@ -138,8 +138,8 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
                 />
                 {isBossSlot && (
                   <div
-                    className="font-pixel text-[4px]"
-                    style={{ color: `${theme.accentDim}70` }}
+                    className="font-pixel text-[6px]"
+                    style={{ color: `${theme.accentDim}cc` }}
                   >
                     BOSS
                   </div>
@@ -152,8 +152,8 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
 
       {/* Flavour line */}
       <p
-        className="font-mono text-[9px] text-center max-w-xs leading-relaxed px-8"
-        style={{ color: `${theme.accentPrimary}50` }}
+        className="font-mono text-[13.5px] text-center max-w-xs leading-relaxed px-8"
+        style={{ color: `${theme.accentPrimary}cc` }}
       >
         A new shooter and 5 fresh lives await.
         Head to the pub to hire your next crew member.
@@ -165,7 +165,7 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
         onClick={onAdvance}
         className="
           px-10 py-3 rounded
-          font-pixel text-[9px] tracking-widest
+          font-pixel text-[13.5px] tracking-widest
           border-2
           text-amber-100
           transition-all duration-150 active:scale-95

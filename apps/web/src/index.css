@@ -365,18 +365,19 @@
 .animate-emblem-fire    { animation: emblem-fire     560ms linear      infinite; }
 .animate-emblem-nuclear { animation: emblem-nuclear  800ms ease-in-out infinite; }
 
-/* Text scale — applied to inner content wrapper, synced to the same beat */
+/* Text glow — inner content wrapper, drop-shadow in sync with the border beat.
+   filter: drop-shadow() applies to all text without conflicting with inline textShadow. */
 @keyframes emblem-text-pulse {
-  0%, 100% { transform: scale(1.00); }
-  50%       { transform: scale(1.07); }
+  0%, 100% { filter: none; }
+  50%       { filter: drop-shadow(0 0 6px var(--emblem-color)) drop-shadow(0 0 18px var(--emblem-color)); }
 }
 
 @keyframes emblem-text-fire {
-  0%   { transform: scale(1.00); }
-  25%  { transform: scale(1.07); }
-  50%  { transform: scale(1.02); }
-  75%  { transform: scale(1.09); }
-  100% { transform: scale(1.00); }
+  0%   { filter: none; }
+  25%  { filter: drop-shadow(0 0 10px var(--emblem-color)) drop-shadow(0 0 26px var(--emblem-color)); }
+  50%  { filter: none; }
+  75%  { filter: drop-shadow(0 0 14px var(--emblem-color)) drop-shadow(0 0 34px var(--emblem-color)); }
+  100% { filter: none; }
 }
 
 .animate-emblem-text-heat    { animation: emblem-text-pulse 1200ms ease-in-out infinite; }

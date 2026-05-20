@@ -690,6 +690,29 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
   const autoCollect = useGameStore((s) => s.autoCollect);
   const isRolling   = useGameStore((s) => s.isRolling);
 
+  if (targetMet) {
+    return (
+      <div className="w-full px-2" data-tutorial-zone="marker-progress">
+        <button
+          type="button"
+          onClick={() => { void autoCollect(); }}
+          disabled={isRolling}
+          className="
+            w-full py-3 rounded
+            font-pixel text-[7px] tracking-widest
+            bg-green-500 hover:bg-green-400
+            text-white
+            shadow-[0_0_16px_5px_rgba(34,197,94,0.55)]
+            disabled:opacity-40 disabled:cursor-not-allowed
+            transition-colors
+          "
+        >
+          ✓ TARGET MET — ADVANCE
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full px-2 space-y-1" data-tutorial-zone="marker-progress">
       <div className="flex justify-between items-baseline">
@@ -720,26 +743,6 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
           }}
         />
       </div>
-
-      {targetMet && (
-        <button
-          type="button"
-          onClick={() => { void autoCollect(); }}
-          disabled={isRolling}
-          className="
-            w-full py-0.5 rounded
-            font-pixel text-[6px] tracking-widest
-            border border-green-500/70 bg-green-950/60
-            text-green-400 hover:text-green-300 hover:bg-green-900/60
-            shadow-[0_0_8px_2px_rgba(34,197,94,0.35)]
-            animate-pulse
-            disabled:opacity-40 disabled:cursor-not-allowed disabled:animate-none
-            transition-colors
-          "
-        >
-          ✓ TARGET MET — ADVANCE
-        </button>
-      )}
     </div>
   );
 };

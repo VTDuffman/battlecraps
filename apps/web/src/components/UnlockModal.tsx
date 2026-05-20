@@ -41,6 +41,7 @@ const DEFAULT_PALETTE = RARITY_PALETTE['Common']!;
 export const UnlockModal: React.FC = () => {
   const unacknowledgedUnlocks = useGameStore((s) => s.unacknowledgedUnlocks);
   const unlockModalReady      = useGameStore((s) => s.unlockModalReady);
+  const activeTransition      = useGameStore((s) => s.activeTransition);
   const crewRoster            = useGameStore((s) => s.crewRoster);
   const acknowledgeUnlock     = useGameStore((s) => s.acknowledgeUnlock);
   const fetchCrewRoster       = useGameStore((s) => s.fetchCrewRoster);
@@ -48,7 +49,11 @@ export const UnlockModal: React.FC = () => {
   const [isShaking, setIsShaking] = useState(false);
 
   const crewId  = unacknowledgedUnlocks[0];
-  const visible = unlockModalReady && crewId !== undefined;
+  // Suppress during boss sequences — the unlock arrived late from the server and
+  // should not interrupt the dread intro or victory celebration. clearTransition()
+  // re-sets unlockModalReady after these transitions complete.
+  const suppressed = activeTransition === 'BOSS_ENTRY' || activeTransition === 'BOSS_VICTORY';
+  const visible = unlockModalReady && crewId !== undefined && !suppressed;
 
   // Pre-fetch roster so modal has crew data (covers mid-game and resume paths).
   useEffect(() => {

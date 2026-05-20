@@ -67,6 +67,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
   const activeBark   = useGameStore(selectActiveBark);
   const dequeueEvent = useGameStore((s) => s.dequeueEvent);
   const isRolling        = useGameStore((s) => s.isRolling);
+  const isAutoCollecting = useGameStore((s) => s.isAutoCollecting);
   const fireCrew         = useGameStore((s) => s.fireCrew);
   const mechanicFreeze   = useGameStore((s) => s.mechanicFreeze);
   const setMechanicFreeze = useGameStore((s) => s.setMechanicFreeze);
@@ -119,7 +120,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
   // Both sensors are emptied while rolling or cascading so the rail is locked.
   const pointerSensor = useSensor(PointerSensor, { activationConstraint: { delay: 150, tolerance: 5 } });
   const touchSensor   = useSensor(TouchSensor,   { activationConstraint: { delay: 150, tolerance: 5 } });
-  const sensors = useSensors(...(isRolling || isCascading ? [] : [pointerSensor, touchSensor]));
+  const sensors = useSensors(...(isRolling || isAutoCollecting || isCascading ? [] : [pointerSensor, touchSensor]));
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
@@ -380,9 +381,9 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
                     barkSeq={activeSlot === i ? (activeBark?.seq ?? null) : null}
                     barkCrewId={activeSlot === i ? (activeBark?.barkCrewId ?? null) : null}
                     onAnimationEnd={handleAnimationEnd}
-                    onFire={!isRolling && slot !== null ? () => { void fireCrew(i); } : undefined}
+                    onFire={!isRolling && !isAutoCollecting && slot !== null ? () => { void fireCrew(i); } : undefined}
                     onSetFreeze={
-                      slot?.crewId === 3 && !isRolling && slot.cooldownState === 0 && !mechanicFreeze
+                      slot?.crewId === 3 && !isRolling && !isAutoCollecting && slot.cooldownState === 0 && !mechanicFreeze
                         ? (v) => { void setMechanicFreeze(v); }
                         : undefined
                     }
@@ -448,7 +449,7 @@ const GameStatus: React.FC = () => {
   const displayMarkerIndex  = useGameStore(selectDisplayMarkerIndex);
   const _hypeKey            = useGameStore((s) => s._hypeKey);
   const autoCollect         = useGameStore((s) => s.autoCollect);
-  const isRolling           = useGameStore((s) => s.isRolling);
+  const isAutoCollecting    = useGameStore((s) => s.isAutoCollecting);
   const theme               = useFloorTheme();
   const isNullSpace         = getFloorIndex(displayMarkerIndex) === 8;
 
@@ -678,7 +679,7 @@ const GameStatus: React.FC = () => {
           <button
             type="button"
             onClick={() => { void autoCollect(); }}
-            disabled={isRolling}
+            disabled={isAutoCollecting}
             className="
               absolute bottom-0 inset-x-2
               h-10
@@ -764,6 +765,7 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
 const ChipRail: React.FC = () => {
   const activeChip         = useGameStore((s) => s.activeChip);
   const isRolling          = useGameStore((s) => s.isRolling);
+  const isAutoCollecting   = useGameStore((s) => s.isAutoCollecting);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
   const bossPointHits      = useGameStore((s) => s.bossPointHits);
   const maxBet             = getMaxBet(currentMarkerIndex, bossPointHits);
@@ -784,7 +786,7 @@ const ChipRail: React.FC = () => {
       <div className="text-center font-pixel text-[7px]" style={{ color: isNullSpace ? 'rgba(0,0,0,0.40)' : 'rgba(255,255,255,0.30)', marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
         TABLE MAX: ${maxBet / 100}
       </div>
-      <ChipSelector activeChip={activeChip} disabled={isRolling || tutorialCtx?.activeBeatMode === 'manual-roll'} />
+      <ChipSelector activeChip={activeChip} disabled={isRolling || isAutoCollecting || tutorialCtx?.activeBeatMode === 'manual-roll'} />
     </section>
   );
 };

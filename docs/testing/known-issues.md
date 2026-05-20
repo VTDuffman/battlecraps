@@ -1528,7 +1528,7 @@ Add a "CALL THE PIT BOSS" button to the `TableBoard` HUD, rendered only during `
 
 **Area:** `apps/web/src/transitions/phases/UnlockRecapPhase.tsx` (inferred); `apps/api/src/lib/unlocks.ts` — `evaluateUnlocks()` emit path; `apps/web/src/store/useGameStore.ts` — `unlocks:granted` socket listener and transition orchestration
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed (2026-05-20)
 **Source:** 05/19/2026 playtest session
 
 **Issue:**
@@ -1593,7 +1593,7 @@ Replace the opacity-suffix approach for secondary text on floor intro screens wi
 
 **Area:** `apps/web/src/components/CrewPortrait.tsx` or equivalent crew description display; `packages/shared/src/crew/mimic.ts`; `packages/shared/src/cascade.ts` — `lastFiredMember` tracking
 **Severity:** Low
-**Status:** Open
+**Status:** Working as Designed — "last crew to fire" is the intended behavior.
 **Source:** 05/19/2026 playtest session
 
 **Issue:**
@@ -1624,7 +1624,7 @@ First, confirm the text displayed to players in the pub draft card and crew port
 
 **Area:** `apps/api/src/routes/rolls.ts` — GOLDEN_TOUCH enforcement (approx. line 486–488); `apps/api/src/routes/recruit.ts` — `compShooterBonus` logic (lines 104–106, 181); `apps/web/src/components/TableBoard.tsx` or equivalent — shooter pip display
 **Severity:** Medium
-**Status:** Open
+**Status:** Won't Fix — comp mechanics for Golden Touch and Member's Jacket are being redesigned; existing implementation will be replaced.
 **Source:** 05/19/2026 playtest session
 
 **Issue:**
@@ -1701,7 +1701,7 @@ Implement the binary High/Low Tide alternation as described in KI-058: `bossPoin
 
 **Area:** `apps/web/src/components/PubScreen.tsx` — `theme` derivation (line 313); `apps/web/src/lib/floorThemes.ts` — `FLOOR_9_THEME.pubName`, `pubBg`, `pubTitleColor`
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed (2026-05-20)
 **Source:** 05/19/2026 playtest session
 
 **Issue:**

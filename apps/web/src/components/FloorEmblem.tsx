@@ -23,8 +23,7 @@
 
 import React from 'react';
 import { GAUNTLET, type FloorId } from '@battlecraps/shared';
-import { useGameStore, selectHypeTier, type GameState } from '../store/useGameStore.js';
-import { getFloorTheme } from '../lib/floorThemes.js';
+import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 
 // ---------------------------------------------------------------------------
 // Per-floor emblem configuration
@@ -42,10 +41,8 @@ interface FloorConfig {
   decorTop:     React.ReactNode;
   /** Decorative line below the name */
   decorBottom:  React.ReactNode;
-  /** Base color (applied to all text) */
+  /** Base color (applied to all text and borders) */
   color:        string;
-  /** Optional CSS text-shadow on the main name */
-  textShadow?:  string;
   /** Sub-label line shown below the name (optional) */
   subLabel?:    string;
 }
@@ -68,8 +65,7 @@ const FLOOR_CONFIGS: Record<FloorId, FloorConfig> = {
         -- FREIGHT ACCESS --
       </span>
     ),
-    color:       'rgba(255, 153, 0, 0.18)',
-    textShadow:  '0 0 30px rgba(255, 153, 0, 0.20)',
+    color:       'rgba(255, 153, 0, 0.38)',
     subLabel:    'GAUNTLET FLOOR I',
   },
 
@@ -88,7 +84,7 @@ const FLOOR_CONFIGS: Record<FloorId, FloorConfig> = {
         — HIGH STAKES —
       </span>
     ),
-    color:       'rgba(162, 138, 68, 0.20)',
+    color:       'rgba(162, 138, 68, 0.40)',
     subLabel:    'GAUNTLET FLOOR II',
   },
 
@@ -110,8 +106,7 @@ const FLOOR_CONFIGS: Record<FloorId, FloorConfig> = {
         ∿ ∿ ∿ &nbsp; Salon Privé &nbsp; ∿ ∿ ∿
       </span>
     ),
-    color:       'rgba(20, 158, 148, 0.20)',
-    textShadow:  '0 0 40px rgba(20, 158, 148, 0.25)',
+    color:       'rgba(20, 158, 148, 0.40)',
     subLabel:    'GAUNTLET FLOOR III',
   },
 
@@ -128,8 +123,7 @@ const FLOOR_CONFIGS: Record<FloorId, FloorConfig> = {
     decorBottom: (
       <span style={{ fontSize: '0.75em', letterSpacing: '0.5em' }}>· · · · · · ·</span>
     ),
-    color:       'rgba(245, 200, 66, 0.18)',
-    textShadow:  '0 0 60px rgba(245, 200, 66, 0.30), 0 0 20px rgba(255, 80, 180, 0.20)',
+    color:       'rgba(245, 200, 66, 0.38)',
     subLabel:    'GAUNTLET FLOOR IV',
   },
 
@@ -150,8 +144,7 @@ const FLOOR_CONFIGS: Record<FloorId, FloorConfig> = {
         — THE INNER SANCTUM —
       </span>
     ),
-    color:      'rgba(201, 148, 58, 0.18)',
-    textShadow: '0 0 40px rgba(201, 148, 58, 0.22)',
+    color:      'rgba(201, 148, 58, 0.38)',
     subLabel:   'GAUNTLET FLOOR V',
   },
 
@@ -172,8 +165,7 @@ const FLOOR_CONFIGS: Record<FloorId, FloorConfig> = {
         ∼ THE THRONE ROOM ∼
       </span>
     ),
-    color:      'rgba(0, 201, 160, 0.18)',
-    textShadow: '0 0 50px rgba(0, 201, 160, 0.24)',
+    color:      'rgba(0, 201, 160, 0.38)',
     subLabel:   'GAUNTLET FLOOR VI',
   },
 
@@ -194,8 +186,7 @@ const FLOOR_CONFIGS: Record<FloorId, FloorConfig> = {
         ⊕ COMMAND MODULE ⊕
       </span>
     ),
-    color:      'rgba(200, 216, 232, 0.18)',
-    textShadow: '0 0 40px rgba(200, 216, 232, 0.20)',
+    color:      'rgba(200, 216, 232, 0.38)',
     subLabel:   'GAUNTLET FLOOR VII',
   },
 
@@ -216,8 +207,7 @@ const FLOOR_CONFIGS: Record<FloorId, FloorConfig> = {
         {'>> RECEIVING CHAMBER <<'}
       </span>
     ),
-    color:      'rgba(57, 255, 20, 0.16)',
-    textShadow: '0 0 40px rgba(57, 255, 20, 0.20)',
+    color:      'rgba(57, 255, 20, 0.34)',
     subLabel:   'GAUNTLET FLOOR VIII',
   },
 
@@ -238,47 +228,21 @@ const FLOOR_CONFIGS: Record<FloorId, FloorConfig> = {
         NULL : CONVERGENCE
       </span>
     ),
-    color:      'rgba(0, 0, 0, 0.11)',
-    textShadow: '0 1px 4px rgba(0, 0, 0, 0.05)',
+    color:      'rgba(0, 0, 0, 0.22)',
     subLabel:   'GAUNTLET FLOOR IX',
   },
 };
-
-const selectMarker     = (s: GameState) => s.currentMarkerIndex;
-const selectSettleSeq  = (s: GameState) => s._settleSeq;
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-const EMBLEM_ANIM: Record<2 | 3 | 4, string> = {
-  2: 'animate-emblem-heat',
-  3: 'animate-emblem-fire',
-  4: 'animate-emblem-nuclear',
-};
-
-const EMBLEM_TEXT_ANIM: Record<2 | 3 | 4, string> = {
-  2: 'animate-emblem-text-heat',
-  3: 'animate-emblem-text-fire',
-  4: 'animate-emblem-text-nuclear',
-};
-
 export const FloorEmblem: React.FC = () => {
-  const currentMarkerIndex = useGameStore(selectMarker);
-  const hypeTier           = useGameStore(selectHypeTier);
-  const settleSeq          = useGameStore(selectSettleSeq);
+  const currentMarkerIndex = useGameStore(selectDisplayMarkerIndex);
 
   const floorNum = (GAUNTLET[currentMarkerIndex]?.floor ?? 1) as FloorId;
   const cfg      = FLOOR_CONFIGS[floorNum];
   if (!cfg) return null;
-
-  const theme         = getFloorTheme(currentMarkerIndex);
-  const animClass     = hypeTier !== 0 ? EMBLEM_ANIM[hypeTier] : '';
-  const textAnimClass = hypeTier !== 0 ? EMBLEM_TEXT_ANIM[hypeTier] : '';
-
-  // settleSeq is used as React key so both animation elements restart from phase 0
-  // at the exact moment the dice land — keeping the glow and text pulse in sync.
-  const animKey = `${settleSeq}-${hypeTier}`;
 
   return (
     <div
@@ -287,20 +251,17 @@ export const FloorEmblem: React.FC = () => {
     >
       {/* ── Outer border frame — like the printed border on casino felt ─── */}
       <div
-        key={animKey}
-        className={`flex flex-col items-center gap-1 px-6 py-4 ${animClass}`}
+        className="flex flex-col items-center gap-1 px-6 py-4"
         style={{
           color:         cfg.color,
           border:        `1px solid ${cfg.color}`,
           borderRadius:  '2px',
           outline:       `3px solid ${cfg.color}`,
           outlineOffset: '5px',
-          // Used by animate-emblem-* keyframes for the glow color
-          '--emblem-color': theme.accentPrimary,
-        } as React.CSSProperties}
+        }}
       >
-        {/* ── Inner text wrapper — scales with hype pulse ────────────────── */}
-        <div key={animKey} className={`flex flex-col items-center gap-1 ${textAnimClass}`}>
+        {/* ── Inner text wrapper ─────────────────────────────────────────── */}
+        <div className="flex flex-col items-center gap-1">
           {/* ── Floor number label ───────────────────────────────────────── */}
           <div
             style={{
@@ -308,7 +269,6 @@ export const FloorEmblem: React.FC = () => {
               fontSize:      'clamp(5px, 1dvh, 7px)',
               color:         cfg.color,
               letterSpacing: '0.3em',
-              opacity:       0.9,
             }}
           >
             {cfg.subLabel ?? `GAUNTLET FLOOR ${cfg.roman}`}
@@ -333,7 +293,6 @@ export const FloorEmblem: React.FC = () => {
               fontSize:      cfg.nameSize,
               letterSpacing: cfg.letterSpacing ?? '0.05em',
               color:         cfg.color,
-              textShadow:    cfg.textShadow,
               lineHeight:    1.0,
             }}
           >

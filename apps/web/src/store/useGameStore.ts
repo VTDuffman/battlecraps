@@ -292,6 +292,9 @@ export interface GameState {
   // ── Roll in-flight ────────────────────────────────────────────────────────
   /** True while the POST /runs/:id/roll request is pending. */
   isRolling: boolean;
+  /** True while the ADVANCE button's auto-collect API call is in flight. Kept
+   *  separate from isRolling so the ROLL button text does not show "ROLLING…". */
+  isAutoCollecting: boolean;
 
   // ── Deferred settlement ───────────────────────────────────────────────────
   /**
@@ -890,6 +893,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   lastBetDelta:   null,
   _betDeltaKey:   0,
   isRolling:          false,
+  isAutoCollecting:   false,
   pendingSettlement:  null,
   wallFlash:          false,
   _wallFlashKey:      0,
@@ -985,6 +989,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _nudgeKey:         0,
       lastBetDelta:      null,
       isRolling:         false,
+      isAutoCollecting:  false,
       pendingSettlement: null,
       wallFlash:         false,
       _wallFlashKey:     0,
@@ -1199,6 +1204,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastBetDelta:        null,
       _betDeltaKey:        0,
       isRolling:           false,
+      isAutoCollecting:    false,
       pendingSettlement:   null,
       flashType:           null,
       _flashKey:           0,
@@ -1318,10 +1324,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   async autoCollect() {
-    const { runId, bets, isRolling } = get();
-    if (isRolling || !runId) return;
+    const { runId, bets, isRolling, isAutoCollecting } = get();
+    if (isRolling || isAutoCollecting || !runId) return;
 
-    set({ isRolling: true }); // lock UI, but NO _rollKey increment — no dice animation
+    set({ isAutoCollecting: true }); // lock UI, but NO _rollKey increment — no dice animation
     try {
       const token = await get().getToken?.();
       const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/roll`, {
@@ -1334,7 +1340,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       });
 
       if (!res.ok) {
-        set({ isRolling: false });
+        set({ isAutoCollecting: false });
         return;
       }
 
@@ -1366,7 +1372,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       if (!data.roll.autoClear) {
         // Server didn't auto-clear — state mismatch. Reset and let the player roll normally.
         console.warn('[autoCollect] Server did not confirm auto-clear; resetting.');
-        set({ isRolling: false });
+        set({ isAutoCollecting: false });
         return;
       }
 
@@ -1392,7 +1398,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       get().applyPendingSettlement();
     } catch (err) {
       console.error('[autoCollect] error:', err);
-      set({ isRolling: false });
+      set({ isAutoCollecting: false });
     }
   },
 
@@ -1416,6 +1422,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       pendingCascadeQueue,
       status: currentStatus,
       unacknowledgedUnlocks,
+      isAutoCollecting,
     } = get();
     if (!p) return;
 
@@ -1583,6 +1590,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastDelta:            p.bankrollDelta,
       lastBetDelta:         null,
       isRolling:            false,
+      isAutoCollecting:     false,
       pendingSettlement:    null,
       flashType,
       _flashKey:            flashType !== null ? _flashKey + 1 : _flashKey,
@@ -1612,6 +1620,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // covers the longest torrent animation (~2.6 s max) as a true safety net.
       // When hasPops=false (no chip rain will ever fire), shorten to 400 ms so
       // the transition follows the win-flash immediately instead of hanging.
+      // When isAutoCollecting (player explicitly hit ADVANCE), always use 400 ms —
+      // no point waiting for chip rain the player already chose to skip.
       setTimeout(() => {
         if (!get().pendingTransition) return;
         const { celebrationSnapshot: snap } = get();
@@ -1620,7 +1630,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           activeTransition:     snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR',
           transitionPhaseIndex: 0,
         });
-      }, hasPops ? 3000 : pendingCascadeQueue.length > 0 ? 1500 : 400);
+      }, isAutoCollecting || !hasPops ? 400 : pendingCascadeQueue.length > 0 ? 1500 : 400);
     }
   },
 
@@ -1650,6 +1660,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // Now safe to expose the new marker state: celebrationSnapshot is cleared.
       // Clear payoutPops, flashType, and _flashKey so neither ChipRain nor
       // useCrowdAudio re-fire their stale events when TableBoard remounts after the pub.
+      //
+      // Re-arm unlockModalReady if unlocks were suppressed during a boss transition
+      // (the server emits unlocks:granted async; the event often arrives while
+      // BOSS_VICTORY is playing). The modal will fire in the pub instead.
+      const hasUnacknowledged = get().unacknowledgedUnlocks.length > 0;
       set({
         status:               'TRANSITION',
         activeTransition:     null,
@@ -1661,11 +1676,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         // Safety: clear any stale in-flight roll state so a DiceZone remount
         // after the floor transition doesn't inherit a locked isRolling flag.
         isRolling:            false,
+        isAutoCollecting:     false,
         pendingSettlement:    null,
         // Invalidate any pub draft carried over from the previous pub visit so
         // the next fetchPubDraft() always hits the server fresh and picks up
         // guaranteedPubDraftIds for newly unlocked crew.
         pubDraft:             [],
+        unlockModalReady:     hasUnacknowledged,
       });
       // Pre-fetch the roster so PubScreen data is ready (or nearly so) on mount.
       void get().fetchCrewRoster();
@@ -1680,6 +1697,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         // Persist the flag so it survives page refreshes and new runs.
         localStorage.setItem('bc_title_shown', '1');
         set({ activeTransition: null, transitionPhaseIndex: 0, titleShown: true });
+      } else if (type === 'BOSS_ENTRY') {
+        // Re-arm the unlock modal if it was suppressed during the dread sequence.
+        const hasUnacknowledged = get().unacknowledgedUnlocks.length > 0;
+        set({ activeTransition: null, transitionPhaseIndex: 0, unlockModalReady: hasUnacknowledged });
       } else {
         set({ activeTransition: null, transitionPhaseIndex: 0 });
       }

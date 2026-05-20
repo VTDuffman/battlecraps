@@ -23,7 +23,7 @@ import {
 } from '@battlecraps/shared';
 import { useGameStore, selectBankrollDisplay } from '../store/useGameStore.js';
 import type { CrewRosterEntry, PubDraftEntry } from '../store/useGameStore.js';
-import { getFloorTheme } from '../lib/floorThemes.js';
+import { getFloorTheme, getFloorIndex } from '../lib/floorThemes.js';
 import { CREW_EMOJI } from './CrewPortrait.js';
 
 // ---------------------------------------------------------------------------
@@ -310,7 +310,11 @@ export const PubScreen: React.FC = () => {
   // The pub belongs to the floor just cleared, not the floor about to start.
   // Theme from prevMarkerIndex so cross-floor pubs stay in the completed floor's
   // aesthetic — the next floor's look is revealed by the cinematic, not the pub.
-  const theme              = getFloorTheme(Math.max(0, currentMarkerIndex - 1));
+  // Floor 9 (Null Space) is an exception: its stark white/greyscale inversion is
+  // so distinctive that even mid-floor pubs would spoil the reveal. Cap at Floor 8.
+  const prevMarkerForTheme = Math.max(0, currentMarkerIndex - 1);
+  const themeMarkerIndex   = getFloorIndex(prevMarkerForTheme) === 8 ? 23 : prevMarkerForTheme;
+  const theme              = getFloorTheme(themeMarkerIndex);
 
   // ── Roster from store ─────────────────────────────────────────────────────
   // clearTransition() triggers fetchCrewRoster() before setting status=TRANSITION,

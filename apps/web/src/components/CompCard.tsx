@@ -130,29 +130,32 @@ export const CompCard: React.FC<CompCardProps> = (props) => {
     const { name, icon, accentColor, effect, showTooltip = false } = props;
     return (
       <>
-        {/* Accent strip */}
-        <div className="w-full h-[5px] flex-none" style={{ background: accentColor }} />
+        {/* Card face — clipped to card shape */}
+        <div className="w-full flex-1 flex flex-col items-center overflow-hidden rounded-sm">
+          {/* Accent strip */}
+          <div className="w-full h-[5px] flex-none" style={{ background: accentColor }} />
 
-        {/* Icon */}
-        <div className="text-[20px] leading-none mt-1">{icon}</div>
+          {/* Icon */}
+          <div className="text-[20px] leading-none mt-1">{icon}</div>
 
-        {/* COMP stamp */}
-        <div
-          className="font-pixel text-[4px] tracking-widest mt-0.5 leading-none"
-          style={{ color: 'rgba(0,0,0,0.35)' }}
-        >
-          COMP
+          {/* COMP stamp */}
+          <div
+            className="font-pixel text-[4px] tracking-widest mt-0.5 leading-none"
+            style={{ color: 'rgba(0,0,0,0.35)' }}
+          >
+            COMP
+          </div>
+
+          {/* Card name */}
+          <div
+            className="font-pixel text-[5px] text-center leading-tight px-0.5 mt-0.5"
+            style={{ color: 'rgba(0,0,0,0.75)' }}
+          >
+            {name}
+          </div>
         </div>
 
-        {/* Card name */}
-        <div
-          className="font-pixel text-[5px] text-center leading-tight px-0.5 mt-0.5"
-          style={{ color: 'rgba(0,0,0,0.75)' }}
-        >
-          {name}
-        </div>
-
-        {/* Tooltip (fan-open hover) */}
+        {/* Tooltip — outside overflow wrapper so it escapes card bounds */}
         {showTooltip && (
           <div
             className="

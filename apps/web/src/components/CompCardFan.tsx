@@ -56,7 +56,7 @@ export const CompCardFan: React.FC = () => {
       {/* ── Tap-outside backdrop ─────────────────────────────────────────────── */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-[0]"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -74,7 +74,7 @@ export const CompCardFan: React.FC = () => {
               'group absolute inset-0 rounded-sm',
               'border-2 border-gold/60',
               'bg-[#fdf6e3]',
-              'flex flex-col items-center overflow-hidden',
+              'flex flex-col items-center',
               'transition-transform duration-300 ease-out',
               'shadow-[2px_2px_8px_rgba(0,0,0,0.55)]',
               dealingIn === i ? 'animate-comp-deal-in' : '',

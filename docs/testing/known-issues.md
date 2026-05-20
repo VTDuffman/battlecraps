@@ -1465,7 +1465,7 @@ In `recruit.ts`, lift the `array_append` call out of the `EXTRA_SHOOTER`-specifi
 
 **Area:** `apps/web/src/components/CompCard.tsx` — fan variant tooltip block (approx. line 156–178); `apps/web/src/components/CompCardFan.tsx` — `showTooltip` prop and card rendering
 **Severity:** Low
-**Status:** Open
+**Status:** Resolved — Two root causes: (1) `overflow-hidden` on the card wrapper in `CompCardFan` clipped the `absolute left-full` tooltip before it could paint — fixed by removing `overflow-hidden` from the wrapper and adding an inner `overflow-hidden rounded-sm` div around the card-face content only; (2) the click-outside backdrop was `z-40` while open cards had `zIndex: 1`, so the backdrop sat above the cards and intercepted all hover events — fixed by dropping the backdrop to `z-[0]` (the parent wrapper is already `z-50` relative to the page so the backdrop still covers page content). Hover gating via `opacity-0 group-hover:opacity-100` now works correctly per card.
 **Source:** 05/19/2026 playtest session
 
 **Issue:**

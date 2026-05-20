@@ -520,10 +520,10 @@ const GameStatus: React.FC = () => {
     <div className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.5dvh,8px)' }}>
 
       {/* ── 3-column header: comp card (left) | logo (center) | hype + shooters (right) ── */}
-      <div className="grid grid-cols-[1fr_2fr_1fr] items-start gap-1 px-1" data-tutorial-zone="bankroll-zone">
+      <div className="grid grid-cols-[1fr_2fr_1fr] gap-1 px-1" data-tutorial-zone="bankroll-zone">
 
         {/* LEFT cell — comp card fan */}
-        <div className="flex justify-center pt-1">
+        <div className="flex justify-center items-center">
           <CompCardFan />
         </div>
 
@@ -581,7 +581,7 @@ const GameStatus: React.FC = () => {
         </div>
 
         {/* RIGHT cell — hype on top, shooters below */}
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center justify-center gap-2">
           {/* Hype */}
           <div className="text-center" data-tutorial-zone="hype-meter">
             <div className="font-pixel text-[9.375px] mb-0.5" style={{ color: isNullSpace ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.40)' }}>

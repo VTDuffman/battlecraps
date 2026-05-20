@@ -245,8 +245,8 @@ const BetZone: React.FC<BetZoneProps> = ({
       {hasBet && (
         <div
           className={[
-            'absolute -top-2 -right-2',
-            'w-7 h-7 rounded-full',
+            'absolute -top-2.5 -right-2.5',
+            'w-[35px] h-[35px] rounded-full',
             'flex items-center justify-center',
             'border-2 font-pixel text-[9.375px] text-white shadow-md',
             // Locked chips use a muted orange to signal "can't undo";
@@ -262,7 +262,7 @@ const BetZone: React.FC<BetZoneProps> = ({
 
       {/* Lock icon on the chip when fully committed */}
       {isLocked && (
-        <div className="absolute -top-2 -right-2 w-7 h-7 flex items-end justify-start pointer-events-none">
+        <div className="absolute -top-2.5 -right-2.5 w-[35px] h-[35px] flex items-end justify-start pointer-events-none">
           <span className="text-[10.9px] leading-none text-amber-300/80">🔒</span>
         </div>
       )}

@@ -55,7 +55,7 @@ export const MarkerIntroPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
 
       {/* Floor label */}
       <div
-        className="font-pixel text-[6px] tracking-[0.3em]"
+        className="font-pixel text-[9px] tracking-[0.3em]"
         style={{ color: `${theme.accentPrimary}99` }}
       >
         FLOOR {floor.id} — {floor.name.toUpperCase()}
@@ -93,7 +93,7 @@ export const MarkerIntroPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
               />
               {isBossPos && (
                 <div
-                  className="font-pixel text-[4px]"
+                  className="font-pixel text-[6px]"
                   style={{ color: `${theme.accentDim}80` }}
                 >
                   BOSS
@@ -111,7 +111,7 @@ export const MarkerIntroPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
       {/* Target amount */}
       <div className="flex flex-col items-center gap-2 text-center">
         <div
-          className="font-pixel text-[7px] tracking-widest"
+          className="font-pixel text-[10.5px] tracking-widest"
           style={{ color: `${theme.accentPrimary}80` }}
         >
           {nextIsBoss ? '⚔ BOSS MARKER TARGET' : 'MARKER TARGET'}
@@ -128,7 +128,7 @@ export const MarkerIntroPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
         </div>
 
         <div
-          className="font-pixel text-[6px] tracking-widest"
+          className="font-pixel text-[9px] tracking-widest"
           style={{ color: `${theme.accentPrimary}60` }}
         >
           {marker.venue.toUpperCase()}
@@ -145,13 +145,13 @@ export const MarkerIntroPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
           }}
         >
           <p
-            className="font-pixel text-[6px] tracking-wide"
+            className="font-pixel text-[9px] tracking-wide"
             style={{ color: theme.bossTextColor }}
           >
             ★ {floor.bossName.toUpperCase()} AWAITS IN THE HIGH LIMIT ROOM
           </p>
           <p
-            className="font-mono text-[7px] mt-1 italic"
+            className="font-mono text-[10.5px] mt-1 italic"
             style={{ color: `${theme.bossTextColor}70` }}
           >
             {floor.bossTeaser}
@@ -163,7 +163,7 @@ export const MarkerIntroPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
       <button
         type="button"
         onClick={onAdvance}
-        className="px-8 py-3 rounded border border-white/20 mt-4 font-pixel text-[7px] tracking-widest transition-opacity hover:opacity-80"
+        className="px-8 py-3 rounded border border-white/20 mt-4 font-pixel text-[10.5px] tracking-widest transition-opacity hover:opacity-80"
         style={{ color: theme.accentBright, borderColor: `${theme.accentPrimary}50` }}
       >
         ▶ TAP TO CONTINUE

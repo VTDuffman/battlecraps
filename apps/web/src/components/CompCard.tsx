@@ -160,8 +160,8 @@ export const CompCard: React.FC<CompCardProps> = (props) => {
           <div
             className="
               absolute left-full ml-2 top-0
-              w-36 px-2 py-1.5 rounded
-              font-mono text-[8px] text-white/90 leading-snug
+              w-44 px-2 py-1.5 rounded
+              font-mono text-[10px] text-white/90 leading-snug
               bg-black/90 border border-white/20
               pointer-events-none z-50
               opacity-0 group-hover:opacity-100
@@ -169,7 +169,7 @@ export const CompCard: React.FC<CompCardProps> = (props) => {
             "
           >
             <div
-              className="font-pixel text-[5px] mb-1 tracking-widest"
+              className="font-pixel text-[6.25px] mb-1 tracking-widest"
               style={{ color: accentColor }}
             >
               {name.toUpperCase()}

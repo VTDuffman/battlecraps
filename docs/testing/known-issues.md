@@ -218,7 +218,7 @@ Inspect the dice bounce animation keyframes and the boss banner's CSS for any tr
 
 **Area:** Global Typography / `tailwind.config.ts` / `index.css`
 **Severity:** High
-**Status:** Open
+**Status:** Fixed (2026-05-21) — Surgical playthrough-driven overhaul; all screens swept and font sizes increased on an ad hoc basis.
 **Source:** Playtester observation
 
 **Issue:**
@@ -235,7 +235,7 @@ Following the implementation of FB-016, the text across the application still ap
 
 **Area:** `TitleLobbyScreen.tsx`, `transitions/phases/*.tsx`
 **Severity:** Medium
-**Status:** Open
+**Status:** Fixed (2026-05-21) — Surgical playthrough-driven overhaul; Title, Boss, and Transition screens swept and font sizes increased on an ad hoc basis.
 **Source:** Playtester observation
 
 **Issue:**
@@ -1759,3 +1759,48 @@ Comps are per-run. A new run begins with zero active comp perks regardless of wh
 
 **High-Level Fix:**
 Move comp perk ID tracking from the user record to the run record. Add a `compPerkIds` integer array column (defaulting to an empty array) to the `runs` table via a new migration file — this is the only schema change required, and because new runs default to an empty array, no explicit clearing logic is needed anywhere. In `recruit.ts`, redirect the `array_append` write from `users` to `runs`, keyed on `runId`. In `rolls.ts`, replace all seven `user.compPerkIds` reads with `run.compPerkIds`; the `run` object is already in scope at all call sites. The existing `compPerkIds` column on the `users` table should be left in place but should no longer be written or read in the gameplay path — it was originally designed for a meta-progression system and can be revisited if that feature is ever scoped.
+
+---
+
+## KI-073 — Member's Jacket comp: pip display fires one floor early; shooter bonus lost after Floor 3
+
+**Area:** `apps/web/src/components/TableBoard.tsx` (line 618–619); `apps/api/src/routes/recruit.ts` (lines 103–106, 180)
+**Severity:** High
+**Status:** Fixed (2026-05-21)
+**Source:** Playtester observation (2026-05-21)
+
+**Issue:**
+Two distinct bugs affect the Member's Jacket comp (+1 Shooter, earned by defeating Sarge on Floor 2).
+
+**Bug A — pip display fires one floor early (`TableBoard.tsx` line 618).**
+The condition that expands the shooter pip strip from 5 to 6 pips reads `currentMarkerIndex > 2`, with the comment "Sarge is Marker 2." The comment is wrong — Sarge is the boss of Floor 2 at marker index 5 (0-indexed). `currentMarkerIndex > 2` evaluates to `true` at marker 3, the very first marker of the VFW floor, so all three VFW markers display 6 pips (5 filled + 1 empty) before Sarge is ever defeated. Players on Floor 2 who have not yet earned the comp see an extra empty pip from the moment they leave Floor 1. The deeper structural issue is that pip capacity should be derived from the actual `shooters` value read from game state, not from a hardcoded marker-index heuristic.
+
+**Bug B — shooter bonus is lost after the Riverboat (Floor 3) pub.**
+In `recruit.ts`, `compShooterBonus` is derived solely by checking whether the immediately preceding marker was a Sarge boss victory (`bossConfig?.compReward === 'EXTRA_SHOOTER'`). `bossConfig` is only non-null when `prevMarkerIndex` was a boss marker. For every subsequent pub visit — all of Floors 3–9 — `bossConfig` is null and `compShooterBonus` falls back to `0`, silently resetting `shooters` to `5`. The Member's Jacket bonus that was intended to persist for the remainder of the run is discarded on the first non-boss pub after Sarge.
+
+**Observed symptom sequence:**
+- Floor 2 (VFW Hall): starts with 6 pips (5 filled + 1 empty) — incorrect; should show 5 filled pips with no extra pip until the comp is earned.
+- Floor 3 (Riverboat), immediately after defeating Sarge: correctly shows 6 filled pips.
+- Floors 4–9 (all subsequent pubs): reverts to 5 filled pips + 1 empty — incorrect; should remain at 6 filled for the rest of the run.
+
+**Steps to Reproduce:**
+1. Start a new run and advance through Floor 1 (The Loading Dock) to clear all three markers.
+2. Enter Floor 2 (VFW Hall), marker 3 (first marker of the floor). Observe the shooter pip strip — it shows 6 pips (5 filled + 1 empty) before Sarge has been fought. (Bug A)
+3. Defeat Sarge (marker 5). Enter the Floor 3 pub — observe 6 filled pips. Confirm the comp is correctly awarded here.
+4. Clear any non-boss marker on Floor 3 (Riverboat) and enter the next pub. Observe the shooter pip strip — it reverts to 5 filled pips. (Bug B)
+5. Continue through Floors 4–9; the shooter count remains at 5 for all remaining pubs.
+
+**Expected Behavior:**
+The pip strip should display exactly as many filled pips as `shooters` (normally 5; 6 once the Member's Jacket is earned). No empty bonus pip should appear before the comp is earned. After Sarge is defeated, `shooters` should remain `6` for every subsequent pub visit and roll — including all of Floors 3–9.
+
+**Actual Behavior:**
+An empty sixth pip appears from Floor 2, marker 3 onward (one floor before the comp is earnable). After the Riverboat pub, `shooters` resets to `5` because `recruit.ts` only grants `compShooterBonus = 1` when the immediately preceding marker is a Sarge boss; `run.compPerkIds` is never consulted for pub visits later in the run.
+
+**Likely Affected Area:**
+- `apps/web/src/components/TableBoard.tsx` — `hasExtraShooterComp` / pip-capacity computation, line 618
+- `apps/api/src/routes/recruit.ts` — `compShooterBonus` derivation block, lines 103–106 and 180
+
+**High-Level Fix:**
+*Bug A — `TableBoard.tsx`:* Replace the hardcoded `currentMarkerIndex > 2` threshold with a pip capacity derived directly from the `shooters` value already present in game state. The rendered pip count should always equal `Math.max(5, shooters)` — no marker-index heuristic is needed. This makes the strip self-correcting: it shows 5 pips when `shooters === 5` and 6 pips only once `shooters` has been set to `6` by the server.
+
+*Bug B — `recruit.ts`:* Extend the `compShooterBonus` check to also consult `run.compPerkIds`. The Member's Jacket perk ID (`COMP_PERK_IDS.MEMBER_JACKET`, value `1`, defined in `packages/shared/src/config.ts`) should be checked alongside the immediate boss-victory condition — if either is true, `compShooterBonus = 1`. Since `run.compPerkIds` is already populated by the `array_append` call earlier in the same handler (from KI-063 / KI-072 fix work), the data is available; the `compShooterBonus` derivation simply needs to read it. This ensures the bonus is restored correctly for every pub visit after the comp is first granted, for the full remainder of the run.

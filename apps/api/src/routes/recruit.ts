@@ -12,7 +12,7 @@
 //   2. SKIP — omit crewId/slotIndex (or send empty object) to rest and skip.
 //
 // Either path:
-//   - Resets shooters to 5 (fresh allotment for the next marker segment).
+//   - Resets shooters to 5 (or 6 if Member's Jacket comp is active).
 //   - Returns the run to IDLE_TABLE / COME_OUT so the next roll can proceed.
 //
 // NOTE: currentMarkerIndex was ALREADY advanced by the roll handler when it
@@ -23,7 +23,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
-import { isBossMarker, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, type CrewRarity } from '@battlecraps/shared';
+import { isBossMarker, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, COMP_PERK_IDS, type CrewRarity } from '@battlecraps/shared';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
 
@@ -100,10 +100,12 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
       const bossConfig      = wasBossVictory ? GAUNTLET[prevMarkerIndex]?.boss : undefined;
 
       // Comp reward: +1 Shooter (Member's Jacket) for defeating Sarge.
-      let compShooterBonus = 0;
-      if (bossConfig?.compReward === 'EXTRA_SHOOTER') {
-        compShooterBonus = 1;
-      }
+      // Check both the immediate boss victory AND run.compPerkIds so the bonus
+      // persists across all subsequent segment resets for the rest of the run.
+      const hasMemberJacket =
+        bossConfig?.compReward === 'EXTRA_SHOOTER' ||
+        (run.compPerkIds ?? []).includes(COMP_PERK_IDS.MEMBER_JACKET);
+      const compShooterBonus = hasMemberJacket ? 1 : 0;
 
       // Persist the comp perk ID onto the run (not the user) so enforcement is
       // scoped to this run only. Non-fatal — must never block game progression.

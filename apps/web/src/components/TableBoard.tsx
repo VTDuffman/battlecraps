@@ -615,8 +615,7 @@ const GameStatus: React.FC = () => {
             <div className="font-pixel text-[9.375px] mb-0.5" style={{ color: isNullSpace ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.40)' }}>SHOOTERS</div>
             <div className="flex gap-1 justify-center">
               {(() => {
-                const hasExtraShooterComp = currentMarkerIndex > 2; // Sarge is Marker 2
-                const shooterCapacity = hasExtraShooterComp ? 6 : 5;
+                const shooterCapacity = Math.max(5, shooters);
                 return Array.from({ length: shooterCapacity }, (_, i) => (
                   <div
                     key={i}

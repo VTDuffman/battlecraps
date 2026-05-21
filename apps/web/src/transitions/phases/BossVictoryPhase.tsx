@@ -59,7 +59,7 @@ export const BossVictoryPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
       {/* Defeated badge */}
       <div className="flex flex-col items-center gap-3 px-8 text-center">
         <div
-          className="font-pixel text-[5px] tracking-[0.4em]"
+          className="font-pixel text-[7.5px] tracking-[0.4em]"
           style={{ color: `${theme.bossTextColor}70` }}
         >
           {boss.defeatAnnouncement}
@@ -69,7 +69,7 @@ export const BossVictoryPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
         <div
           className="font-pixel text-center"
           style={{
-            fontSize:   'clamp(24px, 7vw, 36px)',
+            fontSize:   'clamp(36px, 10.5vw, 54px)',
             color:      theme.bossTextColor,
             textShadow: theme.bossTitleShadow,
           }}
@@ -79,7 +79,7 @@ export const BossVictoryPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
 
         {/* DEFEATED label */}
         <div
-          className="font-pixel text-[11px] tracking-widest"
+          className="font-pixel text-[16.5px] tracking-widest"
           style={{
             color:      `${theme.bossStarColor}cc`,
             textShadow: `0 0 16px ${theme.bossTextColor}60`,
@@ -93,7 +93,7 @@ export const BossVictoryPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
       <button
         type="button"
         onClick={onAdvance}
-        className="absolute bottom-6 font-pixel text-[5px] tracking-widest opacity-30 hover:opacity-60 transition-opacity"
+        className="absolute bottom-6 font-pixel text-[7.5px] tracking-widest opacity-30 hover:opacity-60 transition-opacity"
         style={{ color: theme.bossTextColor }}
       >
         TAP TO CONTINUE

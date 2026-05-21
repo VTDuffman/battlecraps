@@ -72,13 +72,13 @@ export const BossRoomHeader: React.FC = () => {
           </div>
           <div className="min-w-0">
             <div
-              className="font-pixel text-[7.5px] tracking-widest leading-none"
+              className="font-pixel text-[6.75px] tracking-widest leading-none underline mb-1"
               style={{ color: `${theme.bossStarColor}99` }}
             >
               HIGH LIMIT ROOM
             </div>
             <div
-              className="font-pixel text-[12px] leading-tight truncate"
+              className="font-pixel text-[13.2px] leading-tight truncate"
               style={{ color: theme.bossTextColor }}
             >
               {boss.name.toUpperCase()}

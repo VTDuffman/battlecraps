@@ -80,13 +80,13 @@ export const BossVictoryCompPhase: React.FC<PhaseComponentProps> = ({ onAdvance 
       {/* Header */}
       <div className="flex flex-col items-center gap-2 text-center px-8">
         <div
-          className="font-pixel text-[5px] tracking-[0.35em]"
+          className="font-pixel font-normal text-[7.59375px] tracking-[0.35em]"
           style={{ color: `${theme.bossTextColor}70` }}
         >
           FOR VALOR IN THE HIGH LIMIT ROOM
         </div>
         <div
-          className="font-pixel text-[9px] tracking-widest"
+          className="font-pixel text-[16.70625px] tracking-widest"
           style={{ color: `${theme.bossTextColor}b0` }}
         >
           {boss.name.toUpperCase()} — DEFEATED
@@ -110,8 +110,8 @@ export const BossVictoryCompPhase: React.FC<PhaseComponentProps> = ({ onAdvance 
         type="button"
         onClick={onAdvance}
         className={`
-          px-10 py-3 rounded
-          font-pixel text-[8px] tracking-widest
+          px-9 py-2.5 rounded
+          font-pixel text-[10.8px] tracking-widest
           border-2
           transition-all duration-150 active:scale-95
           transition-opacity duration-500
@@ -128,7 +128,7 @@ export const BossVictoryCompPhase: React.FC<PhaseComponentProps> = ({ onAdvance 
       </button>
 
       <p
-        className={`font-pixel text-[5px] tracking-wide text-center px-10 transition-opacity duration-500 ${showButton ? 'opacity-100' : 'opacity-0'}`}
+        className={`font-pixel text-[8.25px] tracking-wide text-center px-10 transition-opacity duration-500 ${showButton ? 'opacity-100' : 'opacity-0'}`}
         style={{ color: `${theme.bossTextColor}40` }}
       >
         Your crew awaits at the pub.<br />

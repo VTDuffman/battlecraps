@@ -660,7 +660,7 @@ const GameStatus: React.FC = () => {
             <div
               className={[
                 'w-12 h-12 rounded-full border-2 flex items-center justify-center',
-                'font-pixel text-[11.25px] transition-colors duration-300',
+                'font-pixel text-[14.0625px] leading-none transition-colors duration-300',
                 phase === 'POINT_ACTIVE' && point !== null
                   ? isNullSpace
                     ? 'bg-gray-900 border-gray-700 text-white shadow-[0_0_10px_2px_rgba(0,0,0,0.5)]'

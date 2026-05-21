@@ -48,9 +48,9 @@ export const BossRoomHeader: React.FC = () => {
     <div
       className="w-full flex-none"
       style={{
-        background:   `linear-gradient(180deg, rgba(0,0,0,0.92) 0%, ${theme.bossBorderColor}18 60%, rgba(0,0,0,0.92) 100%)`,
-        borderBottom: `2px solid ${theme.bossBorderColor}99`,
-        boxShadow:    `0 4px 20px ${theme.bossBorderColor}40`,
+        background:   `linear-gradient(180deg, rgba(0,0,0,0.92) 0%, ${theme.bossBorderColor} 60%, rgba(0,0,0,0.92) 100%)`,
+        borderBottom: `2px solid ${theme.bossBorderColor}`,
+        boxShadow:    `0 4px 20px ${theme.bossBorderColor}`,
         isolation:    'isolate',
       }}
     >

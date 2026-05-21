@@ -71,7 +71,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
         </div>
 
         <h1
-          className="font-pixel text-[24px] tracking-wide"
+          className="font-pixel text-[13.5px] tracking-wide"
           style={{
             color:      theme.bossTextColor,
             textShadow: theme.bossTitleShadow,
@@ -80,7 +80,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
           THE HIGH LIMIT ROOM
         </h1>
 
-        <div className="font-pixel text-[13.5px] tracking-widest" style={{ color: `${theme.bossTextColor}cc` }}>
+        <div className="font-pixel text-[24px] tracking-widest" style={{ color: `${theme.bossTextColor}cc` }}>
           {boss.name.toUpperCase()}
         </div>
       </div>

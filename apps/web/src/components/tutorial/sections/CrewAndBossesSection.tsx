@@ -12,10 +12,12 @@
 // =============================================================================
 
 import React, { useEffect } from 'react';
-import { GAUNTLET }         from '@battlecraps/shared';
-import { useGameStore }     from '../../../store/useGameStore.js';
+import { GAUNTLET }                from '@battlecraps/shared';
+import { useGameStore }            from '../../../store/useGameStore.js';
 import type { CrewRosterEntry, GameState } from '../../../store/useGameStore.js';
-import { CREW_EMOJI }       from '../../CrewPortrait.js';
+import { CREW_EMOJI }              from '../../CrewPortrait.js';
+import { getCompForBossMarker }    from '../../CompCard.js';
+import { getFloorTheme }           from '../../../lib/floorThemes.js';
 
 // ---------------------------------------------------------------------------
 // Rarity styles (mirrors PubScreen)
@@ -58,17 +60,17 @@ const CrewCard: React.FC<{ crew: CrewRosterEntry }> = ({ crew }) => {
             <div className="h-1.5 w-16 bg-white/5 rounded" />
           </div>
           <div
-            className={`font-pixel text-[6px] px-1.5 py-0.5 rounded ${rarityStyle.bg} ${rarityStyle.text}`}
+            className={`font-pixel text-[14px] px-1.5 py-0.5 rounded ${rarityStyle.bg} ${rarityStyle.text}`}
           >
             {crew.rarity.toUpperCase()}
           </div>
         </div>
-        <div className="text-[8px] text-white/30 italic">
+        <div className="text-[12px] text-white/30 italic">
           {crew.unlockDescription || 'Unlock condition not yet met.'}
         </div>
         {crew.unlockProgress !== null && crew.unlockThreshold !== null && (
           <div className="space-y-0.5">
-            <div className="flex justify-between text-[7px] text-white/30">
+            <div className="flex justify-between text-[11px] text-white/30">
               <span>PROGRESS</span>
               <span>{crew.unlockProgress} / {crew.unlockThreshold}</span>
             </div>
@@ -89,15 +91,15 @@ const CrewCard: React.FC<{ crew: CrewRosterEntry }> = ({ crew }) => {
       <div className="flex items-start gap-2">
         <span className="text-2xl flex-none">{emoji}</span>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-pixel text-[8px] text-white/90">{crew.name}</span>
+          <span className="font-pixel text-[12px] text-white/90">{crew.name}</span>
+          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
             <span
-              className={`font-pixel text-[6px] px-1 py-0.5 rounded ${rarityStyle.bg} ${rarityStyle.text}`}
+              className={`font-pixel text-[7px] px-1 py-0.5 rounded ${rarityStyle.bg} ${rarityStyle.text}`}
             >
               {crew.rarity.toUpperCase()}
             </span>
             <span
-              className={`font-pixel text-[6px] px-1 py-0.5 rounded ${categoryStyle.bg} ${categoryStyle.text}`}
+              className={`font-pixel text-[7px] px-1 py-0.5 rounded ${categoryStyle.bg} ${categoryStyle.text}`}
             >
               {crew.abilityCategory}
             </span>
@@ -105,7 +107,7 @@ const CrewCard: React.FC<{ crew: CrewRosterEntry }> = ({ crew }) => {
         </div>
       </div>
       {crew.briefDescription && (
-        <p className="font-mono text-[8px] text-white/60 leading-relaxed">
+        <p className="font-mono text-[12px] text-white/60 leading-relaxed">
           {crew.briefDescription}
         </p>
       )}
@@ -129,47 +131,75 @@ const BossCard: React.FC<BossCardProps> = ({ markerIndex, revealed }) => {
 
   if (!revealed) {
     return (
-      <div className="border border-red-900/30 rounded p-3 bg-red-950/10 space-y-1.5">
+      <div
+        className="rounded p-3 space-y-1.5"
+        style={{ border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}
+      >
         <div className="flex items-center gap-2">
           <span className="text-2xl grayscale opacity-30">❓</span>
           <div className="flex-1 space-y-1">
-            <div className="h-2 w-20 bg-red-900/30 rounded" />
-            <div className="h-1.5 w-12 bg-red-900/20 rounded" />
+            <div className="h-2 w-20 rounded" style={{ background: 'rgba(255,255,255,0.10)' }} />
+            <div className="h-1.5 w-12 rounded" style={{ background: 'rgba(255,255,255,0.06)' }} />
           </div>
-          <span className="font-pixel text-[6px] text-red-400/40 border border-red-900/30 px-1.5 py-0.5 rounded">
+          <span
+            className="font-pixel text-[11px] px-1.5 py-0.5 rounded self-center"
+            style={{ color: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.12)' }}
+          >
             FLOOR {Math.floor(markerIndex / 3) + 1}
           </span>
         </div>
-        <p className="font-mono text-[8px] text-red-400/30 italic">
+        <p className="font-mono text-[12px] italic" style={{ color: 'rgba(255,255,255,0.20)' }}>
           Defeat the previous boss to reveal.
         </p>
       </div>
     );
   }
 
+  const ft = getFloorTheme(markerIndex);
+  // Floor 9 theme is designed for white backgrounds; flip to light tones in the dark HTP context
+  const isNullSpace = Math.floor(markerIndex / 3) === 8;
+  const textColor   = isNullSpace ? '#f0f0f0' : ft.bossTextColor;
+  const accentHi    = isNullSpace ? '#cccccc' : ft.accentBright;
+  const accentMid   = isNullSpace ? '#999999' : ft.accentPrimary;
+  const accentLo    = isNullSpace ? '#555555' : ft.accentDim;
+  const borderColor = isNullSpace ? 'rgba(255,255,255,0.20)' : ft.bossBorderColor;
+  const borderFaint = isNullSpace ? 'rgba(255,255,255,0.10)' : ft.borderLow;
+
+  const compIcon = getCompForBossMarker(markerIndex)?.icon ?? '⚡';
+
   return (
-    <div className="border border-red-900/50 rounded p-3 bg-red-950/20 space-y-1.5">
+    <div
+      className="rounded p-3 space-y-1.5"
+      style={{ border: `1px solid ${borderColor}`, background: accentLo + '1a' }}
+    >
       <div className="flex items-start gap-2">
-        <span className="text-2xl flex-none">⚔️</span>
+        <span className="text-2xl flex-none">{compIcon}</span>
         <div className="flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-pixel text-[8px] text-red-300">{boss.name}</span>
-            <span className="font-pixel text-[6px] text-red-400/70 border border-red-900/40 px-1 py-0.5 rounded">
+          <span className="font-pixel text-[12px]" style={{ color: textColor }}>
+            {boss.name}
+          </span>
+          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+            <span
+              className="font-pixel text-[7px] px-1 py-0.5 rounded"
+              style={{ color: accentHi + 'b3', border: `1px solid ${accentLo + '99'}` }}
+            >
               {boss.title}
             </span>
-          </div>
-          <div className="font-mono text-[7px] text-red-400/60 mt-0.5">
-            Floor {Math.floor(markerIndex / 3) + 1} · Marker {markerIndex + 1}
+            <span className="font-mono text-[11px]" style={{ color: accentMid + '99' }}>
+              Floor {Math.floor(markerIndex / 3) + 1} · Marker {markerIndex + 1}
+            </span>
           </div>
         </div>
       </div>
-      <p className="font-mono text-[8px] text-red-300/70 leading-relaxed">
+      <p className="font-mono text-[12px] leading-relaxed" style={{ color: textColor + 'b3' }}>
         {boss.ruleBlurb}
       </p>
       {boss.compDescription && (
-        <div className="border-t border-red-900/30 pt-1.5 mt-1">
-          <span className="font-pixel text-[6px] text-amber-400/60">DEFEAT REWARD: </span>
-          <span className="font-mono text-[8px] text-amber-300/60">{boss.compName} — {boss.compDescription}</span>
+        <div className="pt-1.5 mt-1" style={{ borderTop: `1px solid ${borderFaint}` }}>
+          <span className="font-pixel text-[7px]" style={{ color: accentHi + '99' }}>DEFEAT REWARD: </span>
+          <span className="font-mono text-[12px]" style={{ color: accentMid + '99' }}>
+            {boss.compName} — {boss.compDescription}
+          </span>
         </div>
       )}
     </div>
@@ -181,7 +211,7 @@ const BossCard: React.FC<BossCardProps> = ({ markerIndex, revealed }) => {
 // ---------------------------------------------------------------------------
 
 const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="font-pixel text-[7px] text-white/40 tracking-widest uppercase pt-3 pb-1 border-b border-white/10">
+  <div className="font-pixel text-[11px] text-white/40 tracking-widest uppercase pt-3 pb-1 border-b border-white/10">
     {children}
   </div>
 );
@@ -191,17 +221,21 @@ const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 // ---------------------------------------------------------------------------
 
 export const CrewAndBossesSection: React.FC = () => {
-  const crewRoster         = useGameStore((s: GameState) => s.crewRoster);
-  const fetchCrewRoster    = useGameStore((s) => s.fetchCrewRoster);
-  const currentMarkerIndex = useGameStore((s: GameState) => s.currentMarkerIndex);
+  const crewRoster           = useGameStore((s: GameState) => s.crewRoster);
+  const fetchCrewRoster      = useGameStore((s) => s.fetchCrewRoster);
+  const currentMarkerIndex   = useGameStore((s: GameState) => s.currentMarkerIndex);
+  const highestMarkerReached = useGameStore((s: GameState) => s.highestMarkerReached);
 
   // Trigger a roster fetch if not already loaded
   useEffect(() => {
     void fetchCrewRoster();
   }, [fetchCrewRoster]);
 
-  // Boss reveal thresholds: boss marker index must be <= currentMarkerIndex
-  const bossRevealed = (bossMarkerIndex: number) => currentMarkerIndex >= bossMarkerIndex;
+  // A boss is revealed only after the player has beaten them (advanced past
+  // their marker index). Uses the lifetime high-water mark so prior runs
+  // permanently unlock boss cards the player has already defeated.
+  const bossRevealed = (bossMarkerIndex: number) =>
+    Math.max(currentMarkerIndex, highestMarkerReached) >= bossMarkerIndex + 1;
 
   // Split roster into starter and unlocked-gated groups
   const starter  = (crewRoster ?? []).filter((c: CrewRosterEntry) => c.rarity === 'Starter');
@@ -212,7 +246,7 @@ export const CrewAndBossesSection: React.FC = () => {
 
       {/* ── Bosses ─────────────────────────────────────────────────────────── */}
       <SectionHeader>Bosses</SectionHeader>
-      <p className="font-mono text-[9px] text-white/40 py-2">
+      <p className="font-mono text-[14px] text-white/40 py-2">
         One boss waits at the end of each floor. Defeat them to earn a permanent
         comp perk. Bosses are revealed as you progress.
       </p>
@@ -224,20 +258,20 @@ export const CrewAndBossesSection: React.FC = () => {
 
       {/* ── Crew ───────────────────────────────────────────────────────────── */}
       <SectionHeader>Your Crew</SectionHeader>
-      <p className="font-mono text-[9px] text-white/40 py-2">
+      <p className="font-mono text-[14px] text-white/40 py-2">
         Recruit crew at the pub between markers. Abilities fire left-to-right
         before every roll. Five slots total.
       </p>
 
       {crewRoster === null ? (
-        <div className="font-pixel text-[8px] text-white/30 text-center py-6 animate-pulse">
+        <div className="font-pixel text-[12px] text-white/30 text-center py-6 animate-pulse">
           LOADING ROSTER…
         </div>
       ) : (
         <>
           {advanced.length > 0 && (
             <>
-              <div className="font-pixel text-[7px] text-amber-300/60 pt-2 pb-1">
+              <div className="font-pixel text-[11px] text-amber-300/60 pt-2 pb-1">
                 UNLOCKABLE CREW
               </div>
               <div className="space-y-2">
@@ -248,7 +282,7 @@ export const CrewAndBossesSection: React.FC = () => {
             </>
           )}
 
-          <div className="font-pixel text-[7px] text-white/40 pt-3 pb-1">
+          <div className="font-pixel text-[11px] text-white/40 pt-3 pb-1">
             STARTER CREW — ALWAYS AVAILABLE
           </div>
           <div className="space-y-2">

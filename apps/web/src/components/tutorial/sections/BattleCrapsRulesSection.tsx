@@ -8,6 +8,7 @@
 
 import React from 'react';
 import { GAUNTLET, FLOORS } from '@battlecraps/shared';
+import { useGameStore } from '../../../store/useGameStore';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -18,7 +19,7 @@ function dollars(cents: number): string {
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="font-pixel text-[7px] text-white/40 tracking-widest uppercase pt-3 pb-1 border-b border-white/10">
+  <div className="font-pixel text-[11px] text-white/40 tracking-widest uppercase pt-3 pb-1 border-b border-white/10">
     {children}
   </div>
 );
@@ -27,14 +28,18 @@ const Row: React.FC<{ label: string; value: string; valueColor?: string }> = ({
   label, value, valueColor = 'text-white/80',
 }) => (
   <div className="flex justify-between items-baseline py-1 border-b border-white/5">
-    <span className="font-mono text-[9px] text-white/50">{label}</span>
-    <span className={`font-pixel text-[8px] ${valueColor}`}>{value}</span>
+    <span className="font-mono text-[14px] text-white/50">{label}</span>
+    <span className={`font-pixel text-[12px] ${valueColor}`}>{value}</span>
   </div>
 );
 
 // ── Main component ──────────────────────────────────────────────────────────
 
 export const BattleCrapsRulesSection: React.FC = () => {
+  const currentMarkerIndex   = useGameStore((s) => s.currentMarkerIndex);
+  const highestMarkerReached = useGameStore((s) => s.highestMarkerReached);
+  const effectiveHighest = Math.max(currentMarkerIndex, highestMarkerReached);
+
   // Build floor data from the shared GAUNTLET constant
   const floors = FLOORS.map((floor) => {
     const markers = GAUNTLET.filter((m) => m.floor === floor.id);
@@ -42,55 +47,91 @@ export const BattleCrapsRulesSection: React.FC = () => {
   });
 
   return (
-    <div className="space-y-1 pb-4 font-mono text-[9px]">
+    <div className="space-y-1 pb-4 font-mono text-[14px]">
 
       {/* ── Gauntlet Structure ─────────────────────────────────────────────── */}
       <SectionHeader>The Gauntlet</SectionHeader>
-      <p className="text-white/50 leading-relaxed py-2">
+      <p className="text-white/50 leading-relaxed py-2 text-[11px]">
         Twenty-seven markers across nine floors. Each floor ends with a boss fight.
         Clear all twenty-seven to win the run.
       </p>
 
-      {floors.map((floor, fi) => (
-        <div key={fi} className="mt-2">
-          <div className="font-pixel text-[7px] text-amber-300/70 mb-1">
-            Floor {fi + 1} — {floor.name}
-          </div>
-          <div className="space-y-0.5">
-            {floor.markers.map((m, mi) => {
-              const globalIdx = fi * 3 + mi;
-              const isBoss = m.isBoss;
-              return (
-                <div
-                  key={mi}
-                  className={[
-                    'flex justify-between items-center px-2 py-1.5 rounded',
-                    isBoss
-                      ? 'border border-red-900/50 bg-red-950/30'
-                      : 'border border-white/5 bg-white/[0.02]',
-                  ].join(' ')}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`font-pixel text-[7px] ${isBoss ? 'text-red-400' : 'text-white/30'}`}
+      {floors.map((floor, fi) => {
+        const firstMarkerIndex = fi * 3;
+        const floorEntered = effectiveHighest >= firstMarkerIndex;
+
+        if (!floorEntered) {
+          return (
+            <div key={fi} className="mt-2">
+              <div className="flex items-center gap-2 opacity-30">
+                <span className="text-[10px]">🔒</span>
+                <span className="font-pixel text-[7px] text-white/40">
+                  Floor {fi + 1} — ???
+                </span>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div key={fi} className="mt-2">
+            <div className="font-pixel text-[8px] text-amber-300/70 mb-1">
+              Floor {fi + 1} — {floor.name}
+            </div>
+            <div className="space-y-0.5">
+              {floor.markers.map((m, mi) => {
+                const globalIdx = fi * 3 + mi;
+                const isBoss = m.isBoss;
+                const revealed = isBoss
+                  ? effectiveHighest >= globalIdx + 1
+                  : effectiveHighest >= globalIdx;
+
+                if (!revealed) {
+                  return (
+                    <div
+                      key={mi}
+                      className="flex justify-between items-center px-2 py-1.5 rounded border border-white/5 bg-white/[0.02] opacity-40"
                     >
-                      {isBoss ? '★ BOSS' : `MK ${globalIdx + 1}`}
-                    </span>
-                    {isBoss && m.boss && (
-                      <span className="text-[8px] text-red-300/70">{m.boss.name}</span>
-                    )}
-                  </div>
-                  <span
-                    className={`font-pixel text-[8px] ${isBoss ? 'text-red-300' : 'text-white/70'}`}
+                      <span className="font-pixel text-[7px] text-white/30">
+                        {isBoss ? '★ BOSS' : `MK ${globalIdx + 1}`}
+                      </span>
+                      <span className="font-pixel text-[8px] text-white/20">???</span>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div
+                    key={mi}
+                    className={[
+                      'flex justify-between items-center px-2 py-1.5 rounded',
+                      isBoss
+                        ? 'border border-red-900/50 bg-red-950/30'
+                        : 'border border-white/5 bg-white/[0.02]',
+                    ].join(' ')}
                   >
-                    {dollars(m.targetCents)}
-                  </span>
-                </div>
-              );
-            })}
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`font-pixel text-[8px] ${isBoss ? 'text-red-400' : 'text-white/30'}`}
+                      >
+                        {isBoss ? '★ BOSS' : `MK ${globalIdx + 1}`}
+                      </span>
+                      {isBoss && m.boss && (
+                        <span className="text-[9px] text-red-300/70">{m.boss.name}</span>
+                      )}
+                    </div>
+                    <span
+                      className={`font-pixel text-[9px] ${isBoss ? 'text-red-300' : 'text-white/70'}`}
+                    >
+                      {dollars(m.targetCents)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* ── Shooter Lives ──────────────────────────────────────────────────── */}
       <SectionHeader>Shooter Lives</SectionHeader>
@@ -122,7 +163,7 @@ export const BattleCrapsRulesSection: React.FC = () => {
       </p>
       <div className="space-y-0.5">
         <Row label="Starting Hype"       value="1.00×" />
-        <Row label="Point Hit"           value="+0.25×" valueColor="text-green-400" />
+        <Row label="Point Hit"           value="+0.15× – 0.30×" valueColor="text-green-400" />
         <Row label="Natural (7 or 11)"   value="+0.10×" valueColor="text-green-400" />
         <Row label="Craps Out"           value="−0.05×" valueColor="text-yellow-500" />
         <Row label="Seven Out"           value="Resets to 1.00×" valueColor="text-red-400" />
@@ -130,11 +171,11 @@ export const BattleCrapsRulesSection: React.FC = () => {
         <Row label="On Fire (tier 3)"    value="≥ 2.50×" valueColor="text-orange-400" />
       </div>
       <div className="mt-2 border border-amber-900/40 rounded bg-amber-950/20 p-3">
-        <div className="font-pixel text-[7px] text-amber-300 mb-1">PAYOUT FORMULA</div>
+        <div className="font-pixel text-[11px] text-amber-300 mb-1">PAYOUT FORMULA</div>
         <div className="text-white/60 leading-relaxed">
           Final payout = stake returned + ⌈ gross profit × Hype ⌉
         </div>
-        <div className="text-white/30 text-[8px] mt-1">
+        <div className="text-white/30 text-[12px] mt-1">
           Example: $100 Pass Line wins $100 base. At 1.5× Hype, profit is $150 (not $100).
         </div>
       </div>
@@ -148,9 +189,9 @@ export const BattleCrapsRulesSection: React.FC = () => {
           { point: '6 / 8',  pays: '6:5',  max: '5×' },
         ].map(({ point, pays, max }) => (
           <div key={point} className="border border-white/10 rounded p-2 bg-black/20">
-            <div className="font-pixel text-[7px] text-amber-300">{point}</div>
-            <div className="font-pixel text-[9px] text-green-400 mt-0.5">{pays}</div>
-            <div className="text-white/30 text-[7px] mt-0.5">cap {max} Pass</div>
+            <div className="font-pixel text-[11px] text-amber-300">{point}</div>
+            <div className="font-pixel text-[14px] text-green-400 mt-0.5">{pays}</div>
+            <div className="text-white/30 text-[11px] mt-0.5">cap {max} Pass</div>
           </div>
         ))}
       </div>
@@ -165,8 +206,8 @@ export const BattleCrapsRulesSection: React.FC = () => {
           { bet: 'Hard 8',  pays: '9:1' },
         ].map(({ bet, pays }) => (
           <div key={bet} className="border border-white/10 rounded p-1.5 bg-black/20">
-            <div className="font-pixel text-[7px] text-amber-300">{bet}</div>
-            <div className="font-pixel text-[8px] text-green-400 mt-0.5">{pays}</div>
+            <div className="font-pixel text-[11px] text-amber-300">{bet}</div>
+            <div className="font-pixel text-[12px] text-green-400 mt-0.5">{pays}</div>
           </div>
         ))}
       </div>

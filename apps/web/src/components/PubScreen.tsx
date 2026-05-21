@@ -23,7 +23,7 @@ import {
 } from '@battlecraps/shared';
 import { useGameStore, selectBankrollDisplay } from '../store/useGameStore.js';
 import type { CrewRosterEntry, PubDraftEntry } from '../store/useGameStore.js';
-import { getFloorTheme, getFloorIndex } from '../lib/floorThemes.js';
+import { getFloorTheme } from '../lib/floorThemes.js';
 import { CREW_EMOJI } from './CrewPortrait.js';
 
 // ---------------------------------------------------------------------------
@@ -79,7 +79,7 @@ const CREW_NAMES_FALLBACK: Record<number, string> = {
 // ---------------------------------------------------------------------------
 
 function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+  return `$${Math.round(cents / 100).toLocaleString('en-US')}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -177,13 +177,13 @@ interface SlotButtonProps {
   onClick:    () => void;
 }
 
-const SlotButton: React.FC<SlotButtonProps> = ({ index, occupantId, occupantName, isSelected, onClick }) => (
+const SlotButton: React.FC<SlotButtonProps> = ({ index, occupantId, isSelected, onClick }) => (
   <button
     type="button"
     onClick={onClick}
     className={[
-      'flex flex-col items-center gap-1 px-2 py-2 rounded border transition-all duration-100',
-      'active:scale-95 min-w-0',
+      'flex flex-col items-center justify-center gap-1 px-2 py-2 rounded border transition-all duration-100',
+      'active:scale-95 min-w-0 h-14',
       isSelected
         ? 'bg-amber-600/40 border-amber-400 shadow shadow-amber-400/40'
         : occupantId
@@ -191,25 +191,23 @@ const SlotButton: React.FC<SlotButtonProps> = ({ index, occupantId, occupantName
           : 'bg-stone-900/40 border-stone-700/30 hover:border-amber-600/40',
     ].join(' ')}
   >
-    {/* Slot index indicator */}
-    <div
-      className={[
-        'w-5 h-5 rounded flex items-center justify-center font-pixel text-[11.25px]',
-        isSelected ? 'bg-amber-500 text-stone-900' : 'bg-stone-700 text-amber-300/60',
-      ].join(' ')}
-    >
-      {index}
-    </div>
-
-    {/* Occupant name */}
-    <div className={[
-      'font-pixel text-[9.375px] text-center leading-tight w-12 truncate',
-      occupantId
-        ? isSelected ? 'text-amber-200' : 'text-amber-400/70'
-        : 'text-stone-600',
-    ].join(' ')}>
-      {occupantName ?? 'EMPTY'}
-    </div>
+    {occupantId ? (
+      <span className="text-[26px] leading-none">{CREW_EMOJI[occupantId] ?? '?'}</span>
+    ) : (
+      <>
+        <div
+          className={[
+            'w-5 h-5 rounded flex items-center justify-center font-pixel text-[11.25px]',
+            isSelected ? 'bg-amber-500 text-stone-900' : 'bg-stone-700 text-amber-300/60',
+          ].join(' ')}
+        >
+          {index}
+        </div>
+        <div className="font-pixel text-[9.375px] text-center leading-tight text-stone-600">
+          EMPTY
+        </div>
+      </>
+    )}
   </button>
 );
 
@@ -218,12 +216,13 @@ const SlotButton: React.FC<SlotButtonProps> = ({ index, occupantId, occupantName
 // ---------------------------------------------------------------------------
 
 interface PubFireSlotProps {
-  crewId:   number | null;
-  crewName: string | null;
-  onFire:   (() => void) | undefined;
+  crewId:      number | null;
+  crewName:    string | null;
+  description: string | null;
+  onFire:      (() => void) | undefined;
 }
 
-const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, crewName, onFire }) => {
+const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, crewName, description, onFire }) => {
   const [holding, setHolding] = useState(false);
   const holdTimer             = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -244,7 +243,7 @@ const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, crewName, onFire }) =
   if (!crewId) {
     // Empty slot — dim placeholder, no fire button
     return (
-      <div className="flex flex-col items-center gap-1 px-2 py-1.5 rounded border border-stone-700/20 bg-stone-900/20 min-w-0">
+      <div className="flex flex-col items-center justify-center gap-1 px-2 h-16 rounded border border-stone-700/20 bg-stone-900/20 min-w-0">
         <div className="w-5 h-5 rounded border border-dashed border-stone-700/40" />
         <div className="font-pixel text-[9.375px] text-stone-700">EMPTY</div>
       </div>
@@ -253,16 +252,30 @@ const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, crewName, onFire }) =
 
   return (
     <div
-      className="group relative flex flex-col items-center gap-1 px-2 py-1.5 rounded border border-amber-800/40 bg-stone-900/40 outline-none min-w-0"
+      className="group relative flex flex-col items-center justify-center px-2 h-16 rounded border border-amber-800/40 bg-stone-900/40 outline-none min-w-0"
       tabIndex={onFire ? 0 : -1}
     >
       {/* Emoji portrait */}
       <div className="text-[30px] leading-none">{CREW_EMOJI[crewId]}</div>
 
-      {/* Name */}
-      <div className="font-pixel text-[9.375px] text-amber-300/80 text-center w-12 truncate leading-tight">
-        {crewName}
-      </div>
+      {/* Tooltip — floats above slot on hover */}
+      {description && (
+        <div className="
+          absolute bottom-full left-1/2 -translate-x-1/2 mb-2
+          w-44 px-2 py-1.5 rounded
+          font-mono text-[10px] text-white/90 leading-snug
+          bg-black/90 border border-white/20
+          pointer-events-none z-50
+          opacity-0 group-hover:opacity-100
+          transition-opacity duration-150
+          whitespace-normal text-left
+        ">
+          <div className="font-pixel text-[6.25px] mb-1 tracking-widest text-amber-300/80">
+            {crewName?.toUpperCase()}
+          </div>
+          {description}
+        </div>
+      )}
 
       {/* Fire button — revealed on hover/focus */}
       {onFire && (
@@ -273,6 +286,7 @@ const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, crewName, onFire }) =
           onPointerUp={cancelHold}
           onPointerLeave={cancelHold}
           className={[
+            'absolute bottom-1 left-1/2 -translate-x-1/2',
             'w-5 h-5 rounded-sm flex items-center justify-center',
             'font-pixel text-[13.125px] leading-none',
             'bg-red-900/70 text-red-300 border border-red-700/60',
@@ -308,13 +322,9 @@ export const PubScreen: React.FC = () => {
   const fireCrew           = useGameStore((s) => s.fireCrew);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
   // The pub belongs to the floor just cleared, not the floor about to start.
-  // Theme from prevMarkerIndex so cross-floor pubs stay in the completed floor's
-  // aesthetic — the next floor's look is revealed by the cinematic, not the pub.
-  // Floor 9 (Null Space) is an exception: its stark white/greyscale inversion is
-  // so distinctive that even mid-floor pubs would spoil the reveal. Cap at Floor 8.
+  // Theme from prevMarker so cross-floor pubs stay in the completed floor's aesthetic.
   const prevMarkerForTheme = Math.max(0, currentMarkerIndex - 1);
-  const themeMarkerIndex   = getFloorIndex(prevMarkerForTheme) === 8 ? 23 : prevMarkerForTheme;
-  const theme              = getFloorTheme(themeMarkerIndex);
+  const theme              = getFloorTheme(prevMarkerForTheme);
 
   // ── Roster from store ─────────────────────────────────────────────────────
   // clearTransition() triggers fetchCrewRoster() before setting status=TRANSITION,
@@ -362,6 +372,10 @@ export const PubScreen: React.FC = () => {
   const crewNameMap: Record<number, string> = crewRoster
     ? Object.fromEntries(crewRoster.map((c) => [c.id, c.name]))
     : CREW_NAMES_FALLBACK;
+
+  const crewDescriptionMap: Record<number, string> = crewRoster
+    ? Object.fromEntries(crewRoster.filter((c) => c.briefDescription).map((c) => [c.id, c.briefDescription!]))
+    : {};
 
   const [selectedCrew,  setSelectedCrew]  = useState<PubDraftEntry | null>(null);
   const [selectedSlot,  setSelectedSlot]  = useState<number | null>(null);
@@ -517,6 +531,7 @@ export const PubScreen: React.FC = () => {
               key={i}
               crewId={slot?.crewId ?? null}
               crewName={slot ? (crewNameMap[slot.crewId] ?? `#${slot.crewId}`) : null}
+              description={slot ? (crewDescriptionMap[slot.crewId] ?? null) : null}
               onFire={slot !== null ? () => { void fireCrew(i); } : undefined}
             />
           ))}

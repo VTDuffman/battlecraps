@@ -202,7 +202,7 @@ export const CompCard: React.FC<CompCardProps> = (props) => {
 
       {/* COMP AWARDED badge */}
       <div
-        className="mt-3 px-3 py-0.5 rounded-full font-pixel text-[5px] tracking-[0.3em]"
+        className="mt-3 px-3 py-0.5 rounded-full font-pixel text-[6.05px] tracking-[0.3em]"
         style={{
           background: `${accentColor}22`,
           color:      accentColor,
@@ -214,7 +214,7 @@ export const CompCard: React.FC<CompCardProps> = (props) => {
 
       {/* Comp name */}
       <div
-        className="font-pixel text-[13px] text-center leading-tight px-5 mt-3"
+        className="font-pixel text-[15.73px] text-center leading-tight px-5 mt-3"
         style={{ color: 'rgba(0,0,0,0.85)' }}
       >
         {name}
@@ -228,7 +228,7 @@ export const CompCard: React.FC<CompCardProps> = (props) => {
 
       {/* Effect / flavor text */}
       <p
-        className="font-pixel text-[6px] text-center leading-relaxed px-5 mt-2.5 pb-6"
+        className="font-pixel text-[7.26px] text-center leading-relaxed px-5 mt-2.5 pb-6"
         style={{ color: 'rgba(0,0,0,0.55)' }}
       >
         {effect}

@@ -87,7 +87,12 @@ const AuthenticatedApp: React.FC = () => {
   const disconnect   = useGameStore((s) => s.disconnect);
   const setGetToken  = useGameStore((s) => s.setGetToken);
   const displayMarkerIndex = useGameStore(selectDisplayMarkerIndex);
-  const isNullSpace  = getFloorIndex(displayMarkerIndex) === 8;
+  const runStatus    = useGameStore((s) => s.status);
+  // Suppress greyscale only for the cross-floor pub after THE EMISSARY (marker 23):
+  // displayMarkerIndex=24 (Floor 9) but the cleared marker was Floor 8, so the pub
+  // belongs to THE SIGNAL. Within-Floor-9 pubs (markers 24, 25 cleared) keep the filter.
+  const isNullSpace  = getFloorIndex(displayMarkerIndex) === 8 &&
+    !(runStatus === 'TRANSITION' && getFloorIndex(displayMarkerIndex - 1) !== 8);
 
   // Inject the Clerk getToken function into the store on mount so all fetch
   // actions can get fresh JWTs without depending on React context.

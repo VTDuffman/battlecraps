@@ -248,7 +248,7 @@ const BetZone: React.FC<BetZoneProps> = ({
             'absolute -top-2.5 -right-2.5',
             'w-[35px] h-[35px] rounded-full',
             'flex items-center justify-center',
-            'border-2 font-pixel text-[9.375px] text-white shadow-md',
+            'border-2 font-pixel text-[9.375px] text-yellow-300 shadow-md',
             // Locked chips use a muted orange to signal "can't undo";
             // pending chips use the standard chip-red.
             isLocked

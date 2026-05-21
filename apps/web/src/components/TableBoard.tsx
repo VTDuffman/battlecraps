@@ -292,7 +292,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
       {/* ── GAME STATUS (back wall / far end) ────────────────────────────── */}
       <section
         aria-label="Game Status"
-        className="flex-none px-4 border-b-2"
+        className="z-10 flex-none px-4 border-b-2"
         style={{
           borderColor: theme.borderLow,
           paddingTop: 'clamp(8px,1.4dvh,16px)',
@@ -464,7 +464,7 @@ const GameStatus: React.FC = () => {
   }, [_hypeKey]);
 
   const { display: bankrollDisplay, direction: bankrollDir } = useAnimatedCounter(bankroll);
-  const bankrollStr = `$${(bankrollDisplay / 100).toFixed(2)}`;
+  const bankrollStr = `$${Math.round(bankrollDisplay / 100).toLocaleString('en-US')}`;
   const bankrollColor =
     bankrollDir === 'up'   ? 'text-green-400' :
     bankrollDir === 'down' ? 'text-red-400'   :
@@ -733,7 +733,7 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
           className={`font-pixel transition-all duration-300 ${targetMet ? 'text-[12.5px]' : 'text-[9.375px]'}`}
           style={{ color: isNullSpace ? 'rgba(0,0,0,0.40)' : 'rgba(255,255,255,0.30)' }}
         >
-          ${(bankroll / 100).toFixed(0)} / ${(target / 100).toFixed(0)}
+          ${Math.round(bankroll / 100).toLocaleString('en-US')} / ${Math.round(target / 100).toLocaleString('en-US')}
         </span>
       </div>
 

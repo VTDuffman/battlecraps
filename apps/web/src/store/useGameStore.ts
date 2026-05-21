@@ -386,6 +386,12 @@ export interface GameState {
    * appears. Cleared when the orchestrator transitions to the celebration phase.
    */
   pendingTransition: boolean;
+  /**
+   * True once ChipRain's onComplete has fired (or chip rain was absent).
+   * Used in concert with cascadeQueue.length === 0 to gate the 1500ms savor
+   * window — the transition never starts until both systems are done.
+   */
+  chipRainDone: boolean;
 
   // ── Transition orchestrator state ─────────────────────────────────────────
 
@@ -910,6 +916,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   pendingCascadeQueue: [],
   cascadeQueue:        [],
   pendingTransition:   false,
+  chipRainDone:        false,
   celebrationSnapshot:      null,
   activeTransition:         null,
   transitionPhaseIndex:     0,
@@ -963,6 +970,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       pendingCascadeQueue:       [],
       cascadeQueue:              [],
       pendingTransition:         false,
+      chipRainDone:              false,
       celebrationSnapshot:       null,
       activeTransition:          null,
       transitionPhaseIndex:      0,
@@ -1218,6 +1226,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       pendingCascadeQueue:       [],
       cascadeQueue:              [],
       pendingTransition:         false,
+      chipRainDone:              false,
       celebrationSnapshot:       null,
       activeTransition:          null,
       transitionPhaseIndex:      0,
@@ -1407,9 +1416,15 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   dequeueEvent() {
-    set((state) => ({
-      cascadeQueue: state.cascadeQueue.slice(1),
-    }));
+    set((state) => ({ cascadeQueue: state.cascadeQueue.slice(1) }));
+    const { cascadeQueue, chipRainDone, pendingTransition } = get();
+    if (cascadeQueue.length === 0 && chipRainDone && pendingTransition) {
+      setTimeout(() => {
+        if (!get().pendingTransition) return;
+        const { celebrationSnapshot: snap } = get();
+        set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
+      }, 1000);
+    }
   },
 
   applyPendingSettlement() {
@@ -1613,24 +1628,43 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     });
 
     if (isTransition) {
-      // Primary handoff: ChipRain.onComplete → triggerChipRainComplete() (below).
-      // Safety fallback: fires if ChipRain never calls back (e.g. the component
-      // unmounted, zero payout, or auto-clear via the ADVANCE button).
-      // When hasPops=true, ChipRain will call back well before 3 s, so the 3 s
-      // covers the longest torrent animation (~2.6 s max) as a true safety net.
-      // When hasPops=false (no chip rain will ever fire), shorten to 400 ms so
-      // the transition follows the win-flash immediately instead of hanging.
-      // When isAutoCollecting (player explicitly hit ADVANCE), always use 400 ms —
-      // no point waiting for chip rain the player already chose to skip.
-      setTimeout(() => {
-        if (!get().pendingTransition) return;
-        const { celebrationSnapshot: snap } = get();
-        set({
-          pendingTransition:    false,
-          activeTransition:     snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR',
-          transitionPhaseIndex: 0,
-        });
-      }, isAutoCollecting || !hasPops ? 400 : pendingCascadeQueue.length > 0 ? 1500 : 3000);
+      set({ chipRainDone: false });
+
+      if (isAutoCollecting) {
+        // Player chose ADVANCE — skip all animations, cut immediately.
+        setTimeout(() => {
+          if (!get().pendingTransition) return;
+          const { celebrationSnapshot: snap } = get();
+          set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
+        }, 400);
+      } else if (!hasPops) {
+        // No chip rain will fire. Treat chip rain as already done so that
+        // dequeueEvent() can start the savor window when cascade empties.
+        // If cascade is also empty right now, start the savor immediately.
+        set({ chipRainDone: true });
+        if (pendingCascadeQueue.length === 0) {
+          setTimeout(() => {
+            if (!get().pendingTransition) return;
+            const { celebrationSnapshot: snap } = get();
+            set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
+          }, 1000);
+        }
+        // else: dequeueEvent() handles it when the last bark completes.
+        // Safety net covers cascade_duration + 1500ms savor + buffer.
+        setTimeout(() => {
+          if (!get().pendingTransition) return;
+          const { celebrationSnapshot: snap } = get();
+          set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
+        }, 5000);
+      } else {
+        // hasPops=true: primary path is triggerChipRainComplete() + dequeueEvent()
+        // coordinating via chipRainDone. Safety net covers worst case.
+        setTimeout(() => {
+          if (!get().pendingTransition) return;
+          const { celebrationSnapshot: snap } = get();
+          set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
+        }, 5000);
+      }
     }
   },
 
@@ -1732,19 +1766,18 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   triggerChipRainComplete() {
-    // No-op if this isn't a marker-clear win-animation window.
     if (!get().pendingTransition) return;
-    // Brief pause after chip rain so the player can read the win and any
-    // remaining portrait animations can finish before the screen cuts.
-    setTimeout(() => {
-      if (!get().pendingTransition) return;
-      const { celebrationSnapshot: snap } = get();
-      set({
-        pendingTransition:    false,
-        activeTransition:     snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR',
-        transitionPhaseIndex: 0,
-      });
-    }, 1500);
+    set({ chipRainDone: true });
+    // Only start the savor window if crew barks have also finished.
+    // If cascade is still running, dequeueEvent() will start it when done.
+    const { cascadeQueue } = get();
+    if (cascadeQueue.length === 0) {
+      setTimeout(() => {
+        if (!get().pendingTransition) return;
+        const { celebrationSnapshot: snap } = get();
+        set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
+      }, 1000);
+    }
   },
 
   async rollDice(cheatDice?: [number, number]) {
@@ -2160,9 +2193,9 @@ export const selectActiveBark = (s: GameState): { seq: number; crewName: string;
   return head ? { seq: head.seq, crewName: head.crewName, barkCrewId: head.barkCrewId } : null;
 };
 
-/** Formatted bankroll string: "$12.50" */
+/** Formatted bankroll string: "$3,000,000" */
 export const selectBankrollDisplay = (s: GameState): string =>
-  `$${(s.bankroll / 100).toFixed(2)}`;
+  `$${Math.round(s.bankroll / 100).toLocaleString('en-US')}`;
 
 /** Formatted hype string: "1.4×" */
 export const selectHypeDisplay = (s: GameState): string =>

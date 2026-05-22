@@ -75,7 +75,9 @@ import { submitLeaderboardEntry } from './leaderboard.js';
  *
  * 0.30 → player starts the next marker with at most 30% of its target.
  */
-const ADVANCEMENT_BANKROLL_CAP = 0.30;
+const ADVANCEMENT_BANKROLL_CAP  = 0.30;
+/** Cap is skipped for floors below this number (1-based). F1–F2 are exempt. */
+const ADVANCEMENT_CAP_FROM_FLOOR = 3;
 
 // ---------------------------------------------------------------------------
 // Request / Response schemas (Fastify JSON Schema validation)
@@ -359,8 +361,10 @@ async function rollHandler(
     const nextStatus     = isLastMarker ? 'GAME_OVER' : 'TRANSITION';
     const nextMkrIndex   = run.currentMarkerIndex + 1;
     const nextMkrTarget  = MARKER_TARGETS[nextMkrIndex];
-    const finalBankroll  = (nextStatus === 'TRANSITION' && nextMkrTarget !== undefined)
-      ? Math.min(rawBankroll, Math.round(nextMkrTarget * ADVANCEMENT_BANKROLL_CAP))
+    const capApplies     = nextStatus === 'TRANSITION' && nextMkrTarget !== undefined
+                        && (GAUNTLET[nextMkrIndex]?.floor ?? 1) >= ADVANCEMENT_CAP_FROM_FLOOR;
+    const finalBankroll  = capApplies
+      ? Math.min(rawBankroll, Math.round(nextMkrTarget! * ADVANCEMENT_BANKROLL_CAP))
       : rawBankroll;
     const zeroBets: Bets = { passLine: 0, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } };
 
@@ -734,7 +738,8 @@ async function rollHandler(
   // Advancement bankroll cap: when a marker is cleared, trim bankroll to at most
   // ADVANCEMENT_BANKROLL_CAP × next marker target so players don't start the next
   // marker already most of the way through it from carryover surplus.
-  if (hitMarker && nextState.status === 'TRANSITION') {
+  if (hitMarker && nextState.status === 'TRANSITION'
+      && (GAUNTLET[newMarkerIndex]?.floor ?? 1) >= ADVANCEMENT_CAP_FROM_FLOOR) {
     const nextTarget = MARKER_TARGETS[newMarkerIndex];
     if (nextTarget !== undefined) {
       nextState.bankrollCents = Math.min(

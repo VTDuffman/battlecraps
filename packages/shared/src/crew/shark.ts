@@ -13,7 +13,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_MULT = 1.25;  // 1.25× the current marker's max bet
+const ADDITIVE_MULT = 0.65;  // 0.65× the current marker's max bet
 
 export const shark: CrewMember = {
   id:               8,

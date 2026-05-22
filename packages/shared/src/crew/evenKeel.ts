@@ -13,7 +13,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_MULT = 1.0;  // 1.0× the current marker's max bet
+const ADDITIVE_MULT = 0.50;  // 0.50× the current marker's max bet
 
 export const evenKeel: CrewMember = {
   id:               23,

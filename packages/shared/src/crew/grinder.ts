@@ -14,7 +14,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_MULT = 0.28;  // 0.28× the current marker's max bet
+const ADDITIVE_MULT = 0.15;  // 0.15× the current marker's max bet
 
 export const grinder: CrewMember = {
   id:               25,

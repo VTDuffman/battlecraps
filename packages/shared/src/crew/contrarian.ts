@@ -16,7 +16,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_MULT = 0.45;  // 0.45× the current marker's max bet
+const ADDITIVE_MULT = 0.25;  // 0.25× the current marker's max bet
 
 export const contrarian: CrewMember = {
   id:               30,

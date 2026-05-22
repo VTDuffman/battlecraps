@@ -10,7 +10,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_MULT = 0.75;
+const ADDITIVE_MULT = 0.40;
 
 export const regular: CrewMember = {
   id:               6,

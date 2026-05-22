@@ -122,19 +122,25 @@ test('3: seven-out decrements shooter count', async ({ page, request }) => {
   await expect(page.getByTestId('roll-log')).toContainText(/seven.out/i);
 });
 
-test('4: two point cycles push hype to tier 2 (animate-dice-heat)', async ({ page, request }) => {
+test('4: three point cycles push hype to tier 2 (animate-dice-heat)', async ({ page, request }) => {
   const runId = await waitForApp(page);
 
   // Cycle 1: set point=4, hit it
   await rollWithDice(request, runId, PASS_500, 2, 2); // POINT_SET (4)
   await page.waitForTimeout(300);
-  await rollWithDice(request, runId, PASS_500, 2, 2); // POINT_HIT (+0.25 → 1.25)
+  await rollWithDice(request, runId, PASS_500, 2, 2); // POINT_HIT (streak=0: +0.15 → 1.15)
   await page.waitForTimeout(300);
 
-  // Cycle 2: set point=4, hit it again → hype 1.50 → tier 2
+  // Cycle 2: set point=4, hit it again
   await rollWithDice(request, runId, PASS_500, 2, 2); // POINT_SET (4)
   await page.waitForTimeout(300);
-  await rollWithDice(request, runId, PASS_500, 2, 2); // POINT_HIT (+0.25 → 1.50)
+  await rollWithDice(request, runId, PASS_500, 2, 2); // POINT_HIT (streak=1: +0.20 → 1.35)
+  await page.waitForTimeout(300);
+
+  // Cycle 3: set point=4, hit it again → hype 1.60 → crosses 1.50 (Heating Up)
+  await rollWithDice(request, runId, PASS_500, 2, 2); // POINT_SET (4)
+  await page.waitForTimeout(300);
+  await rollWithDice(request, runId, PASS_500, 2, 2); // POINT_HIT (streak=2: +0.25 → 1.60)
   await page.waitForTimeout(300);
 
   // Heating Up class applied to the dice container

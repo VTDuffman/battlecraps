@@ -192,6 +192,11 @@ interface WsTurnSettledPayload {
    * natural win animation and stay in the come-out UI state.
    */
   naturalBlocked?: boolean;
+  /**
+   * The highest gauntlet marker index the player has ever reached, after this roll.
+   * Updated when a marker is cleared; otherwise carries the user's previous best.
+   */
+  highestMarkerReached: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -291,6 +296,7 @@ async function rollHandler(
       newConsecutivePointHits: run.consecutivePointHits,
       newBossPointHits:        run.bossPointHits,
       payoutBreakdown:         { passLine: 0, odds: 0, hardways: 0 },
+      highestMarkerReached:    user.highestMarkerReached,
     };
     stuckIO.to(`run:${runId}`).emit('turn:settled', stuckPayload);
 
@@ -522,12 +528,12 @@ async function rollHandler(
   //
   // Applied to initialCtxFcp.hype BEFORE resolveCascade so crew HYPE bonuses
   // stack on top of the already-seeded excitement.
-  //   POINT_HIT  → +0.25 (flat)
+  //   POINT_HIT  → getBaseHypeTick(consecutivePointHits): 0.15→0.20→0.25→0.30 (streak-based)
   //   NATURAL    → +0.10
   //   CRAPS_OUT  → −0.05 (floored at 1.0)
   // FCP: blocked naturals have rollResult NO_RESOLUTION → baseHypeTick = 0. Correct.
   const baseHypeTick =
-    initialCtxFcp.rollResult === 'POINT_HIT'   ?  0.25
+    initialCtxFcp.rollResult === 'POINT_HIT'   ? getBaseHypeTick(run.consecutivePointHits)
     : initialCtxFcp.rollResult === 'NATURAL'   ?  0.10
     : initialCtxFcp.rollResult === 'CRAPS_OUT' ? -0.05
     : 0;
@@ -585,6 +591,7 @@ async function rollHandler(
       newConsecutivePointHits: 0,
       newBossPointHits:        run.bossPointHits,
       payoutBreakdown:         { passLine: 0, odds: 0, hardways: 0 },
+      highestMarkerReached:    user.highestMarkerReached,
     };
     io.to(`run:${runId}`).emit('turn:settled', lossPayload);
 
@@ -703,6 +710,9 @@ async function rollHandler(
   const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
   const nextState = computeNextState(run, viggedContext, postFrequencyBankroll, incomingBets, hasSeaLegs);
 
+  const hitMarker    = nextState.currentMarkerIndex > run.currentMarkerIndex;
+  const newMarkerIndex = nextState.currentMarkerIndex;
+
   // ── 11b. ZERO_POINT comp — permanent 1.25× hype floor ────────────────────
   const hasZeroPoint = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.ZERO_POINT);
   if (hasZeroPoint && nextState.hype < 1.25) {
@@ -804,6 +814,16 @@ async function rollHandler(
       request.log.error({ err }, '[roll] Failed to update peakBankrollCents');
     });
 
+  if (hitMarker && newMarkerIndex > user.highestMarkerReached) {
+    void db
+      .update(users)
+      .set({ highestMarkerReached: newMarkerIndex })
+      .where(eq(users.id, userId))
+      .catch((err: unknown) => {
+        request.log.error({ err }, '[roll] Failed to update highestMarkerReached');
+      });
+  }
+
   // ── 13. WebSocket — emit cascade events + settlement summary ────────────────
   //
   // Emitted AFTER persistence so the client never receives events for a roll
@@ -854,12 +874,20 @@ async function rollHandler(
     ...(finalContext.flags.nudgedFrom !== undefined && { nudgedFrom: finalContext.flags.nudgedFrom }),
     ...(finalContext.flags.crapsOutBlocked && { crapsOutBlocked: true }),
     ...(finalContext.flags.naturalBlocked && { naturalBlocked: true }),
+    highestMarkerReached: hitMarker
+      ? Math.max(user.highestMarkerReached, newMarkerIndex)
+      : user.highestMarkerReached,
   };
   io.to(runRoom).emit('turn:settled', settledPayload);
 
   // ── 14. HTTP response ──────────────────────────────────────────────────────
   return reply.status(200).send({
-    run:           persistedRun,
+    run: {
+      ...persistedRun,
+      highestMarkerReached: hitMarker
+        ? Math.max(user.highestMarkerReached, newMarkerIndex)
+        : user.highestMarkerReached,
+    },
     roll: {
       dice:          finalContext.dice,
       diceTotal:     finalContext.diceTotal,

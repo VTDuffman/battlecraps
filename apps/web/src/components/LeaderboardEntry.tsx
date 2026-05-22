@@ -70,7 +70,7 @@ export function LeaderboardEntry({ entry, rank, showMarker }: LeaderboardEntryPr
       >
         {/* Rank badge */}
         <span
-          className="font-pixel text-[8px] w-5 text-right flex-shrink-0"
+          className="font-pixel text-[12px] w-5 text-right flex-shrink-0"
           style={{ color: `${theme.accentPrimary}60` }}
         >
           {rank}.
@@ -78,41 +78,41 @@ export function LeaderboardEntry({ entry, rank, showMarker }: LeaderboardEntryPr
 
         {/* Name */}
         <span
-          className="font-pixel text-[9px] flex-1 truncate"
+          className="font-pixel text-[13.5px] flex-1 truncate"
           style={{ color: theme.accentBright }}
         >
           {entry.displayName}
         </span>
 
         {/* Bankroll — peak for non-winners, final for winners */}
-        <span className="font-mono text-[9px]" style={{ color: theme.accentPrimary }}>
+        <span className="font-mono text-[13.5px]" style={{ color: theme.accentPrimary }}>
           {fmtDollars(showMarker ? entry.peakBankrollCents : entry.finalBankrollCents)}
         </span>
 
         {/* Floor badge (non-winners) or WIN star (winners) */}
         {showMarker ? (
           <span
-            className="font-pixel text-[7px] px-1.5 py-0.5 rounded"
+            className="font-pixel text-[10.5px] px-1.5 py-0.5 rounded"
             style={{ background: `${theme.accentDim}20`, color: `${theme.accentPrimary}70` }}
           >
             F{floorNum} MKR {markerInFloor}
           </span>
         ) : entry.didWinRun ? (
-          <span className="font-pixel text-[7px]" style={{ color: theme.accentBright }}>★</span>
+          <span className="font-pixel text-[10.5px]" style={{ color: theme.accentBright }}>★</span>
         ) : null}
 
         {/* Expand chevron */}
-        <span className="font-mono text-[8px]" style={{ color: `${theme.accentPrimary}40` }}>
+        <span className="font-mono text-[12px]" style={{ color: `${theme.accentPrimary}40` }}>
           {expanded ? '▲' : '▼'}
         </span>
       </button>
 
       {/* Secondary data row — always visible below main row */}
       <div className="px-3 pb-2 flex gap-4">
-        <span className="font-mono text-[8px]" style={{ color: `${theme.accentPrimary}50` }}>
+        <span className="font-mono text-[12px]" style={{ color: `${theme.accentPrimary}50` }}>
           Best roll: {fmtDollars(entry.highestRollAmplifiedCents)}
         </span>
-        <span className="font-mono text-[8px]" style={{ color: `${theme.accentPrimary}40` }}>
+        <span className="font-mono text-[12px]" style={{ color: `${theme.accentPrimary}40` }}>
           {fmtDate(entry.createdAt)}
         </span>
       </div>
@@ -121,7 +121,7 @@ export function LeaderboardEntry({ entry, rank, showMarker }: LeaderboardEntryPr
       {expanded && (
         <div className="px-3 pb-3 border-t" style={{ borderColor: `${theme.accentDim}20` }}>
           <p
-            className="font-pixel text-[7px] tracking-widest mt-2 mb-1.5"
+            className="font-pixel text-[10.5px] tracking-widest mt-2 mb-1.5"
             style={{ color: `${theme.accentPrimary}40` }}
           >
             CREW
@@ -136,11 +136,11 @@ export function LeaderboardEntry({ entry, rank, showMarker }: LeaderboardEntryPr
                   border:     `1px solid ${slot ? `${theme.accentDim}40` : `${theme.accentDim}15`}`,
                 }}
               >
-                <span className="text-2xl leading-none mb-1">
+                <span className="text-[36px] leading-none mb-1">
                   {slot ? (CREW_EMOJI[slot.id] ?? '❓') : '·'}
                 </span>
                 <span
-                  className="font-mono text-[8px] text-center break-words w-full leading-tight"
+                  className="font-mono text-[12px] text-center break-words w-full leading-tight"
                   style={{ color: slot ? theme.accentPrimary : `${theme.accentPrimary}25` }}
                 >
                   {slot ? slot.name : '—'}

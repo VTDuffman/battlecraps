@@ -3,7 +3,7 @@
 // packages/shared/src/crew/grinder.ts
 //
 // Category:    TABLE
-// Ability:     Dynamic additive (0.75× max-bet) on every NO_RESOLUTION.
+// Ability:     Dynamic additive (0.28× max-bet) on every NO_RESOLUTION.
 // Cooldown:    none
 //
 // Trigger: ctx.rollResult === 'NO_RESOLUTION'
@@ -14,7 +14,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_MULT = 0.75;  // 0.75× the current marker's max bet
+const ADDITIVE_MULT = 0.28;  // 0.28× the current marker's max bet
 
 export const grinder: CrewMember = {
   id:               25,

@@ -117,11 +117,11 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
       <header className="flex-none flex flex-col items-center pt-12 pb-6 px-4">
         {isVictory ? (
           <>
-            <div className="font-pixel text-[8px] text-yellow-400/80 tracking-widest mb-2">
+            <div className="font-pixel text-[12px] text-yellow-400/80 tracking-widest mb-2">
               ✦ GAUNTLET CLEARED ✦
             </div>
             <h1
-              className="font-pixel text-[18px] tracking-wider"
+              className="font-pixel text-[27px] tracking-wider"
               style={{
                 color: '#fbbf24',
                 textShadow: '0 0 20px #f59e0b, 0 0 60px #d97706, 0 0 100px #92400e',
@@ -132,11 +132,11 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
           </>
         ) : (
           <>
-            <div className="font-pixel text-[8px] text-red-700/70 tracking-widest mb-2">
+            <div className="font-pixel text-[12px] text-red-700/70 tracking-widest mb-2">
               ✦ RUN ENDED ✦
             </div>
             <h1
-              className="font-pixel text-[18px] tracking-wider"
+              className="font-pixel text-[27px] tracking-wider"
               style={{
                 color: '#ef4444',
                 textShadow: '0 0 20px #dc2626, 0 0 60px #991b1b, 0 0 100px #7f1d1d',
@@ -144,7 +144,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
             >
               GAME OVER
             </h1>
-            <p className="mt-3 font-pixel text-[6px] text-red-500/50 tracking-wider text-center">
+            <p className="mt-3 font-pixel text-[9px] text-red-500/50 tracking-wider text-center">
               {getToneTagline(markersCleared)}
             </p>
           </>
@@ -157,7 +157,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
       {/* ── Gauntlet pip strip ──────────────────────────────────────────────── */}
       {!isVictory && (
         <section className="flex-none px-4 pb-5">
-          <div className="font-pixel text-[5px] text-red-800/50 tracking-widest text-center mb-3">
+          <div className="font-pixel text-[8px] text-red-800/50 tracking-widest text-center mb-3">
             — GAUNTLET PROGRESS —
           </div>
           <GauntletPips cleared={markersCleared} />
@@ -190,7 +190,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
 
       {/* ── End-of-run crew rail ─────────────────────────────────────────────── */}
       <section className="flex-none px-4 pb-6">
-        <div className="font-pixel text-[6px] text-red-700/60 tracking-widest mb-3 text-center">
+        <div className="font-pixel text-[9px] text-red-700/60 tracking-widest mb-3 text-center">
           — LAST CREW STANDING —
         </div>
 
@@ -213,7 +213,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
           onClick={onPlayAgain}
           className="
             w-full py-4 rounded
-            font-pixel text-[10px] tracking-widest
+            font-pixel text-[15px] tracking-widest
             border-2 border-red-500
             text-red-100
             transition-all duration-150
@@ -235,7 +235,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
           ▶ PLAY AGAIN
         </button>
 
-        <p className="mt-3 text-center font-pixel text-[5px] text-red-900/60 tracking-wider">
+        <p className="mt-3 text-center font-pixel text-[8px] text-red-900/60 tracking-wider">
           NEW RUN · $30 BANKROLL · FRESH CREW SLOTS
         </p>
       </footer>
@@ -254,7 +254,7 @@ const StatRow: React.FC<{
   isPersonalBest?: boolean;
 }> = ({ label, value, highlight = false, isPersonalBest = false }) => (
   <div className="flex items-center justify-between px-4 py-3 border-b border-red-900/30 last:border-b-0">
-    <span className="font-pixel text-[6px] text-red-700/70 tracking-wider">
+    <span className="font-pixel text-[9px] text-red-700/70 tracking-wider">
       {label}
       {isPersonalBest && (
         <span className="ml-1.5 text-yellow-500/80">★ NEW</span>
@@ -262,7 +262,7 @@ const StatRow: React.FC<{
     </span>
     <span
       className={[
-        'font-mono text-[11px]',
+        'font-mono text-[17px]',
         highlight ? 'text-green-400' : 'text-red-300/80',
       ].join(' ')}
     >
@@ -312,7 +312,7 @@ const GauntletPips: React.FC<{ cleared: number }> = ({ cleared }) => (
               <span
                 className="font-pixel leading-none select-none"
                 style={{
-                  fontSize: isBoss ? '6px' : '5px',
+                  fontSize: isBoss ? '9px' : '8px',
                   color: isCleared
                     ? isBoss
                       ? ft.feltPrimary
@@ -349,7 +349,7 @@ const EndCrewSlot: React.FC<{ index: number; crewId: number | null }> = ({ index
       }}
     >
       {/* Slot number */}
-      <div className="font-pixel text-[5px] text-red-800/60">{index}</div>
+      <div className="font-pixel text-[8px] text-red-800/60">{index}</div>
 
       {/* Portrait placeholder */}
       <div
@@ -357,17 +357,17 @@ const EndCrewSlot: React.FC<{ index: number; crewId: number | null }> = ({ index
         style={{ background: crewId ? 'rgba(80,10,10,0.6)' : 'rgba(20,0,0,0.4)' }}
       >
         {crewId ? (
-          <span className="text-base leading-none">
+          <span className="text-[24px] leading-none">
             {CREW_EMOJI[crewId] ?? (name ?? '?').charAt(0)}
           </span>
         ) : (
-          <span className="font-pixel text-[7px] text-red-900/40">—</span>
+          <span className="font-pixel text-[11px] text-red-900/40">—</span>
         )}
       </div>
 
       {/* Name */}
       <div className={[
-        'font-pixel text-[4px] text-center leading-tight',
+        'font-pixel text-[6px] text-center leading-tight',
         crewId ? 'text-red-300/70' : 'text-red-900/30',
       ].join(' ')}>
         {name ?? 'EMPTY'}

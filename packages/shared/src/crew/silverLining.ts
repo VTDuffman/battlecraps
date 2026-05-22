@@ -3,7 +3,7 @@
 // packages/shared/src/crew/silverLining.ts
 //
 // Category:    HYPE
-// Ability:     +0.6 Hype on a CRAPS_OUT (come-out roll of 2, 3, or 12).
+// Ability:     +0.4 Hype on a CRAPS_OUT (come-out roll of 2, 3, or 12).
 // Cooldown:    none
 //
 // CRAPS_OUT is the only roll result where no other crew normally fires.
@@ -13,7 +13,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const HYPE_BOOST = 0.6;
+const HYPE_BOOST = 0.4;
 
 export const silverLining: CrewMember = {
   id:               21,

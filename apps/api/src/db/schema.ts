@@ -197,6 +197,15 @@ export const users = pgTable(
      */
     aliasChosen: boolean('alias_chosen').notNull().default(false),
 
+    /**
+     * The highest gauntlet marker index (0-based) the player has ever reached
+     * across all runs. Used by the How To Play screen to permanently reveal boss
+     * cards for floors the player has visited. Default 0 = never cleared a marker.
+     *
+     * Migration: migrate-add-highest-marker-reached.ts
+     */
+    highestMarkerReached: integer('highest_marker_reached').notNull().default(0),
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

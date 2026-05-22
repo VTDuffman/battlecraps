@@ -291,6 +291,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
 
       {/* ── GAME STATUS (back wall / far end) ────────────────────────────── */}
       <section
+        id="wall-divider"
         aria-label="Game Status"
         className="z-10 flex-none px-4 border-b-2"
         style={{
@@ -632,9 +633,8 @@ const GameStatus: React.FC = () => {
         </div>
       </div>
 
-      {/* Divider — also serves as the dice throw "back wall" target */}
+      {/* Divider — visual separator between header and marker progress */}
       <div
-        id="wall-divider"
         className="h-px"
         style={{ background: `linear-gradient(to right, transparent, ${theme.accentPrimary}66, transparent)` }}
       />

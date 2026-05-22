@@ -155,7 +155,7 @@ Comp Reward
 
 VFW Hall
 
-$300 / $600 / $1k
+$450 / $600 / $1k
 
 Sarge
 
@@ -219,7 +219,7 @@ The Regular (Payout): Grants a free Odds bonus equal to the Pass Line bet on a N
 
 The Big Spender (Payout): +$100 flat bonus on Hardway wins. Amplified by Hype.
 
-The Shark (Payout): +$100 flat bonus on any Point hit. Amplified by Hype.
+The Shark (Payout): Floor-scaled bonus (1.25× max bet) on any Point Hit. Amplified by Hype.
 
 The Whale (Payout): 1.2x multiplier on all winning payouts. Stacks multiplicatively with other crew multipliers.
 
@@ -233,7 +233,7 @@ The Mimic (Wildcard): Copies the previous slot's ability. Requires an occupied s
 
 The Old Pro (Wildcard): +1 Shooter per Marker reached. Fires on TRANSITION state.
 
-The Lucky Charm (Wildcard): Locks Hype floor at 2.0x if they are the only Crew member in any slot. Handled outside the standard execute() pipeline (hype floor injected before execute runs).
+The Lucky Charm (Hype): On the first Seven Out per shooter, injects +1.0 Hype before the reset. Next shooter starts at ≥2.0× Hype. One use per shooter; resets on new shooter.
 
 6. UI/UX Requirements
 

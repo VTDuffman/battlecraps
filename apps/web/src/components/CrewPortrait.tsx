@@ -57,21 +57,20 @@ const ABILITY_DESCRIPTIONS: Record<number, string> = {
   1:  'Re-rolls a Seven Out once per shooter.',
   2:  'On any paired roll in the point phase, nudges both dice ±1 pip toward the active point.',
   3:  'Once per shooter: lock a die face (1–6). That die is held for up to 4 rolls, or until a Seven Out.',
-  4:  'Active Hardway bets survive a soft-number hit.',
+  4:  'Active Hardway bets survive a soft-number hit — and earn a floor-scaled bonus when they do.',
   5:  'On Seven Out, refunds your Pass Line bet — except on the final shooter.',
-  6:  'Grants an Odds-style bonus equal to your Pass Line bet on every Natural.',
   9:  'Multiplies all winning payouts by 1.2× (fires only on rolls with a positive payout).',
-  10: 'Adds +0.2× Hype on every Natural.',
-  11: 'Adds +0.3× Hype on every Point Hit.',
+  10: 'Adds +0.30× Hype on every Natural.',
+  11: 'Adds +0.15× Hype on every Point Hit.',
   12: '33% chance each roll: +0.5× Hype or −0.25× Hype (no Hype floor).',
   13: 'Copies the ability of the last crew member that fired.',
   14: 'Raises the table bet ceiling from 10% to 15% of the marker target.',
-  15: 'Adds +1.0× Hype on every Seven Out; next shooter always starts at ≥2.0× Hype.',
+  15: 'Adds +1.0× Hype on the first Seven Out per shooter; that shooter always starts at ≥2.0× Hype.',
   // ── IDs 16–30: Starter roster ──────────────────────────────────────────
-  16: 'Adds +0.15× Hype whenever a 6 appears on either die.',
+  16: 'Adds +0.20× Hype whenever a 6 appears on either die.',
   19: 'Adds +0.2× Hype whenever this roll\'s total is higher than the last.',
   20: 'Adds +0.4× Hype whenever the dice repeat the same total as the last roll.',
-  21: 'Adds +0.6× Hype on a Craps Out — turns the worst come-out into a crowd moment.',
+  21: 'Adds +0.4× Hype on a Craps Out — turns the worst come-out into a crowd moment.',
   22: 'Adds +0.2× Hype whenever both dice show odd faces (1, 3, or 5).',
   26: 'Adds Hype on Point Set, scaled by difficulty: +0.3 for 4/10, +0.2 for 5/9, +0.1 for 6/8.',
   27: 'Adds +0.2× Hype on any roll totalling 7, come-out or point phase.',
@@ -83,19 +82,21 @@ const ABILITY_DESCRIPTIONS: Record<number, string> = {
 // ---------------------------------------------------------------------------
 
 const CREW_ADDITIVE_MULTS: Record<number, number> = {
+  6:  0.75,  // The Regular
   7:  1.5,   // The Big Spender
-  8:  2.0,   // The Shark
+  8:  1.25,  // The Shark
   17: 0.75,  // "Ace" McGee
-  18: 1.25,  // The Close Call
+  18: 0.65,  // The Close Call
   23: 1.0,   // The Even Keel
   24: 0.5,   // The Doorman
-  25: 0.75,  // The Grinder
-  28: 1.0,   // The Bookkeeper
+  25: 0.28,  // The Grinder
+  28: 0.50,  // The Bookkeeper
   29: 1.5,   // The Pressure Cooker
-  30: 1.0,   // The Contrarian
+  30: 0.45,  // The Contrarian
 };
 
 const CREW_ADDITIVE_TRIGGERS: Record<number, string> = {
+  6:  'on every Natural',
   7:  'when a Hardway bet wins',
   8:  'on every Point Hit',
   17: 'whenever a 1 appears on either die',

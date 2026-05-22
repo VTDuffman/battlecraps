@@ -55,8 +55,8 @@ describe('GAUNTLET', () => {
     expect(GAUNTLET[2]?.targetCents).toBe(25_000);
   });
 
-  it('Floor 2 targets: $300 / $600 / $1,000', () => {
-    expect(GAUNTLET[3]?.targetCents).toBe(30_000);
+  it('Floor 2 targets: $450 / $600 / $1,000', () => {
+    expect(GAUNTLET[3]?.targetCents).toBe(45_000);
     expect(GAUNTLET[4]?.targetCents).toBe(60_000);
     expect(GAUNTLET[5]?.targetCents).toBe(100_000);
   });
@@ -247,12 +247,11 @@ describe('getBossMinBet', () => {
   });
 
   it('TIDAL_SURGE boss (index 17) returns surge min when counter >= cycleLength', () => {
-    // surgePct=0.15; target=$175,000 (17_500_000 cents)
-    // ceil(17_500_000 * 0.15 / 100) * 100 = ceil(26250) * 100 = 26300?
-    // Actually: ceil(17500000 * 0.15 / 100) * 100
-    // 17500000 * 0.15 = 2625000; 2625000 / 100 = 26250; ceil(26250) = 26250; *100 = 2625000
-    expect(getBossMinBet(17, 5)).toBe(2_625_000);
-    expect(getBossMinBet(17, 6)).toBe(2_625_000);
+    // surge = round(getMinBet(17) × highTideMinMultiplier / 500) × 500
+    // getMinBet(17): maxBet=1_750_000; round(1_750_000/6/500)*500 = round(583.3)*500 = 291_500
+    // surge = round(291_500 × 3 / 500) × 500 = round(1749) × 500 = 874_500
+    expect(getBossMinBet(17, 5)).toBe(874_500);
+    expect(getBossMinBet(17, 6)).toBe(874_500);
   });
 
   it('CONVERGENCE boss (index 26) returns null (no risingMinBets)', () => {
@@ -304,27 +303,31 @@ describe('getCrewHireCost', () => {
 // ---------------------------------------------------------------------------
 
 describe('getBaseHypeTick', () => {
-  it('streak 0 → STREAK_BASE_TICK (0.05)', () => {
+  it('streak 0 → STREAK_BASE_TICK (0.15)', () => {
     expect(getBaseHypeTick(0)).toBeCloseTo(STREAK_BASE_TICK, 4);
   });
 
-  it('streak 1 → 0.10', () => {
-    // BASE(0.05) + INCREMENT(0.05) * 1 = 0.10
-    expect(getBaseHypeTick(1)).toBeCloseTo(0.10, 4);
+  it('streak 1 → 0.20', () => {
+    // BASE(0.15) + INCREMENT(0.05) * 1 = 0.20
+    expect(getBaseHypeTick(1)).toBeCloseTo(0.20, 4);
   });
 
-  it('streak 2 → 0.15', () => {
-    expect(getBaseHypeTick(2)).toBeCloseTo(0.15, 4);
+  it('streak 2 → 0.25', () => {
+    expect(getBaseHypeTick(2)).toBeCloseTo(0.25, 4);
   });
 
-  it('streak 3 → 0.20 (cap)', () => {
-    // BASE(0.05) + INCREMENT(0.05) * min(3, CAP=3) = 0.20
-    expect(getBaseHypeTick(3)).toBeCloseTo(0.20, 4);
+  it('streak 3 → 0.30 (cap)', () => {
+    // BASE(0.15) + INCREMENT(0.05) * min(3, CAP=3) = 0.30
+    expect(getBaseHypeTick(3)).toBeCloseTo(0.30, 4);
   });
 
   it('streak 4+ → same as streak 3 (capped at STREAK_CAP)', () => {
-    expect(getBaseHypeTick(4)).toBeCloseTo(0.20, 4);
-    expect(getBaseHypeTick(10)).toBeCloseTo(0.20, 4);
+    expect(getBaseHypeTick(4)).toBeCloseTo(0.30, 4);
+    expect(getBaseHypeTick(10)).toBeCloseTo(0.30, 4);
+  });
+
+  it('STREAK_BASE_TICK is 0.15', () => {
+    expect(STREAK_BASE_TICK).toBeCloseTo(0.15, 4);
   });
 
   it('STREAK_CAP is 3', () => {

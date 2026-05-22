@@ -137,7 +137,7 @@ describe('Point established', () => {
 // ---------------------------------------------------------------------------
 
 describe('Point hit', () => {
-  it('pays odds, increments consecutive hits, hype ticks +0.25, returns to COME_OUT', async () => {
+  it('pays odds, increments consecutive hits, hype ticks +0.15 (streak=0), returns to COME_OUT', async () => {
     // Set up a run in POINT_ACTIVE on 6, bankroll pre-deducted for the pass bet
     const run = await createRun(userId, {
       bankrollCents: 2500, // 3000 - 500 pass bet already deducted
@@ -159,12 +159,12 @@ describe('Point hit', () => {
     expect(r['status']).toBe('IDLE_TABLE');
     expect(r['phase']).toBe('COME_OUT');
     expect(r['currentPoint']).toBeNull();
-    // pass line 1:1 profit=500, stake=500 returned. hype seeded to 1.25 before settle.
-    // amplifiedProfit = floor(500 * 1.25 / 100) * 100 = floor(6.25) * 100 = 600
-    // payout = 500 + 600 = 1100 → bankroll = 2500 + 1100 = 3600
-    expect(r['bankrollCents']).toBe(3600);
-    // hype: 1.0 + 0.25 = 1.25
-    expect(r['hype']).toBeCloseTo(1.25, 4);
+    // pass line 1:1 profit=500, stake=500 returned. hype seeded to 1.15 before settle.
+    // amplifiedProfit = floor(500 * 1.15 / 100) * 100 = floor(5.75) * 100 = 500
+    // payout = 500 + 500 = 1000 → bankroll = 2500 + 1000 = 3500
+    expect(r['bankrollCents']).toBe(3500);
+    // hype: 1.0 + 0.15 = 1.15
+    expect(r['hype']).toBeCloseTo(1.15, 4);
 
     const roll = body['roll'] as Record<string, unknown>;
     expect(roll['rollResult']).toBe('POINT_HIT');

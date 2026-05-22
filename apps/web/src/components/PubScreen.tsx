@@ -501,7 +501,7 @@ export const PubScreen: React.FC = () => {
         )}
 
         {!draftLoading && (
-          <div className="grid grid-cols-3 gap-2">
+          <div className={['grid gap-2', pubDraft.length === 2 ? 'grid-cols-2 w-2/3 mx-auto' : 'grid-cols-3'].join(' ')}>
             {pubDraft.map((crew) => (
               <CrewCard
                 key={crew.id}

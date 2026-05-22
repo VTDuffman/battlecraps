@@ -138,7 +138,7 @@ This project uses strict TypeScript. Whenever you write or modify TypeScript cod
 **Odds:** 4/10 → 3× max, 2:1 | 5/9 → 4× max, 3:2 | 6/8 → 5× max, 6:5
 **Hardways:** 4/10 = 7:1 | 6/8 = 9:1
 **Bet max:** 10% of marker target
-**Hype ticks:** POINT_HIT +0.25 | NATURAL +0.10 | CRAPS_OUT −0.05 (floor 1.0); resets to 1.0× on seven-out. Tier thresholds: ≥1.5× = Heating Up, ≥2.5× = On Fire.
+**Hype ticks:** POINT_HIT +0.15×–0.30× streak-based (BASE=0.15, +0.05 per consecutive hit, CAP=3) | NATURAL +0.10 | CRAPS_OUT −0.05 (floor 1.0); resets to 1.0× on seven-out. Tier thresholds: ≥1.5× = Heating Up, ≥2.5× = On Fire.
 
 ---
 

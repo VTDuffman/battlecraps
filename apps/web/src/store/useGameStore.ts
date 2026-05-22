@@ -176,6 +176,8 @@ interface TurnSettledPayload {
   originalDice?:           [number, number];
   /** Present when The Physics Professor nudged the dice — the paired dice before the nudge. */
   nudgedFrom?:             [number, number];
+  /** Highest gauntlet marker index the player has ever reached, updated when a marker clears. */
+  highestMarkerReached:    number;
 }
 
 // ---------------------------------------------------------------------------
@@ -462,6 +464,14 @@ export interface GameState {
    * Server is the source of truth; client tracks optimistically for display.
    */
   maxBankrollCents: number;
+
+  /**
+   * The highest gauntlet marker index (0-based) the player has ever reached
+   * across all runs. Loaded from users.highest_marker_reached on connect.
+   * Updated from the turn:settled WS event and roll HTTP response.
+   * Used by the How To Play screen to permanently reveal boss cards.
+   */
+  highestMarkerReached: number;
 
   /**
    * Crew IDs (original 15) the player has permanently unlocked.
@@ -925,7 +935,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   floorRevealShownForFloor:  null,
   // titleShown persists across runs — read from localStorage once at init.
   titleShown: localStorage.getItem('bc_title_shown') === '1',
-  maxBankrollCents: 0,
+  maxBankrollCents:      0,
+  highestMarkerReached:  0,
   unlockedCrewIds:       [],
   crewRoster:            null,
   unacknowledgedUnlocks: [],
@@ -1365,6 +1376,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           consecutivePointHits: number;
           bossPointHits:        number;
           bets:                 Bets;
+          highestMarkerReached?: number;
         };
         roll: {
           autoClear:       boolean;
@@ -1402,6 +1414,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         newConsecutivePointHits: data.run.consecutivePointHits,
         newBossPointHits:        data.run.bossPointHits,
         payoutBreakdown:         data.roll.payoutBreakdown,
+        highestMarkerReached:    data.run.highestMarkerReached ?? 0,
       };
       set({ pendingSettlement: settlement });
       get().applyPendingSettlement();
@@ -1621,7 +1634,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       pendingCascadeQueue:  [],
       // Track personal best optimistically so the GameOverScreen can show it
       // immediately without waiting for the next page load.
-      maxBankrollCents:     Math.max(oldMaxBankrollCents, p.newBankroll),
+      maxBankrollCents:      Math.max(oldMaxBankrollCents, p.newBankroll),
+      highestMarkerReached:  p.highestMarkerReached ?? 0,
       // Open the cinematic unlock modal only when the cascade queue will be
       // empty after this flush — prevents mid-animation interruptions.
       unlockModalReady:     unacknowledgedUnlocks.length > 0 && pendingCascadeQueue.length === 0,
@@ -1820,6 +1834,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           consecutivePointHits: number;
           bossPointHits:        number;
           bets:                 Bets;
+          highestMarkerReached?: number;
         };
         roll: {
           autoClear?:       boolean;
@@ -1858,6 +1873,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           newConsecutivePointHits: data.run.consecutivePointHits,
           newBossPointHits:        data.run.bossPointHits,
           payoutBreakdown:         data.roll.payoutBreakdown,
+          highestMarkerReached:    data.run.highestMarkerReached ?? 0,
         };
         set({ pendingSettlement: autoSettlement });
         get().applyPendingSettlement();
@@ -1883,6 +1899,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         newConsecutivePointHits: data.run.consecutivePointHits,
         newBossPointHits:        data.run.bossPointHits,
         payoutBreakdown:         data.roll.payoutBreakdown,
+        highestMarkerReached:    data.run.highestMarkerReached ?? 0,
         ...(data.roll.originalDice !== undefined && { originalDice: data.roll.originalDice }),
         ...(data.roll.nudgedFrom   !== undefined && { nudgedFrom:   data.roll.nudgedFrom   }),
       };

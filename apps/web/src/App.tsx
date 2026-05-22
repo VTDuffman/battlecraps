@@ -69,6 +69,7 @@ interface RunStateData {
   maxBankrollCents?:     number;
   tutorialCompleted?:    boolean;
   unacknowledgedUnlocks?: UnacknowledgedUnlockData[];
+  highestMarkerReached?: number;
 }
 
 interface CreateRunResponse {
@@ -237,6 +238,7 @@ const AuthenticatedApp: React.FC = () => {
             ...(data.unacknowledgedUnlocks && {
               unacknowledgedUnlocks: data.unacknowledgedUnlocks.map((u) => u.id),
             }),
+            highestMarkerReached:  data.highestMarkerReached ?? 0,
           });
           setLoading(false);
           return;
@@ -278,6 +280,7 @@ const AuthenticatedApp: React.FC = () => {
         ...(data.run.unacknowledgedUnlocks && {
           unacknowledgedUnlocks: data.run.unacknowledgedUnlocks.map((u) => u.id),
         }),
+        highestMarkerReached:  data.run.highestMarkerReached ?? 0,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

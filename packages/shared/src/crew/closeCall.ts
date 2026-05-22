@@ -3,7 +3,7 @@
 // packages/shared/src/crew/closeCall.ts
 //
 // Category:    DICE
-// Ability:     Dynamic additive (1.25× max-bet) whenever dice show consecutive values.
+// Ability:     Dynamic additive (0.65× max-bet) whenever dice show consecutive values.
 // Cooldown:    none
 //
 // Trigger: Math.abs(ctx.dice[0] - ctx.dice[1]) === 1
@@ -13,7 +13,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_MULT = 1.25;  // 1.25× the current marker's max bet
+const ADDITIVE_MULT = 0.65;  // 0.65× the current marker's max bet
 
 export const closeCall: CrewMember = {
   id:               18,

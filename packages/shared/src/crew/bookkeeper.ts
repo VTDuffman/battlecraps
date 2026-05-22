@@ -3,7 +3,7 @@
 // packages/shared/src/crew/bookkeeper.ts
 //
 // Category:    WILDCARD
-// Ability:     Dynamic additive (1.0× max-bet) on every 3rd roll of the shooter.
+// Ability:     Dynamic additive (0.50× max-bet) on every 3rd roll of the shooter.
 // Cooldown:    none
 //
 // Trigger: ctx.shooterRollCount % 3 === 0
@@ -15,7 +15,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_MULT = 1.0;  // 1.0× the current marker's max bet
+const ADDITIVE_MULT = 0.50;  // 0.50× the current marker's max bet
 
 export const bookkeeper: CrewMember = {
   id:               28,

@@ -254,7 +254,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
   // ── Floor 2: VFW Hall ─────────────────────────────────────────────────────
 
   {
-    targetCents: 30_000,  // $300
+    targetCents: 45_000,  // $450
     venue:       'VFW Hall',
     floor:       2,
     isBoss:      false,
@@ -775,9 +775,9 @@ export function getMinBet(currentMarkerIndex: number): number {
  * Flat hype added on the FIRST point hit of any streak.
  * Subsequent hits add STREAK_INCREMENT more per step, up to STREAK_CAP.
  */
-export const STREAK_BASE_TICK = 0.05;
+export const STREAK_BASE_TICK = 0.15;
 export const STREAK_INCREMENT = 0.05;
-export const STREAK_CAP       = 3;  // tick caps at 4th+ hit: +0.20× per roll
+export const STREAK_CAP       = 3;  // tick caps at 4th+ hit: +0.30× per roll
 
 /**
  * Returns the base-game hype bonus for a point hit given the current
@@ -786,10 +786,10 @@ export const STREAK_CAP       = 3;  // tick caps at 4th+ hit: +0.20× per roll
  * Formula: STREAK_BASE_TICK + STREAK_INCREMENT × min(streak, STREAK_CAP)
  *
  * Streak entering → tick awarded:
- *   0 → +0.05   (1st hit)
- *   1 → +0.10   (2nd consecutive)
- *   2 → +0.15   (3rd consecutive)
- *   3 → +0.20   (4th+ consecutive, capped)
+ *   0 → +0.15   (1st hit)
+ *   1 → +0.20   (2nd consecutive)
+ *   2 → +0.25   (3rd consecutive)
+ *   3 → +0.30   (4th+ consecutive, capped)
  *
  * Applied BEFORE the crew cascade so Holly and other HYPE crew layer
  * their bonuses on top of the already-excited crowd.

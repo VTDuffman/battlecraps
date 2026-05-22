@@ -3,7 +3,7 @@
 // packages/shared/src/crew/nervousIntern.ts
 //
 // Category:    HYPE
-// Ability:     +0.2x Hype on a Natural (7 or 11 on Come Out)
+// Ability:     +0.30x Hype on a Natural (7 or 11 on Come Out)
 // Cooldown:    none — activates every time the condition is met.
 //
 // The Nervous Intern is a starter HYPE crew member — cheap, reliable, and
@@ -24,12 +24,12 @@
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
 /** The Hype additive bonus granted on each qualifying roll. */
-const HYPE_BONUS = 0.2;
+const HYPE_BONUS = 0.30;
 
 /**
  * The Nervous Intern
  *
- * On a NATURAL (7 or 11 on the come-out roll), adds +0.2x to the current
+ * On a NATURAL (7 or 11 on the come-out roll), adds +0.30x to the current
  * Hype multiplier. This immediately affects the payout for THIS roll and
  * persists to all future rolls until a seven-out resets Hype.
  *
@@ -37,7 +37,7 @@ const HYPE_BONUS = 0.2;
  *   // Should fire on NATURAL and boost hype:
  *   const ctx = makeCtx({ rollResult: 'NATURAL', hype: 1.0 });
  *   const result = nervousIntern.execute(ctx, neverCalledRng);
- *   assert(result.context.hype === 1.2);
+ *   assert(result.context.hype === 1.30);
  *   assert(result.newCooldown === 0); // no cooldown consumed
  *
  *   // Should NOT fire on non-Natural:
@@ -46,7 +46,7 @@ const HYPE_BONUS = 0.2;
  *   assert(result2.context.hype === 1.5); // unchanged
  *
  *   // Should stack with other Hype crew in the same cascade:
- *   // (hype: 1.0 → Nervous Intern → 1.2 → Drunk Uncle adds 0.3 → 1.5)
+ *   // (hype: 1.0 → Nervous Intern → 1.30 → Drunk Uncle adds 0.3 → 1.60)
  */
 export const nervousIntern: CrewMember = {
   id:               10,

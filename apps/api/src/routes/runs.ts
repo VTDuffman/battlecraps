@@ -62,6 +62,8 @@ interface CreateRunResponse {
     tutorialCompleted:  boolean;
     /** Unlocks earned but not yet shown to the player via cinematic sequence. */
     unacknowledgedUnlocks: UnacknowledgedUnlock[];
+    /** Highest gauntlet marker index (0-based) the player has ever reached. */
+    highestMarkerReached: number;
   };
 }
 
@@ -99,6 +101,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
         unlockedCrewIds:       userRow.unlockedCrewIds,
         tutorialCompleted:     userRow.tutorialCompleted,
         unacknowledgedUnlocks,
+        highestMarkerReached:  userRow.highestMarkerReached,
       });
     },
   );
@@ -152,6 +155,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
           unlockedCrewIds:       user.unlockedCrewIds,
           tutorialCompleted:     user.tutorialCompleted,
           unacknowledgedUnlocks,
+          highestMarkerReached:  user.highestMarkerReached,
         },
       };
 

@@ -3,7 +3,7 @@
 // packages/shared/src/crew/lookout.ts
 //
 // Category:    DICE
-// Ability:     +0.15 Hype whenever a 6 appears on either die.
+// Ability:     +0.20 Hype whenever a 6 appears on either die.
 // Cooldown:    none
 //
 // Trigger: ctx.dice[0] === 6 || ctx.dice[1] === 6
@@ -12,7 +12,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const HYPE_BOOST = 0.15;
+const HYPE_BOOST = 0.20;
 
 export const lookout: CrewMember = {
   id:               16,

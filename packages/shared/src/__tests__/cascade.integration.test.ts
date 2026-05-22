@@ -45,10 +45,10 @@ describe('cascade: Nervous Intern + Whale on a Yo-leven', () => {
   });
   const crew: (CrewMember | null)[] = [fresh(nervousIntern), null, fresh(whale), null, null];
 
-  it('Nervous Intern fires first and boosts hype to 1.2', () => {
+  it('Nervous Intern fires first and boosts hype to 1.3', () => {
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
-    // Intern fires (+0.2), then Whale fires (1.2× multiplier added)
-    expect(finalContext.hype).toBe(1.2);
+    // Intern fires (+0.30), then Whale fires (1.2× multiplier added)
+    expect(finalContext.hype).toBe(1.3);
   });
 
   it('Whale fires second and adds 1.2× to multipliers', () => {
@@ -65,7 +65,7 @@ describe('cascade: Nervous Intern + Whale on a Yo-leven', () => {
 
   it('event 0 delta contains updated hype', () => {
     const { events } = resolveCascade(crew, ctx, neverCalledRng);
-    expect(events[0]?.contextDelta.hype).toBe(1.2);
+    expect(events[0]?.contextDelta.hype).toBe(1.3);
   });
 
   it('event 1 delta contains updated multipliers array', () => {
@@ -73,9 +73,10 @@ describe('cascade: Nervous Intern + Whale on a Yo-leven', () => {
     expect(events[1]?.contextDelta.multipliers).toEqual([1.2]);
   });
 
-  it('settleTurn produces correct integer payout: floor(20000 × 1.2 × 1.2) = 28800', () => {
+  it('settleTurn produces correct integer payout: floor(20000 × 1.3 × 1.2) = 31200', () => {
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
-    expect(settleTurn(finalContext)).toBe(28_800);
+    // hype=1.3 (Intern +0.30), whale=1.2; floor(20000 × 1.56 / 100) × 100 = 31200
+    expect(settleTurn(finalContext)).toBe(31_200);
   });
 });
 
@@ -97,9 +98,9 @@ describe('cascade: Nervous Intern + Holly + Whale on a NATURAL (Holly does NOT f
   });
   const crew: (CrewMember | null)[] = [fresh(nervousIntern), fresh(hypeTrainHolly), fresh(whale), null, null];
 
-  it('Intern fires (+0.2), Holly silent on NATURAL: hype = 1.0 → 1.2', () => {
+  it('Intern fires (+0.30), Holly silent on NATURAL: hype = 1.0 → 1.3', () => {
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
-    expect(finalContext.hype).toBe(1.2);
+    expect(finalContext.hype).toBe(1.3);
   });
 
   it('emits 2 events (Intern + Whale fire; Holly silent on NATURAL)', () => {
@@ -107,9 +108,9 @@ describe('cascade: Nervous Intern + Holly + Whale on a NATURAL (Holly does NOT f
     expect(events).toHaveLength(2);
   });
 
-  it('settleTurn: floor(20000 × 1.2 × 1.2) = 28800', () => {
+  it('settleTurn: floor(20000 × 1.3 × 1.2) = 31200', () => {
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
-    expect(settleTurn(finalContext)).toBe(28_800);
+    expect(settleTurn(finalContext)).toBe(31_200);
   });
 });
 
@@ -126,9 +127,9 @@ describe('cascade: Holly + Whale on a POINT_HIT (Holly fires +0.3)', () => {
   });
   const crew: (CrewMember | null)[] = [fresh(nervousIntern), fresh(hypeTrainHolly), fresh(whale), null, null];
 
-  it('Holly fires (+0.3), Intern silent on POINT_HIT: hype = 1.0 → 1.3', () => {
+  it('Holly fires (+0.15), Intern silent on POINT_HIT: hype = 1.0 → 1.15', () => {
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
-    expect(finalContext.hype).toBe(1.3);
+    expect(finalContext.hype).toBe(1.15);
   });
 
   it('emits 2 events (Holly + Whale fire; Intern silent on POINT_HIT)', () => {
@@ -136,10 +137,11 @@ describe('cascade: Holly + Whale on a POINT_HIT (Holly fires +0.3)', () => {
     expect(events).toHaveLength(2);
   });
 
-  it('settleTurn: floor(20000 × 1.3 × 1.2) = 31200', () => {
+  it('settleTurn: floor(20000 × 1.15 × 1.2) = 27500 (IEEE-754: 1.38 rounds to 1.37999...)', () => {
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
-    // 1.3 × 1.2 = 1.56; floor(20000 × 1.56) = 31200
-    expect(settleTurn(finalContext)).toBe(31_200);
+    // finalMult = round(1.15 × 1.2 × 10000)/10000 = 13800/10000 = 1.3799999...
+    // floor(20000 × 1.3799... / 100) × 100 = floor(275.99...) × 100 = 27500
+    expect(settleTurn(finalContext)).toBe(27_500);
   });
 });
 

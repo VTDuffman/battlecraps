@@ -3,15 +3,15 @@
 // packages/shared/src/crew/hypeTrainHolly.ts
 //
 // Category:    HYPE
-// Ability:     +0.3× Hype on every Point Hit.
+// Ability:     +0.15× Hype on every Point Hit.
 //              When the shooter wins, the whole table gets more excited.
 //              Hype accumulates across a run — every point hit builds the crowd.
 // Cooldown:    none
 //
 // Examples:
-//   Hype 1.0 → Holly fires on Point Hit → Hype 1.3
-//   Hype 1.3 → Holly fires on Point Hit → Hype 1.6
-//   Hype 1.6 → Holly fires on Point Hit → Hype 1.9
+//   Hype 1.0 → Holly fires on Point Hit → Hype 1.15
+//   Hype 1.15 → Holly fires on Point Hit → Hype 1.30
+//   Hype 1.30 → Holly fires on Point Hit → Hype 1.45
 //
 // Rounding to 4 decimal places prevents IEEE-754 float accumulation from
 // corrupting the final Math.floor() in settleTurn().
@@ -19,7 +19,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const HYPE_BOOST = 0.3;
+const HYPE_BOOST = 0.15;
 
 export const hypeTrainHolly: CrewMember = {
   id:               11,

@@ -133,12 +133,12 @@ describe('DISABLE_CREW — Mme. Le Prix (marker 8)', () => {
     expect(Array.isArray(roll['cascadeEvents'])).toBe(true);
     expect((roll['cascadeEvents'] as unknown[]).length).toBe(0);
 
-    // hype seeded +0.25 for POINT_HIT → 1.25; Shark suppressed by DISABLE_CREW, no additives
-    // amplifiedProfit = floor(2000*1.25/100)*100 = floor(25)*100 = 2500
-    // betDelta = 2000 - 2000 = 0; payout = 2000 (stake) + 2500 = 4500
-    // newBankroll = 200_000 - 0 + 4500 = 204_500
+    // hype seeded +0.15 for POINT_HIT (streak=0) → 1.15; Shark suppressed by DISABLE_CREW, no additives
+    // amplifiedProfit = floor(2000*1.15/100)*100 = floor(23)*100 = 2300
+    // betDelta = 2000 - 2000 = 0; payout = 2000 (stake) + 2300 = 4300
+    // newBankroll = 200_000 - 0 + 4300 = 204_300
     const r = body['run'] as Record<string, unknown>;
-    expect(r['bankrollCents']).toBe(204_500);
+    expect(r['bankrollCents']).toBe(204_300);
   });
 });
 

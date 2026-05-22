@@ -5,12 +5,14 @@
 // Category:    TABLE
 // Ability:     Hardways stay up on "Soft" rolls. When a non-paired roll of a
 //              hardway number would normally wipe a hardway bet, The Mathlete
-//              negates that loss and protects the bet.
+//              negates that loss and protects the bet. Additionally, when the
+//              save fires, a floor-scaled additive bonus (SAVE_BONUS_MULT ×
+//              maxBet) is injected into the payout pool to reward the near-miss.
 // Cooldown:    none
 //
 // Example: Hard 6 bet active. Dice show [2,4]=6 (soft 6).
 //          Without Mathlete: Hard 6 bet is LOST.
-//          With Mathlete: Hard 6 bet is PROTECTED (baseHardwaysPayout set to 0).
+//          With Mathlete: Hard 6 bet is PROTECTED + additive bonus applied.
 //
 // Does NOT fire on SEVEN_OUT — seven-out clears everything, even for The Mathlete.
 // Does NOT fire on hardway WINS — only activates to prevent losses.
@@ -24,6 +26,8 @@ const HARDWAY_BET_KEY: Readonly<Record<number, keyof HardwayBets>> = {
 };
 
 const HARDWAY_NUMBERS = new Set([4, 6, 8, 10]);
+
+const SAVE_BONUS_MULT = 0.25;
 
 export const mathlete: CrewMember = {
   id:               4,
@@ -60,9 +64,13 @@ export const mathlete: CrewMember = {
     // so we must restore it to keep the bet alive on the table.
     const restoredHardways = { ...ctx.resolvedBets.hardways, [betKey]: ctx.bets.hardways[betKey] };
 
+    const maxBet = Math.floor(ctx.markerTargetCents * 0.10);
+    const additive = Math.round(SAVE_BONUS_MULT * maxBet / 100) * 100;
+
     return {
       context: {
         ...ctx,
+        additives: ctx.additives + additive,
         resolvedBets: { ...ctx.resolvedBets, hardways: restoredHardways },
         flags: { ...ctx.flags, hardwayProtected: true },
       },

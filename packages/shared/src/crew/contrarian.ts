@@ -3,7 +3,7 @@
 // packages/shared/src/crew/contrarian.ts
 //
 // Category:    WILDCARD
-// Ability:     Dynamic additive (1.0× max-bet) whenever this roll total < last.
+// Ability:     Dynamic additive (0.45× max-bet) whenever this roll total < last.
 // Cooldown:    none
 //
 // Trigger: ctx.previousRollTotal !== null && ctx.diceTotal < ctx.previousRollTotal
@@ -16,7 +16,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const ADDITIVE_MULT = 1.0;  // 1.0× the current marker's max bet
+const ADDITIVE_MULT = 0.45;  // 0.45× the current marker's max bet
 
 export const contrarian: CrewMember = {
   id:               30,

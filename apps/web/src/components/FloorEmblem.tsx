@@ -251,13 +251,14 @@ export const FloorEmblem: React.FC = () => {
     >
       {/* ── Outer border frame — like the printed border on casino felt ─── */}
       <div
-        className="flex flex-col items-center gap-1 px-6 py-4"
+        className="flex flex-col items-center gap-1"
         style={{
           color:         cfg.color,
           border:        `1px solid ${cfg.color}`,
           borderRadius:  '2px',
           outline:       `3px solid ${cfg.color}`,
           outlineOffset: '5px',
+          padding:       'clamp(6px,1.2dvh,16px) clamp(12px,2vw,24px)',
         }}
       >
         {/* ── Inner text wrapper ─────────────────────────────────────────── */}

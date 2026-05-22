@@ -307,7 +307,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
       </section>
 
       {/* ── GREEN SPACE — dice animation travel zone ─────────────────────── */}
-      <div className="relative flex-1">
+      <div className="relative flex-1 overflow-hidden">
         <FloorEmblem />
       </div>
 
@@ -396,7 +396,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
 
       {/* ── Roll Log spacer — reserves 40 px so the collapsed tab never      */}
       {/* ── covers the crew portraits.  The flex-1 dice zone absorbs this.   */}
-      <div className="flex-none h-10" aria-hidden="true" />
+      <div className="flex-none h-[clamp(10px,2dvh,40px)]" aria-hidden="true" />
 
       {/* ── Back-wall flash (dice hit the far wall at the top) ───────────── */}
       {wallFlash && (

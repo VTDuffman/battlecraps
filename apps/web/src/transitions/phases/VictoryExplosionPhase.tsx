@@ -46,7 +46,7 @@ export const VictoryExplosionPhase: React.FC<PhaseComponentProps> = ({ onAdvance
 
       {/* Header badge */}
       <div
-        className="font-pixel text-[7px] tracking-[0.4em]"
+        className="font-pixel text-r-7 tracking-[0.4em]"
         style={{ color: `${theme.accentPrimary}cc` }}
       >
         ✦ GAUNTLET CLEARED ✦
@@ -83,19 +83,19 @@ export const VictoryExplosionPhase: React.FC<PhaseComponentProps> = ({ onAdvance
               }}
             >
               <div
-                className="font-pixel text-[4px] tracking-widest"
+                className="font-pixel text-r-4 tracking-widest"
                 style={{ color: `${ft.accentPrimary}cc` }}
               >
                 FLOOR {floor.id}
               </div>
               <div
-                className="font-pixel text-[7px]"
+                className="font-pixel text-r-7"
                 style={{ color: ft.accentBright }}
               >
                 ✓
               </div>
               <div
-                className="font-pixel text-[4px] tracking-wide"
+                className="font-pixel text-r-4 tracking-wide"
                 style={{ color: `${ft.accentDim}cc` }}
               >
                 {floor.name.toUpperCase()}
@@ -109,7 +109,7 @@ export const VictoryExplosionPhase: React.FC<PhaseComponentProps> = ({ onAdvance
       <button
         type="button"
         onClick={onAdvance}
-        className="absolute bottom-6 font-pixel text-[5px] tracking-widest opacity-30 hover:opacity-60 transition-opacity"
+        className="absolute bottom-6 font-pixel text-r-5 tracking-widest opacity-30 hover:opacity-60 transition-opacity"
         style={{ color: theme.accentPrimary }}
       >
         TAP TO CONTINUE

@@ -93,13 +93,13 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
         <button
           type="button"
           onClick={onBack}
-          className="font-pixel text-[12px]"
+          className="font-pixel text-r-12"
           style={{ color: theme.accentPrimary }}
         >
           ← BACK
         </button>
         <h2
-          className="vegas-marquee-text font-pixel text-[15px] tracking-widest flex-1 text-center"
+          className="vegas-marquee-text font-pixel text-r-15 tracking-widest flex-1 text-center"
           style={{ color: theme.accentBright }}
         >
           HIGH ROLLER'S CLUB
@@ -113,7 +113,7 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className="flex-1 py-2 font-pixel text-[12px] tracking-widest transition-colors"
+            className="flex-1 py-2 font-pixel text-r-12 tracking-widest transition-colors"
             style={{
               color:        tab === t ? theme.accentBright : `${theme.accentPrimary}50`,
               borderBottom: tab === t ? `2px solid ${theme.accentPrimary}` : '2px solid transparent',

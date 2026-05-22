@@ -143,12 +143,12 @@ const CrewCard: React.FC<CrewCardProps> = ({ crew, isSelected, canAfford, onClic
       </div>
 
       {/* Name */}
-      <div className="font-pixel text-[9px] text-amber-100 leading-relaxed">
+      <div className="font-pixel text-r-9 text-amber-100 leading-relaxed">
         {crew.name}
       </div>
 
       {/* Description */}
-      <div className="font-mono text-[12px] text-amber-300/60 leading-tight flex-1">
+      <div className="font-mono text-r-12 text-amber-300/60 leading-tight flex-1">
         {crew.briefDescription ?? '???'}
       </div>
 
@@ -192,7 +192,7 @@ const SlotButton: React.FC<SlotButtonProps> = ({ index, occupantId, isSelected, 
     ].join(' ')}
   >
     {occupantId ? (
-      <span className="text-[26px] leading-none">{CREW_EMOJI[occupantId] ?? '?'}</span>
+      <span className="text-r-26 leading-none">{CREW_EMOJI[occupantId] ?? '?'}</span>
     ) : (
       <>
         <div
@@ -256,14 +256,14 @@ const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, crewName, description
       tabIndex={onFire ? 0 : -1}
     >
       {/* Emoji portrait */}
-      <div className="text-[30px] leading-none">{CREW_EMOJI[crewId]}</div>
+      <div className="text-r-30 leading-none">{CREW_EMOJI[crewId]}</div>
 
       {/* Tooltip — floats above slot on hover */}
       {description && (
         <div className="
           absolute bottom-full left-1/2 -translate-x-1/2 mb-2
           w-44 px-2 py-1.5 rounded
-          font-mono text-[10px] text-white/90 leading-snug
+          font-mono text-r-10 text-white/90 leading-snug
           bg-black/90 border border-white/20
           pointer-events-none z-50
           opacity-0 group-hover:opacity-100
@@ -470,11 +470,11 @@ export const PubScreen: React.FC = () => {
         <div className="mt-3 flex justify-center gap-6">
           <div className="text-center">
             <div className="font-pixel text-[11.25px] mb-0.5" style={{ color: theme.pubSubtextColor }}>BANKROLL</div>
-            <div className="font-pixel text-[15px]" style={{ color: theme.accentBright }}>{bankrollDisplay}</div>
+            <div className="font-pixel text-r-15" style={{ color: theme.accentBright }}>{bankrollDisplay}</div>
           </div>
           <div className="text-center">
             <div className="font-pixel text-[11.25px] mb-0.5" style={{ color: theme.pubSubtextColor }}>SHOOTERS</div>
-            <div className="font-pixel text-[15px]" style={{ color: theme.accentBright }}>
+            <div className="font-pixel text-r-15" style={{ color: theme.accentBright }}>
               {upcomingShooters} {'✦'.repeat(5)}
               {isComped && <span className="ml-px" style={{ color: theme.accentBright }}>✦</span>}
             </div>
@@ -567,7 +567,7 @@ export const PubScreen: React.FC = () => {
 
             {/* Overwrite warning */}
             {selectedSlot !== null && crewSlots[selectedSlot]?.crewId != null && (
-              <div className="mt-2 text-center font-mono text-[15px] text-amber-500/70">
+              <div className="mt-2 text-center font-mono text-r-15 text-amber-500/70">
                 ⚠ Replaces {crewNameMap[crewSlots[selectedSlot]!.crewId] ?? 'current crew'}
               </div>
             )}

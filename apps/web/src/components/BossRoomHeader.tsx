@@ -61,7 +61,7 @@ export const BossRoomHeader: React.FC = () => {
         {/* Left: boss identity */}
         <div className="flex items-center gap-2 min-w-0">
           <div
-            className="flex-none w-[30px] h-[30px] rounded flex items-center justify-center font-pixel text-[12px]"
+            className="flex-none w-[30px] h-[30px] rounded flex items-center justify-center font-pixel text-r-12"
             style={{
               color:      theme.bossStarColor,
               background: theme.bossStarBg,
@@ -93,7 +93,7 @@ export const BossRoomHeader: React.FC = () => {
               style={{ color: inHighTide ? '#fbbf24' : 'rgba(0,201,160,0.70)' }}>
               {inHighTide ? '⚠ HIGH TIDE' : 'LOW TIDE'}
             </div>
-            <div className="font-pixel text-[12px] leading-tight"
+            <div className="font-pixel text-r-12 leading-tight"
               style={{ color: inHighTide ? '#fbbf24' : 'rgba(0,201,160,0.85)' }}>
               {inHighTide
                 ? `${rollsUntilChange} ROLL${rollsUntilChange !== 1 ? 'S' : ''} LEFT`
@@ -112,7 +112,7 @@ export const BossRoomHeader: React.FC = () => {
               style={{ color: 'rgba(57,255,20,0.60)' }}>
               NULL PROTOCOL
             </div>
-            <div className="font-pixel text-[12px] leading-tight"
+            <div className="font-pixel text-r-12 leading-tight"
               style={{ color: '#39ff14' }}>
               7/11 = NULL
             </div>
@@ -131,7 +131,7 @@ export const BossRoomHeader: React.FC = () => {
                   style={{ color: 'rgba(57,255,20,0.60)' }}>
                   CONVERGENCE
                 </div>
-                <div className="font-pixel text-[15px] leading-tight"
+                <div className="font-pixel text-r-15 leading-tight"
                   style={{ color: isNaked ? '#ef4444' : '#39ff14' }}>
                   {isNaked ? '⌀ NAKED CRAPS' : `${activeCrewCount}/5 CREW`}
                 </div>
@@ -154,7 +154,7 @@ export const BossRoomHeader: React.FC = () => {
                   style={{ color: 'rgba(200,216,232,0.60)' }}>
                   HYPE DECAY
                 </div>
-                <div className="font-pixel text-[15px] leading-tight"
+                <div className="font-pixel text-r-15 leading-tight"
                   style={{ color: hypeColor }}>
                   {hypeStr}
                 </div>
@@ -171,7 +171,7 @@ export const BossRoomHeader: React.FC = () => {
               style={{ color: `${theme.bossStarColor}b3` }}>
               MIN BET
             </div>
-            <div className="font-pixel text-[15px] leading-tight"
+            <div className="font-pixel text-r-15 leading-tight"
               style={{ color: theme.bossStarColor }}>
               ${(currentMinBet / 100).toFixed(0)}
             </div>

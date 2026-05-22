@@ -56,7 +56,7 @@ export const KnowledgeGate: React.FC<KnowledgeGateProps> = ({ onFull, onBCOnly, 
           onClick={onFull}
           className="
             w-full py-4 rounded border-2
-            font-pixel text-[9px] tracking-widest
+            font-pixel text-r-9 tracking-widest
             transition-all duration-150 active:scale-[0.98]
           "
           style={{
@@ -75,7 +75,7 @@ export const KnowledgeGate: React.FC<KnowledgeGateProps> = ({ onFull, onBCOnly, 
           }}
         >
           SHOW ME EVERYTHING
-          <div className="font-mono text-[7px] text-white/40 mt-1 normal-case tracking-normal font-normal">
+          <div className="font-mono text-r-7 text-white/40 mt-1 normal-case tracking-normal font-normal">
             Full craps basics + BattleCraps rules
           </div>
         </button>
@@ -86,7 +86,7 @@ export const KnowledgeGate: React.FC<KnowledgeGateProps> = ({ onFull, onBCOnly, 
           onClick={onBCOnly}
           className="
             w-full py-4 rounded border
-            font-pixel text-[9px] tracking-widest
+            font-pixel text-r-9 tracking-widest
             transition-all duration-150 active:scale-[0.98]
           "
           style={{
@@ -102,7 +102,7 @@ export const KnowledgeGate: React.FC<KnowledgeGateProps> = ({ onFull, onBCOnly, 
           }}
         >
           YEAH, I KNOW CRAPS
-          <div className="font-mono text-[7px] text-white/40 mt-1 normal-case tracking-normal font-normal">
+          <div className="font-mono text-r-7 text-white/40 mt-1 normal-case tracking-normal font-normal">
             Just show me the BattleCraps rules
           </div>
         </button>
@@ -112,7 +112,7 @@ export const KnowledgeGate: React.FC<KnowledgeGateProps> = ({ onFull, onBCOnly, 
       <button
         type="button"
         onClick={() => { void fetch('/api/v1/auth/tutorial-complete', { method: 'POST' }); onSkip(); }}
-        className="font-pixel text-[7px] tracking-widest transition-colors duration-150"
+        className="font-pixel text-r-7 tracking-widest transition-colors duration-150"
         style={{ color: `${theme.accentDim}60` }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLButtonElement).style.color = `${theme.accentDim}90`;

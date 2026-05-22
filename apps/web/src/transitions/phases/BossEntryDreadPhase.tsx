@@ -56,7 +56,7 @@ export const BossEntryDreadPhase: React.FC<PhaseComponentProps> = () => {
 
       {/* Star badge — oversized for drama */}
       <div
-        className="w-24 h-24 rounded flex items-center justify-center font-pixel text-[42px]"
+        className="w-24 h-24 rounded flex items-center justify-center font-pixel text-r-42"
         style={{
           color:      theme.bossStarColor,
           background: theme.bossStarBg,
@@ -76,7 +76,7 @@ export const BossEntryDreadPhase: React.FC<PhaseComponentProps> = () => {
           YOU HAVE BEEN SUMMONED TO
         </div>
         <div
-          className="font-pixel text-[15px] tracking-wide"
+          className="font-pixel text-r-15 tracking-wide"
           style={{
             color:      `${theme.bossTextColor}cc`,
             textShadow: `0 0 20px ${theme.bossTextColor}40`,

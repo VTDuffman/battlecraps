@@ -21,6 +21,40 @@
     image-rendering: pixelated;
     image-rendering: crisp-edges;
   }
+
+  /* ── Responsive text sizes ─────────────────────────────────────────────────
+     Scale proportionally with viewport width. Calibrated for max-w-lg (512px)
+     game container: preferred vw value equals max at 512px viewport, scales
+     down ~27% at 375px (iPhone SE), with a pixel floor for readability.
+     Replace text-[Xpx] → text-r-X across all components.
+     ────────────────────────────────────────────────────────────────────────── */
+  .text-r-4  { font-size: clamp(3px,  0.78vw, 4px);  }
+  .text-r-5  { font-size: clamp(4px,  0.98vw, 5px);  }
+  .text-r-6  { font-size: clamp(5px,  1.17vw, 6px);  }
+  .text-r-7  { font-size: clamp(5px,  1.37vw, 7px);  }
+  .text-r-8  { font-size: clamp(6px,  1.56vw, 8px);  }
+  .text-r-9  { font-size: clamp(7px,  1.76vw, 9px);  }
+  .text-r-10 { font-size: clamp(7px,  1.95vw, 10px); }
+  .text-r-11 { font-size: clamp(8px,  2.15vw, 11px); }
+  .text-r-12 { font-size: clamp(9px,  2.34vw, 12px); }
+  .text-r-13 { font-size: clamp(10px, 2.54vw, 13px); }
+  .text-r-14 { font-size: clamp(10px, 2.73vw, 14px); }
+  .text-r-15 { font-size: clamp(11px, 2.93vw, 15px); }
+  .text-r-16 { font-size: clamp(12px, 3.13vw, 16px); }
+  .text-r-17 { font-size: clamp(12px, 3.32vw, 17px); }
+  .text-r-18 { font-size: clamp(14px, 3.52vw, 18px); }
+  .text-r-20 { font-size: clamp(15px, 3.91vw, 20px); }
+  .text-r-21 { font-size: clamp(15px, 4.10vw, 21px); }
+  .text-r-22 { font-size: clamp(16px, 4.30vw, 22px); }
+  .text-r-24 { font-size: clamp(17px, 4.69vw, 24px); }
+  .text-r-26 { font-size: clamp(19px, 5.08vw, 26px); }
+  .text-r-27 { font-size: clamp(20px, 5.27vw, 27px); }
+  .text-r-28 { font-size: clamp(20px, 5.47vw, 28px); }
+  .text-r-30 { font-size: clamp(22px, 5.86vw, 30px); }
+  .text-r-33 { font-size: clamp(24px, 6.45vw, 33px); }
+  .text-r-36 { font-size: clamp(26px, 7.03vw, 36px); }
+  .text-r-42 { font-size: clamp(30px, 8.20vw, 42px); }
+  .text-r-52 { font-size: clamp(36px, 10.16vw, 52px); }
 }
 
 /* ── Dice throw animation keyframes ────────────────────────────────────────

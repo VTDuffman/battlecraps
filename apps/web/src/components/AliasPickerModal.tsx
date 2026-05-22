@@ -103,7 +103,7 @@ export const AliasPickerModal: React.FC<AliasPickerModalProps> = ({
         {/* Header */}
         <div className="flex flex-col items-center gap-2 text-center">
           <div
-            className="font-pixel text-[11px] tracking-widest"
+            className="font-pixel text-r-11 tracking-widest"
             style={{ color: theme.accentBright }}
           >
             CHOOSE YOUR HANDLE
@@ -130,7 +130,7 @@ export const AliasPickerModal: React.FC<AliasPickerModalProps> = ({
             disabled={submitting}
             className="
               w-full px-4 py-3 rounded
-              font-pixel text-[9px] tracking-wider
+              font-pixel text-r-9 tracking-wider
               bg-black/60 border
               outline-none
               placeholder:opacity-30
@@ -165,7 +165,7 @@ export const AliasPickerModal: React.FC<AliasPickerModalProps> = ({
             disabled={submitting || alias.length < 2}
             className="
               w-full py-3.5 rounded
-              font-pixel text-[10px] tracking-widest
+              font-pixel text-r-10 tracking-widest
               border-2 text-amber-100
               transition-all duration-150 active:scale-95
               disabled:opacity-40 disabled:cursor-not-allowed

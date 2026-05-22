@@ -83,8 +83,8 @@ const ResultPopup: React.FC<ResultPopupProps> = ({ result, total, phase }) => {
       ].join(' ')}
       style={{ top: '50%', transform: 'translateY(-50%)' }}
     >
-      <span className={`font-pixel text-[20px] leading-tight ${colour}`}>{label}</span>
-      <span className="font-pixel text-[14px] text-white/60">— {total} —</span>
+      <span className={`font-pixel text-r-20 leading-tight ${colour}`}>{label}</span>
+      <span className="font-pixel text-r-14 text-white/60">— {total} —</span>
     </div>
   );
 };
@@ -516,7 +516,7 @@ export const DiceZone: React.FC = () => {
         {/* Lefty McGuffin dread phase — "SEVEN OUT?" pulsing warning */}
         {throwPhase === 'idle' && dreadDice !== null && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-            <span className="font-pixel text-[14px] text-red-400 animate-pulse tracking-widest">
+            <span className="font-pixel text-r-14 text-red-400 animate-pulse tracking-widest">
               SEVEN OUT?
             </span>
           </div>

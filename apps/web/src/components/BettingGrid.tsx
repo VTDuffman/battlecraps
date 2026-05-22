@@ -274,7 +274,7 @@ const BetZone: React.FC<BetZoneProps> = ({
             'absolute bottom-1 left-1 pointer-events-none',
             'font-pixel leading-none',
             streakCount >= 4
-              ? 'text-[14px] text-red-400 animate-hype-blaze'
+              ? 'text-r-14 text-red-400 animate-hype-blaze'
               : streakCount === 3
                 ? 'text-[12.5px] text-orange-400 animate-hype-hot'
                 : 'text-[10.9px] text-yellow-300',

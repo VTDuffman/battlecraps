@@ -375,7 +375,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
             className="
               absolute -top-16 left-1/2 -translate-x-1/2
               whitespace-nowrap
-              text-[30px] font-bold uppercase text-white drop-shadow-lg
+              text-r-30 font-bold uppercase text-white drop-shadow-lg
               pointer-events-none z-20
             "
           >

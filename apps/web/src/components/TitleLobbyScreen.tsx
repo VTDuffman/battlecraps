@@ -132,7 +132,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
             onClick={onContinue}
             className="
               w-full py-3.5 rounded
-              font-pixel text-[11px] tracking-widest
+              font-pixel text-r-11 tracking-widest
               border-2
               text-amber-100
               transition-all duration-150 active:scale-95
@@ -160,7 +160,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
           onClick={handleNewRunClick}
           className="
             w-full py-3.5 rounded
-            font-pixel text-[11px] tracking-widest
+            font-pixel text-r-11 tracking-widest
             border-2
             transition-all duration-150 active:scale-95
           "
@@ -186,7 +186,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
           onClick={() => setShowHowToPlay(true)}
           className="
             mt-2 w-full py-3.5 rounded
-            font-pixel text-[11px] tracking-widest
+            font-pixel text-r-11 tracking-widest
             border transition-all duration-150 active:scale-95
           "
           style={{
@@ -213,7 +213,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
           className="
             vegas-marquee-border vegas-marquee-text
             w-full py-3.5 rounded
-            font-pixel text-[11px] tracking-widest
+            font-pixel text-r-11 tracking-widest
             transition-all duration-150 active:scale-95
           "
           style={{

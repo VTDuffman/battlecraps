@@ -55,7 +55,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
       <div className="flex flex-col items-center gap-3 px-8 text-center">
         {/* Star badge */}
         <div
-          className="w-[72px] h-[72px] rounded flex items-center justify-center font-pixel text-[27px]"
+          className="w-[72px] h-[72px] rounded flex items-center justify-center font-pixel text-r-27"
           style={{
             color:      theme.bossStarColor,
             background: theme.bossStarBg,
@@ -66,7 +66,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
           ★
         </div>
 
-        <div className="font-pixel text-[9px] tracking-[0.3em]" style={{ color: `${theme.bossTextColor}b3` }}>
+        <div className="font-pixel text-r-9 tracking-[0.3em]" style={{ color: `${theme.bossTextColor}b3` }}>
           YOU HAVE BEEN SUMMONED TO
         </div>
 
@@ -80,7 +80,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
           THE HIGH LIMIT ROOM
         </h1>
 
-        <div className="font-pixel text-[24px] tracking-widest" style={{ color: `${theme.bossTextColor}cc` }}>
+        <div className="font-pixel text-r-24 tracking-widest" style={{ color: `${theme.bossTextColor}cc` }}>
           {boss.name.toUpperCase()}
         </div>
       </div>
@@ -116,7 +116,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
         <div className="font-pixel text-[7.5px] tracking-widest mb-2 text-center" style={{ color: `${theme.bossTextColor}99` }}>
           ── HOUSE RULES ──
         </div>
-        <p className="font-mono text-[12px] text-center leading-snug" style={{ color: `${theme.bossTextColor}80` }}>
+        <p className="font-mono text-r-12 text-center leading-snug" style={{ color: `${theme.bossTextColor}80` }}>
           {boss.ruleBlurb}
         </p>
       </div>
@@ -127,7 +127,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
         onClick={onEnter}
         className="
           px-10 py-3 rounded
-          font-pixel text-[12px] tracking-widest
+          font-pixel text-r-12 tracking-widest
           border-2
           transition-all duration-150 active:scale-95
         "

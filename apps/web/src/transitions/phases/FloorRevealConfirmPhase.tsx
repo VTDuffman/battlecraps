@@ -117,7 +117,7 @@ export const FloorRevealConfirmPhase: React.FC<PhaseComponentProps> = ({ onAdvan
         onClick={onAdvance}
         className="
           px-10 py-3 rounded
-          font-pixel text-[9px] tracking-widest
+          font-pixel text-r-9 tracking-widest
           border-2
           text-amber-100
           transition-all duration-150 active:scale-95

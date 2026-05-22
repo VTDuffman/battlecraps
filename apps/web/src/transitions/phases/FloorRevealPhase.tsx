@@ -89,7 +89,7 @@ export const FloorRevealPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
       <button
         type="button"
         onClick={onAdvance}
-        className="absolute bottom-6 font-pixel text-[5px] tracking-widest opacity-30 hover:opacity-60 transition-opacity"
+        className="absolute bottom-6 font-pixel text-r-5 tracking-widest opacity-30 hover:opacity-60 transition-opacity"
         style={{ color: theme.accentPrimary }}
       >
         TAP TO CONTINUE

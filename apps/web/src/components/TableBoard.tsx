@@ -723,7 +723,7 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
     <div className="w-full px-2 space-y-1" data-tutorial-zone="marker-progress">
       <div className="flex justify-between items-baseline">
         <span
-          className={`font-pixel transition-all duration-300 ${targetMet ? 'text-[14px]' : 'text-[9.375px]'}`}
+          className={`font-pixel transition-all duration-300 ${targetMet ? 'text-r-14' : 'text-[9.375px]'}`}
           style={{ color: isBoss ? '#f87171' : theme.accentPrimary }}
         >
           {label}

@@ -114,20 +114,20 @@ export const UnlockModal: React.FC = () => {
           style={{ borderRadius: 0 }}
         >
           {/* Rarity banner */}
-          <div className={`w-full py-1 text-center font-pixel text-[7px] tracking-widest ${palette.badge}`}>
+          <div className={`w-full py-1 text-center font-pixel text-r-7 tracking-widest ${palette.badge}`}>
             {rarity.toUpperCase()} CREW UNLOCKED
           </div>
 
           {/* Unlock condition — what the player did to earn this */}
           {unlockCondition ? (
             <div className="px-6 pt-3 pb-1">
-              <p className="font-mono text-[10px] text-white/45 text-center leading-4">
+              <p className="font-mono text-r-10 text-white/45 text-center leading-4">
                 {unlockCondition}
               </p>
             </div>
           ) : crewRoster === null ? (
             <div className="px-6 pt-3 pb-1">
-              <p className="font-mono text-[10px] text-white/25 text-center animate-pulse">
+              <p className="font-mono text-r-10 text-white/25 text-center animate-pulse">
                 Loading…
               </p>
             </div>
@@ -146,7 +146,7 @@ export const UnlockModal: React.FC = () => {
 
           {/* Crew name */}
           <div className="text-center px-6 pb-3">
-            <p className={`font-pixel text-[10px] leading-6 ${palette.text}`}>
+            <p className={`font-pixel text-r-10 leading-6 ${palette.text}`}>
               {name}
             </p>
           </div>
@@ -154,7 +154,7 @@ export const UnlockModal: React.FC = () => {
           {/* Character quote — in the crew member's own voice */}
           {quote && (
             <div className="px-6 pb-4">
-              <p className="font-mono text-[11px] text-white/70 text-center leading-5 italic">
+              <p className="font-mono text-r-11 text-white/70 text-center leading-5 italic">
                 "{quote}"
               </p>
             </div>
@@ -165,10 +165,10 @@ export const UnlockModal: React.FC = () => {
             <>
               <div className="mx-6 border-t border-white/10 mb-3" />
               <div className="px-6 pb-5">
-                <p className="font-mono text-[9px] text-white/40 tracking-widest uppercase mb-1 text-center">
+                <p className="font-mono text-r-9 text-white/40 tracking-widest uppercase mb-1 text-center">
                   Description
                 </p>
-                <p className="font-mono text-[11px] text-white/60 text-center leading-5">
+                <p className="font-mono text-r-11 text-white/60 text-center leading-5">
                   {briefDescription}
                 </p>
               </div>
@@ -182,7 +182,7 @@ export const UnlockModal: React.FC = () => {
               onClick={handleGotIt}
               className="
                 px-8 py-2
-                font-pixel text-[8px] tracking-widest
+                font-pixel text-r-8 tracking-widest
                 bg-gold text-black
                 border-2 border-gold-bright
                 hover:bg-gold-bright active:scale-95

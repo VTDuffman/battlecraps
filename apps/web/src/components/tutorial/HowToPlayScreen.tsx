@@ -73,13 +73,13 @@ const SectionPicker: React.FC<SectionPickerProps> = ({ onSelect, onBack }) => (
       <button
         type="button"
         onClick={onBack}
-        className="font-pixel text-[12px] text-white/40 hover:text-white/70 transition-colors active:scale-95"
+        className="font-pixel text-r-12 text-white/40 hover:text-white/70 transition-colors active:scale-95"
         aria-label="Back to lobby"
       >
         ← BACK
       </button>
       <div
-        className="flex-1 font-pixel text-[15px] text-center tracking-widest"
+        className="flex-1 font-pixel text-r-15 text-center tracking-widest"
         style={{ color: theme.accentBright }}
       >
         HOW TO PLAY
@@ -114,17 +114,17 @@ const SectionPicker: React.FC<SectionPickerProps> = ({ onSelect, onBack }) => (
             <span className="text-3xl">{section.icon}</span>
             <div className="flex-1">
               <div
-                className="font-pixel text-[14px] tracking-widest"
+                className="font-pixel text-r-14 tracking-widest"
                 style={{ color: theme.accentBright }}
               >
                 {section.label}
               </div>
-              <div className="font-mono text-[12px] text-white/40 mt-0.5">
+              <div className="font-mono text-r-12 text-white/40 mt-0.5">
                 {section.subtitle}
               </div>
             </div>
             <span
-              className="font-pixel text-[12px]"
+              className="font-pixel text-r-12"
               style={{ color: `${theme.accentDim}90` }}
             >
               →
@@ -155,7 +155,7 @@ const SectionView: React.FC<SectionViewProps> = ({ section, onBack }) => {
         <button
           type="button"
           onClick={onBack}
-          className="font-pixel text-[12px] text-white/40 hover:text-white/70 transition-colors active:scale-95"
+          className="font-pixel text-r-12 text-white/40 hover:text-white/70 transition-colors active:scale-95"
           aria-label="Back to section list"
         >
           ← BACK
@@ -163,7 +163,7 @@ const SectionView: React.FC<SectionViewProps> = ({ section, onBack }) => {
         <div className="flex-1 flex items-center justify-center gap-2">
           <span className="text-xl">{section.icon}</span>
           <span
-            className="font-pixel text-[14px] tracking-widest"
+            className="font-pixel text-r-14 tracking-widest"
             style={{ color: theme.accentBright }}
           >
             {section.label}

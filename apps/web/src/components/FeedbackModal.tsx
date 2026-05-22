@@ -98,14 +98,14 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-5 pb-3">
-          <span className="font-pixel text-[9px] text-yellow-300 tracking-widest">
+          <span className="font-pixel text-r-9 text-yellow-300 tracking-widest">
             ── SEND FEEDBACK ──
           </span>
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="font-pixel text-[8px] text-white/30 hover:text-white/70 transition-colors disabled:opacity-30"
+            className="font-pixel text-r-8 text-white/30 hover:text-white/70 transition-colors disabled:opacity-30"
             aria-label="Close"
           >
             ✕
@@ -114,7 +114,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
 
         {/* Context disclaimer */}
         {snap && (
-          <div className="mx-5 mb-3 px-3 py-2 bg-white/5 border border-white/10 text-[7px] font-mono text-white/40 leading-relaxed">
+          <div className="mx-5 mb-3 px-3 py-2 bg-white/5 border border-white/10 text-r-7 font-mono text-white/40 leading-relaxed">
             Context attached: Floor {floor}, Bankroll: ${(snap.bankroll / 100).toFixed(2)}, Last {snap.rollHistory.length} rolls
           </div>
         )}
@@ -122,12 +122,12 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
         {submitted ? (
           <div className="px-5 pb-6 pt-2 flex flex-col items-center gap-3">
             <div
-              className="font-pixel text-[13px] text-yellow-300"
+              className="font-pixel text-r-13 text-yellow-300"
               style={{ textShadow: '0 0 20px rgba(253,224,71,0.4)' }}
             >
               ★ RECEIVED ★
             </div>
-            <p className="font-pixel text-[7px] text-white/50 tracking-wide text-center">
+            <p className="font-pixel text-r-7 text-white/50 tracking-wide text-center">
               Thanks for helping make the game better.
             </p>
           </div>
@@ -136,7 +136,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
 
             {/* Type selector */}
             <div className="flex flex-col gap-1.5">
-              <label className="font-pixel text-[6px] text-white/40 tracking-widest">TYPE</label>
+              <label className="font-pixel text-r-6 text-white/40 tracking-widest">TYPE</label>
               <div className="flex gap-2">
                 {(['sentiment', 'bug', 'idea'] as FeedbackType[]).map((t) => (
                   <button
@@ -144,7 +144,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
                     type="button"
                     onClick={() => setType(t)}
                     className={`
-                      flex-1 py-1.5 font-pixel text-[6px] tracking-widest border transition-all duration-100
+                      flex-1 py-1.5 font-pixel text-r-6 tracking-widest border transition-all duration-100
                       ${type === t
                         ? 'border-yellow-500 text-yellow-300 bg-yellow-900/30'
                         : 'border-white/15 text-white/30 hover:border-white/30 hover:text-white/50'
@@ -159,7 +159,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
 
             {/* Rating */}
             <div className="flex flex-col gap-1.5">
-              <label className="font-pixel text-[6px] text-white/40 tracking-widest">
+              <label className="font-pixel text-r-6 text-white/40 tracking-widest">
                 RATING <span className="text-white/20">(OPTIONAL)</span>
               </label>
               <div className="flex gap-1.5">
@@ -169,7 +169,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
                     type="button"
                     onClick={() => setRating(rating === n ? null : n)}
                     className={`
-                      flex-1 py-1.5 font-pixel text-[9px] border transition-all duration-100
+                      flex-1 py-1.5 font-pixel text-r-9 border transition-all duration-100
                       ${rating !== null && n <= rating
                         ? 'border-yellow-500/60 text-yellow-400'
                         : 'border-white/15 text-white/20 hover:text-white/40 hover:border-white/30'
@@ -185,10 +185,10 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
             {/* Comment */}
             <div className="flex flex-col gap-1.5">
               <div className="flex items-end justify-between">
-                <label className="font-pixel text-[6px] text-white/40 tracking-widest">
+                <label className="font-pixel text-r-6 text-white/40 tracking-widest">
                   COMMENT
                 </label>
-                <span className={`font-mono text-[6px] ${comment.length > MAX_COMMENT * 0.9 ? 'text-red-400' : 'text-white/20'}`}>
+                <span className={`font-mono text-r-6 ${comment.length > MAX_COMMENT * 0.9 ? 'text-red-400' : 'text-white/20'}`}>
                   {comment.length}/{MAX_COMMENT}
                 </span>
               </div>
@@ -199,7 +199,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
                 placeholder="Tell us what's on your mind..."
                 className="
                   w-full bg-white/5 border border-white/15 text-white/80
-                  font-mono text-[9px] leading-relaxed px-3 py-2 resize-none
+                  font-mono text-r-9 leading-relaxed px-3 py-2 resize-none
                   placeholder:text-white/20 focus:outline-none focus:border-yellow-600/50
                   transition-colors
                 "
@@ -209,7 +209,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
 
             {/* Error */}
             {error && (
-              <p className="font-pixel text-[6px] text-red-400 tracking-wide">
+              <p className="font-pixel text-r-6 text-red-400 tracking-wide">
                 ✕ {error}
               </p>
             )}
@@ -219,7 +219,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ isOpen, onClose })
               type="submit"
               disabled={submitting || comment.trim().length === 0}
               className="
-                w-full py-2.5 font-pixel text-[8px] tracking-widest border-2
+                w-full py-2.5 font-pixel text-r-8 tracking-widest border-2
                 transition-all duration-150 active:scale-[0.98]
                 disabled:opacity-30 disabled:cursor-not-allowed
                 border-yellow-600 text-yellow-200

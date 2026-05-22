@@ -59,12 +59,12 @@ export const BossVictoryModal: React.FC<BossVictoryModalProps> = ({
 
       {/* ── Defeated badge ──────────────────────────────────────────────────── */}
       <div className="flex flex-col items-center gap-2 px-8 text-center">
-        <div className="font-pixel text-[5px] text-amber-600/60 tracking-[0.3em]">
+        <div className="font-pixel text-r-5 text-amber-600/60 tracking-[0.3em]">
           ENEMY NEUTRALIZED
         </div>
 
         <div
-          className="font-pixel text-[22px]"
+          className="font-pixel text-r-22"
           style={{
             color: '#d97706',
             textShadow: '0 0 40px rgba(217,119,6,0.5), 0 0 80px rgba(146,64,14,0.3)',
@@ -73,7 +73,7 @@ export const BossVictoryModal: React.FC<BossVictoryModalProps> = ({
           {boss.name.toUpperCase()}
         </div>
 
-        <div className="font-pixel text-[7px] text-amber-400/50 tracking-widest">
+        <div className="font-pixel text-r-7 text-amber-400/50 tracking-widest">
           DEFEATED
         </div>
       </div>
@@ -86,7 +86,7 @@ export const BossVictoryModal: React.FC<BossVictoryModalProps> = ({
 
       {/* ── Comp reward reveal ──────────────────────────────────────────────── */}
       <div className="flex flex-col items-center gap-3 px-6 text-center">
-        <div className="font-pixel text-[5px] text-amber-600/50 tracking-widest">
+        <div className="font-pixel text-r-5 text-amber-600/50 tracking-widest">
           ── FOR VALOR IN THE HIGH LIMIT ROOM ──
         </div>
 
@@ -98,16 +98,16 @@ export const BossVictoryModal: React.FC<BossVictoryModalProps> = ({
             boxShadow: '0 0 30px 4px rgba(217,119,6,0.15)',
           }}
         >
-          <div className="font-pixel text-[7px] text-amber-500/60 mb-1 tracking-wide">
+          <div className="font-pixel text-r-7 text-amber-500/60 mb-1 tracking-wide">
             COMP AWARDED
           </div>
           <div
-            className="font-pixel text-[13px] text-amber-200"
+            className="font-pixel text-r-13 text-amber-200"
             style={{ textShadow: '0 0 20px rgba(217,119,6,0.5)' }}
           >
             {rewardLabel}
           </div>
-          <div className="font-pixel text-[6px] text-amber-400/60 mt-1.5 leading-relaxed">
+          <div className="font-pixel text-r-6 text-amber-400/60 mt-1.5 leading-relaxed">
             {rewardSubtext}
           </div>
         </div>
@@ -119,7 +119,7 @@ export const BossVictoryModal: React.FC<BossVictoryModalProps> = ({
         onClick={onVisitPub}
         className="
           px-10 py-3 rounded
-          font-pixel text-[8px] tracking-widest
+          font-pixel text-r-8 tracking-widest
           border-2 border-amber-600
           text-amber-100
           transition-all duration-150 active:scale-95
@@ -132,7 +132,7 @@ export const BossVictoryModal: React.FC<BossVictoryModalProps> = ({
         ▶ COLLECT & VISIT THE PUB
       </button>
 
-      <p className="font-pixel text-[5px] text-amber-900/50 tracking-wide text-center px-10">
+      <p className="font-pixel text-r-5 text-amber-900/50 tracking-wide text-center px-10">
         Your crew awaits at the Seven-Proof Pub.<br />
         Fresh shooters. Fresh trouble.
       </p>

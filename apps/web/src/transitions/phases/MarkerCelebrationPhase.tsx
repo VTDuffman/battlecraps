@@ -76,7 +76,7 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
       {/* Main headline */}
       <div className="flex flex-col items-center gap-3 text-center">
         <h1
-          className="font-pixel text-[33px] tracking-wide"
+          className="font-pixel text-r-33 tracking-wide"
           style={{
             color:      theme.accentBright,
             textShadow: `0 0 30px ${theme.accentBright}80, 0 0 80px ${theme.accentPrimary}50`,
@@ -95,7 +95,7 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
 
         {/* Current Bankroll */}
         <div
-          className="font-pixel text-[21px]"
+          className="font-pixel text-r-21"
           style={{
             color:      theme.accentBright,
             textShadow: `0 0 16px ${theme.accentBright}60`,
@@ -138,7 +138,7 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
                 />
                 {isBossSlot && (
                   <div
-                    className="font-pixel text-[6px]"
+                    className="font-pixel text-r-6"
                     style={{ color: `${theme.accentDim}cc` }}
                   >
                     BOSS

@@ -91,13 +91,13 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({ isOpen, on
           className="flex items-center justify-between px-5 py-3 border-b"
           style={{ borderColor: '#facc1540' }}
         >
-          <span className="font-pixel text-[8px] tracking-widest text-yellow-300">
+          <span className="font-pixel text-r-8 tracking-widest text-yellow-300">
             RELEASE NOTES
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="font-pixel text-[7px] text-white/40 hover:text-white/80 transition-colors leading-none"
+            className="font-pixel text-r-7 text-white/40 hover:text-white/80 transition-colors leading-none"
             aria-label="Close release notes"
           >
             ✕
@@ -117,15 +117,15 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({ isOpen, on
             }}
           >
             <div className="flex items-baseline justify-between gap-2 mb-3">
-              <span className="font-pixel text-[11px] text-yellow-300 tracking-wide">
+              <span className="font-pixel text-r-11 text-yellow-300 tracking-wide">
                 {current.version}
               </span>
-              <span className="font-mono text-[8px] text-white/40">
+              <span className="font-mono text-r-8 text-white/40">
                 {current.date}
               </span>
             </div>
             <div
-              className="font-pixel text-[5px] tracking-[0.3em] text-yellow-400/60 mb-2"
+              className="font-pixel text-r-5 tracking-[0.3em] text-yellow-400/60 mb-2"
             >
               CURRENT BUILD
             </div>
@@ -136,7 +136,7 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({ isOpen, on
                   <li key={c.hash} className="flex items-start gap-2">
                     {prefix && (
                       <span
-                        className="font-pixel text-[5px] tracking-wide shrink-0 mt-[2px] px-1.5 py-0.5 rounded-sm"
+                        className="font-pixel text-r-5 tracking-wide shrink-0 mt-[2px] px-1.5 py-0.5 rounded-sm"
                         style={{
                           color: getPrefixColor(prefix),
                           background: `${getPrefixColor(prefix)}18`,
@@ -146,7 +146,7 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({ isOpen, on
                         {prefix.toUpperCase()}
                       </span>
                     )}
-                    <span className="font-mono text-[9px] text-white/85 leading-snug">{body}</span>
+                    <span className="font-mono text-r-9 text-white/85 leading-snug">{body}</span>
                   </li>
                 );
               })}
@@ -157,7 +157,7 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({ isOpen, on
           {history.length > 0 && (
             <div className="flex items-center gap-3">
               <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
-              <span className="font-pixel text-[5px] tracking-widest text-white/25">HISTORY</span>
+              <span className="font-pixel text-r-5 tracking-widest text-white/25">HISTORY</span>
               <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
             </div>
           )}
@@ -177,10 +177,10 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({ isOpen, on
 
                 <div className="flex-1 pb-2">
                   <div className="flex items-baseline justify-between gap-2 mb-1.5">
-                    <span className="font-pixel text-[8px] text-white/50 tracking-wide">
+                    <span className="font-pixel text-r-8 text-white/50 tracking-wide">
                       {entry.version}
                     </span>
-                    <span className="font-mono text-[7px] text-white/25">
+                    <span className="font-mono text-r-7 text-white/25">
                       {entry.date}
                     </span>
                   </div>
@@ -191,7 +191,7 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({ isOpen, on
                         <li key={c.hash} className="flex items-start gap-1.5">
                           {prefix && (
                             <span
-                              className="font-pixel text-[5px] tracking-wide shrink-0 mt-[1px] px-1 py-0.5 rounded-sm"
+                              className="font-pixel text-r-5 tracking-wide shrink-0 mt-[1px] px-1 py-0.5 rounded-sm"
                               style={{
                                 color: `${getPrefixColor(prefix)}99`,
                                 background: `${getPrefixColor(prefix)}10`,
@@ -201,7 +201,7 @@ export const ReleaseNotesModal: React.FC<ReleaseNotesModalProps> = ({ isOpen, on
                               {prefix.toUpperCase()}
                             </span>
                           )}
-                          <span className="font-mono text-[8px] text-white/45 leading-snug">{body}</span>
+                          <span className="font-mono text-r-8 text-white/45 leading-snug">{body}</span>
                         </li>
                       );
                     })}

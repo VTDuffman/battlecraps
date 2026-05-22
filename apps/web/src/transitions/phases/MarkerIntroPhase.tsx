@@ -55,7 +55,7 @@ export const MarkerIntroPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
 
       {/* Floor label */}
       <div
-        className="font-pixel text-[9px] tracking-[0.3em]"
+        className="font-pixel text-r-9 tracking-[0.3em]"
         style={{ color: `${theme.accentPrimary}99` }}
       >
         FLOOR {floor.id} — {floor.name.toUpperCase()}
@@ -93,7 +93,7 @@ export const MarkerIntroPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
               />
               {isBossPos && (
                 <div
-                  className="font-pixel text-[6px]"
+                  className="font-pixel text-r-6"
                   style={{ color: `${theme.accentDim}80` }}
                 >
                   BOSS
@@ -118,7 +118,7 @@ export const MarkerIntroPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
         </div>
 
         <div
-          className="font-pixel text-[28px] tabular-nums"
+          className="font-pixel text-r-28 tabular-nums"
           style={{
             color:      theme.accentBright,
             textShadow: `0 0 20px ${theme.accentBright}60, 0 0 60px ${theme.accentPrimary}30`,
@@ -128,7 +128,7 @@ export const MarkerIntroPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
         </div>
 
         <div
-          className="font-pixel text-[9px] tracking-widest"
+          className="font-pixel text-r-9 tracking-widest"
           style={{ color: `${theme.accentPrimary}60` }}
         >
           {marker.venue.toUpperCase()}
@@ -145,7 +145,7 @@ export const MarkerIntroPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
           }}
         >
           <p
-            className="font-pixel text-[9px] tracking-wide"
+            className="font-pixel text-r-9 tracking-wide"
             style={{ color: theme.bossTextColor }}
           >
             ★ {floor.bossName.toUpperCase()} AWAITS IN THE HIGH LIMIT ROOM

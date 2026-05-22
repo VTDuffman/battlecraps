@@ -83,7 +83,7 @@ const ReceiptEntry: React.FC<{ receipt: RollReceipt }> = ({ receipt }) => {
 
   return (
     <div className="py-1.5 border-b border-white/10 last:border-0">
-      <div className="text-[12px] text-white/30 mb-0.5 font-mono">{time}</div>
+      <div className="text-r-12 text-white/30 mb-0.5 font-mono">{time}</div>
       {receipt.lines.map((line, i) => (
         <ReceiptLine
           key={i}
@@ -158,7 +158,7 @@ export const RollLog: React.FC = () => {
           </span>
 
           {/* Chevron — ▲ = expand, ▼ = collapse */}
-          <span className="text-white/40 text-[15px] flex-none w-5 text-right">
+          <span className="text-white/40 text-r-15 flex-none w-5 text-right">
             {expanded ? '▼' : '▲'}
           </span>
         </button>

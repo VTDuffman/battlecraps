@@ -45,7 +45,7 @@ export const TitleScreenPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
 
       {/* Game type badge */}
       <div
-        className="font-pixel text-[5px] tracking-[0.5em] border px-5 py-1.5 rounded"
+        className="font-pixel text-r-5 tracking-[0.5em] border px-5 py-1.5 rounded"
         style={{
           color:       `${theme.accentPrimary}99`,
           borderColor: `${theme.accentDim}40`,
@@ -107,7 +107,7 @@ export const TitleScreenPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
         onClick={onAdvance}
         className="
           px-12 py-3.5 rounded
-          font-pixel text-[10px] tracking-widest
+          font-pixel text-r-10 tracking-widest
           border-2
           text-amber-100
           transition-all duration-150 active:scale-95

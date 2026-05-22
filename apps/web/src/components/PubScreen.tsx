@@ -104,7 +104,7 @@ const CrewCard: React.FC<CrewCardProps> = ({ crew, isSelected, canAfford, onClic
       onClick={onClick}
       disabled={!canAfford}
       className={[
-        'relative flex flex-col gap-2 p-3 rounded-lg text-left',
+        'relative flex flex-col gap-1 p-2 rounded-lg text-left',
         'border transition-all duration-150',
         'active:scale-95',
         isSelected
@@ -122,40 +122,41 @@ const CrewCard: React.FC<CrewCardProps> = ({ crew, isSelected, canAfford, onClic
       {/* Portrait — emoji centered in a category-themed frame. */}
       <div
         className={[
-          'w-full aspect-square rounded border-2 overflow-hidden',
+          'w-full rounded border-2 overflow-hidden',
           'flex items-center justify-center',
           portrait,
         ].join(' ')}
+        style={{ height: 'clamp(32px,4.5dvh,70px)' }}
       >
-        <span className="leading-none select-none" style={{ fontSize: 'clamp(42px, 7.5dvh, 60px)' }}>
+        <span className="leading-none select-none" style={{ fontSize: 'clamp(22px, 3.2dvh, 48px)' }}>
           {CREW_EMOJI[crew.id] ?? '?'}
         </span>
       </div>
 
       {/* Badges row: category + rarity */}
       <div className="flex gap-1 flex-wrap">
-        <div className={['self-start px-1.5 py-0.5 rounded text-[7.5px] font-pixel', cat.bg, cat.text].join(' ')}>
+        <div className={['self-start px-1.5 py-0.5 rounded text-r-6 font-pixel', cat.bg, cat.text].join(' ')}>
           {cat.label}
         </div>
-        <div className={['self-start px-1.5 py-0.5 rounded text-[7.5px] font-pixel', rarity.bg, rarity.text].join(' ')}>
+        <div className={['self-start px-1.5 py-0.5 rounded text-r-6 font-pixel', rarity.bg, rarity.text].join(' ')}>
           {crew.rarity.toUpperCase()}
         </div>
       </div>
 
       {/* Name */}
-      <div className="font-pixel text-r-9 text-amber-100 leading-relaxed">
+      <div className="font-pixel text-r-7 text-amber-100 leading-relaxed">
         {crew.name}
       </div>
 
       {/* Description */}
-      <div className="font-mono text-r-12 text-amber-300/60 leading-tight flex-1">
+      <div className="font-mono text-r-7 text-amber-300/60 leading-tight flex-1">
         {crew.briefDescription ?? '???'}
       </div>
 
       {/* Cost */}
       <div
         className={[
-          'font-pixel text-[10.5px] mt-1',
+          'font-pixel text-r-8 mt-1',
           canAfford ? 'text-amber-400' : 'text-red-400',
         ].join(' ')}
       >
@@ -182,28 +183,29 @@ const SlotButton: React.FC<SlotButtonProps> = ({ index, occupantId, isSelected, 
     type="button"
     onClick={onClick}
     className={[
-      'flex flex-col items-center justify-center gap-1 px-2 py-2 rounded border transition-all duration-100',
-      'active:scale-95 min-w-0 h-14',
+      'flex flex-col items-center justify-center gap-1 px-2 rounded border transition-all duration-100',
+      'active:scale-95 min-w-0',
       isSelected
         ? 'bg-amber-600/40 border-amber-400 shadow shadow-amber-400/40'
         : occupantId
           ? 'bg-stone-800/60 border-amber-700/40 hover:border-amber-500/60'
           : 'bg-stone-900/40 border-stone-700/30 hover:border-amber-600/40',
     ].join(' ')}
+    style={{ height: 'clamp(38px,5dvh,56px)' }}
   >
     {occupantId ? (
-      <span className="text-r-26 leading-none">{CREW_EMOJI[occupantId] ?? '?'}</span>
+      <span className="text-r-20 leading-none">{CREW_EMOJI[occupantId] ?? '?'}</span>
     ) : (
       <>
         <div
           className={[
-            'w-5 h-5 rounded flex items-center justify-center font-pixel text-[11.25px]',
+            'w-5 h-5 rounded flex items-center justify-center font-pixel text-r-8',
             isSelected ? 'bg-amber-500 text-stone-900' : 'bg-stone-700 text-amber-300/60',
           ].join(' ')}
         >
           {index}
         </div>
-        <div className="font-pixel text-[9.375px] text-center leading-tight text-stone-600">
+        <div className="font-pixel text-r-7 text-center leading-tight text-stone-600">
           EMPTY
         </div>
       </>
@@ -243,27 +245,28 @@ const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, crewName, description
   if (!crewId) {
     // Empty slot — dim placeholder, no fire button
     return (
-      <div className="flex flex-col items-center justify-center gap-1 px-2 h-16 rounded border border-stone-700/20 bg-stone-900/20 min-w-0">
+      <div className="flex flex-col items-center justify-center gap-1 px-2 rounded border border-stone-700/20 bg-stone-900/20 min-w-0" style={{ height: 'clamp(40px,5.5dvh,64px)' }}>
         <div className="w-5 h-5 rounded border border-dashed border-stone-700/40" />
-        <div className="font-pixel text-[9.375px] text-stone-700">EMPTY</div>
+        <div className="font-pixel text-r-7 text-stone-700">EMPTY</div>
       </div>
     );
   }
 
   return (
     <div
-      className="group relative flex flex-col items-center justify-center px-2 h-16 rounded border border-amber-800/40 bg-stone-900/40 outline-none min-w-0"
+      className="group relative flex flex-col items-center justify-center px-2 rounded border border-amber-800/40 bg-stone-900/40 outline-none min-w-0"
+      style={{ height: 'clamp(40px,5.5dvh,64px)' }}
       tabIndex={onFire ? 0 : -1}
     >
       {/* Emoji portrait */}
-      <div className="text-r-30 leading-none">{CREW_EMOJI[crewId]}</div>
+      <div className="text-r-22 leading-none">{CREW_EMOJI[crewId]}</div>
 
       {/* Tooltip — floats above slot on hover */}
       {description && (
         <div className="
           absolute bottom-full left-1/2 -translate-x-1/2 mb-2
           w-44 px-2 py-1.5 rounded
-          font-mono text-r-10 text-white/90 leading-snug
+          font-mono text-r-8 text-white/90 leading-snug
           bg-black/90 border border-white/20
           pointer-events-none z-50
           opacity-0 group-hover:opacity-100
@@ -288,7 +291,7 @@ const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, crewName, description
           className={[
             'absolute bottom-1 left-1/2 -translate-x-1/2',
             'w-5 h-5 rounded-sm flex items-center justify-center',
-            'font-pixel text-[13.125px] leading-none',
+            'font-pixel text-r-8 leading-none',
             'bg-red-900/70 text-red-300 border border-red-700/60',
             'transition-opacity duration-150',
             'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
@@ -427,7 +430,7 @@ export const PubScreen: React.FC = () => {
 
   return (
     <div
-      className="relative w-full max-w-lg mx-auto min-h-[100dvh] flex flex-col overflow-x-hidden border-x-4"
+      className="relative w-full max-w-lg mx-auto h-[100dvh] flex flex-col overflow-hidden border-x-4"
       style={{
         background:  theme.pubBg,
         borderColor: theme.borderHigh,
@@ -440,46 +443,46 @@ export const PubScreen: React.FC = () => {
       />
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <header className="relative flex-none px-4 pt-8 pb-6 text-center">
+      <header className="relative flex-none px-4 text-center" style={{ paddingTop: 'clamp(8px,1.2dvh,32px)', paddingBottom: 'clamp(6px,0.9dvh,24px)' }}>
         {/* Top accent bar */}
         <div
           className="absolute top-0 left-0 right-0 h-1"
           style={{ background: theme.pubAccentBar }}
         />
 
-        <div className="font-pixel text-[13.125px] tracking-widest mb-1" style={{ color: theme.pubSubtextColor }}>
+        <div className="font-pixel text-r-8 tracking-widest mb-1" style={{ color: theme.pubSubtextColor }}>
           ✦ MARKER CLEARED ✦
         </div>
         <h1
-          className="font-pixel text-[18.75px] tracking-wide"
+          className="font-pixel text-r-14 tracking-wide"
           style={{ color: theme.pubTitleColor, textShadow: theme.pubTitleShadow }}
         >
           {theme.pubName}
         </h1>
-        <div className="mt-2 font-mono text-[16.875px]" style={{ color: theme.pubSubtextColor }}>
+        <div className="mt-1 font-mono text-r-13" style={{ color: theme.pubSubtextColor }}>
           Hire a hand before the next marker…
         </div>
 
         {/* Divider */}
         <div
-          className="mt-4 h-px"
+          className="mt-2 h-px"
           style={{ background: `linear-gradient(to right, transparent, ${theme.accentDim}80, transparent)` }}
         />
 
         {/* Stats row */}
-        <div className="mt-3 flex justify-center gap-6">
+        <div className="mt-2 flex justify-center gap-4">
           <div className="text-center">
-            <div className="font-pixel text-[11.25px] mb-0.5" style={{ color: theme.pubSubtextColor }}>BANKROLL</div>
-            <div className="font-pixel text-r-15" style={{ color: theme.accentBright }}>{bankrollDisplay}</div>
+            <div className="font-pixel text-r-8 mb-0.5" style={{ color: theme.pubSubtextColor }}>BANKROLL</div>
+            <div className="font-pixel text-r-11" style={{ color: theme.accentBright }}>{bankrollDisplay}</div>
           </div>
           <div className="text-center">
-            <div className="font-pixel text-[11.25px] mb-0.5" style={{ color: theme.pubSubtextColor }}>SHOOTERS</div>
-            <div className="font-pixel text-r-15" style={{ color: theme.accentBright }}>
+            <div className="font-pixel text-r-8 mb-0.5" style={{ color: theme.pubSubtextColor }}>SHOOTERS</div>
+            <div className="font-pixel text-r-11" style={{ color: theme.accentBright }}>
               {upcomingShooters} {'✦'.repeat(5)}
               {isComped && <span className="ml-px" style={{ color: theme.accentBright }}>✦</span>}
             </div>
             {isComped && (
-              <div className="font-pixel text-[9.375px] tracking-widest mt-0.5" style={{ color: theme.accentBright }}>
+              <div className="font-pixel text-r-7 tracking-widest mt-0.5" style={{ color: theme.accentBright }}>
                 +1 COMP
               </div>
             )}
@@ -488,20 +491,20 @@ export const PubScreen: React.FC = () => {
       </header>
 
       {/* ── Draft cards ──────────────────────────────────────────────────────── */}
-      <section className="relative flex-none px-3 pb-4">
-        <div className="font-pixel text-[11.25px] text-center mb-3 tracking-widest" style={{ color: theme.pubSubtextColor }}>
+      <section className="relative flex-none px-3" style={{ paddingBottom: 'clamp(4px,0.6dvh,16px)' }}>
+        <div className="font-pixel text-r-8 text-center mb-1 tracking-widest" style={{ color: theme.pubSubtextColor }}>
           — AVAILABLE FOR HIRE —
         </div>
 
         {/* Loading state */}
         {draftLoading && (
-          <div className="text-center font-mono text-[16.875px] text-amber-300/40 py-4 animate-pulse">
+          <div className="text-center font-mono text-r-13 text-amber-300/40 py-4 animate-pulse">
             Loading crew…
           </div>
         )}
 
         {!draftLoading && (
-          <div className={['grid gap-2', pubDraft.length === 2 ? 'grid-cols-2 w-2/3 mx-auto' : 'grid-cols-3'].join(' ')}>
+          <div className={['grid gap-1', pubDraft.length === 2 ? 'grid-cols-2 w-2/3 mx-auto' : 'grid-cols-3'].join(' ')}>
             {pubDraft.map((crew) => (
               <CrewCard
                 key={crew.id}
@@ -512,7 +515,7 @@ export const PubScreen: React.FC = () => {
               />
             ))}
             {pubDraft.length === 0 && (
-              <div className="col-span-3 text-center font-mono text-[16.875px] text-amber-300/40 py-4">
+              <div className="col-span-3 text-center font-mono text-r-13 text-amber-300/40 py-4">
                 No crew available to hire.
               </div>
             )}
@@ -521,8 +524,8 @@ export const PubScreen: React.FC = () => {
       </section>
 
       {/* ── Your Crew — fire slots ───────────────────────────────────────────── */}
-      <section className="relative flex-none px-3 pb-3">
-        <div className="font-pixel text-[11.25px] text-center mb-2 tracking-widest" style={{ color: theme.pubSubtextColor }}>
+      <section className="relative flex-none px-3" style={{ paddingBottom: 'clamp(2px,0.4dvh,12px)' }}>
+        <div className="font-pixel text-r-8 text-center mb-1 tracking-widest" style={{ color: theme.pubSubtextColor }}>
           — YOUR CREW —
         </div>
         <div className="flex justify-around gap-1">
@@ -540,12 +543,12 @@ export const PubScreen: React.FC = () => {
 
       {/* ── Slot picker (slides in when a crew is selected) ───────────────────── */}
       {selectedCrew && (
-        <section className="relative flex-none px-3 pb-4">
+        <section className="relative flex-none px-3" style={{ paddingBottom: 'clamp(4px,0.6dvh,16px)' }}>
           <div
-            className="rounded-lg border border-amber-700/40 p-3"
+            className="rounded-lg border border-amber-700/40 p-2"
             style={{ background: 'rgba(60, 30, 0, 0.6)' }}
           >
-            <div className="font-pixel text-[11.25px] text-amber-400/70 mb-3 text-center">
+            <div className="font-pixel text-r-8 text-amber-400/70 mb-1 text-center">
               PLACE&nbsp;
               <span className="text-amber-300">{selectedCrew.name.toUpperCase()}</span>
               &nbsp;IN SLOT:
@@ -567,7 +570,7 @@ export const PubScreen: React.FC = () => {
 
             {/* Overwrite warning */}
             {selectedSlot !== null && crewSlots[selectedSlot]?.crewId != null && (
-              <div className="mt-2 text-center font-mono text-r-15 text-amber-500/70">
+              <div className="mt-2 text-center font-mono text-r-11 text-amber-500/70">
                 ⚠ Replaces {crewNameMap[crewSlots[selectedSlot]!.crewId] ?? 'current crew'}
               </div>
             )}
@@ -578,7 +581,7 @@ export const PubScreen: React.FC = () => {
               disabled={!canHire}
               onClick={() => void handleHire()}
               className={[
-                'mt-3 w-full py-2 rounded font-pixel text-[13.125px] tracking-wider',
+                'mt-2 w-full py-1.5 rounded font-pixel text-r-8 tracking-wider',
                 'border transition-all duration-150',
                 canHire
                   ? 'bg-amber-700 border-amber-500 text-amber-100 hover:bg-amber-600 active:scale-95 shadow shadow-amber-900/50'
@@ -596,7 +599,7 @@ export const PubScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => { setSelectedCrew(null); setSelectedSlot(null); }}
-              className="mt-1.5 w-full py-1 font-pixel text-[9.375px] text-amber-600/50 hover:text-amber-400/70 transition-colors"
+              className="mt-1 w-full py-0.5 font-pixel text-r-7 text-amber-600/50 hover:text-amber-400/70 transition-colors"
             >
               CANCEL
             </button>
@@ -607,17 +610,14 @@ export const PubScreen: React.FC = () => {
       {/* ── Error message ────────────────────────────────────────────────────── */}
       {errorMsg && (
         <div className="px-4 py-2 mx-3 mb-2 rounded border border-red-700/50 bg-red-900/20">
-          <p className="font-mono text-[16.875px] text-red-300 text-center">{errorMsg}</p>
+          <p className="font-mono text-r-13 text-red-300 text-center">{errorMsg}</p>
         </div>
       )}
 
-      {/* ── Spacer ───────────────────────────────────────────────────────────── */}
-      <div className="flex-1" />
-
       {/* ── Skip / Rest button ───────────────────────────────────────────────── */}
-      <footer className="flex-none px-4 pb-8">
+      <footer className="flex-none mt-auto px-4" style={{ paddingBottom: 'clamp(8px,1.2dvh,32px)', paddingTop: 'clamp(4px,0.6dvh,16px)' }}>
         <div
-          className="h-px mb-4"
+          className="h-px mb-2"
           style={{ background: `linear-gradient(to right, transparent, ${theme.accentDim}99, transparent)` }}
         />
         <button
@@ -625,8 +625,8 @@ export const PubScreen: React.FC = () => {
           disabled={isLoading}
           onClick={() => void handleSkip()}
           className="
-            w-full py-2.5 rounded
-            font-pixel text-[13.125px] tracking-widest
+            w-full py-1.5 rounded
+            font-pixel text-r-8 tracking-widest
             border
             active:scale-95 transition-all duration-150
             disabled:opacity-40 disabled:cursor-not-allowed

@@ -102,10 +102,11 @@ const ReceiptEntry: React.FC<{ receipt: RollReceipt }> = ({ receipt }) => {
 // ---------------------------------------------------------------------------
 // Main panel — bottom-sheet drawer
 //
-// Animation strategy: the entire sheet (tab + content) is 50dvh tall and
-// position:fixed.  When collapsed, translateY(calc(100% - 40px)) pushes
-// it below the viewport leaving only the 40px tab visible.  When expanded,
-// translateY(0) reveals the full sheet.  CSS transition handles the slide.
+// Layout strategy: when collapsed the tab is a flex-none in-flow item that
+// sits directly below the crew rail (no overlap). When expanded the wrapper
+// switches to absolute bottom-0 so the full sheet slides up over the table
+// content — which the user has approved as acceptable.
+// The scrim is absolute within the overflow-hidden game container.
 // ---------------------------------------------------------------------------
 
 export const RollLog: React.FC = () => {
@@ -117,26 +118,29 @@ export const RollLog: React.FC = () => {
 
   return (
     <>
-      {/* ── Background scrim (tap to close) ─────────────────────────────── */}
+      {/* ── Background scrim (tap to close) — absolute within game container */}
       {expanded && (
         <div
-          className="fixed inset-0 z-40 bg-black/30"
+          className="absolute inset-0 z-40 bg-black/30"
           onClick={close}
           aria-hidden="true"
         />
       )}
 
-      {/* ── Bottom-sheet drawer ─────────────────────────────────────────── */}
+      {/* ── Sheet wrapper ────────────────────────────────────────────────── */}
+      {/* Collapsed: flex-none, 40px tab in normal flow — no crew overlap.   */}
+      {/* Expanded:  absolute bottom-0, 50dvh sheet overlaying content above. */}
       <div
         data-testid="roll-log"
-        className="fixed bottom-0 left-0 right-0 max-w-lg mx-auto z-50 transition-transform duration-300 ease-in-out"
-        style={{
-          transform: expanded
-            ? 'translateY(0)'
-            : `translateY(calc(100% - ${ROLL_LOG_TAB_H}px))`,
-        }}
+        className={[
+          'z-50',
+          expanded
+            ? 'absolute bottom-0 left-0 right-0'
+            : 'flex-none w-full',
+        ].join(' ')}
+        style={expanded ? { height: '50dvh' } : {}}
       >
-        {/* ── Tab / handle — always visible, acts as the toggle trigger ──── */}
+        {/* ── Tab / handle ─────────────────────────────────────────────────── */}
         <button
           type="button"
           onClick={toggle}
@@ -150,41 +154,41 @@ export const RollLog: React.FC = () => {
           "
           style={{ height: ROLL_LOG_TAB_H }}
         >
-          {/* Grab pill — visual affordance for a pull-up sheet */}
           <div className="w-10 h-1 bg-white/20 rounded-full flex-none" />
 
           <span className="font-pixel text-[10.5px] text-gold/70 tracking-widest">
             ROLL LOG{rollHistory.length > 0 ? ` (${rollHistory.length})` : ''}
           </span>
 
-          {/* Chevron — ▲ = expand, ▼ = collapse */}
           <span className="text-white/40 text-r-15 flex-none w-5 text-right">
             {expanded ? '▼' : '▲'}
           </span>
         </button>
 
-        {/* ── Scrollable receipt list ──────────────────────────────────────── */}
-        <div
-          className="
-            bg-black/80 backdrop-blur-sm
-            border-x border-b border-gold/30
-            overflow-y-auto overscroll-contain
-            px-2
-          "
-          style={{ height: `calc(50dvh - ${ROLL_LOG_TAB_H}px)` }}
-        >
-          {rollHistory.length === 0 ? (
-            <div className="py-3 text-center text-white/30 text-[13.5px] font-mono italic">
-              No rolls yet.
-            </div>
-          ) : (
-            <div className="text-[13.5px] font-mono">
-              {rollHistory.map((receipt) => (
-                <ReceiptEntry key={receipt.timestamp} receipt={receipt} />
-              ))}
-            </div>
-          )}
-        </div>
+        {/* ── Scrollable receipt list — only rendered when expanded ────────── */}
+        {expanded && (
+          <div
+            className="
+              bg-black/80 backdrop-blur-sm
+              border-x border-b border-gold/30
+              overflow-y-auto overscroll-contain
+              px-2
+            "
+            style={{ height: `calc(50dvh - ${ROLL_LOG_TAB_H}px)` }}
+          >
+            {rollHistory.length === 0 ? (
+              <div className="py-3 text-center text-white/30 text-[13.5px] font-mono italic">
+                No rolls yet.
+              </div>
+            ) : (
+              <div className="text-[13.5px] font-mono">
+                {rollHistory.map((receipt) => (
+                  <ReceiptEntry key={receipt.timestamp} receipt={receipt} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </>
   );

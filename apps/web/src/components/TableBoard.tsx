@@ -338,9 +338,6 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
         <ChipRail />
       </div>
 
-      {/* ── QA TRANSACTION LOG ───────────────────────────────────────────── */}
-      <RollLog />
-
       {/* ── CREW RAIL ────────────────────────────────────────────────────── */}
       <section
         aria-label="Crew Rail"
@@ -394,9 +391,8 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
         </DndContext>
       </section>
 
-      {/* ── Roll Log spacer — reserves 40 px so the collapsed tab never      */}
-      {/* ── covers the crew portraits.  The flex-1 dice zone absorbs this.   */}
-      <div className="flex-none h-[clamp(10px,2dvh,40px)]" aria-hidden="true" />
+      {/* ── QA TRANSACTION LOG — tab sits in-flow below crew rail ──────────── */}
+      <RollLog />
 
       {/* ── Back-wall flash (dice hit the far wall at the top) ───────────── */}
       {wallFlash && (

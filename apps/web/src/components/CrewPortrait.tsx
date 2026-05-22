@@ -82,17 +82,17 @@ const ABILITY_DESCRIPTIONS: Record<number, string> = {
 // ---------------------------------------------------------------------------
 
 const CREW_ADDITIVE_MULTS: Record<number, number> = {
-  6:  0.75,  // The Regular
-  7:  1.5,   // The Big Spender
-  8:  1.25,  // The Shark
-  17: 0.75,  // "Ace" McGee
-  18: 0.65,  // The Close Call
-  23: 1.0,   // The Even Keel
-  24: 0.5,   // The Doorman
-  25: 0.28,  // The Grinder
-  28: 0.50,  // The Bookkeeper
-  29: 1.5,   // The Pressure Cooker
-  30: 0.45,  // The Contrarian
+  6:  0.40,  // The Regular
+  7:  0.75,  // The Big Spender
+  8:  0.65,  // The Shark
+  17: 0.40,  // "Ace" McGee
+  18: 0.35,  // The Close Call
+  23: 0.50,  // The Even Keel
+  24: 0.25,  // The Doorman
+  25: 0.15,  // The Grinder
+  28: 0.25,  // The Bookkeeper
+  29: 0.75,  // The Pressure Cooker
+  30: 0.25,  // The Contrarian
 };
 
 const CREW_ADDITIVE_TRIGGERS: Record<number, string> = {

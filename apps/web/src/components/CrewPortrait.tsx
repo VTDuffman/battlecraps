@@ -445,7 +445,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
             ? 'opacity-50 grayscale'
             : '',
         ].join(' ')}
-        style={{ width: 'clamp(50.6px,6.6dvh,70.4px)', height: 'clamp(50.6px,6.6dvh,70.4px)' }}
+        style={{ width: 'clamp(40px,5.3dvh,70.4px)', height: 'clamp(40px,5.3dvh,70.4px)' }}
       >
         {isEmpty ? (
           /* Empty slot — just a dashed inner ring */

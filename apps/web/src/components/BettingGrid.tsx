@@ -84,7 +84,7 @@ export const ChipSelector: React.FC<{ activeChip: number; disabled: boolean }> =
   const chips              = chipsForMarker(currentMarkerIndex);
 
   return (
-    <div className="w-full flex justify-center gap-2" style={{ marginBottom: 'clamp(4px,0.8dvh,12px)' }}>
+    <div className="w-full flex justify-center gap-2" style={{ marginBottom: 'clamp(2px,0.4dvh,12px)' }}>
       {chips.map(({ cents, label, color }) => {
         const isActive = activeChip === cents;
         return (
@@ -105,8 +105,8 @@ export const ChipSelector: React.FC<{ activeChip: number; disabled: boolean }> =
               background: isActive ? color : 'transparent',
               borderColor: color,
               color: isActive ? '#fff' : color,
-              width: 'clamp(35px,4.375dvh,45px)',
-              height: 'clamp(35px,4.375dvh,45px)',
+              width: 'clamp(28px,3.5dvh,45px)',
+              height: 'clamp(28px,3.5dvh,45px)',
             }}
           >
             {label}
@@ -234,7 +234,7 @@ const BetZone: React.FC<BetZoneProps> = ({
           ? 'opacity-30 cursor-not-allowed'
           : 'cursor-pointer hover:border-gold/80 hover:bg-felt-light/20 active:scale-95',
       ].join(' ')}
-      style={{ height: 'clamp(46px,6.8dvh,64px)' }}
+      style={{ height: 'clamp(36px,5.2dvh,64px)' }}
     >
       <span className="text-[10.9px] leading-tight" style={{ color: isNullSpace ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.80)' }}>{label}</span>
       {sublabel && (

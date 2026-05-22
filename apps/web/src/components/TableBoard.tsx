@@ -296,8 +296,8 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
         className="z-10 flex-none px-4 border-b-2"
         style={{
           borderColor: theme.borderLow,
-          paddingTop: 'clamp(8px,1.4dvh,16px)',
-          paddingBottom: 'clamp(6px,1dvh,12px)',
+          paddingTop: 'clamp(4px,0.7dvh,16px)',
+          paddingBottom: 'clamp(3px,0.5dvh,12px)',
           // isolation: isolate prevents GPU compositing cascade from dice
           // animation affecting background-clip:text on the CRAPS heading
           isolation: 'isolate',
@@ -349,12 +349,12 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
         style={{
           backgroundColor: theme.feltRail,
           borderColor:     theme.borderHigh,
-          paddingTop:    'clamp(12px,1.6dvh,20px)',
-          paddingBottom: 'clamp(6px,0.8dvh,12px)',
+          paddingTop:    'clamp(6px,0.8dvh,20px)',
+          paddingBottom: 'clamp(3px,0.4dvh,12px)',
         }}
       >
         {/* Rail header */}
-        <div className="flex items-center gap-2" style={{ marginBottom: 'clamp(8px,1dvh,12px)' }}>
+        <div className="flex items-center gap-2" style={{ marginBottom: 'clamp(4px,0.5dvh,12px)' }}>
           <div className="h-px flex-1" style={{ backgroundColor: theme.borderLow }} />
           <span className="font-pixel text-[14.65px] tracking-widest" style={{ color: theme.accentPrimary }}>
             CREW
@@ -518,7 +518,7 @@ const GameStatus: React.FC = () => {
     '';
 
   return (
-    <div className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(4px,0.5dvh,8px)' }}>
+    <div className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(2px,0.35dvh,8px)' }}>
 
       {/* ── 3-column header: comp card (left) | logo (center) | hype + shooters (right) ── */}
       <div className="grid grid-cols-[1fr_2fr_1fr] gap-1 px-1" data-tutorial-zone="bankroll-zone">
@@ -530,20 +530,11 @@ const GameStatus: React.FC = () => {
 
         {/* CENTER cell — Vegas logo stack + bankroll beneath */}
         <div className="flex flex-col items-center">
-          {/* Decorative star row */}
-          <div className="flex items-center justify-center gap-1.5 mb-1">
-            <div className="h-px w-6 bg-gradient-to-r from-transparent to-gold/40" />
-            <span className="font-pixel text-[7.8px] text-gold/50">✦</span>
-            <span className="font-pixel text-[10.9px] text-gold/70">★</span>
-            <span className="font-pixel text-[7.8px] text-gold/50">✦</span>
-            <div className="h-px w-6 bg-gradient-to-l from-transparent to-gold/40" />
-          </div>
-
           {/* "BATTLE" prefix */}
           <div
             className="font-pixel tracking-[0.35em] leading-none"
             style={{
-              fontSize: 'clamp(10.9375px, 2.1875dvh, 15.625px)',
+              fontSize: 'clamp(8px, 1.4dvh, 15.625px)',
               color: '#b8861a',
               textShadow: '0 0 8px rgba(196,125,10,0.4)',
             }}
@@ -555,7 +546,7 @@ const GameStatus: React.FC = () => {
           <h1
             className="font-pixel tracking-[0.2em] leading-none"
             style={{
-              fontSize: 'clamp(31.25px, 6.25dvh, 43.75px)',
+              fontSize: 'clamp(20px, 3.7dvh, 43.75px)',
               background: 'linear-gradient(180deg, #ffffff 0%, #f5c842 40%, #c47d0a 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -573,7 +564,7 @@ const GameStatus: React.FC = () => {
           </div>
 
           {/* Bankroll — directly beneath logo */}
-          <div className="mt-1.5 text-center">
+          <div className="mt-0.5 text-center">
             <div className="font-pixel text-[9.375px] mb-0.5" style={{ color: isNullSpace ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.40)' }}>BANKROLL</div>
             <div data-testid="bankroll" className={`font-pixel text-[17.5px] transition-colors duration-150 ${bankrollColor}`}>
               {bankrollStr}
@@ -582,7 +573,7 @@ const GameStatus: React.FC = () => {
         </div>
 
         {/* RIGHT cell — hype on top, shooters below */}
-        <div className="flex flex-col items-center justify-center gap-2">
+        <div className="flex flex-col items-center justify-center gap-1">
           {/* Hype */}
           <div className="text-center" data-tutorial-zone="hype-meter">
             <div className="font-pixel text-[9.375px] mb-0.5" style={{ color: isNullSpace ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.40)' }}>
@@ -593,7 +584,7 @@ const GameStatus: React.FC = () => {
               <div
                 className="relative w-[7px] rounded-full overflow-hidden bg-black/50 border border-white/10 flex-none"
                 style={{
-                  height: 'clamp(34px, 4dvh, 46px)',
+                  height: 'clamp(26px, 3.2dvh, 46px)',
                   boxShadow: barGlow,
                   transform: impactActive ? 'scale(1.25)' : 'scale(1)',
                   transition: 'transform 0.15s ease-out',
@@ -644,7 +635,7 @@ const GameStatus: React.FC = () => {
         <MarkerProgress bankroll={bankroll} markerIndex={displayMarkerIndex} liveMarkerIndex={currentMarkerIndex} targetMet={targetMet} />
 
         {/* Point puck + phase label */}
-        <div className="flex items-center gap-2 justify-center mt-3" data-tutorial-zone="game-status">
+        <div className="flex items-center gap-2 justify-center" style={{ marginTop: 'clamp(2px,0.35dvh,12px)' }} data-tutorial-zone="game-status">
           <div className="relative">
             {/* Ring animation overlay — re-mounts on _pointRingKey to re-fire */}
             <div
@@ -658,14 +649,15 @@ const GameStatus: React.FC = () => {
             />
             <div
               className={[
-                'w-12 h-12 rounded-full border-2 flex items-center justify-center',
-                'font-pixel text-[14.0625px] leading-none transition-colors duration-300',
+                'rounded-full border-2 flex items-center justify-center',
+                'font-pixel text-[10.9375px] leading-none transition-colors duration-300',
                 phase === 'POINT_ACTIVE' && point !== null
                   ? isNullSpace
                     ? 'bg-gray-900 border-gray-700 text-white shadow-[0_0_10px_2px_rgba(0,0,0,0.5)]'
                     : 'bg-white border-white text-black shadow-[0_0_10px_2px_rgba(255,255,255,0.6)]'
                   : 'bg-black border-white/20 text-white/20',
               ].join(' ')}
+              style={{ width: 'clamp(32px,4dvh,48px)', height: 'clamp(32px,4dvh,48px)' }}
             >
               {phase === 'POINT_ACTIVE' && point !== null ? point : 'OFF'}
             </div>

@@ -471,10 +471,10 @@ export const DiceZone: React.FC = () => {
         document.body
       )}
 
-      <div className="flex flex-row items-center gap-4 px-4 py-3 [perspective:500px]">
+      <div className="flex flex-row items-center gap-4 px-4 py-2 [perspective:500px]">
 
       {/* ── LEFT: dice display + overlays ───────────────────────────────── */}
-      <div className="relative flex-1 flex items-center justify-center" style={{ minHeight: 'clamp(44px,6dvh,64px)' }}>
+      <div className="relative flex-1 flex items-center justify-center" style={{ minHeight: 'clamp(36px,4.5dvh,64px)' }}>
 
         {/* Animated dice pair */}
         <div
@@ -571,7 +571,7 @@ export const DiceZone: React.FC = () => {
               ? 'bg-felt-dark border-amber-700/50 text-amber-600/80 cursor-not-allowed'
               : 'bg-felt-dark border-white/10 text-white/20 cursor-not-allowed',
         ].join(' ')}
-        style={{ height: 'clamp(44px, 5.5dvh, 56px)' }}
+        style={{ height: 'clamp(36px, 4.5dvh, 56px)' }}
       >
         <span>{isRolling || throwPhase !== 'idle' ? 'ROLLING…' : 'ROLL'}</span>
         {belowMinBet && throwPhase === 'idle' && (

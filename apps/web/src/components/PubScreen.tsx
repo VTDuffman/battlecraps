@@ -144,19 +144,19 @@ const CrewCard: React.FC<CrewCardProps> = ({ crew, isSelected, canAfford, onClic
       </div>
 
       {/* Name */}
-      <div className="font-pixel text-r-7 text-amber-100 leading-relaxed">
+      <div className="font-pixel text-r-8 text-amber-100 leading-relaxed">
         {crew.name}
       </div>
 
       {/* Description */}
-      <div className="font-mono text-r-7 text-amber-300/60 leading-tight flex-1">
+      <div className="font-mono text-r-8 text-amber-300/60 leading-tight flex-1">
         {crew.briefDescription ?? '???'}
       </div>
 
       {/* Cost */}
       <div
         className={[
-          'font-pixel text-r-8 mt-1',
+          'font-pixel text-r-9 mt-1',
           canAfford ? 'text-amber-400' : 'text-red-400',
         ].join(' ')}
       >
@@ -194,18 +194,18 @@ const SlotButton: React.FC<SlotButtonProps> = ({ index, occupantId, isSelected, 
     style={{ height: 'clamp(38px,5dvh,56px)' }}
   >
     {occupantId ? (
-      <span className="text-r-20 leading-none">{CREW_EMOJI[occupantId] ?? '?'}</span>
+      <span className="text-r-22 leading-none">{CREW_EMOJI[occupantId] ?? '?'}</span>
     ) : (
       <>
         <div
           className={[
-            'w-5 h-5 rounded flex items-center justify-center font-pixel text-r-8',
+            'w-5 h-5 rounded flex items-center justify-center font-pixel text-r-9',
             isSelected ? 'bg-amber-500 text-stone-900' : 'bg-stone-700 text-amber-300/60',
           ].join(' ')}
         >
           {index}
         </div>
-        <div className="font-pixel text-r-7 text-center leading-tight text-stone-600">
+        <div className="font-pixel text-r-8 text-center leading-tight text-stone-600">
           EMPTY
         </div>
       </>
@@ -247,7 +247,7 @@ const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, crewName, description
     return (
       <div className="flex flex-col items-center justify-center gap-1 px-2 rounded border border-stone-700/20 bg-stone-900/20 min-w-0" style={{ height: 'clamp(40px,5.5dvh,64px)' }}>
         <div className="w-5 h-5 rounded border border-dashed border-stone-700/40" />
-        <div className="font-pixel text-r-7 text-stone-700">EMPTY</div>
+        <div className="font-pixel text-r-8 text-stone-700">EMPTY</div>
       </div>
     );
   }
@@ -259,14 +259,14 @@ const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, crewName, description
       tabIndex={onFire ? 0 : -1}
     >
       {/* Emoji portrait */}
-      <div className="text-r-22 leading-none">{CREW_EMOJI[crewId]}</div>
+      <div className="text-r-26 leading-none">{CREW_EMOJI[crewId]}</div>
 
       {/* Tooltip — floats above slot on hover */}
       {description && (
         <div className="
           absolute bottom-full left-1/2 -translate-x-1/2 mb-2
           w-44 px-2 py-1.5 rounded
-          font-mono text-r-8 text-white/90 leading-snug
+          font-mono text-r-9 text-white/90 leading-snug
           bg-black/90 border border-white/20
           pointer-events-none z-50
           opacity-0 group-hover:opacity-100
@@ -291,7 +291,7 @@ const PubFireSlot: React.FC<PubFireSlotProps> = ({ crewId, crewName, description
           className={[
             'absolute bottom-1 left-1/2 -translate-x-1/2',
             'w-5 h-5 rounded-sm flex items-center justify-center',
-            'font-pixel text-r-8 leading-none',
+            'font-pixel text-r-9 leading-none',
             'bg-red-900/70 text-red-300 border border-red-700/60',
             'transition-opacity duration-150',
             'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
@@ -450,16 +450,16 @@ export const PubScreen: React.FC = () => {
           style={{ background: theme.pubAccentBar }}
         />
 
-        <div className="font-pixel text-r-8 tracking-widest mb-1" style={{ color: theme.pubSubtextColor }}>
+        <div className="font-pixel text-r-9 tracking-widest mb-1" style={{ color: theme.pubSubtextColor }}>
           ✦ MARKER CLEARED ✦
         </div>
         <h1
-          className="font-pixel text-r-14 tracking-wide"
+          className="font-pixel text-r-17 tracking-wide"
           style={{ color: theme.pubTitleColor, textShadow: theme.pubTitleShadow }}
         >
           {theme.pubName}
         </h1>
-        <div className="mt-1 font-mono text-r-13" style={{ color: theme.pubSubtextColor }}>
+        <div className="mt-1 font-mono text-r-15" style={{ color: theme.pubSubtextColor }}>
           Hire a hand before the next marker…
         </div>
 
@@ -472,17 +472,17 @@ export const PubScreen: React.FC = () => {
         {/* Stats row */}
         <div className="mt-2 flex justify-center gap-4">
           <div className="text-center">
-            <div className="font-pixel text-r-8 mb-0.5" style={{ color: theme.pubSubtextColor }}>BANKROLL</div>
-            <div className="font-pixel text-r-11" style={{ color: theme.accentBright }}>{bankrollDisplay}</div>
+            <div className="font-pixel text-r-9 mb-0.5" style={{ color: theme.pubSubtextColor }}>BANKROLL</div>
+            <div className="font-pixel text-r-13" style={{ color: theme.accentBright }}>{bankrollDisplay}</div>
           </div>
           <div className="text-center">
-            <div className="font-pixel text-r-8 mb-0.5" style={{ color: theme.pubSubtextColor }}>SHOOTERS</div>
-            <div className="font-pixel text-r-11" style={{ color: theme.accentBright }}>
+            <div className="font-pixel text-r-9 mb-0.5" style={{ color: theme.pubSubtextColor }}>SHOOTERS</div>
+            <div className="font-pixel text-r-13" style={{ color: theme.accentBright }}>
               {upcomingShooters} {'✦'.repeat(5)}
               {isComped && <span className="ml-px" style={{ color: theme.accentBright }}>✦</span>}
             </div>
             {isComped && (
-              <div className="font-pixel text-r-7 tracking-widest mt-0.5" style={{ color: theme.accentBright }}>
+              <div className="font-pixel text-r-8 tracking-widest mt-0.5" style={{ color: theme.accentBright }}>
                 +1 COMP
               </div>
             )}
@@ -492,13 +492,13 @@ export const PubScreen: React.FC = () => {
 
       {/* ── Draft cards ──────────────────────────────────────────────────────── */}
       <section className="relative flex-none px-3" style={{ paddingBottom: 'clamp(4px,0.6dvh,16px)' }}>
-        <div className="font-pixel text-r-8 text-center mb-1 tracking-widest" style={{ color: theme.pubSubtextColor }}>
+        <div className="font-pixel text-r-9 text-center mb-1 tracking-widest" style={{ color: theme.pubSubtextColor }}>
           — AVAILABLE FOR HIRE —
         </div>
 
         {/* Loading state */}
         {draftLoading && (
-          <div className="text-center font-mono text-r-13 text-amber-300/40 py-4 animate-pulse">
+          <div className="text-center font-mono text-r-15 text-amber-300/40 py-4 animate-pulse">
             Loading crew…
           </div>
         )}
@@ -515,7 +515,7 @@ export const PubScreen: React.FC = () => {
               />
             ))}
             {pubDraft.length === 0 && (
-              <div className="col-span-3 text-center font-mono text-r-13 text-amber-300/40 py-4">
+              <div className="col-span-3 text-center font-mono text-r-15 text-amber-300/40 py-4">
                 No crew available to hire.
               </div>
             )}
@@ -525,7 +525,7 @@ export const PubScreen: React.FC = () => {
 
       {/* ── Your Crew — fire slots ───────────────────────────────────────────── */}
       <section className="relative flex-none px-3" style={{ paddingBottom: 'clamp(2px,0.4dvh,12px)' }}>
-        <div className="font-pixel text-r-8 text-center mb-1 tracking-widest" style={{ color: theme.pubSubtextColor }}>
+        <div className="font-pixel text-r-9 text-center mb-1 tracking-widest" style={{ color: theme.pubSubtextColor }}>
           — YOUR CREW —
         </div>
         <div className="flex justify-around gap-1">
@@ -548,7 +548,7 @@ export const PubScreen: React.FC = () => {
             className="rounded-lg border border-amber-700/40 p-2"
             style={{ background: 'rgba(60, 30, 0, 0.6)' }}
           >
-            <div className="font-pixel text-r-8 text-amber-400/70 mb-1 text-center">
+            <div className="font-pixel text-r-9 text-amber-400/70 mb-1 text-center">
               PLACE&nbsp;
               <span className="text-amber-300">{selectedCrew.name.toUpperCase()}</span>
               &nbsp;IN SLOT:
@@ -570,7 +570,7 @@ export const PubScreen: React.FC = () => {
 
             {/* Overwrite warning */}
             {selectedSlot !== null && crewSlots[selectedSlot]?.crewId != null && (
-              <div className="mt-2 text-center font-mono text-r-11 text-amber-500/70">
+              <div className="mt-2 text-center font-mono text-r-13 text-amber-500/70">
                 ⚠ Replaces {crewNameMap[crewSlots[selectedSlot]!.crewId] ?? 'current crew'}
               </div>
             )}
@@ -581,7 +581,7 @@ export const PubScreen: React.FC = () => {
               disabled={!canHire}
               onClick={() => void handleHire()}
               className={[
-                'mt-2 w-full py-1.5 rounded font-pixel text-r-8 tracking-wider',
+                'mt-2 w-full py-1.5 rounded font-pixel text-r-9 tracking-wider',
                 'border transition-all duration-150',
                 canHire
                   ? 'bg-amber-700 border-amber-500 text-amber-100 hover:bg-amber-600 active:scale-95 shadow shadow-amber-900/50'
@@ -599,7 +599,7 @@ export const PubScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => { setSelectedCrew(null); setSelectedSlot(null); }}
-              className="mt-1 w-full py-0.5 font-pixel text-r-7 text-amber-600/50 hover:text-amber-400/70 transition-colors"
+              className="mt-1 w-full py-0.5 font-pixel text-r-8 text-amber-600/50 hover:text-amber-400/70 transition-colors"
             >
               CANCEL
             </button>
@@ -610,12 +610,12 @@ export const PubScreen: React.FC = () => {
       {/* ── Error message ────────────────────────────────────────────────────── */}
       {errorMsg && (
         <div className="px-4 py-2 mx-3 mb-2 rounded border border-red-700/50 bg-red-900/20">
-          <p className="font-mono text-r-13 text-red-300 text-center">{errorMsg}</p>
+          <p className="font-mono text-r-15 text-red-300 text-center">{errorMsg}</p>
         </div>
       )}
 
       {/* ── Skip / Rest button ───────────────────────────────────────────────── */}
-      <footer className="flex-none mt-auto px-4" style={{ paddingBottom: 'clamp(8px,1.2dvh,32px)', paddingTop: 'clamp(4px,0.6dvh,16px)' }}>
+      <footer className="flex-none px-4" style={{ paddingBottom: 'clamp(8px,1.2dvh,32px)', paddingTop: 'clamp(4px,0.6dvh,16px)' }}>
         <div
           className="h-px mb-2"
           style={{ background: `linear-gradient(to right, transparent, ${theme.accentDim}99, transparent)` }}
@@ -626,7 +626,7 @@ export const PubScreen: React.FC = () => {
           onClick={() => void handleSkip()}
           className="
             w-full py-1.5 rounded
-            font-pixel text-r-8 tracking-widest
+            font-pixel text-r-9 tracking-widest
             border
             active:scale-95 transition-all duration-150
             disabled:opacity-40 disabled:cursor-not-allowed

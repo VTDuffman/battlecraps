@@ -75,7 +75,9 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
   const { wallFlash, _wallFlashKey }       = useGameStore(selectWallFlash);
   const reorderCrew  = useGameStore((s) => s.reorderCrew);
   const slotIds      = useGameStore((s) => s.slotIds);
-  const isCascading  = useGameStore(selectIsCascading);
+  const isCascading        = useGameStore(selectIsCascading);
+  const displayMarkerIndex = useGameStore(selectDisplayMarkerIndex);
+  const isBossRoom         = isBossMarker(displayMarkerIndex);
   const { muted, toggleMute } = useCrowdAudio();
   const theme = useFloorTheme();
 
@@ -296,14 +298,14 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
         className="z-10 flex-none px-4 border-b-2"
         style={{
           borderColor: theme.borderLow,
-          paddingTop: 'clamp(4px,0.7dvh,16px)',
-          paddingBottom: 'clamp(3px,0.5dvh,12px)',
+          paddingTop:    isBossRoom ? 'clamp(2px,0.35dvh,8px)'  : 'clamp(4px,0.7dvh,16px)',
+          paddingBottom: isBossRoom ? 'clamp(2px,0.35dvh,6px)'  : 'clamp(3px,0.5dvh,12px)',
           // isolation: isolate prevents GPU compositing cascade from dice
           // animation affecting background-clip:text on the CRAPS heading
           isolation: 'isolate',
         }}
       >
-        <GameStatus />
+        <GameStatus compact={isBossRoom} />
       </section>
 
       {/* ── GREEN SPACE — dice animation travel zone ─────────────────────── */}
@@ -434,7 +436,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
 // Game Status — bankroll / shooters / hype / marker / point puck
 // ---------------------------------------------------------------------------
 
-const GameStatus: React.FC = () => {
+const GameStatus: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const hypeStr             = useGameStore(selectHypeDisplay);
   const hype                = useGameStore((s) => s.hype);
   const shooters            = useGameStore((s) => s.shooters);
@@ -514,10 +516,10 @@ const GameStatus: React.FC = () => {
     '';
 
   return (
-    <div className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(2px,0.35dvh,8px)' }}>
+    <div className="w-full" style={{ display: 'flex', flexDirection: 'column', gap: compact ? 'clamp(1px,0.2dvh,4px)' : 'clamp(2px,0.35dvh,8px)' }}>
 
       {/* ── 3-column header: comp card (left) | logo (center) | hype + shooters (right) ── */}
-      <div className="grid grid-cols-[1fr_2fr_1fr] gap-1 px-1" data-tutorial-zone="bankroll-zone">
+      <div className={`grid grid-cols-[1fr_2fr_1fr] px-1 ${compact ? 'gap-0.5' : 'gap-1'}`} data-tutorial-zone="bankroll-zone">
 
         {/* LEFT cell — comp card fan */}
         <div className="flex justify-center items-center">
@@ -530,7 +532,7 @@ const GameStatus: React.FC = () => {
           <div
             className="font-pixel tracking-[0.35em] leading-none"
             style={{
-              fontSize: 'clamp(6px, 1.05dvh, 11.7px)',
+              fontSize: compact ? 'clamp(4px, 0.75dvh, 8.5px)' : 'clamp(6px, 1.05dvh, 11.7px)',
               color: '#b8861a',
               textShadow: '0 0 8px rgba(196,125,10,0.4)',
             }}
@@ -542,7 +544,7 @@ const GameStatus: React.FC = () => {
           <h1
             className="font-pixel tracking-[0.2em] leading-none"
             style={{
-              fontSize: 'clamp(15px, 2.775dvh, 33px)',
+              fontSize: compact ? 'clamp(11px, 2.1dvh, 25px)' : 'clamp(15px, 2.775dvh, 33px)',
               background: 'linear-gradient(180deg, #ffffff 0%, #f5c842 40%, #c47d0a 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -554,10 +556,12 @@ const GameStatus: React.FC = () => {
             CRAPS
           </h1>
 
-          {/* Tagline */}
-          <div className="font-pixel text-r-6 text-gold/40 tracking-[0.4em] mt-0.5">
-            · CASINO GAUNTLET ·
-          </div>
+          {/* Tagline — hidden in boss mode to recover vertical space */}
+          {!compact && (
+            <div className="font-pixel text-r-6 text-gold/40 tracking-[0.4em] mt-0.5">
+              · CASINO GAUNTLET ·
+            </div>
+          )}
 
           {/* Bankroll — directly beneath logo */}
           <div className="mt-0.5 text-center">
@@ -580,7 +584,7 @@ const GameStatus: React.FC = () => {
               <div
                 className="relative w-[7px] rounded-full overflow-hidden bg-black/50 border border-white/10 flex-none"
                 style={{
-                  height: 'clamp(26px, 3.2dvh, 46px)',
+                  height: compact ? 'clamp(20px, 2.4dvh, 35px)' : 'clamp(26px, 3.2dvh, 46px)',
                   boxShadow: barGlow,
                   transform: impactActive ? 'scale(1.25)' : 'scale(1)',
                   transition: 'transform 0.15s ease-out',
@@ -631,7 +635,7 @@ const GameStatus: React.FC = () => {
         <MarkerProgress bankroll={bankroll} markerIndex={displayMarkerIndex} liveMarkerIndex={currentMarkerIndex} targetMet={targetMet} />
 
         {/* Point puck + phase label */}
-        <div className="flex items-center gap-2 justify-center" style={{ marginTop: 'clamp(2px,0.35dvh,12px)' }} data-tutorial-zone="game-status">
+        <div className="flex items-center gap-2 justify-center" style={{ marginTop: compact ? 'clamp(1px,0.2dvh,6px)' : 'clamp(2px,0.35dvh,12px)' }} data-tutorial-zone="game-status">
           <div className="relative">
             {/* Ring animation overlay — re-mounts on _pointRingKey to re-fire */}
             <div
@@ -653,7 +657,7 @@ const GameStatus: React.FC = () => {
                     : 'bg-white border-white text-black shadow-[0_0_10px_2px_rgba(255,255,255,0.6)]'
                   : 'bg-black border-white/20 text-white/20',
               ].join(' ')}
-              style={{ width: 'clamp(32px,4dvh,48px)', height: 'clamp(32px,4dvh,48px)' }}
+              style={{ width: compact ? 'clamp(24px,3dvh,36px)' : 'clamp(32px,4dvh,48px)', height: compact ? 'clamp(24px,3dvh,36px)' : 'clamp(32px,4dvh,48px)' }}
             >
               {phase === 'POINT_ACTIVE' && point !== null ? point : 'OFF'}
             </div>

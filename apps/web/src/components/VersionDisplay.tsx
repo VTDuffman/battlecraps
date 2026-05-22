@@ -53,7 +53,7 @@ export const VersionDisplay: React.FC = () => {
       >
         <span
           className={[
-            'font-pixel text-[6px] tracking-widest transition-colors leading-none',
+            'font-pixel text-r-6 tracking-widest transition-colors leading-none',
             hasNew
               ? 'text-green-400 group-hover:text-green-300 [text-shadow:_0_0_12px_currentColor]'
               : 'text-white/30 group-hover:text-white/60',

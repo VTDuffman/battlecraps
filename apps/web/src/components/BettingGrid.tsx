@@ -94,7 +94,7 @@ export const ChipSelector: React.FC<{ activeChip: number; disabled: boolean }> =
             onClick={() => setActiveChip(cents)}
             className={[
               'rounded-full border-2 flex items-center justify-center',
-              'font-pixel text-[6px] transition-all duration-100',
+              'font-pixel text-r-6 transition-all duration-100',
               disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer active:scale-95',
               isActive
                 ? 'shadow-[0_0_8px_2px_rgba(255,255,255,0.4)] scale-110'
@@ -234,9 +234,9 @@ const BetZone: React.FC<BetZoneProps> = ({
       ].join(' ')}
       style={{ height: 'clamp(46px,6.8dvh,64px)' }}
     >
-      <span className="text-[7px] text-white/80 leading-tight">{label}</span>
+      <span className="text-r-7 text-white/80 leading-tight">{label}</span>
       {sublabel && (
-        <span className="text-[6px] text-white/40 mt-0.5">{sublabel}</span>
+        <span className="text-r-6 text-white/40 mt-0.5">{sublabel}</span>
       )}
 
       {/* Chip stack overlay */}
@@ -246,7 +246,7 @@ const BetZone: React.FC<BetZoneProps> = ({
             'absolute -top-2 -right-2',
             'w-7 h-7 rounded-full',
             'flex items-center justify-center',
-            'border-2 font-pixel text-[6px] text-white shadow-md',
+            'border-2 font-pixel text-r-6 text-white shadow-md',
             // Locked chips use a muted orange to signal "can't undo";
             // pending chips use the standard chip-red.
             isLocked
@@ -261,7 +261,7 @@ const BetZone: React.FC<BetZoneProps> = ({
       {/* Lock icon on the chip when fully committed */}
       {isLocked && (
         <div className="absolute -top-2 -right-2 w-7 h-7 flex items-end justify-start pointer-events-none">
-          <span className="text-[7px] leading-none text-amber-300/80">🔒</span>
+          <span className="text-r-7 leading-none text-amber-300/80">🔒</span>
         </div>
       )}
 
@@ -272,10 +272,10 @@ const BetZone: React.FC<BetZoneProps> = ({
             'absolute bottom-1 left-1 pointer-events-none',
             'font-pixel leading-none',
             streakCount >= 4
-              ? 'text-[9px] text-red-400 animate-hype-blaze'
+              ? 'text-r-9 text-red-400 animate-hype-blaze'
               : streakCount === 3
-                ? 'text-[8px] text-orange-400 animate-hype-hot'
-                : 'text-[7px] text-yellow-300',
+                ? 'text-r-8 text-orange-400 animate-hype-hot'
+                : 'text-r-7 text-yellow-300',
           ].join(' ')}
         >
           {'🔥'.repeat(Math.min(streakCount, 4))}
@@ -286,7 +286,7 @@ const BetZone: React.FC<BetZoneProps> = ({
       {popAmount > 0 && (
         <div
           key={popKey}
-          className="absolute bottom-full left-1/2 -translate-x-1/2 pointer-events-none font-pixel text-[8px] text-yellow-300 animate-payout-pop"
+          className="absolute bottom-full left-1/2 -translate-x-1/2 pointer-events-none font-pixel text-r-8 text-yellow-300 animate-payout-pop"
           style={{ animationDelay: `${popDelay}ms` }}
         >
           +${(popAmount / 100).toFixed(2)}

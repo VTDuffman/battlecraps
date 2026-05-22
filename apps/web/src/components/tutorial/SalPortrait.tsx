@@ -31,7 +31,7 @@ export const SalPortrait: React.FC<SalPortraitProps> = ({ size = 'md', isClosing
   const hatSize   = isMd ? 'text-3xl'  : 'text-2xl';
   const faceSize  = isMd ? 'text-2xl'  : 'text-xl';
   const cardSize  = isMd ? 'text-lg'   : 'text-sm';
-  const labelSize = isMd ? 'text-[6px]' : 'text-[5px]';
+  const labelSize = isMd ? 'text-r-6' : 'text-r-5';
 
   const active = visible && !isClosing;
 

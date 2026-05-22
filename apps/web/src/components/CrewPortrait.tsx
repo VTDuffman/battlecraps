@@ -387,14 +387,14 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
           className={`
             absolute bottom-full mb-2 ${tooltipAlignClass}
             w-40 px-2 py-1.5 rounded
-            font-mono text-[8px] text-white/90 leading-snug text-center
+            font-mono text-r-8 text-white/90 leading-snug text-center
             bg-black/90 border border-white/20
             pointer-events-none z-30
             opacity-0 group-hover:opacity-100
             transition-opacity duration-150
           `}
         >
-          <div className="font-pixel text-[6px] text-gold/70 mb-1">{crewName}</div>
+          <div className="font-pixel text-r-6 text-gold/70 mb-1">{crewName}</div>
           {getAbilityDesc(crewId, markerTargetCents)}
         </div>
       )}
@@ -498,7 +498,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
               'absolute bottom-0 left-0 right-0 z-20',
               'h-[14px] overflow-hidden',
               'flex items-center justify-center',
-              'font-pixel text-[6px] tracking-widest leading-none select-none',
+              'font-pixel text-r-6 tracking-widest leading-none select-none',
               'border-t transition-all duration-150',
               // Hidden below the portrait edge at rest; slides up on hover/tap/hold.
               // overflow-hidden on the portrait frame clips it when translated out.
@@ -523,11 +523,11 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
 
       {/* ── Slot index / freeze status label ─────────────────────────────── */}
       {freezeState ? (
-        <span className="font-pixel text-[6px] text-slate-300 leading-none">
+        <span className="font-pixel text-r-6 text-slate-300 leading-none">
           {DIE_FACES[freezeState.lockedValue]} ×{freezeState.rollsRemaining}
         </span>
       ) : (
-        <span className="font-pixel text-[6px] text-felt-light/60">
+        <span className="font-pixel text-r-6 text-felt-light/60">
           {slotIndex + 1}
         </span>
       )}
@@ -550,7 +550,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
               px-1.5 py-1 flex flex-col items-center gap-1
             "
           >
-            <div className="font-pixel text-[5px] text-slate-400 tracking-widest">LOCK DIE</div>
+            <div className="font-pixel text-r-5 text-slate-400 tracking-widest">LOCK DIE</div>
             <div className="flex gap-0.5">
               {[1,2,3,4,5,6].map((v) => (
                 <button
@@ -558,7 +558,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
                   type="button"
                   onClick={() => setPendingDieValue(prev => prev === v ? null : v)}
                   className={[
-                    'w-5 h-5 rounded text-[10px] leading-none border transition-colors',
+                    'w-5 h-5 rounded text-r-10 leading-none border transition-colors',
                     pendingDieValue === v
                       ? 'bg-amber-500 border-amber-300 text-black'
                       : 'bg-stone-800 border-stone-600 text-white/80 hover:border-amber-500/60',
@@ -574,7 +574,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
                 onClick={() => { onSetFreeze(pendingDieValue); setPendingDieValue(null); }}
                 className="
                   w-full py-0.5 rounded
-                  font-pixel text-[5px] tracking-wider
+                  font-pixel text-r-5 tracking-wider
                   bg-amber-700 border border-amber-500 text-amber-100
                   hover:bg-amber-600 active:scale-95
                 "

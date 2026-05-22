@@ -113,7 +113,7 @@ export const CompCardFan: React.FC = () => {
           <div
             className="
               absolute left-1/2 -translate-x-1/2
-              font-pixel text-[5px] text-gold/60 whitespace-nowrap tracking-widest
+              font-pixel text-r-5 text-gold/60 whitespace-nowrap tracking-widest
             "
             style={{ top: `calc(76px + ${(earnedComps.length - 1) * 2 + 6}px)` }}
           >

@@ -68,16 +68,16 @@ export const BossRoomHeader: React.FC = () => {
         {/* Left: boss identity */}
         <div className="flex items-center gap-2 min-w-0">
           <div
-            className="flex-none w-5 h-5 rounded flex items-center justify-center font-pixel text-[8px]"
+            className="flex-none w-5 h-5 rounded flex items-center justify-center font-pixel text-r-8"
             style={{ background: 'rgba(185,28,28,0.5)', border: '1px solid rgba(239,68,68,0.6)' }}
           >
             ★
           </div>
           <div className="min-w-0">
-            <div className="font-pixel text-[5px] text-red-400/80 tracking-widest leading-none">
+            <div className="font-pixel text-r-5 text-red-400/80 tracking-widest leading-none">
               HIGH LIMIT ROOM
             </div>
-            <div className="font-pixel text-[8px] text-red-200 leading-tight truncate">
+            <div className="font-pixel text-r-8 text-red-200 leading-tight truncate">
               {boss.name.toUpperCase()}
             </div>
           </div>
@@ -87,7 +87,7 @@ export const BossRoomHeader: React.FC = () => {
         {isTidalSurge && tidalParams !== null ? (
           <div className="flex-none text-right">
             {/* Label row */}
-            <div className="font-pixel text-[5px] tracking-widest leading-none"
+            <div className="font-pixel text-r-5 tracking-widest leading-none"
               style={{ color: inSurge ? '#fbbf24' : 'rgba(0,201,160,0.70)' }}>
               TIDE{inSurge ? ' ⚠ SURGE' : ''}
             </div>
@@ -118,12 +118,12 @@ export const BossRoomHeader: React.FC = () => {
             </div>
             {/* Status line */}
             {inSurge ? (
-              <div className="font-pixel text-[5px] leading-none mt-0.5"
+              <div className="font-pixel text-r-5 leading-none mt-0.5"
                 style={{ color: '#fbbf24' }}>
                 ${surgeMinDollars.toLocaleString()} MIN / {surgeRollsLeft} ROLL{surgeRollsLeft !== 1 ? 'S' : ''}
               </div>
             ) : (
-              <div className="font-pixel text-[5px] leading-none mt-0.5"
+              <div className="font-pixel text-r-5 leading-none mt-0.5"
                 style={{ color: 'rgba(0,201,160,0.55)' }}>
                 SURGE IN {rollsUntilSurge}
               </div>
@@ -131,15 +131,15 @@ export const BossRoomHeader: React.FC = () => {
           </div>
         ) : isFirstContact ? (
           <div className="flex-none text-right">
-            <div className="font-pixel text-[5px] tracking-widest leading-none"
+            <div className="font-pixel text-r-5 tracking-widest leading-none"
               style={{ color: 'rgba(57,255,20,0.60)' }}>
               NULL PROTOCOL
             </div>
-            <div className="font-pixel text-[8px] leading-tight"
+            <div className="font-pixel text-r-8 leading-tight"
               style={{ color: '#39ff14' }}>
               7/11 = NULL
             </div>
-            <div className="font-pixel text-[5px] leading-none mt-0.5"
+            <div className="font-pixel text-r-5 leading-none mt-0.5"
               style={{ color: 'rgba(57,255,20,0.45)' }}>
               POINTS ONLY
             </div>
@@ -150,15 +150,15 @@ export const BossRoomHeader: React.FC = () => {
             const isNaked         = activeCrewCount === 0;
             return (
               <div className="flex-none text-right">
-                <div className="font-pixel text-[5px] tracking-widest leading-none"
+                <div className="font-pixel text-r-5 tracking-widest leading-none"
                   style={{ color: 'rgba(57,255,20,0.60)' }}>
                   CONVERGENCE
                 </div>
-                <div className="font-pixel text-[10px] leading-tight"
+                <div className="font-pixel text-r-10 leading-tight"
                   style={{ color: isNaked ? '#ef4444' : '#39ff14' }}>
                   {isNaked ? '⌀ NAKED CRAPS' : `${activeCrewCount}/5 CREW`}
                 </div>
-                <div className="font-pixel text-[5px] leading-none mt-0.5"
+                <div className="font-pixel text-r-5 leading-none mt-0.5"
                   style={{ color: isNaked ? '#ef4444' : 'rgba(57,255,20,0.45)' }}>
                   {isNaked ? 'RAW CRAPS — NO CREW' : '−1 ON 7-OUT'}
                 </div>
@@ -173,15 +173,15 @@ export const BossRoomHeader: React.FC = () => {
             const hypeColor  = isBelow1 ? '#ef4444' : isWarning ? '#fbbf24' : '#c8d8e8';
             return (
               <div className="flex-none text-right">
-                <div className="font-pixel text-[5px] tracking-widest leading-none"
+                <div className="font-pixel text-r-5 tracking-widest leading-none"
                   style={{ color: 'rgba(200,216,232,0.60)' }}>
                   HYPE DECAY
                 </div>
-                <div className="font-pixel text-[10px] leading-tight"
+                <div className="font-pixel text-r-10 leading-tight"
                   style={{ color: hypeColor }}>
                   {hypeStr}
                 </div>
-                <div className="font-pixel text-[5px] leading-none mt-0.5"
+                <div className="font-pixel text-r-5 leading-none mt-0.5"
                   style={{ color: isBelow1 ? '#ef4444' : 'rgba(200,216,232,0.45)' }}>
                   {isBelow1 ? '⚠ PENALTY MODE' : '−0.5× ON 7-OUT'}
                 </div>
@@ -190,14 +190,14 @@ export const BossRoomHeader: React.FC = () => {
           })()
         ) : currentMinBet !== null ? (
           <div className="flex-none text-right">
-            <div className="font-pixel text-[5px] text-red-400/70 tracking-widest leading-none">
+            <div className="font-pixel text-r-5 text-red-400/70 tracking-widest leading-none">
               MIN BET
             </div>
-            <div className="font-pixel text-[10px] text-red-300 leading-tight">
+            <div className="font-pixel text-r-10 text-red-300 leading-tight">
               ${(currentMinBet / 100).toFixed(0)}
             </div>
             {nextMinBet !== null && nextMinBet > currentMinBet && (
-              <div className="font-pixel text-[5px] text-red-500/60 leading-none">
+              <div className="font-pixel text-r-5 text-red-500/60 leading-none">
                 → ${(nextMinBet / 100).toFixed(0)} next
               </div>
             )}
@@ -207,7 +207,7 @@ export const BossRoomHeader: React.FC = () => {
 
       {/* Rule reminder text */}
       <div
-        className="px-4 pb-2 font-pixel text-[5px] text-red-400/50 tracking-wide text-center"
+        className="px-4 pb-2 font-pixel text-r-5 text-red-400/50 tracking-wide text-center"
       >
         ⚔ {boss.ruleHeaderText}
       </div>

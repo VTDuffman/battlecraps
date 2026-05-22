@@ -58,17 +58,17 @@ const CrewCard: React.FC<{ crew: CrewRosterEntry }> = ({ crew }) => {
             <div className="h-1.5 w-16 bg-white/5 rounded" />
           </div>
           <div
-            className={`font-pixel text-[6px] px-1.5 py-0.5 rounded ${rarityStyle.bg} ${rarityStyle.text}`}
+            className={`font-pixel text-r-6 px-1.5 py-0.5 rounded ${rarityStyle.bg} ${rarityStyle.text}`}
           >
             {crew.rarity.toUpperCase()}
           </div>
         </div>
-        <div className="text-[8px] text-white/30 italic">
+        <div className="text-r-8 text-white/30 italic">
           {crew.unlockDescription || 'Unlock condition not yet met.'}
         </div>
         {crew.unlockProgress !== null && crew.unlockThreshold !== null && (
           <div className="space-y-0.5">
-            <div className="flex justify-between text-[7px] text-white/30">
+            <div className="flex justify-between text-r-7 text-white/30">
               <span>PROGRESS</span>
               <span>{crew.unlockProgress} / {crew.unlockThreshold}</span>
             </div>
@@ -90,14 +90,14 @@ const CrewCard: React.FC<{ crew: CrewRosterEntry }> = ({ crew }) => {
         <span className="text-2xl flex-none">{emoji}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-pixel text-[8px] text-white/90">{crew.name}</span>
+            <span className="font-pixel text-r-8 text-white/90">{crew.name}</span>
             <span
-              className={`font-pixel text-[6px] px-1 py-0.5 rounded ${rarityStyle.bg} ${rarityStyle.text}`}
+              className={`font-pixel text-r-6 px-1 py-0.5 rounded ${rarityStyle.bg} ${rarityStyle.text}`}
             >
               {crew.rarity.toUpperCase()}
             </span>
             <span
-              className={`font-pixel text-[6px] px-1 py-0.5 rounded ${categoryStyle.bg} ${categoryStyle.text}`}
+              className={`font-pixel text-r-6 px-1 py-0.5 rounded ${categoryStyle.bg} ${categoryStyle.text}`}
             >
               {crew.abilityCategory}
             </span>
@@ -105,7 +105,7 @@ const CrewCard: React.FC<{ crew: CrewRosterEntry }> = ({ crew }) => {
         </div>
       </div>
       {crew.briefDescription && (
-        <p className="font-mono text-[8px] text-white/60 leading-relaxed">
+        <p className="font-mono text-r-8 text-white/60 leading-relaxed">
           {crew.briefDescription}
         </p>
       )}
@@ -136,11 +136,11 @@ const BossCard: React.FC<BossCardProps> = ({ markerIndex, revealed }) => {
             <div className="h-2 w-20 bg-red-900/30 rounded" />
             <div className="h-1.5 w-12 bg-red-900/20 rounded" />
           </div>
-          <span className="font-pixel text-[6px] text-red-400/40 border border-red-900/30 px-1.5 py-0.5 rounded">
+          <span className="font-pixel text-r-6 text-red-400/40 border border-red-900/30 px-1.5 py-0.5 rounded">
             FLOOR {Math.floor(markerIndex / 3) + 1}
           </span>
         </div>
-        <p className="font-mono text-[8px] text-red-400/30 italic">
+        <p className="font-mono text-r-8 text-red-400/30 italic">
           Defeat the previous boss to reveal.
         </p>
       </div>
@@ -153,23 +153,23 @@ const BossCard: React.FC<BossCardProps> = ({ markerIndex, revealed }) => {
         <span className="text-2xl flex-none">⚔️</span>
         <div className="flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="font-pixel text-[8px] text-red-300">{boss.name}</span>
-            <span className="font-pixel text-[6px] text-red-400/70 border border-red-900/40 px-1 py-0.5 rounded">
+            <span className="font-pixel text-r-8 text-red-300">{boss.name}</span>
+            <span className="font-pixel text-r-6 text-red-400/70 border border-red-900/40 px-1 py-0.5 rounded">
               {boss.title}
             </span>
           </div>
-          <div className="font-mono text-[7px] text-red-400/60 mt-0.5">
+          <div className="font-mono text-r-7 text-red-400/60 mt-0.5">
             Floor {Math.floor(markerIndex / 3) + 1} · Marker {markerIndex + 1}
           </div>
         </div>
       </div>
-      <p className="font-mono text-[8px] text-red-300/70 leading-relaxed">
+      <p className="font-mono text-r-8 text-red-300/70 leading-relaxed">
         {boss.ruleBlurb}
       </p>
       {boss.compDescription && (
         <div className="border-t border-red-900/30 pt-1.5 mt-1">
-          <span className="font-pixel text-[6px] text-amber-400/60">DEFEAT REWARD: </span>
-          <span className="font-mono text-[8px] text-amber-300/60">{boss.compName} — {boss.compDescription}</span>
+          <span className="font-pixel text-r-6 text-amber-400/60">DEFEAT REWARD: </span>
+          <span className="font-mono text-r-8 text-amber-300/60">{boss.compName} — {boss.compDescription}</span>
         </div>
       )}
     </div>
@@ -181,7 +181,7 @@ const BossCard: React.FC<BossCardProps> = ({ markerIndex, revealed }) => {
 // ---------------------------------------------------------------------------
 
 const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="font-pixel text-[7px] text-white/40 tracking-widest uppercase pt-3 pb-1 border-b border-white/10">
+  <div className="font-pixel text-r-7 text-white/40 tracking-widest uppercase pt-3 pb-1 border-b border-white/10">
     {children}
   </div>
 );
@@ -212,7 +212,7 @@ export const CrewAndBossesSection: React.FC = () => {
 
       {/* ── Bosses ─────────────────────────────────────────────────────────── */}
       <SectionHeader>Bosses</SectionHeader>
-      <p className="font-mono text-[9px] text-white/40 py-2">
+      <p className="font-mono text-r-9 text-white/40 py-2">
         One boss waits at the end of each floor. Defeat them to earn a permanent
         comp perk. Bosses are revealed as you progress.
       </p>
@@ -224,20 +224,20 @@ export const CrewAndBossesSection: React.FC = () => {
 
       {/* ── Crew ───────────────────────────────────────────────────────────── */}
       <SectionHeader>Your Crew</SectionHeader>
-      <p className="font-mono text-[9px] text-white/40 py-2">
+      <p className="font-mono text-r-9 text-white/40 py-2">
         Recruit crew at the pub between markers. Abilities fire left-to-right
         before every roll. Five slots total.
       </p>
 
       {crewRoster === null ? (
-        <div className="font-pixel text-[8px] text-white/30 text-center py-6 animate-pulse">
+        <div className="font-pixel text-r-8 text-white/30 text-center py-6 animate-pulse">
           LOADING ROSTER…
         </div>
       ) : (
         <>
           {advanced.length > 0 && (
             <>
-              <div className="font-pixel text-[7px] text-amber-300/60 pt-2 pb-1">
+              <div className="font-pixel text-r-7 text-amber-300/60 pt-2 pb-1">
                 UNLOCKABLE CREW
               </div>
               <div className="space-y-2">
@@ -248,7 +248,7 @@ export const CrewAndBossesSection: React.FC = () => {
             </>
           )}
 
-          <div className="font-pixel text-[7px] text-white/40 pt-3 pb-1">
+          <div className="font-pixel text-r-7 text-white/40 pt-3 pb-1">
             STARTER CREW — ALWAYS AVAILABLE
           </div>
           <div className="space-y-2">

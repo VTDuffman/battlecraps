@@ -78,7 +78,7 @@ export const SalDialog: React.FC<SalDialogProps> = ({
         <button
           type="button"
           onClick={onSkip}
-          className="font-pixel text-[7px] tracking-widest transition-colors flex items-center"
+          className="font-pixel text-r-7 tracking-widest transition-colors flex items-center"
           style={{ color: `${theme.accentDim}60`, minHeight: '44px', paddingLeft: '12px', paddingRight: '4px' }}
         >
           Skip Tutorial →
@@ -155,7 +155,7 @@ export const SalDialog: React.FC<SalDialogProps> = ({
                 <button
                   type="button"
                   onClick={() => setExpanded(true)}
-                  className="mt-2 font-pixel text-[7px] tracking-wider transition-opacity hover:opacity-80 flex items-center"
+                  className="mt-2 font-pixel text-r-7 tracking-wider transition-opacity hover:opacity-80 flex items-center"
                   style={{ color: theme.accentDim, minHeight: '44px', paddingRight: '16px' }}
                 >
                   Tell me more ▾
@@ -174,7 +174,7 @@ export const SalDialog: React.FC<SalDialogProps> = ({
             type="button"
             onClick={waiting ? undefined : onAdvance}
             disabled={waiting}
-            className="flex-1 rounded border font-pixel text-[8px] tracking-widest transition-all active:scale-[0.98]"
+            className="flex-1 rounded border font-pixel text-r-8 tracking-widest transition-all active:scale-[0.98]"
             style={{
               minHeight:   '44px',
               borderColor: waiting ? `${theme.accentDim}40` : theme.accentPrimary,
@@ -193,7 +193,7 @@ export const SalDialog: React.FC<SalDialogProps> = ({
             <button
               type="button"
               onClick={onAdvance}
-              className="px-3 rounded border font-pixel text-[7px] tracking-wider transition-all active:scale-[0.98]"
+              className="px-3 rounded border font-pixel text-r-7 tracking-wider transition-all active:scale-[0.98]"
               style={{
                 minHeight:   '44px',
                 borderColor: `${theme.accentDim}40`,

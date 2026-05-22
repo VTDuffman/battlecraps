@@ -81,7 +81,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
 
       {/* Game type badge */}
       <div
-        className="font-pixel text-[5px] tracking-[0.5em] border px-5 py-1.5 rounded"
+        className="font-pixel text-r-5 tracking-[0.5em] border px-5 py-1.5 rounded"
         style={{
           color:       `${theme.accentPrimary}99`,
           borderColor: `${theme.accentDim}40`,
@@ -132,7 +132,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
             onClick={onContinue}
             className="
               w-full py-3.5 rounded
-              font-pixel text-[10px] tracking-widest
+              font-pixel text-r-10 tracking-widest
               border-2
               text-amber-100
               transition-all duration-150 active:scale-95
@@ -160,7 +160,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
           onClick={handleNewRunClick}
           className="
             w-full py-3.5 rounded
-            font-pixel text-[10px] tracking-widest
+            font-pixel text-r-10 tracking-widest
             border-2
             transition-all duration-150 active:scale-95
           "
@@ -186,7 +186,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
           onClick={() => setShowHowToPlay(true)}
           className="
             mt-2 w-full py-2 rounded
-            font-pixel text-[8px] tracking-widest
+            font-pixel text-r-8 tracking-widest
             border transition-all duration-150 active:scale-95
           "
           style={{
@@ -213,7 +213,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
           className="
             vegas-marquee-border vegas-marquee-text
             w-full py-2 rounded
-            font-pixel text-[8px] tracking-widest
+            font-pixel text-r-8 tracking-widest
             transition-all duration-150 active:scale-95
           "
           style={{
@@ -230,7 +230,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
         <button
           type="button"
           onClick={() => setFeedbackOpen(true)}
-          className="font-pixel text-[6px] tracking-widest border px-2 py-1 rounded transition-all duration-150 active:scale-95"
+          className="font-pixel text-r-6 tracking-widest border px-2 py-1 rounded transition-all duration-150 active:scale-95"
           style={{
             color:       `${theme.accentPrimary}80`,
             borderColor: `${theme.accentDim}50`,
@@ -282,7 +282,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
             }}
           >
             <div
-              className="font-pixel text-[10px] tracking-widest text-center"
+              className="font-pixel text-r-10 tracking-widest text-center"
               style={{ color: theme.accentBright }}
             >
               START FRESH?
@@ -299,7 +299,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
                 onClick={onNewRun}
                 className="
                   flex-1 py-3 rounded
-                  font-pixel text-[8px] tracking-widest
+                  font-pixel text-r-8 tracking-widest
                   border-2 text-amber-100
                   transition-all duration-150 active:scale-95
                 "
@@ -315,7 +315,7 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
                 onClick={() => setConfirming(false)}
                 className="
                   flex-1 py-3 rounded
-                  font-pixel text-[8px] tracking-widest
+                  font-pixel text-r-8 tracking-widest
                   border transition-all duration-150 active:scale-95
                 "
                 style={{

@@ -387,10 +387,10 @@ const AuthenticatedApp: React.FC = () => {
   if (loading) {
     return (
       <main className="min-h-[100dvh] flex flex-col items-center justify-center bg-black gap-4">
-        <div className="font-pixel text-[10px] text-gold animate-pulse">
+        <div className="font-pixel text-r-10 text-gold animate-pulse">
           LOADING TABLE…
         </div>
-        <div className="font-pixel text-[7px] text-white/30">
+        <div className="font-pixel text-r-7 text-white/30">
           Connecting to server
         </div>
       </main>
@@ -401,13 +401,13 @@ const AuthenticatedApp: React.FC = () => {
   if (error) {
     return (
       <main className="min-h-[100dvh] flex flex-col items-center justify-center bg-black gap-6 px-8">
-        <div className="font-pixel text-[9px] text-red-400 text-center leading-6">
+        <div className="font-pixel text-r-9 text-red-400 text-center leading-6">
           FAILED TO CONNECT
         </div>
         <div className="font-mono text-xs text-white/50 text-center max-w-sm break-words">
           {error}
         </div>
-        <div className="font-pixel text-[7px] text-white/30 text-center leading-6">
+        <div className="font-pixel text-r-7 text-white/30 text-center leading-6">
           Is the API running on :3001?
           <br />
           Did you run the DB migration?
@@ -417,7 +417,7 @@ const AuthenticatedApp: React.FC = () => {
           onClick={() => void bootstrap(true)}
           className="
             mt-2 px-6 py-2 rounded
-            font-pixel text-[8px]
+            font-pixel text-r-8
             bg-red-900 border border-red-500 text-red-200
             hover:bg-red-800 active:scale-95
             transition-all
@@ -562,7 +562,7 @@ const TestAuthenticatedApp: React.FC = () => {
   if (error) {
     return (
       <main className="min-h-[100dvh] flex items-center justify-center bg-black">
-        <div className="font-pixel text-[9px] text-red-400 text-center px-4">{error}</div>
+        <div className="font-pixel text-r-9 text-red-400 text-center px-4">{error}</div>
       </main>
     );
   }
@@ -570,7 +570,7 @@ const TestAuthenticatedApp: React.FC = () => {
   if (!ready) {
     return (
       <main className="min-h-[100dvh] flex items-center justify-center bg-black">
-        <div className="font-pixel text-[10px] text-gold animate-pulse">LOADING…</div>
+        <div className="font-pixel text-r-10 text-gold animate-pulse">LOADING…</div>
       </main>
     );
   }
@@ -595,7 +595,7 @@ const AuthGuardedApp: React.FC = () => {
   if (!isLoaded) {
     return (
       <main className="min-h-[100dvh] flex items-center justify-center bg-black">
-        <div className="font-pixel text-[10px] text-gold animate-pulse">
+        <div className="font-pixel text-r-10 text-gold animate-pulse">
           LOADING…
         </div>
       </main>
@@ -605,7 +605,7 @@ const AuthGuardedApp: React.FC = () => {
   if (!isSignedIn) {
     return (
       <main className="min-h-[100dvh] flex flex-col items-center justify-center bg-black gap-6">
-        <div className="font-pixel text-[12px] text-gold tracking-widest">
+        <div className="font-pixel text-r-12 text-gold tracking-widest">
           BATTLE CRAPS
         </div>
         <SignIn />

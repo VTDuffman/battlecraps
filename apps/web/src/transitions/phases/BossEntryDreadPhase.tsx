@@ -56,7 +56,7 @@ export const BossEntryDreadPhase: React.FC<PhaseComponentProps> = () => {
 
       {/* Star badge — oversized for drama */}
       <div
-        className="w-16 h-16 rounded flex items-center justify-center font-pixel text-[28px]"
+        className="w-16 h-16 rounded flex items-center justify-center font-pixel text-r-28"
         style={{
           color:      theme.bossStarColor,
           background: theme.bossStarBg,
@@ -70,13 +70,13 @@ export const BossEntryDreadPhase: React.FC<PhaseComponentProps> = () => {
       {/* Venue */}
       <div className="flex flex-col items-center gap-1.5 text-center px-8">
         <div
-          className="font-pixel text-[5px] tracking-[0.4em]"
+          className="font-pixel text-r-5 tracking-[0.4em]"
           style={{ color: `${theme.bossTextColor}70` }}
         >
           YOU HAVE BEEN SUMMONED TO
         </div>
         <div
-          className="font-pixel text-[10px] tracking-wide"
+          className="font-pixel text-r-10 tracking-wide"
           style={{
             color:      `${theme.bossTextColor}cc`,
             textShadow: `0 0 20px ${theme.bossTextColor}40`,
@@ -100,7 +100,7 @@ export const BossEntryDreadPhase: React.FC<PhaseComponentProps> = () => {
 
       {/* Dread tagline — boss's opening bark */}
       <div
-        className="font-pixel text-[9px] tracking-[0.3em] text-center px-8"
+        className="font-pixel text-r-9 tracking-[0.3em] text-center px-8"
         style={{
           color:      `${theme.bossStarColor}cc`,
           textShadow: `0 0 16px ${theme.bossTextColor}40`,

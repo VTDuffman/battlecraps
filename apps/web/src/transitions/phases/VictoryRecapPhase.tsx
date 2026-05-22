@@ -52,13 +52,13 @@ export const VictoryRecapPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) 
       {/* Header */}
       <div className="flex flex-col items-center gap-1">
         <div
-          className="font-pixel text-[6px] tracking-[0.4em]"
+          className="font-pixel text-r-6 tracking-[0.4em]"
           style={{ color: `${theme.accentPrimary}80` }}
         >
           FINAL STANDINGS
         </div>
         <div
-          className="font-pixel text-[14px] tracking-wide"
+          className="font-pixel text-r-14 tracking-wide"
           style={{
             color:      theme.accentBright,
             textShadow: `0 0 20px ${theme.accentBright}60`,
@@ -114,13 +114,13 @@ export const VictoryRecapPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) 
               className="flex flex-col items-center gap-0.5"
             >
               <div
-                className="font-pixel text-[5px] tracking-wide"
+                className="font-pixel text-r-5 tracking-wide"
                 style={{ color: ft.accentBright }}
               >
                 ✓
               </div>
               <div
-                className="font-pixel text-[4px]"
+                className="font-pixel text-r-4"
                 style={{ color: `${ft.accentPrimary}99` }}
               >
                 {floor.name.toUpperCase()}
@@ -136,7 +136,7 @@ export const VictoryRecapPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) 
         onClick={onAdvance}
         className="
           px-10 py-3 rounded
-          font-pixel text-[9px] tracking-widest
+          font-pixel text-r-9 tracking-widest
           border-2
           text-amber-100
           transition-all duration-150 active:scale-95
@@ -172,13 +172,13 @@ const RecapRow: React.FC<{
     style={{ borderBottom: `1px solid ${theme.accentDim}20` }}
   >
     <span
-      className="font-pixel text-[6px] tracking-wider"
+      className="font-pixel text-r-6 tracking-wider"
       style={{ color: `${theme.accentPrimary}80` }}
     >
       {label}
     </span>
     <span
-      className="font-mono text-[11px]"
+      className="font-mono text-r-11"
       style={{ color: highlight ? theme.accentBright : `${theme.accentPrimary}cc` }}
     >
       {value}

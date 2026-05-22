@@ -43,7 +43,7 @@ export const VictorySendoffPhase: React.FC<PhaseComponentProps> = ({ onAdvance }
       {/* Final bankroll — the number they earned */}
       <div className="flex flex-col items-center gap-1 text-center">
         <div
-          className="font-pixel text-[6px] tracking-[0.3em]"
+          className="font-pixel text-r-6 tracking-[0.3em]"
           style={{ color: `${theme.accentPrimary}70` }}
         >
           YOU LEAVE WITH
@@ -89,7 +89,7 @@ export const VictorySendoffPhase: React.FC<PhaseComponentProps> = ({ onAdvance }
         onClick={onAdvance}
         className="
           px-12 py-3.5 rounded
-          font-pixel text-[10px] tracking-widest
+          font-pixel text-r-10 tracking-widest
           border-2
           text-amber-100
           transition-all duration-150 active:scale-95
@@ -105,7 +105,7 @@ export const VictorySendoffPhase: React.FC<PhaseComponentProps> = ({ onAdvance }
 
       {/* Footnote */}
       <p
-        className="font-pixel text-[5px] tracking-wider text-center px-10"
+        className="font-pixel text-r-5 tracking-wider text-center px-10"
         style={{ color: `${theme.accentDim}50` }}
       >
         NEW RUN · $30 BANKROLL · FRESH CREW SLOTS

@@ -286,7 +286,7 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = ({
                 boxShadow:   '0 0 30px 8px rgba(220,38,38,0.15)',
               }}
             >
-              <div className="font-pixel text-[7px] tracking-widest" style={{ color: 'rgba(248,113,113,0.70)' }}>
+              <div className="font-pixel text-r-7 tracking-widest" style={{ color: 'rgba(248,113,113,0.70)' }}>
                 END OF FLOOR 1
               </div>
               <div className="font-pixel text-2xl text-red-400">★</div>
@@ -299,7 +299,7 @@ export const TutorialOverlay: React.FC<TutorialOverlayProps> = ({
               >
                 {bossConfig.ruleBlurb}
               </p>
-              <div className="font-pixel text-[7px]" style={{ color: 'rgba(248,113,113,0.50)' }}>
+              <div className="font-pixel text-r-7" style={{ color: 'rgba(248,113,113,0.50)' }}>
                 You'll meet them at the end of Floor 1.
               </div>
             </div>

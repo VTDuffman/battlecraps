@@ -18,7 +18,7 @@ function dollars(cents: number): string {
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 const SectionHeader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="font-pixel text-[7px] text-white/40 tracking-widest uppercase pt-3 pb-1 border-b border-white/10">
+  <div className="font-pixel text-r-7 text-white/40 tracking-widest uppercase pt-3 pb-1 border-b border-white/10">
     {children}
   </div>
 );
@@ -27,8 +27,8 @@ const Row: React.FC<{ label: string; value: string; valueColor?: string }> = ({
   label, value, valueColor = 'text-white/80',
 }) => (
   <div className="flex justify-between items-baseline py-1 border-b border-white/5">
-    <span className="font-mono text-[9px] text-white/50">{label}</span>
-    <span className={`font-pixel text-[8px] ${valueColor}`}>{value}</span>
+    <span className="font-mono text-r-9 text-white/50">{label}</span>
+    <span className={`font-pixel text-r-8 ${valueColor}`}>{value}</span>
   </div>
 );
 
@@ -42,7 +42,7 @@ export const BattleCrapsRulesSection: React.FC = () => {
   });
 
   return (
-    <div className="space-y-1 pb-4 font-mono text-[9px]">
+    <div className="space-y-1 pb-4 font-mono text-r-9">
 
       {/* ── Gauntlet Structure ─────────────────────────────────────────────── */}
       <SectionHeader>The Gauntlet</SectionHeader>
@@ -53,7 +53,7 @@ export const BattleCrapsRulesSection: React.FC = () => {
 
       {floors.map((floor, fi) => (
         <div key={fi} className="mt-2">
-          <div className="font-pixel text-[7px] text-amber-300/70 mb-1">
+          <div className="font-pixel text-r-7 text-amber-300/70 mb-1">
             Floor {fi + 1} — {floor.name}
           </div>
           <div className="space-y-0.5">
@@ -72,16 +72,16 @@ export const BattleCrapsRulesSection: React.FC = () => {
                 >
                   <div className="flex items-center gap-2">
                     <span
-                      className={`font-pixel text-[7px] ${isBoss ? 'text-red-400' : 'text-white/30'}`}
+                      className={`font-pixel text-r-7 ${isBoss ? 'text-red-400' : 'text-white/30'}`}
                     >
                       {isBoss ? '★ BOSS' : `MK ${globalIdx + 1}`}
                     </span>
                     {isBoss && m.boss && (
-                      <span className="text-[8px] text-red-300/70">{m.boss.name}</span>
+                      <span className="text-r-8 text-red-300/70">{m.boss.name}</span>
                     )}
                   </div>
                   <span
-                    className={`font-pixel text-[8px] ${isBoss ? 'text-red-300' : 'text-white/70'}`}
+                    className={`font-pixel text-r-8 ${isBoss ? 'text-red-300' : 'text-white/70'}`}
                   >
                     {dollars(m.targetCents)}
                   </span>
@@ -130,11 +130,11 @@ export const BattleCrapsRulesSection: React.FC = () => {
         <Row label="On Fire (tier 3)"    value="≥ 2.50×" valueColor="text-orange-400" />
       </div>
       <div className="mt-2 border border-amber-900/40 rounded bg-amber-950/20 p-3">
-        <div className="font-pixel text-[7px] text-amber-300 mb-1">PAYOUT FORMULA</div>
+        <div className="font-pixel text-r-7 text-amber-300 mb-1">PAYOUT FORMULA</div>
         <div className="text-white/60 leading-relaxed">
           Final payout = stake returned + ⌈ gross profit × Hype ⌉
         </div>
-        <div className="text-white/30 text-[8px] mt-1">
+        <div className="text-white/30 text-r-8 mt-1">
           Example: $100 Pass Line wins $100 base. At 1.5× Hype, profit is $150 (not $100).
         </div>
       </div>
@@ -148,9 +148,9 @@ export const BattleCrapsRulesSection: React.FC = () => {
           { point: '6 / 8',  pays: '6:5',  max: '5×' },
         ].map(({ point, pays, max }) => (
           <div key={point} className="border border-white/10 rounded p-2 bg-black/20">
-            <div className="font-pixel text-[7px] text-amber-300">{point}</div>
-            <div className="font-pixel text-[9px] text-green-400 mt-0.5">{pays}</div>
-            <div className="text-white/30 text-[7px] mt-0.5">cap {max} Pass</div>
+            <div className="font-pixel text-r-7 text-amber-300">{point}</div>
+            <div className="font-pixel text-r-9 text-green-400 mt-0.5">{pays}</div>
+            <div className="text-white/30 text-r-7 mt-0.5">cap {max} Pass</div>
           </div>
         ))}
       </div>
@@ -165,8 +165,8 @@ export const BattleCrapsRulesSection: React.FC = () => {
           { bet: 'Hard 8',  pays: '9:1' },
         ].map(({ bet, pays }) => (
           <div key={bet} className="border border-white/10 rounded p-1.5 bg-black/20">
-            <div className="font-pixel text-[7px] text-amber-300">{bet}</div>
-            <div className="font-pixel text-[8px] text-green-400 mt-0.5">{pays}</div>
+            <div className="font-pixel text-r-7 text-amber-300">{bet}</div>
+            <div className="font-pixel text-r-8 text-green-400 mt-0.5">{pays}</div>
           </div>
         ))}
       </div>

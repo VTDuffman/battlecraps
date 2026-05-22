@@ -176,11 +176,11 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
           {onReturnToTitle && (
             returnConfirm ? (
               <>
-                <span className="font-pixel text-[6px] text-red-400/70 whitespace-nowrap">RETURN TO TITLE SCREEN?</span>
+                <span className="font-pixel text-r-6 text-red-400/70 whitespace-nowrap">RETURN TO TITLE SCREEN?</span>
                 <button
                   type="button"
                   onClick={() => { setReturnConfirm(false); onReturnToTitle(); }}
-                  className="px-2 h-7 flex items-center rounded font-pixel text-[7px] bg-red-900/70 text-red-300 border border-red-700/50 hover:bg-red-800/90 transition-colors"
+                  className="px-2 h-7 flex items-center rounded font-pixel text-r-7 bg-red-900/70 text-red-300 border border-red-700/50 hover:bg-red-800/90 transition-colors"
                   aria-label="Confirm return to title"
                 >
                   YES
@@ -188,7 +188,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
                 <button
                   type="button"
                   onClick={() => setReturnConfirm(false)}
-                  className="px-2 h-7 flex items-center rounded font-pixel text-[7px] bg-black/80 text-gold border border-white/10 hover:text-gold-bright transition-colors shadow-md"
+                  className="px-2 h-7 flex items-center rounded font-pixel text-r-7 bg-black/80 text-gold border border-white/10 hover:text-gold-bright transition-colors shadow-md"
                   aria-label="Cancel"
                 >
                   NO
@@ -205,7 +205,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
                   <line x1="19" y1="12" x2="5" y2="12" />
                   <polyline points="12 19 5 12 12 5" />
                 </svg>
-                <span className="font-pixel text-[7px] tracking-widest">TITLE SCREEN</span>
+                <span className="font-pixel text-r-7 tracking-widest">TITLE SCREEN</span>
               </button>
             )
           )}
@@ -214,11 +214,11 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
           {onNewRun && (
             abandonConfirm ? (
               <>
-                <span className="font-pixel text-[6px] text-red-400/70">END?</span>
+                <span className="font-pixel text-r-6 text-red-400/70">END?</span>
                 <button
                   type="button"
                   onClick={() => { setAbandonConfirm(false); onNewRun(); }}
-                  className="px-2 h-7 flex items-center rounded font-pixel text-[7px] bg-red-900/70 text-red-300 border border-red-700/50 hover:bg-red-800/90 transition-colors"
+                  className="px-2 h-7 flex items-center rounded font-pixel text-r-7 bg-red-900/70 text-red-300 border border-red-700/50 hover:bg-red-800/90 transition-colors"
                   aria-label="Confirm new run"
                 >
                   YES
@@ -226,7 +226,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
                 <button
                   type="button"
                   onClick={() => setAbandonConfirm(false)}
-                  className="px-2 h-7 flex items-center rounded font-pixel text-[7px] bg-black/80 text-gold border border-white/10 hover:text-gold-bright transition-colors shadow-md"
+                  className="px-2 h-7 flex items-center rounded font-pixel text-r-7 bg-black/80 text-gold border border-white/10 hover:text-gold-bright transition-colors shadow-md"
                   aria-label="Cancel"
                 >
                   NO
@@ -237,7 +237,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
                 type="button"
                 onClick={() => setAbandonConfirm(true)}
                 disabled={isRolling}
-                className="px-1.5 h-7 flex items-center rounded font-pixel text-[7px] bg-black/80 text-gold hover:text-gold-bright disabled:opacity-20 transition-colors tracking-widest shadow-md"
+                className="px-1.5 h-7 flex items-center rounded font-pixel text-r-7 bg-black/80 text-gold hover:text-gold-bright disabled:opacity-20 transition-colors tracking-widest shadow-md"
                 aria-label="Start a new run"
               >
                 NEW RUN
@@ -260,7 +260,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
             >
               <span className="text-base leading-none">✉</span>
             </button>
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-[6px] text-gold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-r-6 text-gold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
               SUBMIT FEEDBACK
             </div>
           </div>
@@ -275,7 +275,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
             >
               <span className="text-base leading-none">{muted ? '🔇' : '🔊'}</span>
             </button>
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-[6px] text-gold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-r-6 text-gold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
               VOLUME
             </div>
           </div>
@@ -290,7 +290,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
             >
               <span className="font-pixel text-sm leading-none">?</span>
             </button>
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-[6px] text-gold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-r-6 text-gold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
               HELP
             </div>
           </div>
@@ -371,7 +371,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
         {/* Rail header */}
         <div className="flex items-center gap-2" style={{ marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
           <div className="h-px flex-1" style={{ backgroundColor: theme.borderLow }} />
-          <span className="font-pixel text-[6px] tracking-widest" style={{ color: theme.accentPrimary }}>
+          <span className="font-pixel text-r-6 tracking-widest" style={{ color: theme.accentPrimary }}>
             CREW
           </span>
           <div className="h-px flex-1" style={{ backgroundColor: theme.borderLow }} />
@@ -535,9 +535,9 @@ const GameStatus: React.FC = () => {
           {/* Decorative star row */}
           <div className="flex items-center justify-center gap-1.5 mb-1">
             <div className="h-px w-6 bg-gradient-to-r from-transparent to-gold/40" />
-            <span className="font-pixel text-[5px] text-gold/50">✦</span>
-            <span className="font-pixel text-[7px] text-gold/70">★</span>
-            <span className="font-pixel text-[5px] text-gold/50">✦</span>
+            <span className="font-pixel text-r-5 text-gold/50">✦</span>
+            <span className="font-pixel text-r-7 text-gold/70">★</span>
+            <span className="font-pixel text-r-5 text-gold/50">✦</span>
             <div className="h-px w-6 bg-gradient-to-l from-transparent to-gold/40" />
           </div>
 
@@ -570,13 +570,13 @@ const GameStatus: React.FC = () => {
           </h1>
 
           {/* Tagline */}
-          <div className="font-pixel text-[5px] text-gold/40 tracking-[0.4em] mt-0.5">
+          <div className="font-pixel text-r-5 text-gold/40 tracking-[0.4em] mt-0.5">
             · CASINO GAUNTLET ·
           </div>
 
           {/* Bankroll — directly beneath logo */}
           <div className="mt-1.5 text-center">
-            <div className="font-pixel text-[6px] text-white/40 mb-0.5">BANKROLL</div>
+            <div className="font-pixel text-r-6 text-white/40 mb-0.5">BANKROLL</div>
             <div data-testid="bankroll" className={`font-pixel text-sm transition-colors duration-150 ${bankrollColor}`}>
               {bankrollStr}
             </div>
@@ -587,7 +587,7 @@ const GameStatus: React.FC = () => {
         <div className="flex flex-col items-center gap-2">
           {/* Hype */}
           <div className="text-center" data-tutorial-zone="hype-meter">
-            <div className="font-pixel text-[6px] text-white/40 mb-0.5">
+            <div className="font-pixel text-r-6 text-white/40 mb-0.5">
               HYPE{streak >= 2 ? ` ${'🔥'.repeat(Math.min(streak, 4))}` : ''}
             </div>
             <div className="flex items-center justify-center gap-1.5">
@@ -615,7 +615,7 @@ const GameStatus: React.FC = () => {
 
           {/* Shooters */}
           <div data-testid="shooters" className="text-center">
-            <div className="font-pixel text-[6px] text-white/40 mb-0.5">SHOOTERS</div>
+            <div className="font-pixel text-r-6 text-white/40 mb-0.5">SHOOTERS</div>
             <div className="flex gap-1 justify-center">
               {(() => {
                 const hasExtraShooterComp = currentMarkerIndex > 2; // Sarge is Marker 2
@@ -663,7 +663,7 @@ const GameStatus: React.FC = () => {
           <div
             className={[
               'w-10 h-10 rounded-full border-2 flex items-center justify-center',
-              'font-pixel text-[9px] transition-colors duration-300',
+              'font-pixel text-r-9 transition-colors duration-300',
               phase === 'POINT_ACTIVE' && point !== null
                 ? 'bg-white border-white text-black shadow-[0_0_10px_2px_rgba(255,255,255,0.6)]'
                 : 'bg-black border-white/20 text-white/20',
@@ -672,7 +672,7 @@ const GameStatus: React.FC = () => {
             {phase === 'POINT_ACTIVE' && point !== null ? point : 'OFF'}
           </div>
         </div>
-        <span className="font-pixel text-[7px] text-white/30">
+        <span className="font-pixel text-r-7 text-white/30">
           {phase === 'POINT_ACTIVE' ? 'POINT ACTIVE' : 'COME OUT'}
         </span>
       </div>
@@ -701,12 +701,12 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
     <div className="w-full px-2 space-y-1" data-tutorial-zone="marker-progress">
       <div className="flex justify-between items-baseline">
         <span
-          className="font-pixel text-[6px]"
+          className="font-pixel text-r-6"
           style={{ color: isBoss ? '#f87171' : theme.accentPrimary }}
         >
           {label}
         </span>
-        <span className="font-pixel text-[6px] text-white/30">
+        <span className="font-pixel text-r-6 text-white/30">
           ${(bankroll / 100).toFixed(0)} / ${(target / 100).toFixed(0)}
         </span>
       </div>
@@ -754,7 +754,7 @@ const ChipRail: React.FC = () => {
         paddingBottom: 'clamp(4px,0.6dvh,8px)',
       }}
     >
-      <div className="text-center font-pixel text-[7px] text-white/30" style={{ marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
+      <div className="text-center font-pixel text-r-7 text-white/30" style={{ marginBottom: 'clamp(2px,0.3dvh,8px)' }}>
         TABLE MAX: ${maxBet / 100}
       </div>
       <ChipSelector activeChip={activeChip} disabled={isRolling || tutorialCtx?.activeBeatMode === 'manual-roll'} />

@@ -55,7 +55,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
       <div className="flex flex-col items-center gap-3 px-8 text-center">
         {/* Star badge */}
         <div
-          className="w-12 h-12 rounded flex items-center justify-center font-pixel text-[18px]"
+          className="w-12 h-12 rounded flex items-center justify-center font-pixel text-r-18"
           style={{
             color:      theme.bossStarColor,
             background: theme.bossStarBg,
@@ -66,12 +66,12 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
           ★
         </div>
 
-        <div className="font-pixel text-[6px] tracking-[0.3em]" style={{ color: `${theme.bossTextColor}b3` }}>
+        <div className="font-pixel text-r-6 tracking-[0.3em]" style={{ color: `${theme.bossTextColor}b3` }}>
           YOU HAVE BEEN SUMMONED TO
         </div>
 
         <h1
-          className="font-pixel text-[16px] tracking-wide"
+          className="font-pixel text-r-16 tracking-wide"
           style={{
             color:      theme.bossTextColor,
             textShadow: theme.bossTitleShadow,
@@ -80,7 +80,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
           THE HIGH LIMIT ROOM
         </h1>
 
-        <div className="font-pixel text-[9px] tracking-widest" style={{ color: `${theme.bossTextColor}cc` }}>
+        <div className="font-pixel text-r-9 tracking-widest" style={{ color: `${theme.bossTextColor}cc` }}>
           {boss.name.toUpperCase()}
         </div>
       </div>
@@ -96,7 +96,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
         {boss.entryLines.map((line, i) => (
           <p
             key={i}
-            className="font-mono text-[9px] text-center leading-relaxed italic"
+            className="font-mono text-r-9 text-center leading-relaxed italic"
             style={{ color: `${theme.bossTextColor}99` }}
           >
             {i === 0 ? <>&ldquo;{line}</> : i === boss.entryLines.length - 1 ? <>{line}&rdquo;</> : line}
@@ -106,17 +106,17 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
           className="mt-1 h-px"
           style={{ background: `linear-gradient(90deg, transparent, ${theme.bossBorderColor}, transparent)` }}
         />
-        <p className="mt-2 font-pixel text-[5px] text-center tracking-wide" style={{ color: `${theme.bossTextColor}66` }}>
+        <p className="mt-2 font-pixel text-r-5 text-center tracking-wide" style={{ color: `${theme.bossTextColor}66` }}>
           — {boss.name}
         </p>
       </div>
 
       {/* ── Rule briefing ───────────────────────────────────────────────────── */}
       <div className="px-8 w-full max-w-xs">
-        <div className="font-pixel text-[5px] tracking-widest mb-2 text-center" style={{ color: `${theme.bossTextColor}99` }}>
+        <div className="font-pixel text-r-5 tracking-widest mb-2 text-center" style={{ color: `${theme.bossTextColor}99` }}>
           ── HOUSE RULES ──
         </div>
-        <p className="font-mono text-[8px] text-center leading-snug" style={{ color: `${theme.bossTextColor}80` }}>
+        <p className="font-mono text-r-8 text-center leading-snug" style={{ color: `${theme.bossTextColor}80` }}>
           {boss.ruleBlurb}
         </p>
       </div>
@@ -127,7 +127,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
         onClick={onEnter}
         className="
           px-10 py-3 rounded
-          font-pixel text-[8px] tracking-widest
+          font-pixel text-r-8 tracking-widest
           border-2
           transition-all duration-150 active:scale-95
         "
@@ -141,7 +141,7 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
         ▶ ENTER THE ROOM
       </button>
 
-      <p className="font-pixel text-[5px] tracking-wide text-center px-8" style={{ color: `${theme.bossTextColor}4d` }}>
+      <p className="font-pixel text-r-5 tracking-wide text-center px-8" style={{ color: `${theme.bossTextColor}4d` }}>
         There is no shame in surviving this far.<br />
         There will be, if you leave early.
       </p>

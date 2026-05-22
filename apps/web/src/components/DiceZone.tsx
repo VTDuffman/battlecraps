@@ -84,7 +84,7 @@ const ResultPopup: React.FC<ResultPopupProps> = ({ result, total, phase }) => {
       style={{ top: '50%', transform: 'translateY(-50%)' }}
     >
       <span className={`font-pixel text-base leading-tight ${colour}`}>{label}</span>
-      <span className="font-pixel text-[9px] text-white/60">— {total} —</span>
+      <span className="font-pixel text-r-9 text-white/60">— {total} —</span>
     </div>
   );
 };
@@ -514,7 +514,7 @@ export const DiceZone: React.FC = () => {
         {/* Lefty McGuffin dread phase — "SEVEN OUT?" pulsing warning */}
         {throwPhase === 'idle' && dreadDice !== null && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-            <span className="font-pixel text-[9px] text-red-400 animate-pulse tracking-widest">
+            <span className="font-pixel text-r-9 text-red-400 animate-pulse tracking-widest">
               SEVEN OUT?
             </span>
           </div>
@@ -522,7 +522,7 @@ export const DiceZone: React.FC = () => {
 
         {/* Lefty McGuffin save flash — shown when dreadDice clears */}
         {showSaveFlash && (
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 font-pixel text-[11px] animate-bark-rise pointer-events-none text-green-400 tracking-widest z-20">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 font-pixel text-r-11 animate-bark-rise pointer-events-none text-green-400 tracking-widest z-20">
             SAVED!
           </div>
         )}
@@ -556,7 +556,7 @@ export const DiceZone: React.FC = () => {
         onClick={() => void handleRoll()}
         className={[
           'flex-none px-6 rounded',
-          'font-pixel text-[10px]',
+          'font-pixel text-r-10',
           'border-2 transition-all duration-150',
           'flex flex-col items-center justify-center gap-0.5',
           canRoll
@@ -573,7 +573,7 @@ export const DiceZone: React.FC = () => {
       >
         <span>{isRolling || throwPhase !== 'idle' ? 'ROLLING…' : 'ROLL'}</span>
         {belowMinBet && throwPhase === 'idle' && (
-          <span className="font-pixel text-[6px] text-amber-400/90 tracking-wide leading-none">
+          <span className="font-pixel text-r-6 text-amber-400/90 tracking-wide leading-none">
             {bossMinBet !== null ? '⚔ ' : ''}MIN ${effectiveMinBet / 100}
           </span>
         )}
@@ -629,7 +629,7 @@ const Die: React.FC<{ value: number; locked?: boolean; extraClass?: string; hype
       ))}
       {locked && (
         <div className="absolute inset-0 flex items-end justify-end pr-0.5 pb-0.5 pointer-events-none">
-          <span className="font-pixel text-[5px] text-[#444] leading-none">⛓</span>
+          <span className="font-pixel text-r-5 text-[#444] leading-none">⛓</span>
         </div>
       )}
     </div>

@@ -126,7 +126,7 @@ export const UnlockRecapPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
           borderColor: '#d4a017',
         }}
       >
-        <p className="font-pixel text-[8px] animate-pulse" style={{ color: '#f5c842' }}>LOADING…</p>
+        <p className="font-pixel text-r-8 animate-pulse" style={{ color: '#f5c842' }}>LOADING…</p>
       </div>
     );
   }
@@ -157,13 +157,13 @@ export const UnlockRecapPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
       {/* Header */}
       <div className="flex flex-col items-center gap-2 text-center px-6">
         <div
-          className="font-pixel text-[5px] tracking-[0.4em]"
+          className="font-pixel text-r-5 tracking-[0.4em]"
           style={{ color: 'rgba(245,200,66,0.55)' }}
         >
           THIS RUN YOU UNLOCKED
         </div>
         <div
-          className="font-pixel text-[12px] tracking-wide"
+          className="font-pixel text-r-12 tracking-wide"
           style={{ color: '#f5c842', textShadow: '0 0 20px rgba(245,200,66,0.5)' }}
         >
           NEW CREW
@@ -200,7 +200,7 @@ export const UnlockRecapPhase: React.FC<PhaseComponentProps> = ({ onAdvance }) =
         onClick={onAdvance}
         className="
           px-10 py-3
-          font-pixel text-[9px] tracking-widest
+          font-pixel text-r-9 tracking-widest
           border-2 text-amber-100
           transition-opacity duration-500
           active:scale-95
@@ -293,7 +293,7 @@ const SpotlightCard: React.FC<{
         >
           {/* Rarity banner */}
           <div
-            className="w-full py-1 text-center font-pixel text-[7px] tracking-widest"
+            className="w-full py-1 text-center font-pixel text-r-7 tracking-widest"
             style={{ background: palette.badge, color: palette.text }}
           >
             {rarity.toUpperCase()} CREW UNLOCKED
@@ -312,7 +312,7 @@ const SpotlightCard: React.FC<{
 
           {/* Crew name */}
           <div className="text-center px-6 pb-8">
-            <p className="font-pixel text-[10px] leading-6" style={{ color: palette.text }}>
+            <p className="font-pixel text-r-10 leading-6" style={{ color: palette.text }}>
               {name}
             </p>
           </div>
@@ -338,7 +338,7 @@ const UnlockCard: React.FC<{
   >
     {/* Rarity badge */}
     <div
-      className="w-full py-0.5 text-center font-pixel text-[5px] tracking-widest"
+      className="w-full py-0.5 text-center font-pixel text-r-5 tracking-widest"
       style={{ background: palette.badge, color: palette.text }}
     >
       {rarity.toUpperCase()}
@@ -357,7 +357,7 @@ const UnlockCard: React.FC<{
 
     {/* Name */}
     <div className="text-center px-2 pb-3">
-      <p className="font-pixel text-[5px] leading-4" style={{ color: palette.text }}>
+      <p className="font-pixel text-r-5 leading-4" style={{ color: palette.text }}>
         {name}
       </p>
     </div>

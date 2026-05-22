@@ -22,7 +22,7 @@ const API_BASE = (import.meta as { env: Record<string, string> }).env['VITE_API_
 function SectionHeader({ label }: { label: string }) {
   return (
     <p
-      className="font-pixel text-[7px] tracking-[0.4em] mb-3"
+      className="font-pixel text-r-7 tracking-[0.4em] mb-3"
       style={{ color: `${theme.accentPrimary}60` }}
     >
       {label}
@@ -33,7 +33,7 @@ function SectionHeader({ label }: { label: string }) {
 function EmptyState({ label }: { label: string }) {
   return (
     <p
-      className="font-mono text-center text-[9px] py-8"
+      className="font-mono text-center text-r-9 py-8"
       style={{ color: `${theme.accentPrimary}30` }}
     >
       {label}
@@ -93,13 +93,13 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
         <button
           type="button"
           onClick={onBack}
-          className="font-pixel text-[8px]"
+          className="font-pixel text-r-8"
           style={{ color: theme.accentPrimary }}
         >
           ← BACK
         </button>
         <h2
-          className="vegas-marquee-text font-pixel text-[10px] tracking-widest flex-1 text-center"
+          className="vegas-marquee-text font-pixel text-r-10 tracking-widest flex-1 text-center"
           style={{ color: theme.accentBright }}
         >
           HIGH ROLLER'S CLUB
@@ -113,7 +113,7 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className="flex-1 py-2 font-pixel text-[8px] tracking-widest transition-colors"
+            className="flex-1 py-2 font-pixel text-r-8 tracking-widest transition-colors"
             style={{
               color:        tab === t ? theme.accentBright : `${theme.accentPrimary}50`,
               borderBottom: tab === t ? `2px solid ${theme.accentPrimary}` : '2px solid transparent',
@@ -130,14 +130,14 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-5">
           {loading && (
             <p
-              className="font-mono text-center text-[9px]"
+              className="font-mono text-center text-r-9"
               style={{ color: `${theme.accentPrimary}50` }}
             >
               Loading...
             </p>
           )}
           {error && (
-            <p className="font-mono text-center text-[9px] text-red-400">{error}</p>
+            <p className="font-mono text-center text-r-9 text-red-400">{error}</p>
           )}
           {globalData && !loading && (
             <>
@@ -177,7 +177,7 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
               <div>
                 <SectionHeader label="TRAILBLAZERS" />
                 <p
-                  className="font-mono text-[8px] mb-2"
+                  className="font-mono text-r-8 mb-2"
                   style={{ color: `${theme.accentPrimary}40` }}
                 >
                   The originals. Beat the game before the real game began.
@@ -201,14 +201,14 @@ export function LeaderboardScreen({ onBack }: LeaderboardScreenProps) {
         <div className="flex-1 overflow-y-auto p-4">
           {loading && (
             <p
-              className="font-mono text-center text-[9px]"
+              className="font-mono text-center text-r-9"
               style={{ color: `${theme.accentPrimary}50` }}
             >
               Loading...
             </p>
           )}
           {error && (
-            <p className="font-mono text-center text-[9px] text-red-400">{error}</p>
+            <p className="font-mono text-center text-r-9 text-red-400">{error}</p>
           )}
           {tab === 'personal' && personalData && !loading && (
             <>

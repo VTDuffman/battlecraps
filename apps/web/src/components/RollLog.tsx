@@ -83,7 +83,7 @@ const ReceiptEntry: React.FC<{ receipt: RollReceipt }> = ({ receipt }) => {
 
   return (
     <div className="py-1.5 border-b border-white/10 last:border-0">
-      <div className="text-[8px] text-white/30 mb-0.5 font-mono">{time}</div>
+      <div className="text-r-8 text-white/30 mb-0.5 font-mono">{time}</div>
       {receipt.lines.map((line, i) => (
         <ReceiptLine
           key={i}
@@ -153,12 +153,12 @@ export const RollLog: React.FC = () => {
           {/* Grab pill — visual affordance for a pull-up sheet */}
           <div className="w-10 h-1 bg-white/20 rounded-full flex-none" />
 
-          <span className="font-pixel text-[7px] text-gold/70 tracking-widest">
+          <span className="font-pixel text-r-7 text-gold/70 tracking-widest">
             ROLL LOG{rollHistory.length > 0 ? ` (${rollHistory.length})` : ''}
           </span>
 
           {/* Chevron — ▲ = expand, ▼ = collapse */}
-          <span className="text-white/40 text-[10px] flex-none w-5 text-right">
+          <span className="text-white/40 text-r-10 flex-none w-5 text-right">
             {expanded ? '▼' : '▲'}
           </span>
         </button>
@@ -174,11 +174,11 @@ export const RollLog: React.FC = () => {
           style={{ height: `calc(50dvh - ${ROLL_LOG_TAB_H}px)` }}
         >
           {rollHistory.length === 0 ? (
-            <div className="py-3 text-center text-white/30 text-[9px] font-mono italic">
+            <div className="py-3 text-center text-white/30 text-r-9 font-mono italic">
               No rolls yet.
             </div>
           ) : (
-            <div className="text-[9px] font-mono">
+            <div className="text-r-9 font-mono">
               {rollHistory.map((receipt) => (
                 <ReceiptEntry key={receipt.timestamp} receipt={receipt} />
               ))}

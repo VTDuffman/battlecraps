@@ -421,7 +421,7 @@ export const PubScreen: React.FC = () => {
       />
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <header className="relative flex-none px-4 pt-8 pb-6 text-center">
+      <header className="relative flex-none px-4 text-center" style={{ paddingTop: 'clamp(8px,1.2dvh,32px)', paddingBottom: 'clamp(6px,0.9dvh,24px)' }}>
         {/* Top accent bar */}
         <div
           className="absolute top-0 left-0 right-0 h-1"
@@ -591,11 +591,8 @@ export const PubScreen: React.FC = () => {
         </div>
       )}
 
-      {/* ── Spacer ───────────────────────────────────────────────────────────── */}
-      <div className="flex-1" />
-
       {/* ── Skip / Rest button ───────────────────────────────────────────────── */}
-      <footer className="flex-none px-4 pb-8">
+      <footer className="flex-none px-4" style={{ paddingBottom: 'clamp(8px,1.2dvh,32px)', paddingTop: 'clamp(4px,0.6dvh,12px)' }}>
         <div
           className="h-px mb-4"
           style={{ background: `linear-gradient(to right, transparent, ${theme.accentDim}99, transparent)` }}

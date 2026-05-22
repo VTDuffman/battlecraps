@@ -64,6 +64,20 @@ import { submitLeaderboardEntry } from './leaderboard.js';
 // See packages/shared/src/config.ts for the canonical values and documentation.
 
 // ---------------------------------------------------------------------------
+// Tuning constants
+// ---------------------------------------------------------------------------
+
+/**
+ * When a player clears a marker and advances to The Pub, their bankroll is
+ * capped at this fraction of the *next* marker's target. Prevents carryover
+ * surplus from trivialising subsequent markers — the house takes the excess
+ * when you move up in stakes.
+ *
+ * 0.30 → player starts the next marker with at most 30% of its target.
+ */
+const ADVANCEMENT_BANKROLL_CAP = 0.30;
+
+// ---------------------------------------------------------------------------
 // Request / Response schemas (Fastify JSON Schema validation)
 // ---------------------------------------------------------------------------
 
@@ -339,11 +353,15 @@ async function rollHandler(
   const postBetMarkerTarget = MARKER_TARGETS[run.currentMarkerIndex];
   if (postBetMarkerTarget !== undefined && postBetBankroll >= postBetMarkerTarget) {
     const remainingBets  = sumBets(incomingBets);
-    const finalBankroll  = postBetBankroll + remainingBets;
+    const rawBankroll    = postBetBankroll + remainingBets;
     const bankrollDelta  = sumBets(run.bets as Bets);   // total of all previously-placed bets returned
     const isLastMarker   = run.currentMarkerIndex >= MARKER_TARGETS.length - 1;
     const nextStatus     = isLastMarker ? 'GAME_OVER' : 'TRANSITION';
     const nextMkrIndex   = run.currentMarkerIndex + 1;
+    const nextMkrTarget  = MARKER_TARGETS[nextMkrIndex];
+    const finalBankroll  = (nextStatus === 'TRANSITION' && nextMkrTarget !== undefined)
+      ? Math.min(rawBankroll, Math.round(nextMkrTarget * ADVANCEMENT_BANKROLL_CAP))
+      : rawBankroll;
     const zeroBets: Bets = { passLine: 0, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } };
 
     const autoRun = await db
@@ -710,8 +728,21 @@ async function rollHandler(
   const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
   const nextState = computeNextState(run, viggedContext, postFrequencyBankroll, incomingBets, hasSeaLegs);
 
-  const hitMarker    = nextState.currentMarkerIndex > run.currentMarkerIndex;
+  const hitMarker      = nextState.currentMarkerIndex > run.currentMarkerIndex;
   const newMarkerIndex = nextState.currentMarkerIndex;
+
+  // Advancement bankroll cap: when a marker is cleared, trim bankroll to at most
+  // ADVANCEMENT_BANKROLL_CAP × next marker target so players don't start the next
+  // marker already most of the way through it from carryover surplus.
+  if (hitMarker && nextState.status === 'TRANSITION') {
+    const nextTarget = MARKER_TARGETS[newMarkerIndex];
+    if (nextTarget !== undefined) {
+      nextState.bankrollCents = Math.min(
+        nextState.bankrollCents,
+        Math.round(nextTarget * ADVANCEMENT_BANKROLL_CAP),
+      );
+    }
+  }
 
   // ── 11b. ZERO_POINT comp — permanent 1.25× hype floor ────────────────────
   const hasZeroPoint = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.ZERO_POINT);

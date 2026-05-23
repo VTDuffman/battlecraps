@@ -241,7 +241,7 @@ export const runs = pgTable(
      * Starts at 25000 (= $250.00 per PRD Section 2).
      * Never goes below 0 — GAME_OVER is triggered first.
      */
-    bankrollCents: integer('bankroll_cents').notNull().default(25000),
+    bankrollCents: bigint('bankroll_cents', { mode: 'number' }).notNull().default(25000),
 
     // ── Shooter lives ──────────────────────────────────────────────────────
 
@@ -456,7 +456,7 @@ export const runs = pgTable(
      *
      * Migration: server.ts startup block (highest_roll_amplified_cents)
      */
-    highestRollAmplifiedCents: integer('highest_roll_amplified_cents').notNull().default(0),
+    highestRollAmplifiedCents: bigint('highest_roll_amplified_cents', { mode: 'number' }).notNull().default(0),
 
     /**
      * The highest bankroll reached at any point during this run, in cents.
@@ -466,7 +466,7 @@ export const runs = pgTable(
      *
      * Migration: server.ts startup block (peak_bankroll_cents)
      */
-    peakBankrollCents: integer('peak_bankroll_cents').notNull().default(0),
+    peakBankrollCents: bigint('peak_bankroll_cents', { mode: 'number' }).notNull().default(0),
   },
   (t) => ({
     userIdIdx: index('runs_user_id_idx').on(t.userId),
@@ -619,14 +619,14 @@ export const leaderboardEntries = pgTable(
     lastName: text('last_name'),
 
     /** Final bankroll at GAME_OVER, in cents. Primary sort key. */
-    finalBankrollCents: integer('final_bankroll_cents').notNull(),
+    finalBankrollCents: bigint('final_bankroll_cents', { mode: 'number' }).notNull(),
 
     /**
      * Largest single-roll amplified profit from runs.highest_roll_amplified_cents.
      * Formula: settleTurn(ctx) - ctx.baseStakeReturned
      * Displayed as "Highest Single Roll Win" in the leaderboard entry.
      */
-    highestRollAmplifiedCents: integer('highest_roll_amplified_cents').notNull().default(0),
+    highestRollAmplifiedCents: bigint('highest_roll_amplified_cents', { mode: 'number' }).notNull().default(0),
 
     /**
      * Peak bankroll reached at any point during the run, from runs.peak_bankroll_cents.
@@ -635,7 +635,7 @@ export const leaderboardEntries = pgTable(
      *
      * Migration: server.ts startup block (peak_bankroll_cents on leaderboard_entries)
      */
-    peakBankrollCents: integer('peak_bankroll_cents').notNull().default(0),
+    peakBankrollCents: bigint('peak_bankroll_cents', { mode: 'number' }).notNull().default(0),
 
     /**
      * Index into GAUNTLET (0–8) at the time of GAME_OVER.

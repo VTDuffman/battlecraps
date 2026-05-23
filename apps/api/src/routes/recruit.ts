@@ -23,20 +23,9 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
-import { isBossMarker, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, COMP_PERK_IDS, MARKER_TARGETS, type CrewRarity } from '@battlecraps/shared';
+import { isBossMarker, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, COMP_PERK_IDS, type CrewRarity } from '@battlecraps/shared';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
-
-// ---------------------------------------------------------------------------
-// Advancement bankroll cap
-// Applied when the player leaves the pub and starts the next marker, so they
-// can spend their full (uncapped) bankroll on crew first.
-// ---------------------------------------------------------------------------
-
-/** Bankroll is capped to this fraction of the upcoming marker's target. */
-const ADVANCEMENT_BANKROLL_CAP   = 0.30;
-/** Cap is skipped for floors below this number (1-based). F1–F2 are exempt. */
-const ADVANCEMENT_CAP_FROM_FLOOR = 3;
 
 // ---------------------------------------------------------------------------
 // JSON Schema (Fastify validates the body before the handler runs)
@@ -169,16 +158,7 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         newCrewSlots[slotIndex!] = { crewId: crewId!, cooldownState: 0 };
       }
 
-      // ── 5b. Advancement bankroll cap ──────────────────────────────────────
-      // Applied here (at market start) rather than on marker clear so the player
-      // can spend their full bankroll on crew in the pub first.
-      const nextMarkerTarget = MARKER_TARGETS[run.currentMarkerIndex];
-      const capFloor         = GAUNTLET[run.currentMarkerIndex]?.floor ?? 1;
-      if (nextMarkerTarget !== undefined && capFloor >= ADVANCEMENT_CAP_FROM_FLOOR) {
-        newBankroll = Math.min(newBankroll, Math.round(nextMarkerTarget * ADVANCEMENT_BANKROLL_CAP));
-      }
-
-      // ── 5c. Lucky Charm immediate hype floor ───────────────────────────────
+      // ── 5b. Lucky Charm immediate hype floor ───────────────────────────────
       // If the resulting crew is Lucky Charm as the sole member, apply the 2.0×
       // hype floor right now so the recruit response (and UI) reflects it before
       // the first roll. Mirrors the cascade formula: +1.0 when below floor,

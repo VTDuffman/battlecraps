@@ -67,9 +67,6 @@ import { submitLeaderboardEntry } from './leaderboard.js';
 // Tuning constants
 // ---------------------------------------------------------------------------
 
-// Advancement bankroll cap constants live in recruit.ts where they are applied
-// (at the end of the pub screen, when the player starts the next marker).
-
 // ---------------------------------------------------------------------------
 // Request / Response schemas (Fastify JSON Schema validation)
 // ---------------------------------------------------------------------------

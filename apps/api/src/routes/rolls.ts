@@ -67,17 +67,8 @@ import { submitLeaderboardEntry } from './leaderboard.js';
 // Tuning constants
 // ---------------------------------------------------------------------------
 
-/**
- * When a player clears a marker and advances to The Pub, their bankroll is
- * capped at this fraction of the *next* marker's target. Prevents carryover
- * surplus from trivialising subsequent markers — the house takes the excess
- * when you move up in stakes.
- *
- * 0.30 → player starts the next marker with at most 30% of its target.
- */
-const ADVANCEMENT_BANKROLL_CAP  = 0.30;
-/** Cap is skipped for floors below this number (1-based). F1–F2 are exempt. */
-const ADVANCEMENT_CAP_FROM_FLOOR = 3;
+// Advancement bankroll cap constants live in recruit.ts where they are applied
+// (at the end of the pub screen, when the player starts the next marker).
 
 // ---------------------------------------------------------------------------
 // Request / Response schemas (Fastify JSON Schema validation)
@@ -360,12 +351,7 @@ async function rollHandler(
     const isLastMarker   = run.currentMarkerIndex >= MARKER_TARGETS.length - 1;
     const nextStatus     = isLastMarker ? 'GAME_OVER' : 'TRANSITION';
     const nextMkrIndex   = run.currentMarkerIndex + 1;
-    const nextMkrTarget  = MARKER_TARGETS[nextMkrIndex];
-    const capApplies     = nextStatus === 'TRANSITION' && nextMkrTarget !== undefined
-                        && (GAUNTLET[nextMkrIndex]?.floor ?? 1) >= ADVANCEMENT_CAP_FROM_FLOOR;
-    const finalBankroll  = capApplies
-      ? Math.min(rawBankroll, Math.round(nextMkrTarget! * ADVANCEMENT_BANKROLL_CAP))
-      : rawBankroll;
+    const finalBankroll  = rawBankroll;
     const zeroBets: Bets = { passLine: 0, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } };
 
     const autoRun = await db
@@ -734,20 +720,6 @@ async function rollHandler(
 
   const hitMarker      = nextState.currentMarkerIndex > run.currentMarkerIndex;
   const newMarkerIndex = nextState.currentMarkerIndex;
-
-  // Advancement bankroll cap: when a marker is cleared, trim bankroll to at most
-  // ADVANCEMENT_BANKROLL_CAP × next marker target so players don't start the next
-  // marker already most of the way through it from carryover surplus.
-  if (hitMarker && nextState.status === 'TRANSITION'
-      && (GAUNTLET[newMarkerIndex]?.floor ?? 1) >= ADVANCEMENT_CAP_FROM_FLOOR) {
-    const nextTarget = MARKER_TARGETS[newMarkerIndex];
-    if (nextTarget !== undefined) {
-      nextState.bankrollCents = Math.min(
-        nextState.bankrollCents,
-        Math.round(nextTarget * ADVANCEMENT_BANKROLL_CAP),
-      );
-    }
-  }
 
   // ── 11b. ZERO_POINT comp — permanent 1.25× hype floor ────────────────────
   const hasZeroPoint = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.ZERO_POINT);

@@ -49,6 +49,7 @@ import { DiceZone }      from './DiceZone.js';
 import { CrewPortrait }  from './CrewPortrait.js';
 import { RollLog }       from './RollLog.js';
 import { useCrowdAudio }       from '../hooks/useCrowdAudio.js';
+import { useFloorMusic }       from '../hooks/useFloorMusic.js';
 import { useAnimatedCounter }  from '../hooks/useAnimatedCounter.js';
 import { useFloorTheme }       from '../hooks/useFloorTheme.js';
 import { ChipRain }            from './ChipRain.js';
@@ -79,6 +80,9 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
   const displayMarkerIndex = useGameStore(selectDisplayMarkerIndex);
   const isBossRoom         = isBossMarker(displayMarkerIndex);
   const { muted, toggleMute } = useCrowdAudio();
+  // Floor 1–9: Math.ceil((markerIndex+1)/3), clamped.  Floor 9 enforces silence.
+  const currentFloor = Math.max(1, Math.min(9, Math.ceil((displayMarkerIndex + 1) / 3)));
+  const { isMusicMuted, toggleMusic } = useFloorMusic(currentFloor);
   const theme = useFloorTheme();
 
   const snapshotForFeedback = useGameStore((s) => s.snapshotForFeedback);
@@ -254,7 +258,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
             </div>
           </div>
 
-          {/* Mute toggle */}
+          {/* SFX mute toggle */}
           <div className="relative group">
             <button
               type="button"
@@ -265,7 +269,37 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
               <span className="text-base leading-none">{muted ? '🔇' : '🔊'}</span>
             </button>
             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-r-7 text-gold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-              VOLUME
+              SFX
+            </div>
+          </div>
+
+          {/* Music mute toggle */}
+          <div className="relative group">
+            <button
+              type="button"
+              onClick={toggleMusic}
+              className={[
+                'w-7 h-7 rounded flex items-center justify-center bg-black/80 transition-colors shadow-md',
+                isMusicMuted ? 'text-gold/40' : 'text-gold hover:text-gold-bright',
+              ].join(' ')}
+              aria-label="Toggle Music"
+            >
+              {/* Eighth-note icon with optional mute slash */}
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                {/* Stem */}
+                <line x1="9.5" y1="1.5" x2="9.5" y2="9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                {/* Flag */}
+                <path d="M9.5 1.5 C11.5 0.5 13.5 2.5 11 5.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                {/* Note head */}
+                <ellipse cx="7.5" cy="10.2" rx="2.8" ry="1.9" transform="rotate(-18 7.5 10.2)" fill="currentColor" />
+                {/* Mute slash — only rendered when muted */}
+                {isMusicMuted && (
+                  <line x1="1.5" y1="12.5" x2="12.5" y2="1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                )}
+              </svg>
+            </button>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-r-7 text-gold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+              MUSIC
             </div>
           </div>
 

@@ -1435,5 +1435,55 @@ Both tickets touch all 30 crew files (FB-023 removes `baseCost`; this removes fl
 | `packages/shared/src/crew/shark.ts` | Replace `BONUS_CENTS = 10_000` with `ADDITIVE_MULT = 2.0` |
 | `apps/api/src/routes/rolls.ts` | Set `markerTargetCents` on `TurnContext` before cascade |
 
+---
+
+## FB-025 — Crew Slot Progression
+
+**Type:** Feature / Balance
+**Area:** Crew System / `packages/shared`, `apps/api`, `apps/web`
+**Status:** Ready for implementation
+**Technical design:** `docs/design/fb-025-crew-slot-progression-tdd.md`
+
+### Problem
+
+Players start with all 5 crew slots available, which removes meaningful triage pressure from early floors and makes the dominant Grinder/Doorman additive build trivially constructible from run start. One playtester cleared the game with a $276M bankroll — the lack of slot scarcity is a contributing factor.
+
+### Solution
+
+New runs start with **3 active crew slots**. Two additional slots unlock as boss comp rewards at natural difficulty inflection points:
+
+- **Slot 4 — BOARD SEAT** — awarded for defeating The Executive (Floor 4). Replaces `GOLDEN_TOUCH`.
+- **Slot 5 — CARGO HOLD** — awarded for defeating The Commander (Floor 7). Replaces `ZERO_POINT`.
+
+The crew rail physically grows from 3 → 4 → 5 slots as slots are earned. Existing in-progress runs are grandfathered to `unlockedSlots = 5` via migration.
+
+### Key Decisions
+
+- Slot unlocks **replace** the existing comp rewards for F4 and F7 (not stacked on top)
+- `GOLDEN_TOUCH` and `ZERO_POINT` are removed from `CompRewardType` entirely
+- Slot fills happen at the existing post-boss pub visit — no new game flow required
+- `unlockedSlots` (integer 3/4/5) is stored on the `runs` table; `crew_slots` remains a fixed 5-element JSONB array
+- `TurnContext` carries `unlockedSlots` so `resolveCascade()` only iterates active slots
+- The Architect's CONVERGENCE is unaffected — all F9 players have 5 unlocked slots by definition
+
+### Files Changed
+
+| File | Action |
+|---|---|
+| `packages/shared/src/types.ts` | Add `unlockedSlots` to `TurnContext` |
+| `packages/shared/src/config.ts` | Swap `CompRewardType`; update GAUNTLET F4/F7; update `COMP_PERK_IDS` |
+| `packages/shared/src/cascade.ts` | Slice crew loop to `unlockedSlots` |
+| `apps/api/src/db/schema.ts` | Add `unlocked_slots` column |
+| `apps/api/src/db/migrations/migrate-add-unlocked-slots.ts` | Create (backfill existing rows to 5) |
+| `apps/api/src/routes/runs.ts` | Include `unlockedSlots` in all run responses |
+| `apps/api/src/routes/rolls.ts` | Inject into `TurnContext`; remove Golden Touch + Zero Point blocks |
+| `apps/api/src/routes/recruit.ts` | Slot unlock handler; slot index guard |
+| `apps/api/src/routes/reorder.ts` | `slotOrder` length validation |
+| `apps/web/src/store/useGameStore.ts` | `unlockedSlots` state; dynamic `slotIds` |
+| `apps/web/src/components/TableBoard.tsx` | Slice crew rail to `unlockedSlots` |
+| `apps/web/src/components/PubScreen.tsx` | Active slot filtering |
+| `apps/web/src/transitions/phases/BossVictoryCompPhase.tsx` | Slot unlock display branch |
+| `apps/web/src/components/BossVictoryModal.tsx` | Label/subtext map updates |
+| `apps/web/src/lib/tutorialBeats.ts` | Crew rail copy update |
 
 

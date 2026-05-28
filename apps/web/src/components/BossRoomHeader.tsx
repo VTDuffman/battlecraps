@@ -30,19 +30,20 @@ export const BossRoomHeader: React.FC = () => {
   const currentMinBet = getBossMinBet(currentMarkerIndex, bossPointHits);
   const nextMinBet    = getBossMinBet(currentMarkerIndex, bossPointHits + 1);
 
-  const isTidalSurge   = boss.rule === 'TIDAL_SURGE';
-  const isOrbitalDecay = boss.rule === 'ORBITAL_DECAY';
-  const isFirstContact = boss.rule === 'FIRST_CONTACT_PROTOCOL';
-  const isConvergence  = boss.rule === 'CONVERGENCE';
+  const isTidalSurge        = boss.rule === 'TIDAL_SURGE';
+  const isOrbitalDecay      = boss.rule === 'ORBITAL_DECAY';
+  const isTransmissionDelay = boss.rule === 'TRANSMISSION_DELAY';
+  const isConvergence       = boss.rule === 'CONVERGENCE';
   const tidalParams = isTidalSurge
     ? (boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>)
     : null;
-  const tidalCycleTotal   = tidalParams !== null ? tidalParams.lowTideDuration + tidalParams.highTideDuration : 0;
-  const tidePos           = tidalParams !== null ? bossPointHits % tidalCycleTotal : 0;
-  const inHighTide        = tidalParams !== null && tidePos >= tidalParams.lowTideDuration;
-  const rollsUntilChange  = tidalParams !== null
-    ? (inHighTide ? tidalCycleTotal - tidePos : tidalParams.lowTideDuration - tidePos)
-    : 0;
+  const stageCount      = tidalParams !== null ? tidalParams.stageMultipliers.length : 0;
+  const stageIndex      = tidalParams !== null ? bossPointHits % stageCount : 0;
+  const stageLabel      = tidalParams !== null ? (tidalParams.stageLabels[stageIndex] ?? 'LOW TIDE') : '';
+  const stageMultiplier = tidalParams !== null ? (tidalParams.stageMultipliers[stageIndex] ?? 1) : 1;
+  const inHighTide      = stageMultiplier > 1;
+  const nextStageIndex  = tidalParams !== null ? (stageIndex + 1) % stageCount : 0;
+  const nextStageLabel  = tidalParams !== null ? (tidalParams.stageLabels[nextStageIndex] ?? 'LOW TIDE') : '';
 
   return (
     <div
@@ -91,34 +92,32 @@ export const BossRoomHeader: React.FC = () => {
           <div className="flex-none text-right">
             <div className="font-pixel text-[7.5px] tracking-widest leading-none"
               style={{ color: inHighTide ? '#fbbf24' : 'rgba(0,201,160,0.70)' }}>
-              {inHighTide ? '⚠ HIGH TIDE' : 'LOW TIDE'}
+              {inHighTide ? `⚠ ${stageLabel}` : stageLabel}
             </div>
-            <div className="font-pixel text-r-12 leading-tight"
-              style={{ color: inHighTide ? '#fbbf24' : 'rgba(0,201,160,0.85)' }}>
-              {inHighTide
-                ? `${rollsUntilChange} ROLL${rollsUntilChange !== 1 ? 'S' : ''} LEFT`
-                : `HIGH TIDE IN ${rollsUntilChange}`}
-            </div>
-            {inHighTide && currentMinBet !== null && (
-              <div className="font-pixel text-[7.5px] leading-none mt-0.5"
-                style={{ color: 'rgba(251,191,36,0.70)' }}>
+            {inHighTide && currentMinBet !== null ? (
+              <div className="font-pixel text-r-12 leading-tight"
+                style={{ color: '#fbbf24' }}>
                 MIN ${(currentMinBet / 100).toLocaleString()}
               </div>
-            )}
+            ) : null}
+            <div className="font-pixel text-[7.5px] leading-none mt-0.5"
+              style={{ color: inHighTide ? 'rgba(251,191,36,0.70)' : 'rgba(0,201,160,0.55)' }}>
+              NEXT: {nextStageLabel}
+            </div>
           </div>
-        ) : isFirstContact ? (
+        ) : isTransmissionDelay ? (
           <div className="flex-none text-right">
             <div className="font-pixel text-[7.5px] tracking-widest leading-none"
               style={{ color: 'rgba(57,255,20,0.60)' }}>
-              NULL PROTOCOL
+              SIGNAL DELAY
             </div>
             <div className="font-pixel text-r-12 leading-tight"
               style={{ color: '#39ff14' }}>
-              7/11 = NULL
+              ADDITIVES HELD
             </div>
             <div className="font-pixel text-[7.5px] leading-none mt-0.5"
               style={{ color: 'rgba(57,255,20,0.45)' }}>
-              POINTS ONLY
+              7-OUT: EVAPORATE
             </div>
           </div>
         ) : isConvergence ? (

@@ -29,7 +29,8 @@ export const BOSS_RULE_HOOKS: Record<BossRuleType, BossRuleHooks> = {
   TRIBUTE:                 tributeHooks,
   TIDAL_SURGE:             tidalSurgeHooks,
   ORBITAL_DECAY:           orbitalDecayHooks,
-  FIRST_CONTACT_PROTOCOL:  firstContactProtocolHooks,
+  FIRST_CONTACT_PROTOCOL:  firstContactProtocolHooks,  // retired — empty hooks; key kept for historical safety
+  TRANSMISSION_DELAY:      firstContactProtocolHooks,  // Floor 8 — escrow logic is inline in rolls.ts
   CONVERGENCE:             convergenceHooks,
 };
 

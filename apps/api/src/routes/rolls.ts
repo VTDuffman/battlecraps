@@ -191,9 +191,8 @@ interface WsTurnSettledPayload {
    */
   crapsOutBlocked?: boolean;
   /**
-   * Present when FIRST_CONTACT_PROTOCOL suppressed a come-out natural (7/11).
-   * The rollResult will be NO_RESOLUTION; this flag signals the client to skip the
-   * natural win animation and stay in the come-out UI state.
+   * @deprecated — FIRST_CONTACT_PROTOCOL retired in FB-026. Never emitted from FB-026 onwards.
+   * Previously signalled that a come-out natural was suppressed by FCP.
    */
   naturalBlocked?: boolean;
   /**
@@ -262,6 +261,8 @@ async function rollHandler(
   const bossHooks        = bossMarkerConfig?.boss ? BOSS_RULE_HOOKS[bossMarkerConfig.boss.ruleParams.rule] : undefined;
   const bossParams       = bossMarkerConfig?.boss ? bossMarkerConfig.boss.ruleParams : undefined;
   const activeBossRule   = bossMarkerConfig?.boss?.rule ?? null;
+  const isHierophantEscrow  = activeBossRule === 'TRIBUTE'            && isBossMarker(run.currentMarkerIndex);
+  const isTransmissionDelay = activeBossRule === 'TRANSMISSION_DELAY' && isBossMarker(run.currentMarkerIndex);
   const hasTheCovenant = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_COVENANT);
   const bossState: BossRuleState = { bossPointHits: run.bossPointHits, markerIndex: run.currentMarkerIndex, covenantActive: hasTheCovenant };
 
@@ -525,43 +526,25 @@ async function rollHandler(
     unlockedSlots:         effectiveUnlockedSlots,
   });
 
-  // ── 7a-b. FIRST_CONTACT_PROTOCOL — suppress COME_OUT naturals ───────────────
-  // Applied BEFORE the hype tick so the +0.10 NATURAL momentum bonus never fires
-  // for a blocked natural. The naturalBlocked flag propagates through cascade and
-  // is read by computeNextState to return IDLE_TABLE/COME_OUT instead of POINT_ACTIVE.
-  const isFirstContact   = activeBossRule === 'FIRST_CONTACT_PROTOCOL'
-    && isBossMarker(run.currentMarkerIndex);
-
-  const initialCtxFcp = (
-    isFirstContact &&
-    run.phase === 'COME_OUT' &&
-    initialCtx.rollResult === 'NATURAL'
-  ) ? {
-    ...initialCtx,
-    rollResult: 'NO_RESOLUTION' as const,
-    flags: { ...initialCtx.flags, naturalBlocked: true },
-  } : initialCtx;
-
   // ── 7b. Base-game Hype tick ────────────────────────────────────────────────
   //
-  // Applied to initialCtxFcp.hype BEFORE resolveCascade so crew HYPE bonuses
+  // Applied to initialCtx.hype BEFORE resolveCascade so crew HYPE bonuses
   // stack on top of the already-seeded excitement.
   //   POINT_HIT  → getBaseHypeTick(consecutivePointHits): 0.15→0.20→0.25→0.30 (streak-based)
   //   NATURAL    → +0.10
   //   CRAPS_OUT  → −0.05 (floored at 1.0)
-  // FCP: blocked naturals have rollResult NO_RESOLUTION → baseHypeTick = 0. Correct.
   const baseHypeTick =
-    initialCtxFcp.rollResult === 'POINT_HIT'   ? getBaseHypeTick(run.consecutivePointHits)
-    : initialCtxFcp.rollResult === 'NATURAL'   ?  0.10
-    : initialCtxFcp.rollResult === 'CRAPS_OUT' ? -0.05
+    initialCtx.rollResult === 'POINT_HIT'   ? getBaseHypeTick(run.consecutivePointHits)
+    : initialCtx.rollResult === 'NATURAL'   ?  0.10
+    : initialCtx.rollResult === 'CRAPS_OUT' ? -0.05
     : 0;
   const seededHype = Math.max(
     1.0,
-    Math.round((initialCtxFcp.hype + baseHypeTick) * 10_000) / 10_000,
+    Math.round((initialCtx.hype + baseHypeTick) * 10_000) / 10_000,
   );
   const seededCtx = baseHypeTick !== 0
-    ? { ...initialCtxFcp, hype: seededHype }
-    : initialCtxFcp;
+    ? { ...initialCtx, hype: seededHype }
+    : initialCtx;
 
   // ── 7c. Boss outcome modifier (e.g. The Executive: 4s set executiveStrike) ──
   const outcomeCtx = bossHooks?.modifyOutcome
@@ -673,6 +656,24 @@ async function rollHandler(
     ? { ...tarifedContext, additives: Math.round(tarifedContext.additives * 1.2 / 100) * 100 }
     : tarifedContext;
 
+  // ── 8d. TRIBUTE (Hierophant Escrow) — hold additives; don't pass to settleTurn ─
+  // When Hierophant escrow is active, zero out additives before settlement —
+  // they accumulate in pendingAdditiveCents and release on the following roll.
+  const escrowHeld = isHierophantEscrow ? viggedContext.additives : 0;
+  const escrowContext = isHierophantEscrow
+    ? { ...viggedContext, additives: 0 }
+    : viggedContext;
+
+  // ── 8e. TRANSMISSION_DELAY (Emissary) — hold additives; don't pass to settleTurn ─
+  // Additives are zeroed for settlement this roll; stored in pendingAdditiveCents
+  // for release next roll. Unlike Hierophant (25% seizure on 7-out), TD evaporates
+  // 100% of the escrow when the shooter dies. Hierophant and TD are mutually exclusive
+  // (different floors) so chaining escrowContext here is safe.
+  const tdEscrowHeld = isTransmissionDelay ? escrowContext.additives : 0;
+  const tdEscrowContext = isTransmissionDelay
+    ? { ...escrowContext, additives: 0 }
+    : escrowContext;
+
   // ── 9. Settle the turn ─────────────────────────────────────────────────────
   //
   // Deduct-on-placement model:
@@ -685,23 +686,19 @@ async function rollHandler(
   //   CRAPS_OUT($10 bet): payout=0,    betDelta=1000 → delta=-1000 (-$10 loss)
   //   SEVEN_OUT (bets already deducted at POINT_SET): betDelta=0 → delta=0
   //   POINT_SET (bets frozen): payout=0, betDelta=passLine → delta=-passLine
-  const rawPayout = settleTurn(viggedContext);
+  const rawPayout = settleTurn(tdEscrowContext);
   const payout = bossHooks?.modifyPayout
-    ? bossHooks.modifyPayout(rawPayout, viggedContext.baseStakeReturned, bossParams!, bossState)
+    ? bossHooks.modifyPayout(rawPayout, tdEscrowContext.baseStakeReturned, bossParams!, bossState)
     : rawPayout;
   const newBankroll = run.bankrollCents - betDelta + payout;
 
-  // ── 9b. TRIBUTE — boss drain applied on SEVEN_OUT before state advances ──────
-  const tributedBankroll =
-    finalContext.rollResult === 'SEVEN_OUT' && bossHooks?.modifySevenOut
-      ? bossHooks.modifySevenOut(newBankroll, bossParams!, bossState)
-      : newBankroll;
+  // ── 9b. TRIBUTE — modifySevenOut hook is now a no-op (escrow logic is inline below) ──
+  const tributedBankroll = newBankroll;
 
   // ── 9c. THE_FREQUENCY comp — flat bonus on come-out naturals ──────────────
   // Awards 3% of marker target (rounded to nearest $1) on any real NATURAL
-  // during COME_OUT. "Real" means not blocked by FCP (finalContext.rollResult
-  // would be NO_RESOLUTION for blocked naturals). Applied before computeNextState
-  // so the marker-clear check uses the fully settled bankroll.
+  // during COME_OUT. Applied before computeNextState so the marker-clear check
+  // uses the fully settled bankroll.
   const hasTheFrequency = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_FREQUENCY);
   const frequencyBonus = (
     hasTheFrequency &&
@@ -711,6 +708,29 @@ async function rollHandler(
     : 0;
   const postFrequencyBankroll = tributedBankroll + frequencyBonus;
 
+  // ── 9f. TRANSMISSION_DELAY — release or evaporate pending additives ────────
+  // Previous roll's crew additives (held as pendingAdditiveCents) are released now.
+  // On 7-out: 100% evaporation — the escrow vanishes with the shooter.
+  // All other results: full release to the bankroll.
+  const isTdSevenOut    = isTransmissionDelay && finalContext.rollResult === 'SEVEN_OUT';
+  const tdEscrowRelease = isTdSevenOut ? 0 : (isTransmissionDelay ? run.pendingAdditiveCents : 0);
+  const postTdBankroll  = postFrequencyBankroll + tdEscrowRelease;
+
+  // ── 9e. TRIBUTE (Hierophant Escrow) — release previous roll's escrow ───────
+  // On every roll: release last roll's pendingAdditiveCents to the bankroll.
+  // On 7-out: The Hierophant seizes escrowSeizurePct before release.
+  // THE_COVENANT halves the seizure.
+  const isTributeSevenOut = isHierophantEscrow && finalContext.rollResult === 'SEVEN_OUT';
+  const seizurePct = isTributeSevenOut
+    ? (() => {
+        const p = GAUNTLET[run.currentMarkerIndex]!.boss!.ruleParams as
+          Extract<BossRuleParams, { rule: 'TRIBUTE' }>;
+        return hasTheCovenant ? p.escrowSeizurePct * 0.5 : p.escrowSeizurePct;
+      })()
+    : 0;
+  const escrowRelease = Math.floor(run.pendingAdditiveCents * (1 - seizurePct) / 100) * 100;
+  const postEscrowBankroll = postTdBankroll + escrowRelease;
+
   // ── 9d. EXECUTIVE THREE-STRIKE — drain on first and second 4 rolled ───────
   // Third strike already handled as early GAME_OVER before the cascade (step 7d).
   // bossPointHits here is still the PRE-roll count (0 = first 4, 1 = second 4).
@@ -718,9 +738,9 @@ async function rollHandler(
     finalContext.flags.executiveStrike === true &&
     isBossMarker(run.currentMarkerIndex);
   const strikeDrain = isExecutiveStrike
-    ? Math.round(postFrequencyBankroll * (run.bossPointHits === 0 ? 0.20 : 0.40) / 100) * 100
+    ? Math.round(postEscrowBankroll * (run.bossPointHits === 0 ? 0.20 : 0.40) / 100) * 100
     : 0;
-  const postStrikeBankroll = postFrequencyBankroll - strikeDrain;
+  const postStrikeBankroll = postEscrowBankroll - strikeDrain;
   const bankrollDelta = postStrikeBankroll - run.bankrollCents;
 
   const rollAmplifiedProfit = payout - viggedContext.baseStakeReturned;
@@ -789,6 +809,7 @@ async function rollHandler(
       shooterRollCount:      nextState.shooterRollCount,
       pointPhaseBlankStreak: nextState.pointPhaseBlankStreak,
       highestRollAmplifiedCents: newHighestRollAmplifiedCents,
+      pendingAdditiveCents: isTransmissionDelay ? tdEscrowHeld : (isHierophantEscrow ? escrowHeld : 0),
       updatedAt:             new Date(),
     })
     .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
@@ -829,16 +850,16 @@ async function rollHandler(
   // hot path; the client also tracks this locally for immediate display.
   void db
     .update(users)
-    .set({ maxBankrollCents: postFrequencyBankroll })
-    .where(and(eq(users.id, userId), lt(users.maxBankrollCents, postFrequencyBankroll)))
+    .set({ maxBankrollCents: postEscrowBankroll })
+    .where(and(eq(users.id, userId), lt(users.maxBankrollCents, postEscrowBankroll)))
     .catch((err: unknown) => {
       request.log.error({ err }, '[roll] Failed to update maxBankrollCents');
     });
 
   void db
     .update(runs)
-    .set({ peakBankrollCents: postFrequencyBankroll })
-    .where(and(eq(runs.id, runId), lt(runs.peakBankrollCents, postFrequencyBankroll)))
+    .set({ peakBankrollCents: postEscrowBankroll })
+    .where(and(eq(runs.id, runId), lt(runs.peakBankrollCents, postEscrowBankroll)))
     .catch((err: unknown) => {
       request.log.error({ err }, '[roll] Failed to update peakBankrollCents');
     });
@@ -902,7 +923,6 @@ async function rollHandler(
     ...(finalContext.flags.sevenOutBlocked && { originalDice: dice }),
     ...(finalContext.flags.nudgedFrom !== undefined && { nudgedFrom: finalContext.flags.nudgedFrom }),
     ...(finalContext.flags.crapsOutBlocked && { crapsOutBlocked: true }),
-    ...(finalContext.flags.naturalBlocked && { naturalBlocked: true }),
     highestMarkerReached: hitMarker
       ? Math.max(user.highestMarkerReached, newMarkerIndex)
       : user.highestMarkerReached,
@@ -1236,30 +1256,6 @@ function computeNextState(
     // ── No resolution — bets stay, bankroll unchanged ──────────────────────
 
     case 'NO_RESOLUTION': {
-      // ── FIRST_CONTACT_PROTOCOL: blocked COME_OUT natural ────────────────
-      // Return the shooter to come-out (IDLE_TABLE) with their passLine bet
-      // still on the table. The blocked natural consumed a roll but resolved
-      // nothing — no point was set, no payout occurred, same phase continues.
-      if (flags.naturalBlocked) {
-        return {
-          status:               isBelowMinBet(newBankroll, clearedBets, currentMarkerIndex)
-                                  ? 'GAME_OVER'
-                                  : 'IDLE_TABLE',
-          phase:                'COME_OUT',
-          bankrollCents:        newBankroll,
-          shooters:             run.shooters,
-          currentPoint:         null,
-          hype:                 finalCtx.hype,
-          bets:                 clearedBets,
-          currentMarkerIndex,
-          consecutivePointHits: run.consecutivePointHits,
-          bossPointHits:        nextBossCounter(run.bossPointHits, rollResult, false),
-          previousRollTotal:    finalCtx.diceTotal,
-          shooterRollCount:     run.shooterRollCount + 1,
-          pointPhaseBlankStreak: 0,
-        };
-      }
-
       // No payout. Pass line and odds stay locked on the table.
       // However, if the dice showed a hardway number (4/6/8/10), that specific
       // hardway bet resolves independently — a soft loss clears it even though

@@ -156,9 +156,9 @@ export interface TurnContextFlags {
   crapsOutBlocked?: boolean;
 
   /**
-   * Set when FIRST_CONTACT_PROTOCOL converts a COME_OUT NATURAL to NO_RESOLUTION.
-   * Tells computeNextState to return IDLE_TABLE / COME_OUT (not POINT_ACTIVE),
-   * and tells the client to suppress the NATURAL win animation.
+   * @deprecated — FIRST_CONTACT_PROTOCOL retired in FB-026. Never set from FB-026 onwards.
+   * Previously told computeNextState to return IDLE_TABLE/COME_OUT when FCP converted
+   * a COME_OUT NATURAL to NO_RESOLUTION. Kept in the type for forward-compatibility only.
    */
   naturalBlocked?: boolean;
 

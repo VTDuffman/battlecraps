@@ -49,10 +49,11 @@ export type BossRuleType =
   | 'RISING_MIN_BETS'        // Floor 2 — Sarge: minimum Pass Line bet rises each Point Hit
   | 'DISABLE_CREW'           // Floor 3 — Mme. Le Prix: Crew cascade is fully suppressed
   | 'FOURS_INSTANT_LOSS'     // Floor 4 — The Executive: rolling a total of 4 is instant loss
-  | 'TRIBUTE'                // Floor 5 — The Hierophant: seven-out seizes 15% of bankroll
+  | 'TRIBUTE'                // Floor 5 — The Hierophant: crew additives held in escrow; 25% seized on 7-out
   | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: min bet floods 15% of target every 5 rolls
   | 'ORBITAL_DECAY'          // Floor 7 — The Commander: seven-out drains hype by 0.5×, can go below 1.0×
-  | 'FIRST_CONTACT_PROTOCOL' // Floor 8 — The Emissary: come-out 7/11 naturals are blank rolls
+  | 'FIRST_CONTACT_PROTOCOL' // Floor 8 — retired mechanic; kept in union for historical safety
+  | 'TRANSMISSION_DELAY'     // Floor 8 — The Emissary: crew additives held one roll; evaporate on 7-out
   | 'CONVERGENCE';           // Floor 9 — The Architect: each seven-out removes one crew slot from the cascade
 
 /** The permanent comp perk awarded for defeating a boss. */
@@ -93,7 +94,7 @@ export type BossRuleParams =
   | { rule: 'RISING_MIN_BETS';    startPct: number; incrementPct: number; capPct: number }
   | { rule: 'DISABLE_CREW'; additiveTarifPct: number }
   | { rule: 'FOURS_INSTANT_LOSS'; triggerTotal: number }
-  | { rule: 'TRIBUTE';            tributePct: number }
+  | { rule: 'TRIBUTE';            escrowSeizurePct: number }
   | { rule: 'TIDAL_SURGE'; stageMultipliers: readonly [number, number, number, number]; stageLabels: readonly [string, string, string, string] }
   | {
       rule:            'ORBITAL_DECAY';
@@ -106,7 +107,8 @@ export type BossRuleParams =
       /** Absolute minimum hype — never goes below this value. */
       hypeFloor:       number;
     }
-  | { rule: 'FIRST_CONTACT_PROTOCOL' }   // Floor 8 — no params; binary toggle
+  | { rule: 'FIRST_CONTACT_PROTOCOL' }   // Floor 8 — retired; kept for historical safety
+  | { rule: 'TRANSMISSION_DELAY' }       // Floor 8 — no params; escrow logic is inline in rolls.ts
   | { rule: 'CONVERGENCE' };             // Floor 9 — no params; counter tracked via bossPointHits
 
 /** Full descriptor for a boss fight. Only present on markers where isBoss is true. */
@@ -437,16 +439,16 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       dreadTagline:        'THE ORDER COLLECTS.',
       entryLines: [
         "You were vouched for. That person is no longer welcome.",
-        "Three centuries of tradition have kept this table alive.",
-        "The order always takes its tribute. Especially from seven-outs.",
+        "Three centuries of tradition: your earnings are not yours until the point resolves.",
+        "Seven out, and the order takes its cut. Every time.",
       ],
-      ruleBlurb:          "Every seven-out seizes 15% of your current bankroll as tribute — on top of your lost bets.",
+      ruleBlurb:          "Your crew's cash bonuses don't pay out immediately — they're held in escrow. Hit the point and the escrow releases in full. Seven-out and The Hierophant seizes 25% of the escrow as tribute before releasing the rest.",
       victoryQuote:       "…the rites acknowledge your offering. Leave before the observers decide otherwise.",
       defeatAnnouncement: 'RITES CONCLUDED',
       // Mechanic
       rule:           'TRIBUTE',
-      ruleHeaderText: 'SEVEN-OUT SEIZES 15% OF BANKROLL AS TRIBUTE',
-      ruleParams:     { rule: 'TRIBUTE', tributePct: 0.15 },
+      ruleHeaderText: 'CREW ADDITIVES HELD IN ESCROW — 25% SEIZED ON SEVEN-OUT',
+      ruleParams:     { rule: 'TRIBUTE', escrowSeizurePct: 0.25 },
       // Comp
       compReward:      'THE_COVENANT',
       compPerkId:      COMP_PERK_IDS.THE_COVENANT,
@@ -591,16 +593,16 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       dreadTagline: 'WE SHOULD NOT HAVE ANSWERED.',
       entryLines: [
         "The table is here. The felt, the chips, the dice. All correct.",
-        "The geometry of the room is not correct. The light arrives from the wrong direction.",
-        "It studied the game for eleven years. It could not translate one concept. That concept is the natural.",
+        "Your crew's signals arrive one step behind. Everything echoes.",
+        "It has no concept of free money. When the shooter dies, the echo dies with them.",
       ],
-      ruleBlurb:          "Come-out 7s and 11s are blank rolls. No payout. No hype. No resolution. The Emissary has no concept of a free win.",
+      ruleBlurb:          "The Emissary doesn't understand delay. Your crew's cash bonuses from each roll are held until the next. Seven-out and they vanish — untranslatable. Naturals resolve normally; The Emissary has simply never understood them.",
       victoryQuote:       "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]",
       defeatAnnouncement: 'SIGNAL LOST',
       // Mechanic
-      rule:           'FIRST_CONTACT_PROTOCOL',
-      ruleHeaderText: 'COME-OUT 7 / 11 IS A NULL EVENT — NO WIN, NO HYPE',
-      ruleParams:     { rule: 'FIRST_CONTACT_PROTOCOL' },
+      rule:           'TRANSMISSION_DELAY',
+      ruleHeaderText: 'CREW ADDITIVES HELD ONE ROLL — EVAPORATE ENTIRELY ON SEVEN-OUT',
+      ruleParams:     { rule: 'TRANSMISSION_DELAY' },
       // Comp
       compReward:      'THE_FREQUENCY',
       compPerkId:      COMP_PERK_IDS.THE_FREQUENCY,
@@ -608,7 +610,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compDescription: 'Come-out natural 7s and 11s award a flat bonus equal to 3% of the current marker target for the rest of the run.',
       compFanLabel:    'FREQ.',
       // Legacy
-      flavorText: "[Untranslatable. The entity gestures toward the table.]",
+      flavorText: "Your crew's signals arrive one step behind. Seven-out and the echo dies with them.",
     },
   },
 

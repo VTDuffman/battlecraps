@@ -445,3 +445,43 @@ describe('resolveCascade — RNG forwarding', () => {
     expect(finalContext.additives).toBe(5);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Slot unlock progression (FB-025)
+// ---------------------------------------------------------------------------
+
+describe('resolveCascade — unlockedSlots boundary', () => {
+  it('does NOT fire crew in slot 3 when unlockedSlots=3', () => {
+    const executed: number[] = [];
+    const trackingCrew = (id: number) => makeCrew(id, {
+      execute: (ctx: TurnContext) => { executed.push(id); return { context: ctx, newCooldown: 0 }; },
+    });
+    const slots = [trackingCrew(0), trackingCrew(1), trackingCrew(2), trackingCrew(3), null];
+    const ctx = makeCtx({ rollResult: 'NATURAL', unlockedSlots: 3 });
+    resolveCascade(slots, ctx, neverCalledRng);
+    expect(executed).toEqual([0, 1, 2]);
+    expect(executed).not.toContain(3);
+  });
+
+  it('DOES fire crew in slot 3 when unlockedSlots=4', () => {
+    const executed: number[] = [];
+    const trackingCrew = (id: number) => makeCrew(id, {
+      execute: (ctx: TurnContext) => { executed.push(id); return { context: ctx, newCooldown: 0 }; },
+    });
+    const slots: (ReturnType<typeof trackingCrew> | null)[] = [trackingCrew(0), null, trackingCrew(2), trackingCrew(3), null];
+    const ctx = makeCtx({ rollResult: 'NATURAL', unlockedSlots: 4 });
+    resolveCascade(slots, ctx, neverCalledRng);
+    expect(executed).toContain(3);
+  });
+
+  it('does NOT fire crew in slot 4 when unlockedSlots=4', () => {
+    const executed: number[] = [];
+    const trackingCrew = (id: number) => makeCrew(id, {
+      execute: (ctx: TurnContext) => { executed.push(id); return { context: ctx, newCooldown: 0 }; },
+    });
+    const slots: (ReturnType<typeof trackingCrew> | null)[] = [trackingCrew(0), null, null, trackingCrew(3), trackingCrew(4)];
+    const ctx = makeCtx({ rollResult: 'NATURAL', unlockedSlots: 4 });
+    resolveCascade(slots, ctx, neverCalledRng);
+    expect(executed).not.toContain(4);
+  });
+});

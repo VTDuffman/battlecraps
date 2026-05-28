@@ -52,17 +52,17 @@ function fresh<T extends CrewMember>(c: T): T {
 //   grossProfit         = 31000
 //
 // Cascade (FB-024 dynamic additives: MULT × maxBet, rounded to nearest $1):
-//   slot 0 → Big Spender: hard8 win → 1.5 × $100 = $150 → additives = 15000
-//   slot 1 → The Shark:   POINT_HIT → 2.0 × $100 = $200 → additives = 35000
+//   slot 0 → Big Spender: hard8 win → 0.75 × $100 = $75  → additives = 7500
+//   slot 1 → The Shark:   POINT_HIT → 0.65 × $100 = $65  → additives = 14000
 //   slot 2 → The Whale:   hasWin    → multipliers += 1.2 → multipliers = [1.2]
 //
 // settleTurn():
-//   boostedProfit   = grossProfit + additives = 31000 + 35000 = 66000
+//   boostedProfit   = grossProfit + additives = 31000 + 14000 = 45000
 //   crewMultiplier  = 1.2  (product of [1.2])
 //   finalMultiplier = round(2.0 × 1.2 × 10000) / 10000 = round(24000) / 10000 = 2.4
-//   amplifiedProfit = floor(66000 × 2.4 / 100) × 100 = floor(1584) × 100 = 158400
-//   totalPayout     = stakeReturned + amplifiedProfit = 21000 + 158400 = 179400
-//   (net gain to player = 179400 − 21000 placement deduction = +158400 = +$1,584.00)
+//   amplifiedProfit = floor(45000 × 2.4 / 100) × 100 = floor(1080) × 100 = 108000
+//   totalPayout     = stakeReturned + amplifiedProfit = 21000 + 108000 = 129000
+//   (net gain to player = 129000 − 21000 placement deduction = +108000 = +$1,080.00)
 //
 // =============================================================================
 
@@ -107,25 +107,25 @@ describe('GOD BUILD 1: "The Perfect Hard Eight" — Big Spender + Shark + Whale'
 
   // ── Step 2: resolveCascade ───────────────────────────────────────────────
 
-  it('[step 2] Big Spender fires and adds $150 (15000c) to additives', () => {
+  it('[step 2] Big Spender fires and adds $75 (7500c) to additives', () => {
     const ctx = resolveRoll(DICE, STATE);
     const { finalContext, events } = resolveCascade(crew, ctx, neverCalledRng);
 
-    // Verify Big Spender fired (slot 0 event): 1.5 × $100 max bet = $150
+    // Verify Big Spender fired (slot 0 event): 0.75 × $100 max bet = $75
     const bigSpenderEvent = events.find(e => e.slotIndex === 0);
-    expect(bigSpenderEvent?.contextDelta.additives).toBe(15_000);
+    expect(bigSpenderEvent?.contextDelta.additives).toBe(7_500);
 
-    // Verify final additives after all three crew (BigSpender $150 + Shark $125 = $275)
-    expect(finalContext.additives).toBe(27_500);
+    // Verify final additives after all three crew (BigSpender $75 + Shark $65 = $140)
+    expect(finalContext.additives).toBe(14_000);
   });
 
-  it('[step 2] The Shark fires and adds $125 (12500c) to additives (27500c cumulative)', () => {
+  it('[step 2] The Shark fires and adds $65 (6500c) to additives (14000c cumulative)', () => {
     const ctx = resolveRoll(DICE, STATE);
     const { events } = resolveCascade(crew, ctx, neverCalledRng);
 
     // Shark is in slot 1; contextDelta reflects cumulative additives at fire time
     const sharkEvent = events.find(e => e.slotIndex === 1);
-    expect(sharkEvent?.contextDelta.additives).toBe(27_500); // 15000 (BigSpender) + 12500 (Shark)
+    expect(sharkEvent?.contextDelta.additives).toBe(14_000); // 7500 (BigSpender) + 6500 (Shark)
   });
 
   it('[step 2] The Whale fires and adds 1.2× to multipliers', () => {
@@ -148,29 +148,29 @@ describe('GOD BUILD 1: "The Perfect Hard Eight" — Big Spender + Shark + Whale'
 
   // ── Step 3: settleTurn ───────────────────────────────────────────────────
 
-  it('[step 3] settleTurn math: stakeReturned(21000) + floor((31000+27500) × 2.4 / 100) × 100 = 161400', () => {
+  it('[step 3] settleTurn math: stakeReturned(21000) + floor((31000+14000) × 2.4 / 100) × 100 = 129000', () => {
     const ctx = resolveRoll(DICE, STATE);
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
 
     //   grossProfit     = 10000 + 12000 + 9000 = 31000
-    //   additives       = 15000 (BigSpender 1.5×) + 12500 (Shark 1.25×) = 27500
-    //   boostedProfit   = 31000 + 27500          = 58500
+    //   additives       = 7500 (BigSpender 0.75×) + 6500 (Shark 0.65×) = 14000
+    //   boostedProfit   = 31000 + 14000          = 45000
     //   finalMult       = 2.0 × 1.2              = 2.4
-    //   amplifiedProfit = floor(58500 × 2.4 / 100) × 100 = floor(1404) × 100 = 140400
+    //   amplifiedProfit = floor(45000 × 2.4 / 100) × 100 = floor(1080) × 100 = 108000
     //   stakeReturned   = 21000
-    //   totalPayout     = 21000 + 140400          = 161400
-    expect(settleTurn(finalContext)).toBe(161_400);
+    //   totalPayout     = 21000 + 108000          = 129000
+    expect(settleTurn(finalContext)).toBe(129_000);
   });
 
-  it('[step 3] net player gain is $1,404.00 on a $210 total bet placed', () => {
+  it('[step 3] net player gain is $1,080.00 on a $210 total bet placed', () => {
     const ctx = resolveRoll(DICE, STATE);
     const { finalContext } = resolveCascade(crew, ctx, neverCalledRng);
     const totalPayout = settleTurn(finalContext);
-    // totalPayout = $1,614.00 ($210 stake return + $1,404.00 amplified profit)
+    // totalPayout = $1,290.00 ($210 stake return + $1,080.00 amplified profit)
     // bankroll placement deduction was $210 (pass $100 + odds $100 + hard8 $10)
-    // net gain = 161400 − 21000 = 140400 cents = $1,404.00
-    expect(totalPayout).toBe(161_400);
-    expect((totalPayout - 21_000) / 100).toBeCloseTo(1404.00, 2); // net gain = $1,404.00
+    // net gain = 129000 − 21000 = 108000 cents = $1,080.00
+    expect(totalPayout).toBe(129_000);
+    expect((totalPayout - 21_000) / 100).toBeCloseTo(1080.00, 2); // net gain = $1,080.00
   });
 });
 

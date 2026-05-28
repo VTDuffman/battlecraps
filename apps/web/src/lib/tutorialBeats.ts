@@ -219,7 +219,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     id: 12,
     path: 'B',
     spotlight: 'crew-rail',
-    salText: `You'll build your crew as you go. You unlock crew members by hitting certain achievements, and you recruit them in the pub between runs.`,
+    salText: `You start with three crew slots. Defeat floor bosses to earn more — a fourth slot unlocks at Floor 4, a fifth at Floor 7. You recruit crew members in the pub between runs.`,
     advanceMode: 'tap',
     advanceLabel: 'Got it.',
   },

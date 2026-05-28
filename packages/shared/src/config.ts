@@ -60,10 +60,10 @@ export type CompRewardType =
   | 'THE_VIG'         // Floor 1 — The Vig: crew cash abilities pay out 20% more
   | 'EXTRA_SHOOTER'   // Floor 2 — Member's Jacket: +1 Shooter at next segment reset
   | 'HYPE_RESET_HALF' // Floor 3 — Sea Legs: Hype resets to 50% of current (not 1.0×)
-  | 'GOLDEN_TOUCH'    // Floor 4 — Golden Touch: guaranteed Natural on first come-out roll
+  | 'BOARD_SEAT'      // Floor 4 — Board Seat: a fourth crew slot unlocks
   | 'THE_COVENANT'    // Floor 5 — The Covenant: direct bankroll drains reduced by 50%
   | 'POSEIDONS_FAVOR' // Floor 6 — Poseidon's Favor: first come-out can never craps-out
-  | 'ZERO_POINT'      // Floor 7 — Zero Point: hype permanently floored at 1.25×
+  | 'CARGO_HOLD'      // Floor 7 — Cargo Hold: a fifth crew slot unlocks
   | 'THE_FREQUENCY'   // Floor 8 — The Frequency: come-out naturals award 3% of marker target as bonus
   | 'NONE';           // Floor 9 — No comp awarded; The Null Space is the end of the line
 
@@ -178,26 +178,26 @@ export const COMP_PERK_IDS = {
   THE_VIG:          4,  // Floor 1 boss reward — crew cash abilities +20%
   MEMBER_JACKET:    1,  // Floor 2 boss reward — +1 Shooter per segment reset
   SEA_LEGS:         2,  // Floor 3 boss reward — Hype resets to 50%
-  GOLDEN_TOUCH:     3,  // Floor 4 boss reward — guaranteed first Natural
+  // ID 3 (GOLDEN_TOUCH) retired in FB-025 — slot unlock comps use perkId 0
   THE_COVENANT:     5,  // Floor 5 boss reward — direct bankroll drains reduced by 50%
   POSEIDONS_FAVOR:  6,  // Floor 6 boss reward — first come-out can never craps-out
-  ZERO_POINT:       7,  // Floor 7 boss reward — hype permanently floored at 1.25×
+  // ID 7 (ZERO_POINT) retired in FB-025 — slot unlock comps use perkId 0
   THE_FREQUENCY:    8,  // Floor 8 boss reward — 3% marker target bonus on come-out naturals
 } as const;
 
 // ---------------------------------------------------------------------------
 // The Gauntlet — 27 markers across 9 floors (3 markers per floor)
 //
-// Targets (5× exponential base per floor; 1× / 1.5× / 2× within each floor):
-//   Floor 1 — The Loading Dock: $50 / $75 / $100
-//   Floor 2 — VFW Hall:         $250 / $375 / $500
-//   Floor 3 — Riverboat:        $1,250 / $1,875 / $2,500
-//   Floor 4 — The Strip:        $5,000 / $7,500 / $10,000
-//   Floor 5 — The Lodge:        $30,000 / $45,000 / $60,000
-//   Floor 6 — Atlantis:         $155,000 / $232,500 / $310,000
-//   Floor 7 — The Station:      $780,000 / $1,170,000 / $1,560,000
-//   Floor 8 — The Signal:       $3,900,000 / $5,850,000 / $7,800,000
-//   Floor 9 — The Null Space:   $19,500,000 / $29,250,000 / $39,000,000
+// Targets:
+//   Floor 1 — The Loading Dock: $50 / $100 / $200
+//   Floor 2 — VFW Hall:         $300 / $500 / $1,000
+//   Floor 3 — Riverboat:        $1,500 / $2,000 / $4,000
+//   Floor 4 — The Strip:        $5,000 / $7,500 / $15,000
+//   Floor 5 — The Lodge:        $30,000 / $50,000 / $100,000
+//   Floor 6 — Atlantis:         $150,000 / $250,000 / $500,000
+//   Floor 7 — The Station:      $1,000,000 / $1,500,000 / $3,000,000
+//   Floor 8 — The Signal:       $5,000,000 / $7,500,000 / $15,000,000
+//   Floor 9 — The Null Space:   $20,000,000 / $30,000,000 / $60,000,000
 //
 // Boss at every 3rd marker (0-based indices 2, 5, 8, 11, 14, 17, 20, 23, 26).
 // ---------------------------------------------------------------------------
@@ -212,13 +212,13 @@ export const GAUNTLET: readonly MarkerConfig[] = [
     isBoss:      false,
   },
   {
-    targetCents: 7_500,  // $75
+    targetCents: 10_000,  // $100
     venue:       'The Loading Dock',
     floor:       1,
     isBoss:      false,
   },
   {
-    targetCents: 10_000,  // $100 — BOSS: The Foreman
+    targetCents: 20_000,  // $200 — BOSS: The Foreman
     venue:       'The Loading Dock — Freight Elevator',
     floor:       1,
     isBoss:      true,
@@ -254,19 +254,19 @@ export const GAUNTLET: readonly MarkerConfig[] = [
   // ── Floor 2: VFW Hall ─────────────────────────────────────────────────────
 
   {
-    targetCents: 25_000,  // $250
+    targetCents: 30_000,  // $300
     venue:       'VFW Hall',
     floor:       2,
     isBoss:      false,
   },
   {
-    targetCents: 37_500,  // $375
+    targetCents: 50_000,  // $500
     venue:       'VFW Hall',
     floor:       2,
     isBoss:      false,
   },
   {
-    targetCents: 50_000,  // $500 — BOSS: Sarge
+    targetCents: 100_000,  // $1,000 — BOSS: Sarge
     venue:       'VFW Hall — High Limit Room',
     floor:       2,
     isBoss:      true,
@@ -287,7 +287,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Mechanic
       rule:           'RISING_MIN_BETS',
       ruleHeaderText: 'ANTE RISES ON POINT HIT — MIN BET HOLDS ON 7-OUT',
-      ruleParams:     { rule: 'RISING_MIN_BETS', startPct: 0.05, incrementPct: 0.02, capPct: 0.20 },
+      ruleParams:     { rule: 'RISING_MIN_BETS', startPct: 0.04, incrementPct: 0.02, capPct: 0.20 },
       // Comp
       compReward:      'EXTRA_SHOOTER',
       compPerkId:      COMP_PERK_IDS.MEMBER_JACKET,
@@ -297,7 +297,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Legacy
       flavorText:    "You want to play in MY hall? Ante up, soldier.",
       risingMinBets: {
-        startPct:     0.05,
+        startPct:     0.04,
         incrementPct: 0.02,
         capPct:       0.20,
       },
@@ -307,19 +307,19 @@ export const GAUNTLET: readonly MarkerConfig[] = [
   // ── Floor 3: Riverboat ────────────────────────────────────────────────────
 
   {
-    targetCents: 125_000,  // $1,250
+    targetCents: 150_000,  // $1,500
     venue:       'The Riverboat',
     floor:       3,
     isBoss:      false,
   },
   {
-    targetCents: 187_500,  // $1,875
+    targetCents: 200_000,  // $2,000
     venue:       'The Riverboat',
     floor:       3,
     isBoss:      false,
   },
   {
-    targetCents: 250_000,  // $2,500 — BOSS: Mme. Le Prix
+    targetCents: 400_000,  // $4,000 — BOSS: Mme. Le Prix
     venue:       'The Riverboat — Salon Privé',
     floor:       3,
     isBoss:      true,
@@ -367,7 +367,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
     isBoss:      false,
   },
   {
-    targetCents: 1_000_000,  // $10,000 — BOSS: The Executive
+    targetCents: 1_500_000,  // $15,000 — BOSS: The Executive
     venue:       'The Strip — Penthouse',
     floor:       4,
     isBoss:      true,
@@ -390,11 +390,11 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       ruleHeaderText: 'ROLLING A 4 IS INSTANT BUST',
       ruleParams:     { rule: 'FOURS_INSTANT_LOSS', triggerTotal: 4 },
       // Comp
-      compReward:      'GOLDEN_TOUCH',
-      compPerkId:      COMP_PERK_IDS.GOLDEN_TOUCH,
-      compName:        'GOLDEN TOUCH',
-      compDescription: "Your first come-out roll each segment is guaranteed a Natural.",
-      compFanLabel:    'GOLDEN',
+      compReward:      'BOARD_SEAT',
+      compPerkId:      0,
+      compName:        'BOARD SEAT',
+      compDescription: 'A fourth crew slot unlocks. Expand your operation.',
+      compFanLabel:    'BOARD',
       // Legacy
       flavorText: "Fours are for losers. Don't roll one.",
     },
@@ -409,13 +409,13 @@ export const GAUNTLET: readonly MarkerConfig[] = [
     isBoss:      false,
   },
   {
-    targetCents: 4_500_000,  // $45,000
+    targetCents: 5_000_000,  // $50,000
     venue:       'The Lodge',
     floor:       5,
     isBoss:      false,
   },
   {
-    targetCents: 6_000_000,  // $60,000 — BOSS: The Hierophant
+    targetCents: 10_000_000,  // $100,000 — BOSS: The Hierophant
     venue:       'The Lodge — The Inner Sanctum',
     floor:       5,
     isBoss:      true,
@@ -451,19 +451,19 @@ export const GAUNTLET: readonly MarkerConfig[] = [
   // ── Floor 6: Atlantis ─────────────────────────────────────────────────────
 
   {
-    targetCents: 15_500_000,  // $155,000
+    targetCents: 15_000_000,  // $150,000
     venue:       'Atlantis',
     floor:       6,
     isBoss:      false,
   },
   {
-    targetCents: 23_250_000,  // $232,500
+    targetCents: 25_000_000,  // $250,000
     venue:       'Atlantis',
     floor:       6,
     isBoss:      false,
   },
   {
-    targetCents: 31_000_000,  // $310,000 — BOSS: The Sovereign
+    targetCents: 50_000_000,  // $500,000 — BOSS: The Sovereign
     venue:       'Atlantis — The Throne Room',
     floor:       6,
     isBoss:      true,
@@ -499,19 +499,19 @@ export const GAUNTLET: readonly MarkerConfig[] = [
   // ── Floor 7: The Station ─────────────────────────────────────────────────
 
   {
-    targetCents: 78_000_000,   // $780,000
+    targetCents: 100_000_000,  // $1,000,000
     venue:       'The Station',
     floor:       7,
     isBoss:      false,
   },
   {
-    targetCents: 117_000_000,  // $1,170,000
+    targetCents: 150_000_000,  // $1,500,000
     venue:       'The Station',
     floor:       7,
     isBoss:      false,
   },
   {
-    targetCents: 156_000_000,  // $1,560,000 — BOSS: The Commander
+    targetCents: 300_000_000,  // $3,000,000 — BOSS: The Commander
     venue:       'The Station — The Command Module',
     floor:       7,
     isBoss:      true,
@@ -534,11 +534,11 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       ruleHeaderText: 'SEVEN-OUT DRAINS HYPE BY 0.5× — CAN FALL BELOW 1.0×',
       ruleParams:     { rule: 'ORBITAL_DECAY', decayAmount: 0.5, hypeFloor: 0.5 },
       // Comp
-      compReward:      'ZERO_POINT',
-      compPerkId:      COMP_PERK_IDS.ZERO_POINT,
-      compName:        'ZERO POINT',
-      compDescription: 'Hype multiplier is permanently floored at 1.25× for all future runs.',
-      compFanLabel:    'ZERO PT',
+      compReward:      'CARGO_HOLD',
+      compPerkId:      0,
+      compName:        'CARGO HOLD',
+      compDescription: 'A fifth crew slot unlocks. Full crew capacity reached.',
+      compFanLabel:    'CARGO',
       // Legacy
       flavorText: "Gravity is a courtesy I extend to paying customers. So is generosity.",
     },
@@ -547,19 +547,19 @@ export const GAUNTLET: readonly MarkerConfig[] = [
   // ── Floor 8: The Signal ─────────────────────────────────────────────────
 
   {
-    targetCents: 390_000_000,   // $3,900,000
+    targetCents: 500_000_000,   // $5,000,000
     venue:       'The Signal',
     floor:       8,
     isBoss:      false,
   },
   {
-    targetCents: 585_000_000,   // $5,850,000
+    targetCents: 750_000_000,   // $7,500,000
     venue:       'The Signal',
     floor:       8,
     isBoss:      false,
   },
   {
-    targetCents: 780_000_000,   // $7,800,000 — BOSS: The Emissary
+    targetCents: 1_500_000_000,  // $15,000,000 — BOSS: The Emissary
     venue:       'The Signal — The Receiving Chamber',
     floor:       8,
     isBoss:      true,
@@ -595,19 +595,19 @@ export const GAUNTLET: readonly MarkerConfig[] = [
   // ── Floor 9: The Null Space ───────────────────────────────────────────────
 
   {
-    targetCents: 1_950_000_000,  // $19,500,000
+    targetCents: 2_000_000_000,  // $20,000,000
     venue:       'The Null Space',
     floor:       9,
     isBoss:      false,
   },
   {
-    targetCents: 2_925_000_000,  // $29,250,000
+    targetCents: 3_000_000_000,  // $30,000,000
     venue:       'The Null Space',
     floor:       9,
     isBoss:      false,
   },
   {
-    targetCents: 3_900_000_000,  // $39,000,000 — BOSS: The Architect
+    targetCents: 6_000_000_000,  // $60,000,000 — BOSS: The Architect
     venue:       'The Null Space — The Zero Chamber',
     floor:       9,
     isBoss:      true,
@@ -745,12 +745,12 @@ export function getMaxBet(currentMarkerIndex: number, bossPointHits = 0, ceiling
  * stakes never feel trivially low late-game.
  *
  * Examples (marker → max → min):
- *   Marker 0  ($50 target)    → max $5     → min $5
- *   Marker 3  ($250 target)   → max $25    → min $5
- *   Marker 6  ($1,250 target) → max $125   → min $20
- *   Marker 9  ($5k target)    → max $500   → min $85
- *   Marker 12 ($30k target)   → max $3,000 → min $500
- *   Marker 17 ($780k target)  → max $78,000→ min $13,000
+ *   Marker 0  ($50 target)      → max $5      → min $5
+ *   Marker 3  ($300 target)     → max $30     → min $5
+ *   Marker 6  ($1,500 target)   → max $150    → min $25
+ *   Marker 9  ($5k target)      → max $500    → min $85
+ *   Marker 12 ($30k target)     → max $3,000  → min $500
+ *   Marker 17 ($500k target)    → max $50,000 → min $8,335
  *
  * This minimum governs two things:
  *   1. Server rejects a come-out roll whose Pass Line bet is below this value.

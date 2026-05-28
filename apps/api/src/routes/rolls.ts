@@ -489,14 +489,6 @@ async function rollHandler(
       ? cheatDice
       : rollDice();
 
-  // ── 6b. GOLDEN_TOUCH — guarantee a Natural on first come-out roll ──────────
-  // shooterRollCount resets to 0 on each SEVEN_OUT, so the guarantee renews
-  // for every new shooter. Rejection-sample loop converges in ~4.5 rolls on average.
-  const hasGoldenTouch = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.GOLDEN_TOUCH);
-  if (hasGoldenTouch && run.shooterRollCount === 0 && run.phase === 'COME_OUT') {
-    do { dice = rollDice(); } while (dice[0] + dice[1] !== 7 && dice[0] + dice[1] !== 11);
-  }
-
   // ── 7. Resolve roll — classify outcome and compute base payouts ────────────
   const initialCtx = resolveRoll(dice, {
     phase:                 run.phase as 'COME_OUT' | 'POINT_ACTIVE',
@@ -509,6 +501,7 @@ async function rollHandler(
     pointPhaseBlankStreak: run.pointPhaseBlankStreak,
     markerTargetCents:     GAUNTLET[run.currentMarkerIndex]?.targetCents ?? 0,
     shooters:              run.shooters,
+    unlockedSlots:         run.unlockedSlots as 3 | 4 | 5,
   });
 
   // ── 7a-b. FIRST_CONTACT_PROTOCOL — suppress COME_OUT naturals ───────────────
@@ -717,12 +710,6 @@ async function rollHandler(
 
   const hitMarker      = nextState.currentMarkerIndex > run.currentMarkerIndex;
   const newMarkerIndex = nextState.currentMarkerIndex;
-
-  // ── 11b. ZERO_POINT comp — permanent 1.25× hype floor ────────────────────
-  const hasZeroPoint = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.ZERO_POINT);
-  if (hasZeroPoint && nextState.hype < 1.25) {
-    nextState.hype = 1.25;
-  }
 
   // ── 11c. Mechanic freeze lifecycle ───────────────────────────────────────
   // If a freeze was applied this roll, decrement rollsRemaining.

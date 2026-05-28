@@ -12,15 +12,15 @@ There are nine bosses across the 9-floor gauntlet:
 
 | Index | Floor | Target | Boss | Rule |
 |---|---|---|---|---|
-| 2  | 1 — The Loading Dock | $250 | The Foreman | `EXTORTION_FEE` |
+| 2  | 1 — The Loading Dock | $200 | The Foreman | `EXTORTION_FEE` |
 | 5  | 2 — VFW Hall | $1,000 | Sarge | `RISING_MIN_BETS` |
 | 8  | 3 — Riverboat | $4,000 | Mme. Le Prix | `DISABLE_CREW` |
-| 11 | 4 — The Strip | $12,500 | The Executive | `FOURS_INSTANT_LOSS` |
-| 14 | 5 — The Lodge | $45,000 | The Hierophant | `TRIBUTE` |
-| 17 | 6 — Atlantis | $175,000 | The Sovereign | `TIDAL_SURGE` |
-| 20 | 7 — The Station | $650,000 | The Commander | `ORBITAL_DECAY` |
-| 23 | 8 — The Signal | $2,500,000 | The Emissary | `FIRST_CONTACT_PROTOCOL` |
-| 26 | 9 — The Null Space | $20,000,000 | The Architect | `CONVERGENCE` |
+| 11 | 4 — The Strip | $15,000 | The Executive | `FOURS_INSTANT_LOSS` |
+| 14 | 5 — The Lodge | $100,000 | The Hierophant | `TRIBUTE` |
+| 17 | 6 — Atlantis | $500,000 | The Sovereign | `TIDAL_SURGE` |
+| 20 | 7 — The Station | $3,000,000 | The Commander | `ORBITAL_DECAY` |
+| 23 | 8 — The Signal | $15,000,000 | The Emissary | `FIRST_CONTACT_PROTOCOL` |
+| 26 | 9 — The Null Space | $60,000,000 | The Architect | `CONVERGENCE` |
 
 ---
 
@@ -136,7 +136,7 @@ export interface BossRuleState {
 
 ### The Foreman — Floor 1
 
-**Rule:** `EXTORTION_FEE` | **Target:** $250 | **Index:** 2
+**Rule:** `EXTORTION_FEE` | **Target:** $200 | **Index:** 2
 
 Every winning payout is taxed 20% — the Foreman takes his cut before the money hits your stack.
 
@@ -154,16 +154,16 @@ ruleParams: { rule: 'EXTORTION_FEE', taxPct: 0.20 }
 
 **Rule:** `RISING_MIN_BETS` | **Target:** $1,000 | **Index:** 5
 
-The minimum Pass Line bet starts at 5% of the $1,000 marker target ($50) and rises by $20 (2%) after every Point Hit. It never drops — Seven Out holds the pressure. The cap is $200 (20%).
+The minimum Pass Line bet starts at 4% of the $1,000 marker target ($40) and rises by $20 (2%) after every Point Hit. It never drops — Seven Out holds the pressure. The cap is $200 (20%).
 
 | Event | Effect on min bet |
 |---|---|
 | Point Hit | +$20 (rises) |
 | Seven Out | No change (holds) |
-| Marker clear | Resets to $50 |
+| Marker clear | Resets to $40 |
 
 ```typescript
-ruleParams: { rule: 'RISING_MIN_BETS', startPct: 0.05, incrementPct: 0.02, capPct: 0.20 }
+ruleParams: { rule: 'RISING_MIN_BETS', startPct: 0.04, incrementPct: 0.02, capPct: 0.20 }
 ```
 
 **Comp:** Member's Jacket — +1 Shooter this segment on boss defeat.
@@ -184,7 +184,7 @@ The entire crew cascade is suppressed for the duration of the fight. Crew portra
 
 ### The Executive — Floor 4
 
-**Rule:** `FOURS_INSTANT_LOSS` | **Target:** $12,500 | **Index:** 11
+**Rule:** `FOURS_INSTANT_LOSS` | **Target:** $15,000 | **Index:** 11
 
 Rolling a dice total of 4 — combinations [1,3], [3,1], [2,2] — ends the entire run immediately. This is 3/36 ≈ 8.3% per roll.
 
@@ -200,7 +200,7 @@ ruleParams: { rule: 'FOURS_INSTANT_LOSS', triggerTotal: 4 }
 
 ### The Hierophant — Floor 5
 
-**Rule:** `TRIBUTE` | **Target:** $45,000 | **Index:** 14
+**Rule:** `TRIBUTE` | **Target:** $100,000 | **Index:** 14
 
 Every seven-out seizes 15% of the player's current bankroll as tribute — on top of the normal bet loss. THE_COVENANT comp (earned here) permanently halves this drain.
 
@@ -216,7 +216,7 @@ ruleParams: { rule: 'TRIBUTE', tributePct: 0.15 }
 
 ### The Sovereign — Floor 6
 
-**Rule:** `TIDAL_SURGE` | **Target:** $175,000 | **Index:** 17
+**Rule:** `TIDAL_SURGE` | **Target:** $500,000 | **Index:** 17
 
 The table runs on a tide. Every 5 rolls, the minimum Pass Line bet floods to 15% of the marker target for 2 rolls, then recedes. The cycle is visible in the `BossRoomHeader` pip track.
 
@@ -232,7 +232,7 @@ ruleParams: { rule: 'TIDAL_SURGE', cycleLength: 5, surgeDuration: 2, surgePct: 0
 
 ### The Commander — Floor 7
 
-**Rule:** `ORBITAL_DECAY` | **Target:** $650,000 | **Index:** 20
+**Rule:** `ORBITAL_DECAY` | **Target:** $3,000,000 | **Index:** 20
 
 Every seven-out subtracts 0.5× from the Hype multiplier. The multiplier has no floor — it can fall below 1.0×. Below 1.0×, payouts are penalized (the hype factor shrinks gross profit).
 
@@ -248,7 +248,7 @@ ruleParams: { rule: 'ORBITAL_DECAY', decayAmount: 0.5, hypeFloor: 0.5 }
 
 ### The Emissary — Floor 8
 
-**Rule:** `FIRST_CONTACT_PROTOCOL` | **Target:** $2,500,000 | **Index:** 23
+**Rule:** `FIRST_CONTACT_PROTOCOL` | **Target:** $15,000,000 | **Index:** 23
 
 Come-out rolls that would be a Natural (7 or 11) are converted to blank NO_RESOLUTION rolls. No payout. No hype tick. The shooter stays in come-out phase.
 
@@ -264,7 +264,7 @@ ruleParams: { rule: 'FIRST_CONTACT_PROTOCOL' }
 
 ### The Architect — Floor 9 (Final Boss)
 
-**Rule:** `CONVERGENCE` | **Target:** $20,000,000 | **Index:** 26
+**Rule:** `CONVERGENCE` | **Target:** $60,000,000 | **Index:** 26
 
 Every seven-out permanently removes one crew slot from the cascade, starting with slot 5. After five seven-outs, the player rolls naked craps — no crew fires at all. No comp is awarded on defeat; The Null Space is the end of the line.
 
@@ -325,8 +325,8 @@ TypeScript narrows the type inside each hook file via the `rule` discriminant. T
 | Scenario | Expected |
 |---|---|
 | Foreman fight, winning roll | Payout taxed 20%; net payout visible in roll log |
-| Sarge fight, 0 point hits | Min bet $50; `validateBet` rejects passLine < 5000 |
-| Sarge fight, 1 point hit | Min bet $70; holds if next roll is Seven Out |
+| Sarge fight, 0 point hits | Min bet $40; `validateBet` rejects passLine < 4000 |
+| Sarge fight, 1 point hit | Min bet $60; holds if next roll is Seven Out |
 | Sarge fight, capped | Min bet $200; no further increase |
 | Mme. Le Prix fight | No crew events in roll log; no barks; cooldowns unchanged |
 | Executive fight, diceTotal = 4 | `ctx.flags.instantLoss = true`; run transitions to GAME_OVER |

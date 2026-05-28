@@ -256,6 +256,20 @@ await db.execute(sql`
 `);
 app.log.info('[migrate] peak_bankroll_cents on leaderboard_entries ensured');
 
+// FB-025: unlocked_slots — tracks how many crew slots are active (3 = start, 4 = BOARD_SEAT, 5 = CARGO_HOLD).
+// Backfill existing runs to 5: pre-FB-025 runs were played with all 5 slots active by implication.
+// Timestamp guard ensures we never touch legitimate post-FB-025 runs that correctly start at 3.
+// Safe to re-run: ADD COLUMN IF NOT EXISTS is a no-op; the UPDATE condition is false once backfilled.
+await db.execute(sql`
+  ALTER TABLE runs ADD COLUMN IF NOT EXISTS unlocked_slots integer NOT NULL DEFAULT 3
+`);
+await db.execute(sql`
+  UPDATE runs SET unlocked_slots = 5
+  WHERE unlocked_slots = 3
+    AND created_at < '2026-05-27 00:00:00+00'::timestamptz
+`);
+app.log.info('[migrate] unlocked_slots ensured');
+
 // ---------------------------------------------------------------------------
 // Start listening
 // ---------------------------------------------------------------------------

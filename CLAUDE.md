@@ -132,7 +132,7 @@ This project uses strict TypeScript. Whenever you write or modify TypeScript cod
 
 ## Game Constants (quick reference)
 
-**Gauntlet targets (5× exponential base; 1×/1.5×/2× within floor):** F1: $50/$75/$100 | F2: $250/$375/$500 | F3: $1.25k/$1.875k/$2.5k | F4: $5k/$7.5k/$10k | F5: $30k/$45k/$60k | F6: $155k/$232.5k/$310k | F7: $780k/$1.17M/$1.56M | F8: $3.9M/$5.85M/$7.8M | F9: $19.5M/$29.25M/$39M
+**Gauntlet targets (Boss = 2× M2 per floor):** F1: $50/$100/$200 | F2: $300/$500/$1k | F3: $1.5k/$2k/$4k | F4: $5k/$7.5k/$15k | F5: $30k/$50k/$100k | F6: $150k/$250k/$500k | F7: $1M/$1.5M/$3M | F8: $5M/$7.5M/$15M | F9: $20M/$30M/$60M
 **Bosses (F1–F9):** The Foreman (20% payout tax) | Sarge (rising min-bets) | Mme. Le Prix (crew disabled) | The Executive (4s = instant loss) | The Hierophant (15% bankroll tribute on 7-out) | The Sovereign (tidal surge — min bet floods 15% every 5 rolls) | The Commander (hype decays 0.5× per 7-out, can fall below 1.0×) | The Emissary (7/11 naturals nullified — blank re-roll) | The Architect (crew slot removed per 7-out; 5 = naked craps; no comp)
 **Comps (F1–F8):** The Vig (crew cash +20%) | Member's Jacket (+1 shooter) | Sea Legs (7-out resets hype to 50%) | Golden Touch (guaranteed first natural) | The Covenant (bankroll drains −50%) | Poseidon's Favor (first come-out can't craps-out) | Zero Point (hype floored at 1.25×) | The Frequency (naturals award 3% of marker target)
 **Odds:** 4/10 → 3× max, 2:1 | 5/9 → 4× max, 3:2 | 6/8 → 5× max, 6:5

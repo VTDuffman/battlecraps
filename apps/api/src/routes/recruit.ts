@@ -23,7 +23,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
-import { isBossMarker, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, COMP_PERK_IDS, type CrewRarity } from '@battlecraps/shared';
+import { isBossMarker, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, COMP_PERK_IDS, type CompRewardType, type CrewRarity } from '@battlecraps/shared';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
 
@@ -92,6 +92,11 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         });
       }
 
+      // ── 3b. Slot availability guard (FB-025) ───────────────────────────────
+      if (hasSlot && slotIndex! >= run.unlockedSlots) {
+        return reply.status(400).send({ error: 'Slot not yet unlocked.' });
+      }
+
       // ── 4. Determine boss comp reward (if returning from a boss victory) ──
       // currentMarkerIndex was already incremented by rolls.ts when the TRANSITION
       // status was set. So the marker that was just cleared is at index - 1.
@@ -107,9 +112,16 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         (run.compPerkIds ?? []).includes(COMP_PERK_IDS.MEMBER_JACKET);
       const compShooterBonus = hasMemberJacket ? 1 : 0;
 
+      // FB-025: BOARD_SEAT and CARGO_HOLD unlock a new crew slot — they do not use
+      // compPerkIds for enforcement. unlockedSlots is the authority.
+      const isSlotUnlock = (reward: CompRewardType): reward is 'BOARD_SEAT' | 'CARGO_HOLD' =>
+        reward === 'BOARD_SEAT' || reward === 'CARGO_HOLD';
+
       // Persist the comp perk ID onto the run (not the user) so enforcement is
       // scoped to this run only. Non-fatal — must never block game progression.
-      if (bossConfig && bossConfig.compReward !== 'NONE' && bossConfig.compPerkId !== undefined) {
+      // Slot-unlock comps (BOARD_SEAT / CARGO_HOLD) are excluded — they use
+      // unlockedSlots instead of compPerkIds.
+      if (bossConfig && bossConfig.compReward !== 'NONE' && !isSlotUnlock(bossConfig.compReward) && bossConfig.compPerkId !== undefined) {
         try {
           await db
             .update(runs)
@@ -119,6 +131,19 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
             .where(eq(runs.id, runId));
         } catch {
           // Intentionally swallowed.
+        }
+      }
+
+      // ── 4b. Slot-unlock comp — increment unlockedSlots (FB-025) ──────────
+      if (bossConfig && isSlotUnlock(bossConfig.compReward)) {
+        const newSlotCount = bossConfig.compReward === 'BOARD_SEAT' ? 4 : 5;
+        try {
+          await db
+            .update(runs)
+            .set({ unlockedSlots: newSlotCount })
+            .where(eq(runs.id, runId));
+        } catch {
+          // Non-fatal — must never block game progression.
         }
       }
 
@@ -204,6 +229,7 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         point:         persistedRun.currentPoint ?? null,
         crewSlots:     persistedRun.crewSlots,
         bossPointHits: persistedRun.bossPointHits,
+        unlockedSlots: persistedRun.unlockedSlots as 3 | 4 | 5,
       });
     },
   );

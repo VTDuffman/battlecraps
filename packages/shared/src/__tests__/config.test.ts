@@ -49,20 +49,20 @@ describe('GAUNTLET', () => {
     }
   });
 
-  it('Floor 1 targets: $50 / $100 / $250', () => {
+  it('Floor 1 targets: $50 / $100 / $200', () => {
     expect(GAUNTLET[0]?.targetCents).toBe(5_000);
     expect(GAUNTLET[1]?.targetCents).toBe(10_000);
-    expect(GAUNTLET[2]?.targetCents).toBe(25_000);
+    expect(GAUNTLET[2]?.targetCents).toBe(20_000);
   });
 
-  it('Floor 2 targets: $450 / $600 / $1,000', () => {
-    expect(GAUNTLET[3]?.targetCents).toBe(45_000);
-    expect(GAUNTLET[4]?.targetCents).toBe(60_000);
+  it('Floor 2 targets: $300 / $500 / $1,000', () => {
+    expect(GAUNTLET[3]?.targetCents).toBe(30_000);
+    expect(GAUNTLET[4]?.targetCents).toBe(50_000);
     expect(GAUNTLET[5]?.targetCents).toBe(100_000);
   });
 
-  it('Floor 9 boss target: $20,000,000', () => {
-    expect(GAUNTLET[26]?.targetCents).toBe(2_000_000_000);
+  it('Floor 9 boss target: $60,000,000', () => {
+    expect(GAUNTLET[26]?.targetCents).toBe(6_000_000_000);
   });
 
   it('targets are strictly ascending', () => {
@@ -111,12 +111,14 @@ describe('getMaxBet', () => {
     expect(getMaxBet(0)).toBe(500);
   });
 
-  it('marker 1 ($100 target) → max $10', () => {
+  it('marker 1 ($100 target) → max $10 (1000 cents)', () => {
+    // floor(10000 * 0.10) = 1000
     expect(getMaxBet(1)).toBe(1_000);
   });
 
-  it('marker 2 ($250 boss target) → max $25', () => {
-    expect(getMaxBet(2)).toBe(2_500);
+  it('marker 2 ($200 boss target) → max $20 (2000 cents)', () => {
+    // floor(20000 * 0.10) = 2000; Foreman has no risingMinBets, no boss floor
+    expect(getMaxBet(2)).toBe(2_000);
   });
 
   it('applies ceilingPct override (0.15 for Old Pro)', () => {
@@ -130,16 +132,17 @@ describe('getMaxBet', () => {
   });
 
   it('applies boss floor for RISING_MIN_BETS (Sarge, index 5)', () => {
-    // Sarge at 0 hits: bossMin = ceil(100000 * 0.05 / 100) * 100 = 5000
+    // Sarge at 0 hits: bossMin = ceil(100000 * 0.04 / 100) * 100 = ceil(40) * 100 = 4000
     // normalMax = floor(100000 * 0.10) = 10000
-    // floor = bossMin * 5 = 25000 → max(10000, 25000) = 25000
+    // floor = bossMin * 5 = 20000 → max(10000, 20000) = 20000
     const bossMin0 = getBossMinBet(5, 0)!;
-    expect(bossMin0).toBe(5_000);
+    expect(bossMin0).toBe(4_000);
     expect(getMaxBet(5, 0)).toBe(Math.max(10_000, bossMin0 * 5));
   });
 
   it('boss floor grows as bossPointHits increases (Sarge)', () => {
-    // 1 hit: bossMin = ceil(100000 * 0.07 / 100) * 100 = 7000; floor = 35000
+    // New: 1 hit → bossMin = ceil(100000 * 0.06 / 100) * 100 = 6000; floor = 30000
+    // max0 = max(10000, 4000*5) = 20000; max1 = max(10000, 6000*5) = 30000
     const max0 = getMaxBet(5, 0);
     const max1 = getMaxBet(5, 1);
     expect(max1).toBeGreaterThan(max0);
@@ -156,8 +159,8 @@ describe('getMaxBet', () => {
   });
 
   it('out-of-bounds index falls back to last GAUNTLET entry', () => {
-    // Uses GAUNTLET[26].targetCents = 2_000_000_000
-    expect(getMaxBet(99)).toBe(Math.floor(2_000_000_000 * 0.10));
+    // Uses GAUNTLET[26].targetCents = 6_000_000_000
+    expect(getMaxBet(99)).toBe(Math.floor(6_000_000_000 * 0.10));
   });
 });
 
@@ -217,25 +220,26 @@ describe('getBossMinBet', () => {
     expect(getBossMinBet(11, 0)).toBeNull();
   });
 
-  it('Sarge (index 5): 0 hits → 5% of $1000 = $50', () => {
-    // ceil(100000 * 0.05 / 100) * 100 = 5000
-    expect(getBossMinBet(5, 0)).toBe(5_000);
+  it('Sarge (index 5): 0 hits → 4% of $1,000 = $40 (4000)', () => {
+    // ceil(100000 * 0.04 / 100) * 100 = ceil(40) * 100 = 4000
+    expect(getBossMinBet(5, 0)).toBe(4_000);
   });
 
-  it('Sarge (index 5): 1 hit → ~7% of $1000 (fp: $71 due to ceil of 0.07 float)', () => {
-    // rawPct = 0.05 + 0.02 * 1 = 0.07 (floating point: ~7.000...00416e-2)
-    // rawCents = 100000 * 0.07 ≈ 7000.000000000000416 (not exactly 7000)
-    // Math.ceil(7000.000.../ 100) = 71; 71 * 100 = 7100
-    expect(getBossMinBet(5, 1)).toBe(7_100);
+  it('Sarge (index 5): 1 hit → 6% of $1,000 = $60 (6000)', () => {
+    // rawPct = 0.04 + 0.02 * 1 = 0.06
+    // rawCents = 100000 * 0.06 = 6000 (exact)
+    // Math.ceil(6000 / 100) * 100 = 6000
+    expect(getBossMinBet(5, 1)).toBe(6_000);
   });
 
-  it('Sarge (index 5): 2 hits → ~9% of $1000 ($90 actual)', () => {
-    // rawPct = 0.05 + 0.02 * 2 = 0.09; fp rounds to 9000 (stays exact here)
-    expect(getBossMinBet(5, 2)).toBe(9_000);
+  it('Sarge (index 5): 2 hits → 8% of $1,000 = $80 (8000)', () => {
+    // rawPct = 0.04 + 0.02 * 2 = 0.08; rawCents = 100000 * 0.08 = 8000
+    // Math.ceil(8000 / 100) * 100 = 8000
+    expect(getBossMinBet(5, 2)).toBe(8_000);
   });
 
-  it('Sarge (index 5): hits clamped at capPct 20% = $200', () => {
-    // 8+ hits: 0.05 + 0.02*8 = 0.21 → clamped to 0.20
+  it('Sarge (index 5): hits clamped at capPct 20% = $200 (20000)', () => {
+    // 8+ hits: 0.04 + 0.02*8 = 0.20 → clamped to 0.20; 100000 * 0.20 = 20000
     expect(getBossMinBet(5, 8)).toBe(20_000);
     expect(getBossMinBet(5, 20)).toBe(20_000);
   });
@@ -248,10 +252,12 @@ describe('getBossMinBet', () => {
 
   it('TIDAL_SURGE boss (index 17) returns surge min when counter >= cycleLength', () => {
     // surge = round(getMinBet(17) × highTideMinMultiplier / 500) × 500
-    // getMinBet(17): maxBet=1_750_000; round(1_750_000/6/500)*500 = round(583.3)*500 = 291_500
-    // surge = round(291_500 × 3 / 500) × 500 = round(1749) × 500 = 874_500
-    expect(getBossMinBet(17, 5)).toBe(874_500);
-    expect(getBossMinBet(17, 6)).toBe(874_500);
+    // GAUNTLET[17].targetCents = 50_000_000
+    // getMaxBet(17) = floor(50_000_000 * 0.10) = 5_000_000
+    // getMinBet(17) = max(500, round(5_000_000/6/500)*500) = round(1666.67)*500 = 1667*500 = 833_500
+    // surge = round(833_500 × 3 / 500) × 500 = round(5001) × 500 = 5001*500 = 2_500_500
+    expect(getBossMinBet(17, 5)).toBe(2_500_500);
+    expect(getBossMinBet(17, 6)).toBe(2_500_500);
   });
 
   it('CONVERGENCE boss (index 26) returns null (no risingMinBets)', () => {
@@ -336,5 +342,29 @@ describe('getBaseHypeTick', () => {
 
   it('STREAK_INCREMENT is 0.05', () => {
     expect(STREAK_INCREMENT).toBeCloseTo(0.05, 4);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Boss comp rewards — slot unlock floors (FB-025)
+// ---------------------------------------------------------------------------
+
+describe('Boss comp rewards — slot unlock floors', () => {
+  it('F4 boss (index 11) awards BOARD_SEAT', () => {
+    expect(GAUNTLET[11]?.boss?.compReward).toBe('BOARD_SEAT');
+  });
+
+  it('F7 boss (index 20) awards CARGO_HOLD', () => {
+    expect(GAUNTLET[20]?.boss?.compReward).toBe('CARGO_HOLD');
+  });
+
+  it('GOLDEN_TOUCH does not appear in any boss comp reward', () => {
+    const rewards = GAUNTLET.filter((m) => m.isBoss).map((m) => m.boss?.compReward);
+    expect(rewards).not.toContain('GOLDEN_TOUCH');
+  });
+
+  it('ZERO_POINT does not appear in any boss comp reward', () => {
+    const rewards = GAUNTLET.filter((m) => m.isBoss).map((m) => m.boss?.compReward);
+    expect(rewards).not.toContain('ZERO_POINT');
   });
 });

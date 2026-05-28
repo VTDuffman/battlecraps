@@ -20,7 +20,7 @@
 // calls `dequeueEvent()` to advance to the next crew in the sequence.
 // =============================================================================
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   DndContext,
@@ -74,15 +74,16 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
   const setMechanicFreeze = useGameStore((s) => s.setMechanicFreeze);
   const { flashType, _flashKey }           = useGameStore(selectFlash);
   const { wallFlash, _wallFlashKey }       = useGameStore(selectWallFlash);
-  const reorderCrew  = useGameStore((s) => s.reorderCrew);
-  const slotIds      = useGameStore((s) => s.slotIds);
+  const reorderCrew   = useGameStore((s) => s.reorderCrew);
+  const slotIds       = useGameStore((s) => s.slotIds);
+  const unlockedSlots = useGameStore((s) => s.unlockedSlots);
   const isCascading        = useGameStore(selectIsCascading);
   const displayMarkerIndex = useGameStore(selectDisplayMarkerIndex);
   const isBossRoom         = isBossMarker(displayMarkerIndex);
-  const { muted, toggleMute } = useCrowdAudio();
+  const { muted, toggleMute, sfxVolume, setSfxVolume } = useCrowdAudio();
   // Floor 1–9: Math.ceil((markerIndex+1)/3), clamped.  Floor 9 enforces silence.
   const currentFloor = Math.max(1, Math.min(9, Math.ceil((displayMarkerIndex + 1) / 3)));
-  const { isMusicMuted, toggleMusic } = useFloorMusic(currentFloor);
+  const { isMusicMuted, toggleMusic, musicVolume, setMusicVolume } = useFloorMusic(currentFloor);
   const theme = useFloorTheme();
 
   const snapshotForFeedback = useGameStore((s) => s.snapshotForFeedback);
@@ -258,50 +259,34 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
             </div>
           </div>
 
-          {/* SFX mute toggle */}
-          <div className="relative group">
-            <button
-              type="button"
-              onClick={toggleMute}
-              className="w-7 h-7 rounded flex items-center justify-center bg-black/80 text-gold hover:text-gold-bright transition-colors shadow-md"
-              aria-label={muted ? 'Unmute crowd audio' : 'Mute crowd audio'}
-            >
-              <span className="text-base leading-none">{muted ? '🔇' : '🔊'}</span>
-            </button>
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-r-7 text-gold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-              SFX
-            </div>
-          </div>
+          {/* SFX mute toggle + volume slider */}
+          <AudioVolumeButton
+            label="SFX"
+            volume={sfxVolume}
+            onVolumeChange={setSfxVolume}
+            onToggle={toggleMute}
+          >
+            <span className="text-base leading-none">{muted ? '🔇' : '🔊'}</span>
+          </AudioVolumeButton>
 
-          {/* Music mute toggle */}
-          <div className="relative group">
-            <button
-              type="button"
-              onClick={toggleMusic}
-              className={[
-                'w-7 h-7 rounded flex items-center justify-center bg-black/80 transition-colors shadow-md',
-                isMusicMuted ? 'text-gold/40' : 'text-gold hover:text-gold-bright',
-              ].join(' ')}
-              aria-label="Toggle Music"
-            >
-              {/* Eighth-note icon with optional mute slash */}
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-                {/* Stem */}
-                <line x1="9.5" y1="1.5" x2="9.5" y2="9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                {/* Flag */}
-                <path d="M9.5 1.5 C11.5 0.5 13.5 2.5 11 5.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                {/* Note head */}
-                <ellipse cx="7.5" cy="10.2" rx="2.8" ry="1.9" transform="rotate(-18 7.5 10.2)" fill="currentColor" />
-                {/* Mute slash — only rendered when muted */}
-                {isMusicMuted && (
-                  <line x1="1.5" y1="12.5" x2="12.5" y2="1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-                )}
-              </svg>
-            </button>
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-r-7 text-gold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-              MUSIC
-            </div>
-          </div>
+          {/* Music mute toggle + volume slider */}
+          <AudioVolumeButton
+            label="MUSIC"
+            volume={musicVolume}
+            onVolumeChange={setMusicVolume}
+            onToggle={toggleMusic}
+            dimmed={isMusicMuted}
+          >
+            {/* Eighth-note icon with optional mute slash */}
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <line x1="9.5" y1="1.5" x2="9.5" y2="9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M9.5 1.5 C11.5 0.5 13.5 2.5 11 5.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              <ellipse cx="7.5" cy="10.2" rx="2.8" ry="1.9" transform="rotate(-18 7.5 10.2)" fill="currentColor" />
+              {isMusicMuted && (
+                <line x1="1.5" y1="12.5" x2="12.5" y2="1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              )}
+            </svg>
+          </AudioVolumeButton>
 
           {/* How To Play */}
           <div className="relative group">
@@ -395,11 +380,11 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
           <div className="h-px flex-1" style={{ backgroundColor: theme.borderLow }} />
         </div>
 
-        {/* Five portrait slots */}
+        {/* Active portrait slots (unlockedSlots count — 3, 4, or 5) */}
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           <SortableContext items={slotIds} strategy={horizontalListSortingStrategy}>
             <div className="flex justify-around items-end gap-1">
-              {crewSlots.map((slot, i) => (
+              {crewSlots.slice(0, unlockedSlots).map((slot, i) => (
                 <div key={slotIds[i] ?? `slot-${i}`} data-slot-index={i}>
                   <CrewPortrait
                     sortableId={slotIds[i] ?? `slot-${i}`}
@@ -462,6 +447,125 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
 
       {/* ── Feedback modal ────────────────────────────────────────────────── */}
       <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// AudioVolumeButton — HUD audio button with hover-activated vertical slider
+//
+// Layout (position: relative wrapper):
+//   [button 28×28]
+//   [slider panel — position: absolute, top: 100%, 80 px tall]
+//
+// Hover UX:
+//   • Entering the wrapper shows the slider immediately.
+//   • Leaving starts a 150 ms timer; moving back in cancels it.
+//     This prevents flicker when the mouse crosses between button and slider.
+//   • The panel is position:absolute so it does not reflow the flex HUD row.
+// ---------------------------------------------------------------------------
+
+interface AudioVolumeButtonProps {
+  label:          string;
+  volume:         number;           // 0–1
+  onVolumeChange: (v: number) => void;
+  onToggle:       () => void;
+  dimmed?:        boolean;          // renders icon at reduced opacity (music muted)
+  children:       React.ReactNode; // the button icon
+}
+
+const AudioVolumeButton: React.FC<AudioVolumeButtonProps> = ({
+  label,
+  volume,
+  onVolumeChange,
+  onToggle,
+  dimmed = false,
+  children,
+}) => {
+  const [showSlider, setShowSlider] = useState(false);
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseEnter = useCallback(() => {
+    if (leaveTimerRef.current !== null) {
+      clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
+    }
+    setShowSlider(true);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    leaveTimerRef.current = setTimeout(() => {
+      setShowSlider(false);
+      leaveTimerRef.current = null;
+    }, 150);
+  }, []);
+
+  // Clean up timer on unmount
+  useEffect(() => () => {
+    if (leaveTimerRef.current !== null) clearTimeout(leaveTimerRef.current);
+  }, []);
+
+  return (
+    <div
+      className="relative"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* The button itself */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className={[
+          'w-7 h-7 rounded flex items-center justify-center bg-black/80 transition-colors shadow-md',
+          dimmed ? 'text-gold/40' : 'text-gold hover:text-gold-bright',
+        ].join(' ')}
+        aria-label={label}
+      >
+        {children}
+      </button>
+
+      {/* Tooltip label — shown when slider is NOT visible */}
+      {!showSlider && (
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-r-7 text-gold whitespace-nowrap pointer-events-none z-50">
+          {label}
+        </div>
+      )}
+
+      {/* Vertical volume slider panel — drops below the button, does not reflow HUD */}
+      {showSlider && (
+        <div
+          className="absolute top-full left-1/2 -translate-x-1/2 mt-1 flex flex-col items-center z-50"
+          style={{
+            width:         28,
+            paddingTop:    4,
+            paddingBottom: 4,
+            background:    'rgba(0,0,0,0.85)',
+            border:        '1px solid rgba(255,255,255,0.12)',
+            borderRadius:  4,
+          }}
+        >
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+            aria-label={`${label} volume`}
+            style={{
+              // Vertical orientation: thumb at top = loud, thumb at bottom = quiet
+              writingMode:       'vertical-lr',
+              direction:         'rtl',
+              height:            80,
+              width:             12,
+              cursor:            'pointer',
+              accentColor:       '#c8a84b', // gold to match HUD
+              appearance:        'slider-vertical' as React.CSSProperties['appearance'],
+              WebkitAppearance:  'slider-vertical' as React.CSSProperties['WebkitAppearance'],
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

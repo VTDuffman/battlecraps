@@ -41,7 +41,7 @@ export interface BossRuleHooks {
    * Called after classifyRoll() but before the cascade.
    * Returns a (potentially modified) TurnContext. Hook must not mutate `ctx`.
    *
-   * Used by: FOURS_INSTANT_LOSS — sets ctx.flags.instantLoss when dice match.
+   * Used by: FOURS_INSTANT_LOSS — sets ctx.flags.executiveStrike + NO_RESOLUTION when dice match.
    */
   modifyOutcome?(ctx: TurnContext, params: BossRuleParams, state: BossRuleState): TurnContext;
 
@@ -49,8 +49,7 @@ export interface BossRuleHooks {
    * Called at the top of resolveCascade() to determine which slot indices (and
    * in what order) the cascade will visit. Return [] to skip the entire loop.
    *
-   * Used by: DISABLE_CREW — returns [] to fully suppress crew cascade.
-   *          CONVERGENCE — returns [0..N-1] where N shrinks each seven-out.
+   * Used by: CONVERGENCE — returns [0..N-1] where N shrinks each seven-out.
    *
    * `state` carries the live per-fight runtime values (bossPointHits, etc.),
    * passed through from the roll handler so hooks can react to accumulated state.
@@ -67,6 +66,19 @@ export interface BossRuleHooks {
   modifyPayout?(
     payoutCents: number,
     baseStakeReturned: number,
+    params: BossRuleParams,
+    state: BossRuleState,
+  ): number;
+
+  /**
+   * Called after resolveCascade() and before the Vig comp step.
+   * Returns the (potentially reduced) additives total in cents.
+   * Only called when additives > 0.
+   *
+   * Used by: DISABLE_CREW (The Tariff) — taxes additive bonuses by additiveTarifPct.
+   */
+  modifyAdditives?(
+    additives: number,
     params: BossRuleParams,
     state: BossRuleState,
   ): number;

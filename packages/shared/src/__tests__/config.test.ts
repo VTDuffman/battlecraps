@@ -244,20 +244,30 @@ describe('getBossMinBet', () => {
     expect(getBossMinBet(5, 20)).toBe(20_000);
   });
 
-  it('TIDAL_SURGE boss (index 17) returns null when counter < cycleLength', () => {
-    // Sovereign: cycleLength=5; counter 0–4 = calm tide
+  it('TIDAL_SURGE boss (index 17): stage 0 LOW TIDE (bossPointHits % 4 === 0) → null', () => {
     expect(getBossMinBet(17, 0)).toBeNull();
     expect(getBossMinBet(17, 4)).toBeNull();
+    expect(getBossMinBet(17, 8)).toBeNull();
   });
 
-  it('TIDAL_SURGE boss (index 17) returns surge min when counter >= cycleLength', () => {
-    // surge = round(getMinBet(17) × highTideMinMultiplier / 500) × 500
+  it('TIDAL_SURGE boss (index 17): stage 1 EBB (2×) → 1_667_000', () => {
     // GAUNTLET[17].targetCents = 50_000_000
     // getMaxBet(17) = floor(50_000_000 * 0.10) = 5_000_000
-    // getMinBet(17) = max(500, round(5_000_000/6/500)*500) = round(1666.67)*500 = 1667*500 = 833_500
-    // surge = round(833_500 × 3 / 500) × 500 = round(5001) × 500 = 5001*500 = 2_500_500
-    expect(getBossMinBet(17, 5)).toBe(2_500_500);
+    // getMinBet(17) = max(500, round(5_000_000/6/500)*500) = 833_500
+    // EBB: round(833_500 × 2 / 500) × 500 = round(3334) × 500 = 3334*500 = 1_667_000
+    expect(getBossMinBet(17, 1)).toBe(1_667_000);
+    expect(getBossMinBet(17, 5)).toBe(1_667_000);
+  });
+
+  it('TIDAL_SURGE boss (index 17): stage 2 HIGH TIDE (3×) → 2_500_500', () => {
+    // HIGH: round(833_500 × 3 / 500) × 500 = round(5001) × 500 = 5001*500 = 2_500_500
+    expect(getBossMinBet(17, 2)).toBe(2_500_500);
     expect(getBossMinBet(17, 6)).toBe(2_500_500);
+  });
+
+  it('TIDAL_SURGE boss (index 17): stage 3 FLOW (2×) → 1_667_000', () => {
+    expect(getBossMinBet(17, 3)).toBe(1_667_000);
+    expect(getBossMinBet(17, 7)).toBe(1_667_000);
   });
 
   it('CONVERGENCE boss (index 26) returns null (no risingMinBets)', () => {

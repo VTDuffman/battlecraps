@@ -91,11 +91,21 @@ export interface RisingMinBetsParams {
 export type BossRuleParams =
   | { rule: 'EXTORTION_FEE';      taxPct: number }
   | { rule: 'RISING_MIN_BETS';    startPct: number; incrementPct: number; capPct: number }
-  | { rule: 'DISABLE_CREW' }
+  | { rule: 'DISABLE_CREW'; additiveTarifPct: number }
   | { rule: 'FOURS_INSTANT_LOSS'; triggerTotal: number }
   | { rule: 'TRIBUTE';            tributePct: number }
-  | { rule: 'TIDAL_SURGE';        lowTideDuration: number; highTideDuration: number; highTideMinMultiplier: number }
-  | { rule: 'ORBITAL_DECAY';      decayAmount: number; hypeFloor: number }
+  | { rule: 'TIDAL_SURGE'; stageMultipliers: readonly [number, number, number, number]; stageLabels: readonly [string, string, string, string] }
+  | {
+      rule:            'ORBITAL_DECAY';
+      /** Hype decay on 7-out when hype < 1.5× (below Heating Up). */
+      baseDecay:       number;
+      /** Hype decay on 7-out when 1.5× ≤ hype < 2.5× (Heating Up tier). */
+      heatingUpDecay:  number;
+      /** Hype decay on 7-out when hype ≥ 2.5× (On Fire tier). */
+      onFireDecay:     number;
+      /** Absolute minimum hype — never goes below this value. */
+      hypeFloor:       number;
+    }
   | { rule: 'FIRST_CONTACT_PROTOCOL' }   // Floor 8 — no params; binary toggle
   | { rule: 'CONVERGENCE' };             // Floor 9 — no params; counter tracked via bossPointHits
 
@@ -331,16 +341,16 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       dreadTagline:        'HOW CHARMING.',
       entryLines: [
         "Fresh money. How delightful.",
-        "On my table, your little friends stay quiet.",
-        "Let's see how well you play without them.",
+        "Your crew may stay — but they work at my rates.",
+        "Every dollar they earn, I take thirty-five cents. Non-negotiable.",
       ],
-      ruleBlurb:          "No crew fires in the Salon Privé. You're on your own.",
+      ruleBlurb:          "The Salon Privé has a service charge. Every additive your crew generates is reduced by 35% before it reaches your bankroll. Multipliers and hype are untouched — her cut is strictly monetary.",
       victoryQuote:       "…improbable. You may keep your winnings.",
       defeatAnnouncement: 'TABLE CLOSED',
       // Mechanic
       rule:           'DISABLE_CREW',
-      ruleHeaderText: 'CREW IS SILENCED — CASCADE DOES NOT FIRE',
-      ruleParams:     { rule: 'DISABLE_CREW' },
+      ruleHeaderText: 'CREW ADDITIVES TAXED 35% — MULTIPLIERS AND HYPE ARE EXEMPT',
+      ruleParams:     { rule: 'DISABLE_CREW', additiveTarifPct: 0.35 },
       // Comp
       compReward:      'HYPE_RESET_HALF',
       compPerkId:      COMP_PERK_IDS.SEA_LEGS,
@@ -379,15 +389,15 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       dreadTagline:        'YOUR MEETING IS SCHEDULED.',
       entryLines: [
         "Sit down. We've been expecting you.",
-        "One rule. Roll a four — you're finished.",
-        "The house has reviewed your file.",
+        "One rule. Roll a four — and it costs you. The first time.",
+        "The house has reviewed your file. Three strikes and you're finished.",
       ],
-      ruleBlurb:          "Roll a total of 4 and your run ends immediately. No exceptions.",
+      ruleBlurb:          "Roll a 4 and it costs you. First offence: 20% of your bankroll. Second: 40%. Third: the run ends. No exceptions. The Executive always collects.",
       victoryQuote:       "…restructuring was inevitable. Well played.",
       defeatAnnouncement: 'EXECUTIVE OVERRIDE',
       // Mechanic
       rule:           'FOURS_INSTANT_LOSS',
-      ruleHeaderText: 'ROLLING A 4 IS INSTANT BUST',
+      ruleHeaderText: 'ROLLING A 4: FIRST STRIKE −20% | SECOND −40% | THIRD = GAME OVER',
       ruleParams:     { rule: 'FOURS_INSTANT_LOSS', triggerTotal: 4 },
       // Comp
       compReward:      'BOARD_SEAT',
@@ -478,13 +488,17 @@ export const GAUNTLET: readonly MarkerConfig[] = [
         "My table runs on a tide. Five rolls calm, two rolls flood.",
         "You can see it coming. That was never the point.",
       ],
-      ruleBlurb:          "The tide alternates — 5 rolls of calm, 2 rolls of flood. High Tide raises the minimum bet. The rhythm is visible. The rhythm is inevitable.",
+      ruleBlurb:          "The tide runs a four-stage cycle — LOW, EBB, HIGH, FLOW — and advances on every come-out roll. LOW TIDE is the standard table minimum. EBB and FLOW hold at 2×. High Tide demands 3×. The rhythm is visible. The rhythm is inevitable.",
       victoryQuote:       "…the tide will return. It always does.",
       defeatAnnouncement: 'THE TIDE RECEDES',
       // Mechanic
       rule:           'TIDAL_SURGE',
-      ruleHeaderText: 'TIDE ALTERNATES — HIGH TIDE RAISES MINIMUM BET FOR 2 ROLLS',
-      ruleParams:     { rule: 'TIDAL_SURGE', lowTideDuration: 5, highTideDuration: 2, highTideMinMultiplier: 3 },
+      ruleHeaderText: 'TIDE CYCLES EACH COME-OUT: LOW (1×) → EBB (2×) → HIGH (3×) → FLOW (2×)',
+      ruleParams:     {
+        rule:             'TIDAL_SURGE',
+        stageMultipliers: [1, 2, 3, 2] as const,
+        stageLabels:      ['LOW TIDE', 'EBB', 'HIGH TIDE', 'FLOW'] as const,
+      },
       // Comp
       compReward:      'POSEIDONS_FAVOR',
       compPerkId:      COMP_PERK_IDS.POSEIDONS_FAVOR,
@@ -523,16 +537,22 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       dreadTagline:        'MOMENTUM DECAYS.',
       entryLines: [
         "Eleven months up here. I don't miss the ground.",
-        "Your hype is a resource. And resources decay in this environment.",
-        "Every time you seven-out, your multiplier drops. There is no floor — until there is.",
+        "Your hype is a resource. In this environment, resources decay faster at altitude.",
+        "The higher you climb, the steeper the fall. There is no floor — until there is.",
       ],
-      ruleBlurb:          "Every seven-out subtracts 0.5× from your Hype multiplier, which can fall below 1.0×. Below 1.0×, your payouts are penalized.",
+      ruleBlurb:          "Seven-out drains your Hype — and the higher you fly, the harder you fall. On Fire costs 0.8× per seven-out. Heating Up costs 0.6×. Below 1.5× costs 0.4×. Below 0.75× you lose a cascade slot. Below 0.5× your max bet is halved.",
       victoryQuote:       "…orbital mechanics didn't account for you. Gravity's compliments.",
       defeatAnnouncement: 'ORBITAL AUTHORITY LOST',
       // Mechanic
       rule:           'ORBITAL_DECAY',
-      ruleHeaderText: 'SEVEN-OUT DRAINS HYPE BY 0.5× — CAN FALL BELOW 1.0×',
-      ruleParams:     { rule: 'ORBITAL_DECAY', decayAmount: 0.5, hypeFloor: 0.5 },
+      ruleHeaderText: 'ON FIRE 7-OUT: −0.8× HYPE | HEATING UP: −0.6× | BELOW 1.5×: −0.4×',
+      ruleParams:     {
+        rule:           'ORBITAL_DECAY',
+        baseDecay:       0.40,
+        heatingUpDecay:  0.60,
+        onFireDecay:     0.80,
+        hypeFloor:       0.25,
+      },
       // Comp
       compReward:      'CARGO_HOLD',
       compPerkId:      0,
@@ -687,12 +707,10 @@ export function getBossMinBet(markerIndex: number, bossPointHits: number): numbe
 
   if (boss.rule === 'TIDAL_SURGE') {
     const params = boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>;
-    if (bossPointHits >= params.lowTideDuration) {
-      // High Tide — enforce a multiplier of the standard floor minimum (not a % of target).
-      // Rounded to nearest $5 so it aligns with chip denominations.
-      return Math.round(getMinBet(markerIndex) * params.highTideMinMultiplier / 500) * 500;
-    }
-    return null; // Low Tide — no elevated minimum
+    const stageIndex = bossPointHits % params.stageMultipliers.length;
+    const multiplier = params.stageMultipliers[stageIndex] ?? 1;
+    if (multiplier <= 1) return null; // LOW TIDE — no min-bet override
+    return Math.round(getMinBet(markerIndex) * multiplier / 500) * 500;
   }
 
   if (!boss.risingMinBets) return null;

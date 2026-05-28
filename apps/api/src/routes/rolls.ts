@@ -201,6 +201,8 @@ interface WsTurnSettledPayload {
    * Updated when a marker is cleared; otherwise carries the user's previous best.
    */
   highestMarkerReached: number;
+  /** Present when The Executive's three-strike rule triggered (4 was rolled). Strike index 1, 2, or 3. */
+  executiveStrikeNumber?: 1 | 2 | 3;
 }
 
 // ---------------------------------------------------------------------------
@@ -259,6 +261,7 @@ async function rollHandler(
   const bossMarkerConfig = GAUNTLET[run.currentMarkerIndex];
   const bossHooks        = bossMarkerConfig?.boss ? BOSS_RULE_HOOKS[bossMarkerConfig.boss.ruleParams.rule] : undefined;
   const bossParams       = bossMarkerConfig?.boss ? bossMarkerConfig.boss.ruleParams : undefined;
+  const activeBossRule   = bossMarkerConfig?.boss?.rule ?? null;
   const hasTheCovenant = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_COVENANT);
   const bossState: BossRuleState = { bossPointHits: run.bossPointHits, markerIndex: run.currentMarkerIndex, covenantActive: hasTheCovenant };
 
@@ -416,17 +419,26 @@ async function rollHandler(
   const hasOldPro = (run.crewSlots as StoredCrewSlots).some((c) => c?.crewId === OLD_PRO_ID);
   const maxBet = getMaxBet(run.currentMarkerIndex, run.bossPointHits, hasOldPro ? 0.15 : 0.10);
 
-  if (incomingBets.passLine > maxBet) {
+  // ── Death Spiral: The Commander halves max bet when hype < 0.5× ──────────
+  const isDeathSpiralHalving =
+    activeBossRule === 'ORBITAL_DECAY' &&
+    isBossMarker(run.currentMarkerIndex) &&
+    run.hype < 0.5;
+  const effectiveMaxBet = isDeathSpiralHalving
+    ? Math.floor(maxBet / 2 / 500) * 500   // halved, snapped to nearest $5
+    : maxBet;
+
+  if (incomingBets.passLine > effectiveMaxBet) {
     return reply.status(422).send({
-      error: `Pass Line bet of ${incomingBets.passLine}¢ exceeds the table maximum of ${maxBet}¢ ($${maxBet / 100}).`,
+      error: `Pass Line bet of ${incomingBets.passLine}¢ exceeds the table maximum of ${effectiveMaxBet}¢ ($${effectiveMaxBet / 100}).`,
     });
   }
 
   const hwKeys = ['hard4', 'hard6', 'hard8', 'hard10'] as const;
   for (const key of hwKeys) {
-    if (incomingBets.hardways[key] > maxBet) {
+    if (incomingBets.hardways[key] > effectiveMaxBet) {
       return reply.status(422).send({
-        error: `${key} bet of ${incomingBets.hardways[key]}¢ exceeds the table maximum of ${maxBet}¢ ($${maxBet / 100}).`,
+        error: `${key} bet of ${incomingBets.hardways[key]}¢ exceeds the table maximum of ${effectiveMaxBet}¢ ($${effectiveMaxBet / 100}).`,
       });
     }
   }
@@ -490,6 +502,15 @@ async function rollHandler(
       : rollDice();
 
   // ── 7. Resolve roll — classify outcome and compute base payouts ────────────
+  // ── Death Spiral — cascade slot penalty at hype < 0.75× ──────────────────
+  const isDeathSpiralSlotPenalty =
+    activeBossRule === 'ORBITAL_DECAY' &&
+    isBossMarker(run.currentMarkerIndex) &&
+    run.hype < 0.75;
+  const effectiveUnlockedSlots = isDeathSpiralSlotPenalty
+    ? Math.max(1, (run.unlockedSlots as number) - 1) as 3 | 4 | 5
+    : run.unlockedSlots as 3 | 4 | 5;
+
   const initialCtx = resolveRoll(dice, {
     phase:                 run.phase as 'COME_OUT' | 'POINT_ACTIVE',
     currentPoint:          run.currentPoint ?? null,
@@ -501,14 +522,13 @@ async function rollHandler(
     pointPhaseBlankStreak: run.pointPhaseBlankStreak,
     markerTargetCents:     GAUNTLET[run.currentMarkerIndex]?.targetCents ?? 0,
     shooters:              run.shooters,
-    unlockedSlots:         run.unlockedSlots as 3 | 4 | 5,
+    unlockedSlots:         effectiveUnlockedSlots,
   });
 
   // ── 7a-b. FIRST_CONTACT_PROTOCOL — suppress COME_OUT naturals ───────────────
   // Applied BEFORE the hype tick so the +0.10 NATURAL momentum bonus never fires
   // for a blocked natural. The naturalBlocked flag propagates through cascade and
   // is read by computeNextState to return IDLE_TABLE/COME_OUT instead of POINT_ACTIVE.
-  const activeBossRule   = GAUNTLET[run.currentMarkerIndex]?.boss?.rule ?? null;
   const isFirstContact   = activeBossRule === 'FIRST_CONTACT_PROTOCOL'
     && isBossMarker(run.currentMarkerIndex);
 
@@ -543,13 +563,13 @@ async function rollHandler(
     ? { ...initialCtxFcp, hype: seededHype }
     : initialCtxFcp;
 
-  // ── 7c. Boss outcome modifier (e.g. The Executive: 4s set instantLoss) ────
+  // ── 7c. Boss outcome modifier (e.g. The Executive: 4s set executiveStrike) ──
   const outcomeCtx = bossHooks?.modifyOutcome
     ? bossHooks.modifyOutcome(seededCtx, bossParams!, bossState)
     : seededCtx;
 
-  // ── 7d. Instant-loss check — early GAME_OVER before cascade fires ──────────
-  if (outcomeCtx.flags.instantLoss) {
+  // ── 7d. Three-strike third-4 check — early GAME_OVER before cascade fires ───
+  if (outcomeCtx.flags.executiveStrike && run.bossPointHits >= 2) {
     const lossBankroll = run.bankrollCents - betDelta;
     const zeroBets: Bets = {
       passLine: 0, odds: 0,
@@ -638,13 +658,20 @@ async function rollHandler(
   const cascadeResult = resolveCascade(crewSlots, preCascadeCtx, rollDice, bossHooks, bossParams, bossState);
   const { finalContext, events, updatedCrewSlots } = cascadeResult;
 
-  // ── 8b. The Vig comp — scale crew additive bonuses by 1.20 ──────────────
+  // ── 8b. DISABLE_CREW (The Tariff) — tax crew additives before Vig applies ─
+  // Applied before The Vig so the +20% Vig bonus stacks on already-taxed additives
+  // (multiplicative order doesn't matter here, but semantically the boss takes first).
+  const tarifedContext = bossHooks?.modifyAdditives && finalContext.additives > 0
+    ? { ...finalContext, additives: bossHooks.modifyAdditives(finalContext.additives, bossParams!, bossState) }
+    : finalContext;
+
+  // ── 8c. The Vig comp — scale crew additive bonuses by 1.20 ───────────────
   // Applied post-cascade so individual crew execute() functions stay unaware.
   // Rounds to the nearest dollar (100 cents) per project convention.
   const hasTheVig = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_VIG);
-  const viggedContext = hasTheVig && finalContext.additives > 0
-    ? { ...finalContext, additives: Math.round(finalContext.additives * 1.2 / 100) * 100 }
-    : finalContext;
+  const viggedContext = hasTheVig && tarifedContext.additives > 0
+    ? { ...tarifedContext, additives: Math.round(tarifedContext.additives * 1.2 / 100) * 100 }
+    : tarifedContext;
 
   // ── 9. Settle the turn ─────────────────────────────────────────────────────
   //
@@ -684,7 +711,17 @@ async function rollHandler(
     : 0;
   const postFrequencyBankroll = tributedBankroll + frequencyBonus;
 
-  const bankrollDelta = postFrequencyBankroll - run.bankrollCents;
+  // ── 9d. EXECUTIVE THREE-STRIKE — drain on first and second 4 rolled ───────
+  // Third strike already handled as early GAME_OVER before the cascade (step 7d).
+  // bossPointHits here is still the PRE-roll count (0 = first 4, 1 = second 4).
+  const isExecutiveStrike =
+    finalContext.flags.executiveStrike === true &&
+    isBossMarker(run.currentMarkerIndex);
+  const strikeDrain = isExecutiveStrike
+    ? Math.round(postFrequencyBankroll * (run.bossPointHits === 0 ? 0.20 : 0.40) / 100) * 100
+    : 0;
+  const postStrikeBankroll = postFrequencyBankroll - strikeDrain;
+  const bankrollDelta = postStrikeBankroll - run.bankrollCents;
 
   const rollAmplifiedProfit = payout - viggedContext.baseStakeReturned;
   const newHighestRollAmplifiedCents = Math.max(
@@ -706,7 +743,7 @@ async function rollHandler(
 
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
-  const nextState = computeNextState(run, viggedContext, postFrequencyBankroll, incomingBets, hasSeaLegs);
+  const nextState = computeNextState(run, viggedContext, postStrikeBankroll, incomingBets, hasSeaLegs);
 
   const hitMarker      = nextState.currentMarkerIndex > run.currentMarkerIndex;
   const newMarkerIndex = nextState.currentMarkerIndex;
@@ -869,6 +906,7 @@ async function rollHandler(
     highestMarkerReached: hitMarker
       ? Math.max(user.highestMarkerReached, newMarkerIndex)
       : user.highestMarkerReached,
+    ...(isExecutiveStrike && { executiveStrikeNumber: (run.bossPointHits + 1) as 1 | 2 | 3 }),
   };
   io.to(runRoom).emit('turn:settled', settledPayload);
 
@@ -957,19 +995,25 @@ function computeNextState(
   const isTidalSurge    = activeBossRule === 'TIDAL_SURGE';
   const isOrbitalDecay  = activeBossRule === 'ORBITAL_DECAY' && isBossMarker(currentMarkerIndex);
   const isConvergence   = activeBossRule === 'CONVERGENCE'   && isBossMarker(currentMarkerIndex);
-  const tidalCycleTotal = isTidalSurge
+  const tidalCycleTotal = isTidalSurge && isBossMarker(currentMarkerIndex)
     ? (() => {
         const p = GAUNTLET[currentMarkerIndex]!.boss!.ruleParams as
           Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>;
-        return p.lowTideDuration + p.highTideDuration;
+        return p.stageMultipliers.length;
       })()
     : 0;
 
   const nextBossCounter = (current: number, result: RollResult, hitMarker: boolean): number => {
     if (hitMarker) return 0; // Boss defeated or marker cleared — always reset
-    if (isTidalSurge) return isBossMarker(currentMarkerIndex)
-      ? (current + 1) % tidalCycleTotal
-      : 0;
+    if (isTidalSurge) {
+      if (!isBossMarker(currentMarkerIndex)) return 0;
+      const advancesToComeOut =
+        result === 'NATURAL'    ||
+        result === 'CRAPS_OUT'  ||
+        result === 'POINT_HIT'  ||
+        result === 'SEVEN_OUT';
+      return advancesToComeOut ? (current + 1) % tidalCycleTotal : current;
+    }
     // RISING_MIN_BETS: only increment on POINT_HIT mid-boss-fight
     if (result === 'POINT_HIT' && isBossMarker(currentMarkerIndex)) return current + 1;
     return current;
@@ -1153,9 +1197,13 @@ function computeNextState(
       if (isOrbitalDecay) {
         const decayParams = GAUNTLET[currentMarkerIndex]!.boss!.ruleParams as
           Extract<BossRuleParams, { rule: 'ORBITAL_DECAY' }>;
+        const decayAmount =
+          run.hype >= 2.5 ? decayParams.onFireDecay
+          : run.hype >= 1.5 ? decayParams.heatingUpDecay
+          : decayParams.baseDecay;
         nextHype = Math.max(
           decayParams.hypeFloor,
-          run.hype - decayParams.decayAmount + cascadeHypeDelta,
+          Math.round((run.hype - decayAmount + cascadeHypeDelta) * 10_000) / 10_000,
         );
       } else {
         const seaLegsBaseline = hasSeaLegs ? 1.0 + (run.hype - 1.0) / 2 : 1.0;
@@ -1263,7 +1311,9 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex,
         consecutivePointHits:  run.consecutivePointHits, // no change on non-resolving roll
-        bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, false),
+        bossPointHits:         finalCtx.flags.executiveStrike && isBossMarker(currentMarkerIndex)
+                                 ? run.bossPointHits + 1
+                                 : nextBossCounter(run.bossPointHits, rollResult, false),
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: run.pointPhaseBlankStreak + 1,

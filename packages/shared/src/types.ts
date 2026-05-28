@@ -161,6 +161,9 @@ export interface TurnContextFlags {
    * and tells the client to suppress the NATURAL win animation.
    */
   naturalBlocked?: boolean;
+
+  /** Set by FOURS_INSTANT_LOSS when dice total 4 — triggers Three-Strike handling. */
+  executiveStrike?: boolean;
 }
 
 /**

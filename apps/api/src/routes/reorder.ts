@@ -27,14 +27,15 @@ const reorderBodySchema = {
   required: ['slotOrder'],
   properties: {
     /**
-     * A permutation of [0,1,2,3,4].
+     * A permutation of active slot indices.
      * slotOrder[newPosition] = oldPosition.
-     * E.g. [2,0,1,3,4] moves the crew in slot 2 to slot 0, shifting 0 and 1 right.
+     * Length must equal run.unlockedSlots (3, 4, or 5).
+     * E.g. with 3 slots: [2,0,1] moves the crew in slot 2 to slot 0, shifting 0 and 1 right.
      */
     slotOrder: {
       type: 'array',
       items: { type: 'integer', minimum: 0, maximum: 4 },
-      minItems: 5,
+      minItems: 3,
       maxItems: 5,
     },
   },
@@ -46,7 +47,7 @@ const reorderBodySchema = {
 // ---------------------------------------------------------------------------
 
 interface ReorderBody {
-  slotOrder: [number, number, number, number, number];
+  slotOrder: number[];
 }
 
 interface ReorderParams {
@@ -75,34 +76,48 @@ export async function reorderPlugin(app: FastifyInstance): Promise<void> {
       const runId           = request.params.id;
       const { slotOrder }   = request.body;
 
-      // ── 1. Validate permutation — each index must appear exactly once ──────
-      const seen = new Set(slotOrder);
-      if (seen.size !== 5) {
-        return reply.status(422).send({
-          error: 'slotOrder must be a valid permutation of [0,1,2,3,4] with no duplicates.',
-        });
-      }
-
-      // ── 2. Load run ────────────────────────────────────────────────────────
+      // ── 1. Load run ────────────────────────────────────────────────────────
       const run = await db.query.runs.findFirst({ where: eq(runs.id, runId) });
       if (!run) return reply.status(404).send({ error: 'Run not found.' });
 
-      // ── 3. Ownership guard ─────────────────────────────────────────────────
+      // ── 2. Ownership guard ─────────────────────────────────────────────────
       if (run.userId !== userId) {
         return reply.status(403).send({ error: 'Forbidden.' });
       }
 
-      // ── 4. Status guard ────────────────────────────────────────────────────
+      // ── 3. Status guard ────────────────────────────────────────────────────
       if (run.status === 'GAME_OVER') {
         return reply.status(409).send({
           error: 'Cannot reorder crew on a completed run.',
         });
       }
 
+      // ── 4. Validate permutation — length must match unlockedSlots (FB-025) ─
+      const unlockedSlots = run.unlockedSlots as 3 | 4 | 5;
+      if (slotOrder.length !== unlockedSlots) {
+        return reply.status(400).send({
+          error: `slotOrder length must match unlockedSlots (expected ${unlockedSlots}, got ${slotOrder.length}).`,
+        });
+      }
+      const seen = new Set(slotOrder);
+      if (seen.size !== unlockedSlots) {
+        return reply.status(422).send({
+          error: `slotOrder must be a valid permutation of [0..${unlockedSlots - 1}] with no duplicates.`,
+        });
+      }
+
       // ── 5. Derive new slot layout ──────────────────────────────────────────
       // Server owns cooldownState — we read it from the live row and remap
-      // positions only. The client cannot inject modified cooldown values.
-      const newSlots = slotOrder.map((oldIdx) => run.crewSlots[oldIdx] ?? null) as StoredCrewSlots;
+      // active positions only. Inactive slots (≥ unlockedSlots) remain null.
+      // The client cannot inject modified cooldown values.
+      const remapped = slotOrder.map((oldIdx) => run.crewSlots[oldIdx] ?? null);
+      const newSlots: StoredCrewSlots = [
+        remapped[0] ?? null,
+        remapped[1] ?? null,
+        remapped[2] ?? null,
+        remapped[3] ?? null,
+        remapped[4] ?? null,
+      ];
 
       // ── 6. Persist (with optimistic lock on updatedAt) ─────────────────────
       const updated = await db

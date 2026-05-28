@@ -321,6 +321,7 @@ export const PubScreen: React.FC = () => {
   const bankrollDisplay    = useGameStore(selectBankrollDisplay);
   const bankroll           = useGameStore((s) => s.bankroll);
   const crewSlots          = useGameStore((s) => s.crewSlots);
+  const unlockedSlots      = useGameStore((s) => s.unlockedSlots);
   const recruitCrew        = useGameStore((s) => s.recruitCrew);
   const fireCrew           = useGameStore((s) => s.fireCrew);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
@@ -523,13 +524,13 @@ export const PubScreen: React.FC = () => {
         )}
       </section>
 
-      {/* ── Your Crew — fire slots ───────────────────────────────────────────── */}
+      {/* ── Your Crew — fire slots (active slots only) ──────────────────────── */}
       <section className="relative flex-none px-3" style={{ paddingBottom: 'clamp(2px,0.4dvh,12px)' }}>
         <div className="font-pixel text-r-11 text-center mb-1 tracking-widest" style={{ color: theme.pubSubtextColor }}>
           — YOUR CREW —
         </div>
         <div className="flex justify-around gap-1">
-          {crewSlots.map((slot, i) => (
+          {crewSlots.slice(0, unlockedSlots).map((slot, i) => (
             <PubFireSlot
               key={i}
               crewId={slot?.crewId ?? null}
@@ -554,9 +555,9 @@ export const PubScreen: React.FC = () => {
               &nbsp;IN SLOT:
             </div>
 
-            {/* Five slot buttons */}
+            {/* Active slot buttons (unlockedSlots count) */}
             <div className="flex justify-around gap-1">
-              {crewSlots.map((slot, i) => (
+              {crewSlots.slice(0, unlockedSlots).map((slot, i) => (
                 <SlotButton
                   key={i}
                   index={i}

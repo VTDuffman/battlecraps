@@ -62,6 +62,8 @@ export function makeCtx(overrides: Partial<TurnContext> = {}): TurnContext {
     shooterRollCount:        1,
     pointPhaseBlankStreak:   0,
     markerTargetCents:       0,
+    shooters:                5,
+    unlockedSlots:           5,   // default to 5 so all existing tests remain valid
     ...overrides,
   };
 }

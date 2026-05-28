@@ -64,6 +64,8 @@ interface CreateRunResponse {
     unacknowledgedUnlocks: UnacknowledgedUnlock[];
     /** Highest gauntlet marker index (0-based) the player has ever reached. */
     highestMarkerReached: number;
+    /** Number of active crew slots (3, 4, or 5) — FB-025 crew slot progression. */
+    unlockedSlots: 3 | 4 | 5;
   };
 }
 
@@ -102,6 +104,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
         tutorialCompleted:     userRow.tutorialCompleted,
         unacknowledgedUnlocks,
         highestMarkerReached:  userRow.highestMarkerReached,
+        unlockedSlots:         run.unlockedSlots as 3 | 4 | 5,
       });
     },
   );
@@ -124,6 +127,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
           shooters:      5,
           hype:          1.0,
           crewSlots:     EMPTY_CREW_SLOTS,
+          unlockedSlots: 3,      // FB-025: new runs start with 3 active crew slots
           // Use a JS Date (ms precision) instead of defaultNow() (µs precision).
           // The optimistic-lock WHERE clause compares updatedAt via a JS Date, so
           // a µs-precision default will never match → every roll returns 409.
@@ -156,6 +160,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
           tutorialCompleted:     user.tutorialCompleted,
           unacknowledgedUnlocks,
           highestMarkerReached:  user.highestMarkerReached,
+          unlockedSlots:         run.unlockedSlots as 3 | 4 | 5,
         },
       };
 

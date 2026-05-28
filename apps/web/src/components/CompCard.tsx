@@ -53,9 +53,9 @@ export const COMP_DEFS: CompDef[] = [
   {
     perkId:      3,
     threshold:   12,
-    name:        'Golden Touch',
-    icon:        '👑',
-    effect:      'Guaranteed Natural on the first come-out of each segment. The Executive reward.',
+    name:        'Board Seat',
+    icon:        '🪑',
+    effect:      'Crew slot 4 unlocked. Add a fourth shooter to your team. The Executive reward.',
     accentColor: '#f5c842',  // gold — The Strip floor
   },
   {
@@ -77,9 +77,9 @@ export const COMP_DEFS: CompDef[] = [
   {
     perkId:      7,
     threshold:   21,
-    name:        'Zero Point',
-    icon:        '🌌',
-    effect:      'Hype is permanently floored at 1.25×. The Commander reward.',
+    name:        'Cargo Hold',
+    icon:        '📦',
+    effect:      'Crew slot 5 unlocked. Your full five-shooter lineup is open. The Commander reward.',
     accentColor: '#8098b0',  // steel blue — The Station floor
   },
   {

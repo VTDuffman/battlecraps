@@ -472,10 +472,11 @@ describe('Regular (ID 6)', () => {
   it('fires on NATURAL regardless of pass-line amount', () => {
     const ctx = makeCtx({ rollResult: 'NATURAL', bets: makeBets({ passLine: 0 }), additives: 0, markerTargetCents: TARGET });
     const result = regular.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(800);
+    // maxBet=1000, additive=round(0.40*1000/100)*100=round(4)*100=400
+    expect(result.context.additives).toBe(400);
   });
 
-  it('fires on NATURAL and adds floor-scaled additive (0.75× maxBet)', () => {
+  it('fires on NATURAL and adds floor-scaled additive (0.40× maxBet)', () => {
     const ctx = makeCtx({
       rollResult: 'NATURAL',
       bets:       makeBets({ passLine: 600 }),
@@ -483,7 +484,7 @@ describe('Regular (ID 6)', () => {
       markerTargetCents: TARGET,
     });
     const result = regular.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(800);
+    expect(result.context.additives).toBe(400);
     expect(result.newCooldown).toBe(0);
   });
 
@@ -495,7 +496,7 @@ describe('Regular (ID 6)', () => {
       markerTargetCents: TARGET,
     });
     const result = regular.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(1_300);
+    expect(result.context.additives).toBe(900);
   });
 });
 
@@ -517,29 +518,28 @@ describe('Big Spender (ID 7)', () => {
     expect(result.context).toBe(ctx);
   });
 
-  it('fires when hardwaysPayout > 0 — additive at 1.5× maxBet', () => {
+  it('fires when hardwaysPayout > 0 — additive at 0.75× maxBet', () => {
     // maxBet = floor(10000 * 0.10) = 1000
-    // additive = round(1.5 * 1000 / 100) * 100 = round(15) * 100 = 1500
+    // additive = round(0.75 * 1000 / 100) * 100 = round(7.5) * 100 = 800
     const ctx = makeCtx({
       baseHardwaysPayout: 700,
       additives:          0,
       markerTargetCents:  TARGET,
     });
     const result = bigSpender.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(1_500);
+    expect(result.context.additives).toBe(800);
     expect(result.newCooldown).toBe(0);
   });
 
   it('additive scales with marker target (F9 check)', () => {
-    // F9 target = 5_000_000_000 cents? — let's use a reasonable one
-    // markerTargetCents=100_000 ($1000), maxBet=10_000 → additive=round(1.5*10000/100)*100=15000
+    // markerTargetCents=100_000 ($1000), maxBet=10_000 → additive=round(0.75*10000/100)*100=7500
     const ctx = makeCtx({
       baseHardwaysPayout: 100,
       additives:          0,
       markerTargetCents:  100_000,
     });
     const result = bigSpender.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(15_000);
+    expect(result.context.additives).toBe(7_500);
   });
 });
 
@@ -566,27 +566,27 @@ describe('Shark (ID 8)', () => {
     expect(result.context).toBe(ctx);
   });
 
-  it('fires on POINT_HIT — additive at 1.25× maxBet', () => {
-    // additive = round(1.25 * 1000 / 100) * 100 = Math.round(12.5) * 100 = 1300
+  it('fires on POINT_HIT — additive at 0.65× maxBet', () => {
+    // additive = round(0.65 * 1000 / 100) * 100 = Math.round(6.5) * 100 = 700
     const ctx = makeCtx({
       rollResult:        'POINT_HIT',
       additives:         0,
       markerTargetCents: TARGET,
     });
     const result = shark.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(1_300);
+    expect(result.context.additives).toBe(700);
     expect(result.newCooldown).toBe(0);
   });
 
   it('additive scales with different marker targets', () => {
-    // target=100_000 ($1000), maxBet=10000, additive=12500
+    // target=100_000 ($1000), maxBet=10000, additive=round(0.65*10000/100)*100=6500
     const ctx = makeCtx({
       rollResult:        'POINT_HIT',
       additives:         0,
       markerTargetCents: 100_000,
     });
     const result = shark.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(12_500);
+    expect(result.context.additives).toBe(6_500);
   });
 
   it('stacks on existing additives', () => {
@@ -596,7 +596,7 @@ describe('Shark (ID 8)', () => {
       markerTargetCents: TARGET,
     });
     const result = shark.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(1_800);
+    expect(result.context.additives).toBe(1_200);
   });
 });
 
@@ -913,30 +913,30 @@ describe('Ace McGee (ID 17)', () => {
     expect(result.context).toBe(ctx);
   });
 
-  it('fires when die[0] = 1 → additive 0.75× maxBet', () => {
-    // maxBet=1000, additive=round(0.75*1000/100)*100=round(7.5)*100=800
+  it('fires when die[0] = 1 → additive 0.40× maxBet', () => {
+    // maxBet=1000, additive=round(0.40*1000/100)*100=round(4)*100=400
     const ctx = makeCtx({ dice: [1, 5], diceTotal: 6, additives: 0, markerTargetCents: TARGET });
     const result = aceMcgee.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(800);
+    expect(result.context.additives).toBe(400);
   });
 
   it('fires when die[1] = 1', () => {
     const ctx = makeCtx({ dice: [5, 1], diceTotal: 6, additives: 0, markerTargetCents: TARGET });
     const result = aceMcgee.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(800);
+    expect(result.context.additives).toBe(400);
   });
 
   it('fires on [1,1] (snake eyes)', () => {
     const ctx = makeCtx({ dice: [1, 1], diceTotal: 2, additives: 0, markerTargetCents: TARGET });
     const result = aceMcgee.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(800);
+    expect(result.context.additives).toBe(400);
   });
 
   it('rounds additive to nearest $1 (100 cents)', () => {
-    // target=5000, maxBet=500, additive=round(0.75*500/100)*100=round(3.75)*100=400
+    // target=5000, maxBet=500, additive=round(0.40*500/100)*100=round(2.0)*100=200
     const ctx = makeCtx({ dice: [1, 3], diceTotal: 4, additives: 0, markerTargetCents: 5_000 });
     const result = aceMcgee.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(400);
+    expect(result.context.additives).toBe(200);
   });
 });
 
@@ -957,23 +957,23 @@ describe('Close Call (ID 18)', () => {
     expect(result.context).toBe(ctx);
   });
 
-  it('fires when |d0-d1| = 1 → additive 0.65× maxBet', () => {
-    // round(0.65 * 1000 / 100) * 100 = Math.round(6.5) * 100 = 700
+  it('fires when |d0-d1| = 1 → additive 0.35× maxBet', () => {
+    // round(0.35 * 1000 / 100) * 100 = Math.round(3.5) * 100 = 400
     const ctx = makeCtx({ dice: [3, 4], diceTotal: 7, additives: 0, markerTargetCents: TARGET });
     const result = closeCall.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(700);
+    expect(result.context.additives).toBe(400);
   });
 
   it('fires on [5,6] consecutive pair', () => {
     const ctx = makeCtx({ dice: [5, 6], diceTotal: 11, additives: 0, markerTargetCents: TARGET });
     const result = closeCall.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(700);
+    expect(result.context.additives).toBe(400);
   });
 
   it('fires on [2,1] (reversed consecutive)', () => {
     const ctx = makeCtx({ dice: [2, 1], diceTotal: 3, additives: 0, markerTargetCents: TARGET });
     const result = closeCall.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(700);
+    expect(result.context.additives).toBe(400);
   });
 });
 
@@ -1120,24 +1120,24 @@ describe('Even Keel (ID 23)', () => {
     expect(result.context).toBe(ctx);
   });
 
-  it('fires when both dice are even → additive 1.0× maxBet', () => {
-    // maxBet=1000, additive=round(1.0*1000/100)*100=1000
+  it('fires when both dice are even → additive 0.50× maxBet', () => {
+    // maxBet=1000, additive=round(0.50*1000/100)*100=500
     const ctx = makeCtx({ dice: [2, 4], diceTotal: 6, additives: 0, markerTargetCents: TARGET });
     const result = evenKeel.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(1_000);
+    expect(result.context.additives).toBe(500);
     expect(result.newCooldown).toBe(0);
   });
 
   it('fires on [6,6]', () => {
     const ctx = makeCtx({ dice: [6, 6], diceTotal: 12, additives: 0, markerTargetCents: TARGET });
     const result = evenKeel.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(1_000);
+    expect(result.context.additives).toBe(500);
   });
 
   it('fires on [2,2]', () => {
     const ctx = makeCtx({ dice: [2, 2], diceTotal: 4, additives: 0, markerTargetCents: TARGET });
     const result = evenKeel.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(1_000);
+    expect(result.context.additives).toBe(500);
   });
 });
 
@@ -1164,24 +1164,24 @@ describe('Doorman (ID 24)', () => {
     expect(result.context).toBe(ctx);
   });
 
-  it('fires on NATURAL → additive 0.5× maxBet', () => {
-    // maxBet=1000, additive=round(0.5*1000/100)*100=500
+  it('fires on NATURAL → additive 0.25× maxBet', () => {
+    // maxBet=1000, additive=round(0.25*1000/100)*100=round(2.5)*100=300
     const ctx = makeCtx({ rollResult: 'NATURAL', additives: 0, markerTargetCents: TARGET });
     const result = doorman.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(500);
+    expect(result.context.additives).toBe(300);
     expect(result.newCooldown).toBe(0);
   });
 
-  it('fires on CRAPS_OUT (come-out) → additive 0.5× maxBet', () => {
+  it('fires on CRAPS_OUT (come-out) → additive 0.25× maxBet', () => {
     const ctx = makeCtx({ rollResult: 'CRAPS_OUT', additives: 0, markerTargetCents: TARGET });
     const result = doorman.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(500);
+    expect(result.context.additives).toBe(300);
   });
 
-  it('fires on POINT_SET (come-out) → additive 0.5× maxBet', () => {
+  it('fires on POINT_SET (come-out) → additive 0.25× maxBet', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', additives: 0, markerTargetCents: TARGET });
     const result = doorman.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(500);
+    expect(result.context.additives).toBe(300);
   });
 });
 
@@ -1208,18 +1208,18 @@ describe('Grinder (ID 25)', () => {
     expect(result.context).toBe(ctx);
   });
 
-  it('fires on NO_RESOLUTION → additive 0.28× maxBet', () => {
-    // round(0.28*1000/100)*100=round(2.8)*100=300
+  it('fires on NO_RESOLUTION → additive 0.15× maxBet', () => {
+    // round(0.15*1000/100)*100=round(1.5)*100=200
     const ctx = makeCtx({ rollResult: 'NO_RESOLUTION', additives: 0, markerTargetCents: TARGET });
     const result = grinder.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(300);
+    expect(result.context.additives).toBe(200);
     expect(result.newCooldown).toBe(0);
   });
 
   it('stacks on existing additives', () => {
     const ctx = makeCtx({ rollResult: 'NO_RESOLUTION', additives: 500, markerTargetCents: TARGET });
     const result = grinder.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(800);
+    expect(result.context.additives).toBe(700);
   });
 });
 
@@ -1343,24 +1343,24 @@ describe('Bookkeeper (ID 28)', () => {
     expect(result.context).toBe(ctx);
   });
 
-  it('fires on roll 3 (shooterRollCount % 3 === 0) → additive 0.5× maxBet', () => {
-    // maxBet=1000, additive=round(0.50*1000/100)*100=500
+  it('fires on roll 3 (shooterRollCount % 3 === 0) → additive 0.25× maxBet', () => {
+    // maxBet=1000, additive=round(0.25*1000/100)*100=round(2.5)*100=300
     const ctx = makeCtx({ shooterRollCount: 3, additives: 0, markerTargetCents: TARGET });
     const result = bookkeeper.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(500);
+    expect(result.context.additives).toBe(300);
     expect(result.newCooldown).toBe(0);
   });
 
   it('fires on roll 6', () => {
     const ctx = makeCtx({ shooterRollCount: 6, additives: 0, markerTargetCents: TARGET });
     const result = bookkeeper.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(500);
+    expect(result.context.additives).toBe(300);
   });
 
   it('fires on roll 9', () => {
     const ctx = makeCtx({ shooterRollCount: 9, additives: 0, markerTargetCents: TARGET });
     const result = bookkeeper.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(500);
+    expect(result.context.additives).toBe(300);
   });
 
   it('does not fire on roll 4', () => {
@@ -1405,8 +1405,8 @@ describe('Pressure Cooker (ID 29)', () => {
     expect(result.context).toBe(ctx);
   });
 
-  it('fires on NO_RESOLUTION with streak=4 (5th blank) → +0.5 hype + 1.5× additive', () => {
-    // maxBet=1000, additive=round(1.5*1000/100)*100=round(15)*100=1500
+  it('fires on NO_RESOLUTION with streak=4 (5th blank) → +0.5 hype + 0.75× additive', () => {
+    // maxBet=1000, additive=round(0.75*1000/100)*100=round(7.5)*100=800
     const ctx = makeCtx({
       rollResult:            'NO_RESOLUTION',
       pointPhaseBlankStreak: 4,
@@ -1416,7 +1416,7 @@ describe('Pressure Cooker (ID 29)', () => {
     });
     const result = pressureCooker.execute(ctx, neverCalledRng);
     expect(result.context.hype).toBeCloseTo(1.5, 4);
-    expect(result.context.additives).toBe(1_500);
+    expect(result.context.additives).toBe(800);
     expect(result.newCooldown).toBe(0);
   });
 
@@ -1454,8 +1454,8 @@ describe('Contrarian (ID 30)', () => {
     expect(resultTied.context).toBe(ctxTied);
   });
 
-  it('fires when diceTotal < previousRollTotal → additive 0.45× maxBet', () => {
-    // maxBet=1000, additive=round(0.45*1000/100)*100=round(4.5)*100=500
+  it('fires when diceTotal < previousRollTotal → additive 0.25× maxBet', () => {
+    // maxBet=1000, additive=round(0.25*1000/100)*100=round(2.5)*100=300
     const ctx = makeCtx({
       previousRollTotal: 9,
       diceTotal:         5,
@@ -1463,7 +1463,7 @@ describe('Contrarian (ID 30)', () => {
       markerTargetCents: TARGET,
     });
     const result = contrarian.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(500);
+    expect(result.context.additives).toBe(300);
     expect(result.newCooldown).toBe(0);
   });
 
@@ -1475,6 +1475,6 @@ describe('Contrarian (ID 30)', () => {
       markerTargetCents: TARGET,
     });
     const result = contrarian.execute(ctx, neverCalledRng);
-    expect(result.context.additives).toBe(1_300);
+    expect(result.context.additives).toBe(1_100);
   });
 });

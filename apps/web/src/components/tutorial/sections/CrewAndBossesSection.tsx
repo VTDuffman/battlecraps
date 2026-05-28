@@ -260,7 +260,7 @@ export const CrewAndBossesSection: React.FC = () => {
       <SectionHeader>Your Crew</SectionHeader>
       <p className="font-mono text-r-14 text-white/40 py-2">
         Recruit crew at the pub between markers. Abilities fire left-to-right
-        before every roll. Five slots total.
+        before every roll. Start with three slots — earn more by defeating bosses.
       </p>
 
       {crewRoster === null ? (

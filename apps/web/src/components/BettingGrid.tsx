@@ -28,19 +28,6 @@ type Chip = { cents: number; label: string; color: string };
 
 const CHIP_COLORS = ['#c0c0c0', '#c0392b', '#2980b9', '#27ae60', '#8e44ad', '#0d9488'];
 
-function roundToNiceCents(cents: number): number {
-  if (cents <= 100) return 100;
-  const dollars = cents / 100;
-  const mag = Math.pow(10, Math.floor(Math.log10(dollars)));
-  const n = dollars / mag;
-  let s: number;
-  if (n < 1.5) s = 1;
-  else if (n < 3.5) s = 2;
-  else if (n < 7.5) s = 5;
-  else s = 10;
-  return Math.round(s * mag) * 100;
-}
-
 function formatChipLabel(cents: number): string {
   const d = cents / 100;
   if (d >= 1_000_000) return `$${d / 1_000_000}M`;
@@ -48,17 +35,41 @@ function formatChipLabel(cents: number): string {
   return `$${d}`;
 }
 
+// Casino standard chip denominations, in cents (ascending).
+const CASINO_DENOMS_CENTS: readonly number[] = [
+  100,         // $1
+  500,         // $5
+  1_000,       // $10
+  2_500,       // $25
+  5_000,       // $50
+  10_000,      // $100
+  25_000,      // $250
+  50_000,      // $500
+  100_000,     // $1K
+  250_000,     // $2.5K
+  500_000,     // $5K
+  1_000_000,   // $10K
+  2_500_000,   // $25K
+  5_000_000,   // $50K
+  10_000_000,  // $100K
+  25_000_000,  // $250K
+  50_000_000,  // $500K
+  100_000_000, // $1M
+  250_000_000, // $2.5M
+  500_000_000, // $5M
+];
+
 function chipsForMarker(markerIndex: number): Chip[] {
   const maxBet = getMaxBet(markerIndex);
-  const vals: number[] = [maxBet];
-  let current = maxBet;
-  for (let i = 0; i < 5; i++) {
-    current = Math.max(100, roundToNiceCents(Math.round(current / 5)));
-    if (current < vals[vals.length - 1]!) vals.push(current);
-    if (current <= 100) break;
-  }
-  const unique = [...new Set(vals)].sort((a, b) => a - b);
-  return unique.map((cents, i) => ({
+
+  // Build chip set: standard casino denoms below maxBet, plus maxBet itself as top chip.
+  const denoms = CASINO_DENOMS_CENTS.filter((d) => d < maxBet);
+  denoms.push(maxBet);
+
+  // Keep at most 6 chips, always preserving the largest (maxBet).
+  const selected = denoms.length > 6 ? denoms.slice(denoms.length - 6) : denoms;
+
+  return selected.map((cents, i) => ({
     cents,
     label: formatChipLabel(cents),
     color: CHIP_COLORS[i % CHIP_COLORS.length]!,

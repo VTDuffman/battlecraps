@@ -7,20 +7,71 @@
 // Architecture:
 //   • playCheer() — short crowd cheer on win flash (noise burst + rising oscillators)
 //   • playGroan() — collective groan on lose flash (low rumble + falling oscillators)
+//   • playDiceRattle() — WAV sample on dice throw
 //
-// Init policy:
-//   AudioContext is lazy-created on the first flash event (win or lose).
-//   The screen-flash fires after the dice settle, so the Roll button click
-//   has already satisfied the browser autoplay policy by then.
+// All sound output routes through a module-level master GainNode so the volume
+// slider can adjust all stings in real-time without touching individual nodes.
 //
-// Mute toggle:
-//   Persisted to localStorage ('bc_muted'). The mute icon is rendered by the
-//   caller (TableBoard); this hook just returns { muted, toggleMute }.
+// Volume / mute state:
+//   • bc_sfx_volume localStorage key (float 0–1, default 0.8) — persists slider position.
+//     The stored value is always the LAST NON-ZERO preference; muting via the button
+//     does NOT overwrite it, so unmuting restores the previous level.
+//   • Backward compat: if the legacy 'bc_muted' key is present it is consumed on first
+//     init (muted → sfxVolume = 0; unmuted → fall through to bc_sfx_volume default)
+//     and then removed. The old key is never written again.
+//
+// Exports: { muted, toggleMute, sfxVolume, setSfxVolume }
 // =============================================================================
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { GAUNTLET } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const SFX_VOLUME_KEY     = 'bc_sfx_volume';
+const LEGACY_MUTE_KEY    = 'bc_muted';
+const DEFAULT_SFX_VOLUME = 0.8;
+
+// ---------------------------------------------------------------------------
+// Module-level state — survives TableBoard mount/unmount cycles
+// ---------------------------------------------------------------------------
+
+let globalAudioCtx: AudioContext | null = null;
+let masterGain:     GainNode     | null = null;
+let diceBuffers:    AudioBuffer[]       = [];
+
+/**
+ * The current effective SFX volume (0 = muted). Initialised lazily on first
+ * hook call. Kept in sync with both the React state and the GainNode.
+ */
+let _sfxVolume: number | null = null;
+
+// ---------------------------------------------------------------------------
+// Volume initialisation — reads localStorage once, handles legacy key
+// ---------------------------------------------------------------------------
+
+function _initSfxVolume(): number {
+  if (_sfxVolume !== null) return _sfxVolume;
+
+  // Backward compat: consume and remove the old 'bc_muted' key.
+  const legacy = localStorage.getItem(LEGACY_MUTE_KEY);
+  if (legacy !== null) {
+    localStorage.removeItem(LEGACY_MUTE_KEY);
+    if (legacy === '1' || legacy === 'true') {
+      // Was muted — start at 0; bc_sfx_volume (if present) holds the restore target.
+      _sfxVolume = 0;
+      return 0;
+    }
+    // Was explicitly unmuted via old toggle — fall through to read bc_sfx_volume.
+  }
+
+  const stored = parseFloat(localStorage.getItem(SFX_VOLUME_KEY) ?? '');
+  _sfxVolume = isNaN(stored) ? DEFAULT_SFX_VOLUME : Math.max(0, Math.min(1, stored));
+  return _sfxVolume;
+}
 
 // ---------------------------------------------------------------------------
 // Noise buffer factory
@@ -35,19 +86,19 @@ function makeNoiseBuf(ctx: AudioContext, seconds: number): AudioBuffer {
 }
 
 // ---------------------------------------------------------------------------
-// Event stings
+// Event stings — all output nodes connect to `dest` (the master GainNode)
 // ---------------------------------------------------------------------------
 
 /** Short crowd cheer — rising noise burst + upward oscillator sweep */
-function playCheer(ctx: AudioContext): void {
+function playCheer(ctx: AudioContext, dest: AudioNode): void {
   const t0  = ctx.currentTime;
   const dur = 1.3;
 
   // High-passed noise burst (airy crowd energy)
   const nSrc = ctx.createBufferSource();
   nSrc.buffer = makeNoiseBuf(ctx, dur);
-  const hp          = ctx.createBiquadFilter();
-  hp.type           = 'highpass';
+  const hp           = ctx.createBiquadFilter();
+  hp.type            = 'highpass';
   hp.frequency.value = 700;
   const nEnv = ctx.createGain();
   nEnv.gain.setValueAtTime(0, t0);
@@ -55,7 +106,7 @@ function playCheer(ctx: AudioContext): void {
   nEnv.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
   nSrc.connect(hp);
   hp.connect(nEnv);
-  nEnv.connect(ctx.destination);
+  nEnv.connect(dest);
   nSrc.start(t0);
   nSrc.stop(t0 + dur);
 
@@ -70,22 +121,22 @@ function playCheer(ctx: AudioContext): void {
     env.gain.linearRampToValueAtTime(0.020, t0 + i * 0.025 + 0.08);
     env.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
     osc.connect(env);
-    env.connect(ctx.destination);
+    env.connect(dest);
     osc.start(t0 + i * 0.025);
     osc.stop(t0 + dur);
   });
 }
 
 /** Collective groan — low rumble + descending oscillator sweep */
-function playGroan(ctx: AudioContext): void {
+function playGroan(ctx: AudioContext, dest: AudioNode): void {
   const t0  = ctx.currentTime;
   const dur = 1.7;
 
   // Low-passed noise (muffled rumble)
   const nSrc = ctx.createBufferSource();
   nSrc.buffer = makeNoiseBuf(ctx, dur);
-  const lp          = ctx.createBiquadFilter();
-  lp.type           = 'lowpass';
+  const lp           = ctx.createBiquadFilter();
+  lp.type            = 'lowpass';
   lp.frequency.value = 500;
   const nEnv = ctx.createGain();
   nEnv.gain.setValueAtTime(0.10, t0);
@@ -93,7 +144,7 @@ function playGroan(ctx: AudioContext): void {
   nEnv.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
   nSrc.connect(lp);
   lp.connect(nEnv);
-  nEnv.connect(ctx.destination);
+  nEnv.connect(dest);
   nSrc.start(t0);
   nSrc.stop(t0 + dur);
 
@@ -107,7 +158,7 @@ function playGroan(ctx: AudioContext): void {
     env.gain.setValueAtTime(0.026, t0 + i * 0.04);
     env.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
     osc.connect(env);
-    env.connect(ctx.destination);
+    env.connect(dest);
     osc.start(t0 + i * 0.04);
     osc.stop(t0 + dur);
   });
@@ -116,9 +167,6 @@ function playGroan(ctx: AudioContext): void {
 // ---------------------------------------------------------------------------
 // Dice audio — WAV buffer loader
 // ---------------------------------------------------------------------------
-
-let globalAudioCtx: AudioContext | null = null;
-let diceBuffers: AudioBuffer[] = [];
 
 async function loadDiceAudio(ctx: AudioContext): Promise<void> {
   if (diceBuffers.length > 0) return;
@@ -134,7 +182,7 @@ async function loadDiceAudio(ctx: AudioContext): Promise<void> {
   diceBuffers.push(buf1, buf2);
 }
 
-async function playDiceRattle(ctx: AudioContext): Promise<void> {
+async function playDiceRattle(ctx: AudioContext, dest: AudioNode): Promise<void> {
   await loadDiceAudio(ctx);
   const selectedBuffer = diceBuffers[Math.floor(Math.random() * diceBuffers.length)];
   if (!selectedBuffer) return;
@@ -143,7 +191,7 @@ async function playDiceRattle(ctx: AudioContext): Promise<void> {
   const gain = ctx.createGain();
   gain.gain.value = 0.75;
   source.connect(gain);
-  gain.connect(ctx.destination);
+  gain.connect(dest);
   // 0.72 s syncs with the `dice-throw` CSS animation duration
   source.start(ctx.currentTime + 0.72);
 }
@@ -152,12 +200,17 @@ async function playDiceRattle(ctx: AudioContext): Promise<void> {
 // Hook
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY = 'bc_muted';
+export function useCrowdAudio(): {
+  muted:        boolean;
+  toggleMute:   () => void;
+  sfxVolume:    number;
+  setSfxVolume: (v: number) => void;
+} {
+  const [sfxVolume, setSfxVolumeState] = useState<number>(() => _initSfxVolume());
 
-export function useCrowdAudio(): { muted: boolean; toggleMute: () => void } {
-  const [muted, setMuted] = useState(() => localStorage.getItem(STORAGE_KEY) === '1');
-  const mutedRef = useRef(muted);
-  mutedRef.current = muted;
+  // Derived — no separate boolean state needed; avoids the muted/volume getting
+  // out of sync between renders.
+  const muted = sfxVolume === 0;
 
   const flashType          = useGameStore((s) => s.flashType);
   const _flashKey          = useGameStore((s) => s._flashKey);
@@ -175,14 +228,54 @@ export function useCrowdAudio(): { muted: boolean; toggleMute: () => void } {
   const initialRollKey  = useRef(_rollKey);
   const initialFlashKey = useRef(_flashKey);
 
-  // ── Singleton AudioContext — survives remounts ───────────────────────────
+  // ── Singleton AudioContext + master gain ────────────────────────────────
+  // Returns null if muted (volume 0) — no context needed, no sounds play.
   function getCtx(): AudioContext | null {
-    if (mutedRef.current) return null;
-    if (!globalAudioCtx) globalAudioCtx = new AudioContext();
+    const vol = _sfxVolume;
+    if (vol === null || vol === 0) return null;
+    if (!globalAudioCtx) {
+      globalAudioCtx = new AudioContext();
+      masterGain = globalAudioCtx.createGain();
+      masterGain.gain.value = vol;
+      masterGain.connect(globalAudioCtx.destination);
+    }
     const ctx = globalAudioCtx;
     if (ctx.state === 'suspended') void ctx.resume();
     return ctx;
   }
+
+  // Convenience — routes to masterGain when available, falls back to destination.
+  function getDest(ctx: AudioContext): AudioNode {
+    return masterGain ?? ctx.destination;
+  }
+
+  // ── Volume control ───────────────────────────────────────────────────────
+  const setSfxVolume = useCallback((v: number) => {
+    const clamped = Math.max(0, Math.min(1, v));
+    _sfxVolume = clamped;
+    if (masterGain) masterGain.gain.value = clamped;
+    // Only persist non-zero values — 0 is the muted state, not a preference.
+    if (clamped > 0) localStorage.setItem(SFX_VOLUME_KEY, String(clamped));
+    setSfxVolumeState(clamped);
+  }, []);
+
+  // ── Mute toggle ─────────────────────────────────────────────────────────
+  const toggleMute = useCallback(() => {
+    if (_sfxVolume === 0) {
+      // Unmuting — restore to the saved non-zero preference.
+      const restore =
+        parseFloat(localStorage.getItem(SFX_VOLUME_KEY) ?? '') || DEFAULT_SFX_VOLUME;
+      _sfxVolume = restore;
+      if (masterGain) masterGain.gain.value = restore;
+      setSfxVolumeState(restore);
+    } else {
+      // Muting — save the current preference first so we can restore it.
+      localStorage.setItem(SFX_VOLUME_KEY, String(_sfxVolume));
+      _sfxVolume = 0;
+      if (masterGain) masterGain.gain.value = 0;
+      setSfxVolumeState(0);
+    }
+  }, []);
 
   // ── Event stings: cheer on win flash, groan on lose flash ───────────────
   useEffect(() => {
@@ -191,8 +284,8 @@ export function useCrowdAudio(): { muted: boolean; toggleMute: () => void } {
     const ctx = getCtx();
     if (!ctx) return;
     const ft = flashTypeRef.current;
-    if (ft === 'win')  playCheer(ctx);
-    if (ft === 'lose') playGroan(ctx);
+    if (ft === 'win')  playCheer(ctx, getDest(ctx));
+    if (ft === 'lose') playGroan(ctx, getDest(ctx));
   }, [_flashKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Dice rattle on throw ────────────────────────────────────────────────
@@ -201,17 +294,8 @@ export function useCrowdAudio(): { muted: boolean; toggleMute: () => void } {
     if (isNullSpaceRef.current) return;
     const ctx = getCtx();
     if (!ctx) return;
-    void playDiceRattle(ctx);
+    void playDiceRattle(ctx, getDest(ctx));
   }, [_rollKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Mute toggle ─────────────────────────────────────────────────────────
-  const toggleMute = useCallback(() => {
-    setMuted(prev => {
-      const next = !prev;
-      localStorage.setItem(STORAGE_KEY, next ? '1' : '0');
-      return next;
-    });
-  }, []);
-
-  return { muted, toggleMute };
+  return { muted, toggleMute, sfxVolume, setSfxVolume };
 }

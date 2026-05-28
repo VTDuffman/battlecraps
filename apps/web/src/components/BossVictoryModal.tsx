@@ -155,7 +155,8 @@ export const BossVictoryModal: React.FC<BossVictoryModalProps> = ({
 const REWARD_LABELS: Record<string, string> = {
   EXTRA_SHOOTER:   "MEMBER'S JACKET",
   HYPE_RESET_HALF: 'SEA LEGS',
-  GOLDEN_TOUCH:    'GOLDEN TOUCH',
+  BOARD_SEAT:      'BOARD SEAT',
+  CARGO_HOLD:      'CARGO HOLD',
 };
 
 const REWARD_SUBTEXTS: Record<string, string> = {
@@ -163,6 +164,8 @@ const REWARD_SUBTEXTS: Record<string, string> = {
     '+1 SHOOTER this segment — they know you earned your seat.',
   HYPE_RESET_HALF:
     'On Seven Out, Hype resets to half its current value instead of 1.0×.',
-  GOLDEN_TOUCH:
-    'Your first Come Out roll of the next segment is guaranteed a Natural.',
+  BOARD_SEAT:
+    'Crew slot 4 unlocked. Visit the pub to add a fourth shooter to your roster.',
+  CARGO_HOLD:
+    'Crew slot 5 unlocked. Visit the pub to fill your full five-shooter lineup.',
 };

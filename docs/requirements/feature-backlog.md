@@ -788,7 +788,7 @@ This ticket serves as the living master tracker for the 9-floor gauntlet. It wil
 - `BossRuleState` gains `covenantActive: boolean` — indicates the player holds THE_COVENANT comp, which halves the TRIBUTE drain.
 
 **Floor 1 — The Loading Dock (`EXTORTION_FEE`):**
-- Targets: $50 / $100 / $250. Boss at index 2.
+- Targets: $50 / $100 / $200. Boss at index 2.
 - `packages/shared/src/bossRules/extortionFee.ts` — `modifyPayout` deducts `floor(profit × 0.20)` from each winning payout.
 - Floor theme: sodium-vapor orange / concrete palette. `FloorAtmosphere: 'exposed'`. FloorEmblem: Share Tech Mono.
 - Comp: THE_VIG — crew cash abilities pay out 20% more.
@@ -796,21 +796,21 @@ This ticket serves as the living master tracker for the 9-floor gauntlet. It wil
 - Tutorial beats updated to reference 4 floors/12 markers and The Foreman.
 
 **Floor 5 — The Lodge (`TRIBUTE`):**
-- Targets: $20,000 / $30,000 / $45,000. Boss at index 14.
+- Targets: $30,000 / $50,000 / $100,000. Boss at index 14.
 - `packages/shared/src/bossRules/tribute.ts` — `modifySevenOut` seizes `floor(bankroll × tributePct)`. THE_COVENANT comp halves the drain.
 - Floor theme: dark oak / amber. `FloorAtmosphere: 'occult'`.
 - Comp: THE_COVENANT — direct bankroll drains from boss mechanics permanently reduced by 50%.
 - TDD: `docs/design/fb-015-floor-5-lodge-tdd.md` (if present).
 
 **Floor 6 — Atlantis (`TIDAL_SURGE`):**
-- Targets: $70,000 / $120,000 / $175,000. Boss at index 17.
+- Targets: $150,000 / $250,000 / $500,000. Boss at index 17.
 - No hook file — tide counter is tracked via `bossPointHits` inline in `computeNextState` in `rolls.ts`. On POINT_HIT the counter increments; at `cycleLength` (5) the surge window opens for `surgeDuration` (2) rolls with a min-bet of `surgePct` (15%) of target; then resets.
 - `BossRoomHeader` shows tide pip track (5 normal + 2 surge pips) and status line.
 - Floor theme: deep ocean / teal-gold. `FloorAtmosphere: 'ancient'`.
 - Comp: POSEIDON'S_FAVOR — first come-out per shooter can never craps-out (treated as blank re-roll).
 
 **Floor 7 — The Station (`ORBITAL_DECAY`):**
-- Targets: $250,000 / $425,000 / $650,000. Boss at index 20.
+- Targets: $1,000,000 / $1,500,000 / $3,000,000. Boss at index 20.
 - No hook file — hype decay is applied inline in `computeNextState` SEVEN_OUT branch: `hype = Math.max(hypeFloor, hype - decayAmount)`. `hypeFloor = 0.5`, `decayAmount = 0.5`. Below 1.0× hype the payout is penalized.
 - `BossRoomHeader` shows current hype multiplier with yellow/red warning at <1.25× and <1.0×.
 - Floor theme: midnight blue / steel. `FloorAtmosphere: 'cosmic'`.
@@ -818,7 +818,7 @@ This ticket serves as the living master tracker for the 9-floor gauntlet. It wil
 - TDD: `docs/design/fb-015-floor-7-station-tdd.md`.
 
 **Floor 8 — The Signal (`FIRST_CONTACT_PROTOCOL`):**
-- Targets: $1,000,000 / $1,750,000 / $2,500,000. Boss at index 23.
+- Targets: $5,000,000 / $7,500,000 / $15,000,000. Boss at index 23.
 - No hook file — natural nullification applied inline in `rollHandler()` in `rolls.ts`, *before* the base-game hype tick. Rolls that are NATURAL on 7 or 11 become NO_RESOLUTION blank rolls. `naturalBlocked: true` flag added to `TurnContextFlags`; `computeNextState` returns IDLE_TABLE / COME_OUT (not POINT_ACTIVE) on the NO_RESOLUTION branch when this flag is set.
 - Pre-hype-tick placement is critical — placing it after the tick would incorrectly award +0.10 momentum for a blank.
 - Floor theme: deep space / alien green. `FloorAtmosphere: 'alien'`.
@@ -826,7 +826,7 @@ This ticket serves as the living master tracker for the 9-floor gauntlet. It wil
 - TDD: `docs/design/fb-015-floor-8-signal-tdd.md`.
 
 **Floor 9 — The Null Space (`CONVERGENCE`):**
-- Targets: $5,000,000 / $10,000,000 / $20,000,000. Boss at index 26 (final marker in gauntlet).
+- Targets: $20,000,000 / $30,000,000 / $60,000,000. Boss at index 26 (final marker in gauntlet).
 - `packages/shared/src/bossRules/convergence.ts` — `modifyCascadeOrder(slotCount, params, state)` returns `Array.from({ length: Math.max(0, 5 - sevenOutCount) }, (_, i) => i)`. Returns `[]` at sevenOutCount ≥ 5 (naked craps).
 - `bossPointHits` repurposed as seven-out counter for this boss — increments on SEVEN_OUT (capped at 5), held on POINT_HIT. This deviates from the standard counter behavior (which normally increments on POINT_HIT).
 - `TurnContext` gains optional field `bossSevenOutCount?: number`; injected by `rolls.ts` pre-cascade for CONVERGENCE only. `resolveCascade` receives `bossState` and passes it to the hook.
@@ -1435,5 +1435,55 @@ Both tickets touch all 30 crew files (FB-023 removes `baseCost`; this removes fl
 | `packages/shared/src/crew/shark.ts` | Replace `BONUS_CENTS = 10_000` with `ADDITIVE_MULT = 2.0` |
 | `apps/api/src/routes/rolls.ts` | Set `markerTargetCents` on `TurnContext` before cascade |
 
+---
+
+## FB-025 — Crew Slot Progression
+
+**Type:** Feature / Balance
+**Area:** Crew System / `packages/shared`, `apps/api`, `apps/web`
+**Status:** Ready for implementation
+**Technical design:** `docs/design/fb-025-crew-slot-progression-tdd.md`
+
+### Problem
+
+Players start with all 5 crew slots available, which removes meaningful triage pressure from early floors and makes the dominant Grinder/Doorman additive build trivially constructible from run start. One playtester cleared the game with a $276M bankroll — the lack of slot scarcity is a contributing factor.
+
+### Solution
+
+New runs start with **3 active crew slots**. Two additional slots unlock as boss comp rewards at natural difficulty inflection points:
+
+- **Slot 4 — BOARD SEAT** — awarded for defeating The Executive (Floor 4). Replaces `GOLDEN_TOUCH`.
+- **Slot 5 — CARGO HOLD** — awarded for defeating The Commander (Floor 7). Replaces `ZERO_POINT`.
+
+The crew rail physically grows from 3 → 4 → 5 slots as slots are earned. Existing in-progress runs are grandfathered to `unlockedSlots = 5` via migration.
+
+### Key Decisions
+
+- Slot unlocks **replace** the existing comp rewards for F4 and F7 (not stacked on top)
+- `GOLDEN_TOUCH` and `ZERO_POINT` are removed from `CompRewardType` entirely
+- Slot fills happen at the existing post-boss pub visit — no new game flow required
+- `unlockedSlots` (integer 3/4/5) is stored on the `runs` table; `crew_slots` remains a fixed 5-element JSONB array
+- `TurnContext` carries `unlockedSlots` so `resolveCascade()` only iterates active slots
+- The Architect's CONVERGENCE is unaffected — all F9 players have 5 unlocked slots by definition
+
+### Files Changed
+
+| File | Action |
+|---|---|
+| `packages/shared/src/types.ts` | Add `unlockedSlots` to `TurnContext` |
+| `packages/shared/src/config.ts` | Swap `CompRewardType`; update GAUNTLET F4/F7; update `COMP_PERK_IDS` |
+| `packages/shared/src/cascade.ts` | Slice crew loop to `unlockedSlots` |
+| `apps/api/src/db/schema.ts` | Add `unlocked_slots` column |
+| `apps/api/src/db/migrations/migrate-add-unlocked-slots.ts` | Create (backfill existing rows to 5) |
+| `apps/api/src/routes/runs.ts` | Include `unlockedSlots` in all run responses |
+| `apps/api/src/routes/rolls.ts` | Inject into `TurnContext`; remove Golden Touch + Zero Point blocks |
+| `apps/api/src/routes/recruit.ts` | Slot unlock handler; slot index guard |
+| `apps/api/src/routes/reorder.ts` | `slotOrder` length validation |
+| `apps/web/src/store/useGameStore.ts` | `unlockedSlots` state; dynamic `slotIds` |
+| `apps/web/src/components/TableBoard.tsx` | Slice crew rail to `unlockedSlots` |
+| `apps/web/src/components/PubScreen.tsx` | Active slot filtering |
+| `apps/web/src/transitions/phases/BossVictoryCompPhase.tsx` | Slot unlock display branch |
+| `apps/web/src/components/BossVictoryModal.tsx` | Label/subtext map updates |
+| `apps/web/src/lib/tutorialBeats.ts` | Crew rail copy update |
 
 

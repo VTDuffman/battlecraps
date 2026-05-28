@@ -448,6 +448,8 @@ export function resolveRoll(
     markerTargetCents?: number;
     /** Shooter lives remaining. Defaults to 5 when not provided (e.g., in tests). */
     shooters?: number;
+    /** Number of active crew slots for this run. Defaults to 5 when not provided (e.g., in tests). */
+    unlockedSlots?: 3 | 4 | 5;
   },
 ): TurnContext {
   const { phase, currentPoint, bets, hype } = state;
@@ -538,6 +540,7 @@ export function resolveRoll(
     pointPhaseBlankStreak: state.pointPhaseBlankStreak,
     markerTargetCents:     state.markerTargetCents ?? 0,
     shooters:              state.shooters ?? 5,
+    unlockedSlots:         state.unlockedSlots ?? 5,
   };
 }
 

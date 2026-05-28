@@ -234,7 +234,7 @@ interface RisingMinBetsParams {
   capPct:       number; // Never exceeds this fraction (e.g. 0.20 = 20%)
 }
 ```
-**Sarge values:** start 5% ($50 at $1,000 target) → +2% per hit → cap 20% ($200)
+**Sarge values:** start 4% ($40 at $1,000 target) → +2% per hit → cap 20% ($200)
 
 ---
 
@@ -457,7 +457,7 @@ suggestion, effect description, parameters (if any).
 |---|---|---|---|
 | 0 | $50 | The Loading Dock | No |
 | 1 | $100 | The Loading Dock | No |
-| 2 | $250 | The Loading Dock — Freight Elevator | **Yes** |
+| 2 | $200 | The Loading Dock — Freight Elevator | **Yes** |
 
 ### Boss: The Foreman
 
@@ -496,7 +496,7 @@ suggestion, effect description, parameters (if any).
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
 | 3 | $300 | VFW Hall | No |
-| 4 | $600 | VFW Hall | No |
+| 4 | $500 | VFW Hall | No |
 | 5 | $1,000 | VFW Hall — High Limit Room | **Yes** |
 
 ### Boss: Sarge
@@ -511,7 +511,7 @@ suggestion, effect description, parameters (if any).
 | **Comp perk ID** | 1 |
 
 **Rule parameters:**
-- Start: 5% of $1,000 target = **$50 minimum** on first roll
+- Start: 4% of $1,000 target = **$40 minimum** on first roll
 - Increment: +2% per Point Hit = **+$20 per hit**
 - Cap: 20% of target = **$200 maximum**
 - Hold: minimum **holds on Seven Out**, never drops
@@ -540,7 +540,7 @@ suggestion, effect description, parameters (if any).
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
 | 6 | $1,500 | The Riverboat | No |
-| 7 | $2,500 | The Riverboat | No |
+| 7 | $2,000 | The Riverboat | No |
 | 8 | $4,000 | The Riverboat — Salon Privé | **Yes** |
 
 ### Boss: Mme. Le Prix
@@ -581,9 +581,9 @@ context may misfire or have reduced effect.
 
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
-| 9 | $6,000 | The Strip | No |
-| 10 | $9,000 | The Strip | No |
-| 11 | $12,500 | The Strip — Penthouse | **Yes** |
+| 9 | $5,000 | The Strip | No |
+| 10 | $7,500 | The Strip | No |
+| 11 | $15,000 | The Strip — Penthouse | **Yes** |
 
 ### Boss: The Executive
 
@@ -622,9 +622,9 @@ run. No exceptions. Applies in both COME_OUT and POINT_ACTIVE phases.
 
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
-| 12 | $20,000 | The Lodge | No |
-| 13 | $30,000 | The Lodge | No |
-| 14 | $45,000 | The Lodge — The Inner Sanctum | **Yes** |
+| 12 | $30,000 | The Lodge | No |
+| 13 | $50,000 | The Lodge | No |
+| 14 | $100,000 | The Lodge — The Inner Sanctum | **Yes** |
 
 *(Marker targets are design estimates — balance during implementation. Starting bankroll for the full 9-floor run is $30, calibrated against the Loading Dock's $50 first marker.)*
 
@@ -665,9 +665,9 @@ bankroll as tribute, on top of losing all active bets. Death spirals are real.
 
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
-| 15 | $70,000 | Atlantis | No |
-| 16 | $120,000 | Atlantis | No |
-| 17 | $175,000 | Atlantis — The Throne Room | **Yes** |
+| 15 | $150,000 | Atlantis | No |
+| 16 | $250,000 | Atlantis | No |
+| 17 | $500,000 | Atlantis — The Throne Room | **Yes** |
 
 *(Marker targets are design estimates — balance during implementation. See Floor 5 note re: starting bankroll.)*
 
@@ -712,9 +712,9 @@ bankroll as tribute, on top of losing all active bets. Death spirals are real.
 
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
-| 18 | $250,000 | The Station | No |
-| 19 | $425,000 | The Station | No |
-| 20 | $650,000 | The Station — The Command Module | **Yes** |
+| 18 | $1,000,000 | The Station | No |
+| 19 | $1,500,000 | The Station | No |
+| 20 | $3,000,000 | The Station — The Command Module | **Yes** |
 
 *(Marker targets are design estimates — balance during implementation. See Floor 5 note re: starting bankroll.)*
 
@@ -757,9 +757,9 @@ Momentum can work against the player.
 
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
-| 21 | $1,000,000 | The Signal | No |
-| 22 | $1,750,000 | The Signal | No |
-| 23 | $2,500,000 | The Signal — The Receiving Chamber | **Yes** |
+| 21 | $5,000,000 | The Signal | No |
+| 22 | $7,500,000 | The Signal | No |
+| 23 | $15,000,000 | The Signal — The Receiving Chamber | **Yes** |
 
 *(Marker targets are design estimates — balance during implementation. See Floor 5 note re: starting bankroll.)*
 
@@ -802,9 +802,9 @@ points. Applies only during COME_OUT phase.
 
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
-| 24 | $4,000,000 | The Singularity | No |
-| 25 | $7,000,000 | The Singularity | No |
-| 26 | $10,000,000 | The Singularity — The Root Node | **Yes** |
+| 24 | $20,000,000 | The Singularity | No |
+| 25 | $30,000,000 | The Singularity | No |
+| 26 | $60,000,000 | The Singularity — The Root Node | **Yes** |
 
 *(Marker targets are design estimates — balance during implementation. See Floor 5 note re: starting bankroll.)*
 

@@ -201,10 +201,10 @@ export function resolveCascade(
 
   // Boss hook: DISABLE_CREW returns [] to skip the entire loop.
   // CONVERGENCE returns [0..N-1] where N shrinks with each seven-out.
-  // Default: fire slots 0→N in order.
+  // Default: fire slots 0→(unlockedSlots-1) — respects the slot unlock progression.
   const slotOrder =
     bossHooks?.modifyCascadeOrder?.(crewSlots.length, bossParams!, bossState) ??
-    Array.from({ length: crewSlots.length }, (_, i) => i);
+    Array.from({ length: initialCtx.unlockedSlots }, (_, i) => i);
 
   for (const i of slotOrder) {
     const member = crewSlots[i];

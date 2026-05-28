@@ -602,10 +602,18 @@ export interface GameState {
   seenCompCount: number;
 
   /**
-   * Stable dnd-kit item IDs for the five crew slots, in display order.
-   * Mirrors crewSlots length (always 5). Reordered in sync with crewSlots
-   * so SortableContext reflects the player's current arrangement.
-   * Reset to positional defaults on every new/resumed run.
+   * Number of active crew slots for this run (3, 4, or 5). FB-025.
+   * New runs start with 3; slot 4 unlocks on BOARD_SEAT (F4 boss);
+   * slot 5 unlocks on CARGO_HOLD (F7 boss). Sourced from the server.
+   */
+  unlockedSlots: 3 | 4 | 5;
+
+  /**
+   * Stable dnd-kit item IDs for the ACTIVE crew slots, in display order.
+   * Length equals `unlockedSlots` (3, 4, or 5) — not always 5.
+   * Reordered in sync with crewSlots so SortableContext reflects the
+   * player's current arrangement. Rebuilt via buildSlotIds whenever
+   * unlockedSlots changes. Reset to positional defaults on every new/resumed run.
    */
   slotIds: string[];
 
@@ -879,6 +887,11 @@ const DEFAULT_BETS: Bets = {
 
 const DEFAULT_CREW_SLOTS: StoredCrewSlots = [null, null, null, null, null];
 
+/** Build the dnd-kit slot ID array for a given number of active slots. */
+function buildSlotIds(n: number): string[] {
+  return Array.from({ length: n }, (_, i) => `slot-${i}`);
+}
+
 // ---------------------------------------------------------------------------
 // Store implementation
 // ---------------------------------------------------------------------------
@@ -956,7 +969,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   getToken:       null,
   tutorialCheatDice: null,
   seenCompCount:     0,
-  slotIds: ['slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4'],
+  unlockedSlots:     3,
+  slotIds:           buildSlotIds(3),
   feedbackContextSnapshot: null,
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -977,7 +991,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       socketStatus:        'connecting',
       lastHydratedAt:      Date.now(),
       ...(isNewRun && { rollHistory: [], seenCompCount: 0 }),
-      slotIds: ['slot-0', 'slot-1', 'slot-2', 'slot-3', 'slot-4'],
       pendingCascadeQueue:       [],
       cascadeQueue:              [],
       pendingTransition:         false,
@@ -1033,6 +1046,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // initialState may spread its own committedBets, but we always override
       // to ensure the floor matches the server's last-settled bets.
       committedBets:  initialState.bets ?? DEFAULT_BETS,
+      // Rebuild slotIds from the hydrated unlockedSlots so the crew rail
+      // always has exactly the right number of dnd-kit drag targets.
+      // Placed after ...initialState so we read the resolved unlockedSlots value.
+      slotIds: buildSlotIds(initialState.unlockedSlots ?? 3),
     });
 
     // ── Socket event handlers ─────────────────────────────────────────────
@@ -1964,17 +1981,19 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }
 
     const data = (await res.json()) as {
-      bankroll:      number;
-      shooters:      number;
-      hype:          number;
-      phase:         GamePhase;
-      status:        RunStatus;
-      point:         number | null;
-      crewSlots:     StoredCrewSlots;
-      bossPointHits: number;
+      bankroll:       number;
+      shooters:       number;
+      hype:           number;
+      phase:          GamePhase;
+      status:         RunStatus;
+      point:          number | null;
+      crewSlots:      StoredCrewSlots;
+      bossPointHits:  number;
+      unlockedSlots?: 3 | 4 | 5;
     };
 
-    set({
+    const newUnlockedSlots = data.unlockedSlots ?? get().unlockedSlots;
+    set((state) => ({
       bankroll:      data.bankroll,
       shooters:      data.shooters,
       hype:          data.hype,
@@ -1983,12 +2002,17 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       point:         data.point,
       crewSlots:     data.crewSlots,
       bossPointHits: data.bossPointHits,
+      unlockedSlots: newUnlockedSlots,
+      // Rebuild slotIds if unlockedSlots changed (slot unlock comp received)
+      slotIds: newUnlockedSlots !== state.unlockedSlots
+        ? buildSlotIds(newUnlockedSlots)
+        : state.slotIds,
       // Clear last-roll display so the table starts fresh
       lastDice:       null,
       lastRollResult: null,
       lastDelta:      null,
       cascadeQueue:   [],
-    });
+    }));
 
   },
 
@@ -2146,7 +2170,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   async reorderCrew(oldIndex, newIndex) {
-    const { runId, crewSlots, slotIds } = get();
+    const { runId, crewSlots, slotIds, unlockedSlots } = get();
     if (!runId) return;
 
     const newSlots   = arrayMove(crewSlots, oldIndex, newIndex) as StoredCrewSlots;
@@ -2159,9 +2183,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({ crewSlots: newSlots, slotIds: newSlotIds });
 
     // Derive the permutation the server expects: slotOrder[newPosition] = oldPosition.
+    // Length matches unlockedSlots (3, 4, or 5) — not always 5.
     // Computed mathematically from arrayMove semantics to avoid reference-equality
     // bugs with null slots (null === null returns the wrong index for every empty slot).
-    const slotOrder = Array.from({ length: 5 }, (_, newPos): number => {
+    const slotOrder = Array.from({ length: unlockedSlots }, (_, newPos): number => {
       if (newPos === newIndex) return oldIndex;
       if (oldIndex < newIndex && newPos >= oldIndex && newPos < newIndex) return newPos + 1;
       if (oldIndex > newIndex && newPos > newIndex && newPos <= oldIndex) return newPos - 1;

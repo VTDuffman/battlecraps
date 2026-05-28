@@ -359,6 +359,13 @@ export interface TurnContext {
    * Used by the CONVERGENCE hook to determine how many crew slots to suppress.
    */
   readonly bossSevenOutCount?: number;
+
+  /**
+   * The number of crew slots active for this run (3, 4, or 5).
+   * resolveCascade() must only iterate crewSlots[0..unlockedSlots-1].
+   * Injected by rolls.ts before the cascade runs.
+   */
+  unlockedSlots: 3 | 4 | 5;
 }
 
 // ---------------------------------------------------------------------------
@@ -552,7 +559,8 @@ export interface GameState {
   bets: Bets;
 
   /**
-   * The player's 5 crew slots. null = empty slot (no crew in this position).
+   * The player's crew slots (3–5 active; always stored as 5-tuple).
+   * null = empty slot (no crew in this position).
    * Position is significant: cascade fires left-to-right, index 0 → 4.
    *
    * Typed as a fixed-length tuple to make the 5-slot constraint explicit.

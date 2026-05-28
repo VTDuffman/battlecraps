@@ -427,12 +427,21 @@ export const runs = pgTable(
     /**
      * Comp perk IDs earned during this specific run by defeating bosses.
      * Written by recruit.ts when a boss victory yields a non-NONE comp reward.
-     * Read by rolls.ts to enforce per-run comp mechanics (SEA_LEGS, ZERO_POINT, etc.).
+     * Read by rolls.ts to enforce per-run comp mechanics (SEA_LEGS, POSEIDONS_FAVOR, etc.).
      * Scoped to the run — starts empty, never carries over across runs.
      *
      * Migration: migrate-add-run-comp-perk-ids.ts
      */
     compPerkIds: integer('comp_perk_ids').array().notNull().default(sql`'{}'::integer[]`),
+
+    /**
+     * Number of active crew slots for this run: 3 (start), 4 (after BOARD_SEAT),
+     * or 5 (after CARGO_HOLD). New runs start with 3 active slots.
+     * resolveCascade() only fires crew in slots 0..unlockedSlots-1.
+     *
+     * Migration: migrate-add-unlocked-slots.ts (backfills existing rows to 5)
+     */
+    unlockedSlots: integer('unlocked_slots').notNull().default(3),
 
     // ── Meta ───────────────────────────────────────────────────────────────
 

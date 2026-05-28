@@ -178,6 +178,8 @@ interface TurnSettledPayload {
   nudgedFrom?:             [number, number];
   /** Highest gauntlet marker index the player has ever reached, updated when a marker clears. */
   highestMarkerReached:    number;
+  /** Non-zero when Sarge's non-compliance fine was deducted this roll (cents). */
+  nonComplianceFine?:      number;
 }
 
 // ---------------------------------------------------------------------------
@@ -1526,6 +1528,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         get().applyPendingSettlement();
       }, 1000);
       return;
+    }
+
+    // ── Non-compliance fine notification (Sarge) ─────────────────────────────
+    // Warn the player that a fine was deducted this roll. This is the minimum
+    // notification; a dedicated HUD indicator can be wired to this log line.
+    if ((p.nonComplianceFine ?? 0) > 0) {
+      console.warn(`[Sarge] Non-compliance fine applied: $${(p.nonComplianceFine! / 100).toFixed(2)}`);
     }
 
     // Lose results always take priority. Win fires for canonical win results AND

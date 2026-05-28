@@ -1,10 +1,13 @@
 // =============================================================================
 // BATTLECRAPS — BOSS RULE: RISING_MIN_BETS (Sarge)
-// packages/shared/src/bossRules/risingMinBets.ts
 //
 // Minimum Pass Line bet rises by incrementPct of the marker target after every
 // Point Hit, starting at startPct, capping at capPct. Holds on Seven Out —
 // the pressure never drops once Sarge turns it up.
+//
+// Non-compliance fine (FB-026): if passLine or proportional odds is below the
+// rising minimum, the roll is allowed but a flat fine (nonComplianceFinePct ×
+// marker target) is deducted from the bankroll after settlement.
 // =============================================================================
 
 import { GAUNTLET } from '../config.js';
@@ -14,18 +17,32 @@ export const risingMinBetsHooks: BossRuleHooks = {
   validateBet(bets, params, state) {
     if (params.rule !== 'RISING_MIN_BETS') return null;
 
-    const target = GAUNTLET[state.markerIndex]?.targetCents;
-    if (target == null) return null;
-
-    const { startPct, incrementPct, capPct } = params;
-    const rawPct     = startPct + incrementPct * state.bossPointHits;
-    const clampedPct = Math.min(rawPct, capPct);
+    const { targetCents } = GAUNTLET[state.markerIndex]!;
+    const rawPct     = params.startPct + params.incrementPct * state.bossPointHits;
+    const clampedPct = Math.min(rawPct, params.capPct);
     // Round up to nearest dollar — same formula as getBossMinBet().
-    const minBetCents = Math.ceil((target * clampedPct) / 100) * 100;
+    const bossMin = Math.ceil(targetCents * clampedPct / 100) * 100;
 
-    if (bets.passLine < minBetCents) {
-      const minBetDollars = (minBetCents / 100).toFixed(0);
-      return `Sarge demands a minimum Pass Line bet of $${minBetDollars}.`;
+    // Fine = nonComplianceFinePct × marker target, rounded to nearest dollar.
+    const fine = Math.round(targetCents * params.nonComplianceFinePct / 100) * 100;
+
+    if (bets.passLine < bossMin) {
+      return {
+        fine,
+        message: `Below Sarge's minimum of $${bossMin / 100}. A $${fine / 100} non-compliance fine was applied.`,
+      };
+    }
+
+    // Odds check: odds must meet the same proportional minimum as passLine.
+    // Only enforced when an odds bet is active — odds are purely optional.
+    if (bets.odds > 0 && bets.passLine > 0) {
+      const oddsMin = Math.floor(bossMin * (bets.odds / bets.passLine) / 100) * 100;
+      if (bets.odds < oddsMin) {
+        return {
+          fine,
+          message: `Odds bet below Sarge's minimum. A $${fine / 100} non-compliance fine was applied.`,
+        };
+      }
     }
 
     return null;

@@ -243,6 +243,14 @@ export const runs = pgTable(
      */
     bankrollCents: integer('bankroll_cents').notNull().default(25000),
 
+    /**
+     * Additive crew bonuses held in escrow until payout.
+     * Accumulated during the cascade phase (e.g. via additive crew abilities)
+     * and applied to the gross profit calculation at settlement time.
+     * Reset to 0 after every roll settlement (win or loss).
+     */
+    pendingAdditiveCents: integer('pending_additive_cents').notNull().default(0),
+
     // ── Shooter lives ──────────────────────────────────────────────────────
 
     /** Remaining shooter lives. Game over at 0. Starts at 5. */

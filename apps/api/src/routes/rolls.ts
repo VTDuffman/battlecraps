@@ -202,6 +202,8 @@ interface WsTurnSettledPayload {
   highestMarkerReached: number;
   /** Present when The Executive's three-strike rule triggered (4 was rolled). Strike index 1, 2, or 3. */
   executiveStrikeNumber?: 1 | 2 | 3;
+  /** Non-zero when Sarge's non-compliance fine was applied this roll (cents). */
+  nonComplianceFine?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -480,10 +482,20 @@ async function rollHandler(
   }
 
   // ── Boss fight: bet-validation hook (e.g. Sarge's Rising Min-Bets rule) ──
+  // validateBet may return:
+  //   null                  → roll accepted, no penalty
+  //   string                → roll rejected (422)
+  //   { fine, message }     → roll accepted but a cents fine is applied post-settlement
+  let nonComplianceFine = 0;
   if (bossHooks?.validateBet) {
-    const bossError = bossHooks.validateBet(incomingBets, bossParams!, bossState);
-    if (bossError !== null) {
-      return reply.status(422).send({ error: bossError });
+    const bossResult = bossHooks.validateBet(incomingBets, bossParams!, bossState);
+    if (bossResult !== null) {
+      if (typeof bossResult === 'string') {
+        return reply.status(422).send({ error: bossResult });
+      }
+      // Fine path — accept the roll; deduct the fine after settlement.
+      nonComplianceFine = bossResult.fine;
+      request.log.info({ fine: nonComplianceFine, message: bossResult.message }, '[boss] non-compliance fine queued');
     }
   }
 
@@ -641,6 +653,13 @@ async function rollHandler(
   const cascadeResult = resolveCascade(crewSlots, preCascadeCtx, rollDice, bossHooks, bossParams, bossState);
   const { finalContext, events, updatedCrewSlots } = cascadeResult;
 
+  // ── CONVERGENCE: track the last crew slot that fired this roll ──────────────
+  // Used by Targeted Demolition (step 8f / computeNextState) to identify which
+  // slot to permanently remove on SEVEN_OUT.
+  const lastTriggeredSlot = events.length > 0
+    ? (events[events.length - 1]?.slotIndex ?? null)
+    : null;
+
   // ── 8b. DISABLE_CREW (The Tariff) — tax crew additives before Vig applies ─
   // Applied before The Vig so the +20% Vig bonus stacks on already-taxed additives
   // (multiplicative order doesn't matter here, but semantically the boss takes first).
@@ -656,13 +675,25 @@ async function rollHandler(
     ? { ...tarifedContext, additives: Math.round(tarifedContext.additives * 1.2 / 100) * 100 }
     : tarifedContext;
 
+  // ── 8f. CONVERGENCE (Load-Bearing) — cumulative 15% additive penalty per removed slot ─
+  // bossPointHits = number of slots already removed this boss fight (0–5).
+  // Each removed slot compounds a further 15% reduction: additives × 0.85^N.
+  // Rounds to the nearest dollar (100 cents) per project convention.
+  // Applied after Vig so the +20% bonus is penalised alongside base additives.
+  const loadPenaltyFactor = isConvergenceBoss
+    ? Math.pow(0.85, run.bossPointHits)
+    : 1.0;
+  const loadBearingContext = isConvergenceBoss && viggedContext.additives > 0
+    ? { ...viggedContext, additives: Math.floor(viggedContext.additives * loadPenaltyFactor / 100) * 100 }
+    : viggedContext;
+
   // ── 8d. TRIBUTE (Hierophant Escrow) — hold additives; don't pass to settleTurn ─
   // When Hierophant escrow is active, zero out additives before settlement —
   // they accumulate in pendingAdditiveCents and release on the following roll.
-  const escrowHeld = isHierophantEscrow ? viggedContext.additives : 0;
+  const escrowHeld = isHierophantEscrow ? loadBearingContext.additives : 0;
   const escrowContext = isHierophantEscrow
-    ? { ...viggedContext, additives: 0 }
-    : viggedContext;
+    ? { ...loadBearingContext, additives: 0 }
+    : loadBearingContext;
 
   // ── 8e. TRANSMISSION_DELAY (Emissary) — hold additives; don't pass to settleTurn ─
   // Additives are zeroed for settlement this roll; stored in pendingAdditiveCents
@@ -731,6 +762,11 @@ async function rollHandler(
   const escrowRelease = Math.floor(run.pendingAdditiveCents * (1 - seizurePct) / 100) * 100;
   const postEscrowBankroll = postTdBankroll + escrowRelease;
 
+  // ── 9g. Non-compliance fine (Sarge) — deducted when passLine or odds is below the rising minimum ─
+  // Roll was allowed (not rejected) but bossResult returned a fine object.
+  // Rounds to nearest dollar; can be 0 when no fine applies this roll.
+  const postFineBankroll = postEscrowBankroll - nonComplianceFine;
+
   // ── 9d. EXECUTIVE THREE-STRIKE — drain on first and second 4 rolled ───────
   // Third strike already handled as early GAME_OVER before the cascade (step 7d).
   // bossPointHits here is still the PRE-roll count (0 = first 4, 1 = second 4).
@@ -738,9 +774,9 @@ async function rollHandler(
     finalContext.flags.executiveStrike === true &&
     isBossMarker(run.currentMarkerIndex);
   const strikeDrain = isExecutiveStrike
-    ? Math.round(postEscrowBankroll * (run.bossPointHits === 0 ? 0.20 : 0.40) / 100) * 100
+    ? Math.round(postFineBankroll * (run.bossPointHits === 0 ? 0.20 : 0.40) / 100) * 100
     : 0;
-  const postStrikeBankroll = postEscrowBankroll - strikeDrain;
+  const postStrikeBankroll = postFineBankroll - strikeDrain;
   const bankrollDelta = postStrikeBankroll - run.bankrollCents;
 
   const rollAmplifiedProfit = payout - viggedContext.baseStakeReturned;
@@ -759,14 +795,23 @@ async function rollHandler(
   if (tributeAmount > 0 && bossMarkerConfig?.boss) {
     bossDeductions.push({ amount: tributeAmount, source: bossMarkerConfig.boss.name, label: 'tribute' });
   }
-  const receipt = buildRollReceipt(viggedContext, events, bossDeductions.length > 0 ? bossDeductions : undefined);
+  const receipt = buildRollReceipt(loadBearingContext, events, bossDeductions.length > 0 ? bossDeductions : undefined);
 
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
-  const nextState = computeNextState(run, viggedContext, postStrikeBankroll, incomingBets, hasSeaLegs);
+  const nextState = computeNextState(run, viggedContext, postStrikeBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot);
 
   const hitMarker      = nextState.currentMarkerIndex > run.currentMarkerIndex;
   const newMarkerIndex = nextState.currentMarkerIndex;
+
+  // ── CONVERGENCE: Targeted Demolition — persist the removed slot as null ───
+  // nextState.removedSlotIndex is non-null only on a CONVERGENCE SEVEN_OUT.
+  // The cascade ran with the pre-removal crew; the DB write permanently zeroes
+  // the targeted slot so it is absent from all future cascade runs.
+  const removedSlotIndex = nextState.removedSlotIndex;
+  const finalUpdatedCrewSlots: (CrewMember | null)[] = removedSlotIndex !== null
+    ? updatedCrewSlots.map((slot, i) => i === removedSlotIndex ? null : slot)
+    : [...updatedCrewSlots];
 
   // ── 11c. Mechanic freeze lifecycle ───────────────────────────────────────
   // If a freeze was applied this roll, decrement rollsRemaining.
@@ -800,7 +845,7 @@ async function rollHandler(
       bossPointHits:        nextState.bossPointHits,
       bets:                 nextState.bets,
       crewSlots:          serialiseCrewSlots(
-                            updatedCrewSlots,
+                            finalUpdatedCrewSlots,
                             nextState.shooters < run.shooters, // new shooter → reset per_shooter cooldowns
                           ),
       mechanicFreeze:        nextMechanicFreeze,
@@ -850,16 +895,16 @@ async function rollHandler(
   // hot path; the client also tracks this locally for immediate display.
   void db
     .update(users)
-    .set({ maxBankrollCents: postEscrowBankroll })
-    .where(and(eq(users.id, userId), lt(users.maxBankrollCents, postEscrowBankroll)))
+    .set({ maxBankrollCents: postFineBankroll })
+    .where(and(eq(users.id, userId), lt(users.maxBankrollCents, postFineBankroll)))
     .catch((err: unknown) => {
       request.log.error({ err }, '[roll] Failed to update maxBankrollCents');
     });
 
   void db
     .update(runs)
-    .set({ peakBankrollCents: postEscrowBankroll })
-    .where(and(eq(runs.id, runId), lt(runs.peakBankrollCents, postEscrowBankroll)))
+    .set({ peakBankrollCents: postFineBankroll })
+    .where(and(eq(runs.id, runId), lt(runs.peakBankrollCents, postFineBankroll)))
     .catch((err: unknown) => {
       request.log.error({ err }, '[roll] Failed to update peakBankrollCents');
     });
@@ -927,6 +972,7 @@ async function rollHandler(
       ? Math.max(user.highestMarkerReached, newMarkerIndex)
       : user.highestMarkerReached,
     ...(isExecutiveStrike && { executiveStrikeNumber: (run.bossPointHits + 1) as 1 | 2 | 3 }),
+    ...(nonComplianceFine > 0 && { nonComplianceFine }),
   };
   io.to(runRoom).emit('turn:settled', settledPayload);
 
@@ -984,11 +1030,12 @@ async function rollHandler(
  * transitions.
  */
 function computeNextState(
-  run:          RunRow,
-  finalCtx:     ReturnType<typeof resolveRoll>,
-  newBankroll:  number,
-  incomingBets: Bets,
-  hasSeaLegs:   boolean = false,
+  run:                 RunRow,
+  finalCtx:            ReturnType<typeof resolveRoll>,
+  newBankroll:         number,
+  incomingBets:        Bets,
+  hasSeaLegs:          boolean = false,
+  lastTriggeredSlot?:  number | null,
 ): {
   status:               RunRow['status'];
   phase:                RunRow['phase'];
@@ -1003,6 +1050,7 @@ function computeNextState(
   previousRollTotal:     number | null;
   shooterRollCount:      number;
   pointPhaseBlankStreak: number;
+  removedSlotIndex:      number | null;
 } {
   const { rollResult, flags } = finalCtx;
   const currentMarkerIndex = run.currentMarkerIndex;
@@ -1072,6 +1120,7 @@ function computeNextState(
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
+        removedSlotIndex:      null,
       };
     }
 
@@ -1092,6 +1141,7 @@ function computeNextState(
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
+        removedSlotIndex:      null,
       };
 
     // ── Point established ───────────────────────────────────────────────────
@@ -1115,6 +1165,7 @@ function computeNextState(
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
+        removedSlotIndex:      null,
       };
 
     // ── Point hit — check for marker / game completion ─────────────────────
@@ -1156,6 +1207,7 @@ function computeNextState(
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
+        removedSlotIndex:      null,
       };
     }
 
@@ -1231,6 +1283,17 @@ function computeNextState(
       }
 
       const markerCleared = nextMarkerIndex !== currentMarkerIndex;
+
+      // ── CONVERGENCE: Targeted Demolition — determine which slot to remove ──
+      // The most recently triggered slot (last CascadeEvent.slotIndex) takes the
+      // hit. If no crew fired this roll, fall back to the highest-numbered active
+      // slot still in play: max(0, unlockedSlots - 1 - bossPointHits).
+      const convergenceDemolitionTarget = (isConvergence && !markerCleared)
+        ? (lastTriggeredSlot !== null && lastTriggeredSlot !== undefined
+          ? lastTriggeredSlot
+          : Math.max(0, run.unlockedSlots - 1 - run.bossPointHits))
+        : null;
+
       return {
         status:               nextStatus,
         phase:                'COME_OUT',
@@ -1250,6 +1313,7 @@ function computeNextState(
         previousRollTotal:     shooterLost ? null : finalCtx.diceTotal,
         shooterRollCount:      shooterLost ? 0 : run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
+        removedSlotIndex:      convergenceDemolitionTarget,
       };
     }
 
@@ -1294,6 +1358,7 @@ function computeNextState(
           previousRollTotal:     finalCtx.diceTotal,
           shooterRollCount:      run.shooterRollCount + 1,
           pointPhaseBlankStreak: 0,
+          removedSlotIndex:      null,
         };
       }
 
@@ -1313,6 +1378,7 @@ function computeNextState(
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: run.pointPhaseBlankStreak + 1,
+        removedSlotIndex:      null,
       };
     }
   }

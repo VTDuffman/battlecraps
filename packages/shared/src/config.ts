@@ -91,7 +91,7 @@ export interface RisingMinBetsParams {
  */
 export type BossRuleParams =
   | { rule: 'EXTORTION_FEE';      taxPct: number }
-  | { rule: 'RISING_MIN_BETS';    startPct: number; incrementPct: number; capPct: number }
+  | { rule: 'RISING_MIN_BETS';    startPct: number; incrementPct: number; capPct: number; nonComplianceFinePct: number }
   | { rule: 'DISABLE_CREW'; additiveTarifPct: number }
   | { rule: 'FOURS_INSTANT_LOSS'; triggerTotal: number }
   | { rule: 'TRIBUTE';            escrowSeizurePct: number }
@@ -293,13 +293,13 @@ export const GAUNTLET: readonly MarkerConfig[] = [
         "Every point you hit, the price goes up.",
         "And it never comes back down.",
       ],
-      ruleBlurb:          "Minimum Pass Line bet rises with every Point Hit — and holds on Seven Out.",
+      ruleBlurb:          "The minimum pass-line bet rises with every Point Hit and holds on Seven Out. Miss the minimum and you can still roll — but you'll pay a 5% marker fine for the privilege. Odds bets must also clear the minimum, or the same fine applies.",
       victoryQuote:       "…not bad, soldier. Dismissed.",
       defeatAnnouncement: 'ENEMY NEUTRALIZED',
       // Mechanic
       rule:           'RISING_MIN_BETS',
-      ruleHeaderText: 'ANTE RISES ON POINT HIT — MIN BET HOLDS ON 7-OUT',
-      ruleParams:     { rule: 'RISING_MIN_BETS', startPct: 0.04, incrementPct: 0.02, capPct: 0.20 },
+      ruleHeaderText: 'MIN BET RISES EACH POINT — SKIP IT AND PAY A 5% MARKER FINE',
+      ruleParams:     { rule: 'RISING_MIN_BETS', startPct: 0.04, incrementPct: 0.02, capPct: 0.20, nonComplianceFinePct: 0.05 },
       // Comp
       compReward:      'EXTRA_SHOOTER',
       compPerkId:      COMP_PERK_IDS.MEMBER_JACKET,

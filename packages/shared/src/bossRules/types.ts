@@ -30,12 +30,16 @@ export interface BossRuleState {
  */
 export interface BossRuleHooks {
   /**
-   * Called before the roll is accepted. Return an error string to reject the
-   * bet (server responds 422 with that string), or null to allow it.
+   * Called before the roll is accepted.
+   *   • Return null to allow the roll with no penalty.
+   *   • Return a string to reject the roll (server responds 422 with that string).
+   *   • Return { fine, message } to allow the roll but apply a cents fine after
+   *     settlement — the server subtracts `fine` from the post-payout bankroll.
    *
-   * Used by: RISING_MIN_BETS — rejects if passLine < current min bet.
+   * Used by: RISING_MIN_BETS — fine path when passLine or odds is below the
+   * current minimum (allows rolling but deducts nonComplianceFinePct × target).
    */
-  validateBet?(bets: Bets, params: BossRuleParams, state: BossRuleState): string | null;
+  validateBet?(bets: Bets, params: BossRuleParams, state: BossRuleState): string | null | { fine: number; message: string };
 
   /**
    * Called after classifyRoll() but before the cascade.

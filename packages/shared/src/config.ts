@@ -357,7 +357,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compReward:      'HYPE_RESET_HALF',
       compPerkId:      COMP_PERK_IDS.SEA_LEGS,
       compName:        'SEA LEGS',
-      compDescription: "On Seven Out, Hype resets to 50% instead of 1.0×.",
+      compDescription: "On Seven Out, Hype resets to 50% instead of 1.0× — safely below The Commander's High Altitude danger zone.",
       compFanLabel:    'SEA LEGS',
       // Legacy
       flavorText: "On my table, the crew works backwards. Adapt.",
@@ -453,7 +453,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compReward:      'THE_COVENANT',
       compPerkId:      COMP_PERK_IDS.THE_COVENANT,
       compName:        'THE COVENANT',
-      compDescription: 'Direct bankroll drains from boss mechanics are permanently reduced by 50%.',
+      compDescription: 'Hierophant Escrow seizures on Seven Out are halved — 25% becomes 12.5%. Sarge non-compliance fines are also halved.',
       compFanLabel:    'COVENANT',
       // Legacy
       flavorText: "Three centuries of tradition. You'll respect it, or you'll fund it.",

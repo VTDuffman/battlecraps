@@ -1486,4 +1486,46 @@ The crew rail physically grows from 3 → 4 → 5 slots as slots are earned. Exi
 | `apps/web/src/components/BossVictoryModal.tsx` | Label/subtext map updates |
 | `apps/web/src/lib/tutorialBeats.ts` | Crew rail copy update |
 
+---
+
+## FB-026 — Boss Fight & Comp Overhaul
+
+**Type:** Balance / Boss Redesign
+**Area:** Boss mechanics / `packages/shared/src/config.ts`, `packages/shared/src/bossRules/`, `apps/api/src/routes/rolls.ts`, `apps/api/drizzle/`
+**Status:** In Progress
+**Manifest:** `docs/manifests/fb-026-boss-fight-overhaul-manifest.md`
+
+### Problem
+
+The dominant Grinder/additive build trivially steamrolls most boss encounters. Six of nine bosses either don't interact with crew additives at all, or impose static handicaps that additive builds easily absorb. The result: late-game floors lack meaningful threat.
+
+### Solution
+
+Redesign 6 of 9 bosses to counter additive strategies directly. All changes are calibrated to feel dangerous but beatable with smart play. The Foreman (F1) is unchanged. The Sovereign's comp is unchanged.
+
+### Boss Changes
+
+| Boss | Floor | Old Mechanic | New Mechanic |
+|---|---|---|---|
+| **The Sovereign** | F6 | 5-roll calm / 2-roll surge (15% target flood) | Four-stage per-come-out tide cycle: LOW (1×) → EBB (2×) → HIGH (3×) → FLOW (2×) |
+| **Mme. Le Prix** | F3 | Crew fully disabled | 35% additive tariff — crew still fires, but additives taxed; multipliers and hype exempt |
+| **The Executive** | F4 | Roll a 4 = instant loss | Three-strike system: 1st 4 = −20% bankroll; 2nd = −40%; 3rd = game over |
+| **The Hierophant** | F5 | 15% bankroll tribute seized on 7-out | Additive escrow — crew bonuses held, 25% seized on 7-out (rest released) |
+| **The Commander** | F7 | Flat 0.5× hype decay per 7-out (no floor) | Tier-scaled decay + death spiral: normal decay + extra punishment below 0.75× hype |
+| **The Emissary** | F8 | 7/11 naturals nullified (blank re-roll) | Transmission delay — additives buffered one roll, evaporate entirely on 7-out |
+| **Sarge** | F2 | Rising min-bets only | Rising min-bets + non-compliance fine on underbets + odds minimum enforced |
+| **The Architect** | F9 | One crew slot removed per 7-out (up to 5) | Targeted demolition — last-triggered slot removed; load-bearing slots carry a penalty |
+
+### Unchanged
+
+- **The Foreman (F1):** 20% payout tax — no change
+- **The Sovereign's comp:** Poseidon's Favor — no change
+- **Comp rewards for F1, F2, F4, F6, F7:** The Vig, Member's Jacket, Board Seat, Poseidon's Favor, Cargo Hold — no change
+
+### Comp Updates (FB-026)
+
+- **The Covenant (F5):** Updated to reflect Hierophant Escrow — seizure halved from 25% to 12.5%; Sarge non-compliance fines also halved
+- **Sea Legs (F3):** Description updated to note defensive value vs. The Commander's High Altitude zone
+- **The Frequency (F8):** No description change needed — naturals that resolve through The Emissary's delay still trigger the 3% bonus normally
+
 

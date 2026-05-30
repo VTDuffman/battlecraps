@@ -75,19 +75,6 @@ export interface BossRuleHooks {
   ): number;
 
   /**
-   * Called after resolveCascade() and before the Vig comp step.
-   * Returns the (potentially reduced) additives total in cents.
-   * Only called when additives > 0.
-   *
-   * Used by: DISABLE_CREW (The Tariff) — taxes additive bonuses by additiveTarifPct.
-   */
-  modifyAdditives?(
-    additives: number,
-    params: BossRuleParams,
-    state: BossRuleState,
-  ): number;
-
-  /**
    * Called after the bet-loss bankroll is computed on a SEVEN_OUT, before
    * computeNextState runs. Return the (potentially reduced) post-drain
    * bankroll in cents.

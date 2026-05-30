@@ -284,12 +284,12 @@ export const FLOORS: readonly FloorConfig[] = [
     introLines: [
       'Mahogany panels. Candlelight. The paddle wheel churns the dark water below.',
       "Mme. Le Prix does not raise her voice. She doesn't need to.",
-      "In the Salon Privé, she runs a quiet house. Your crew won't say a word in here.",
+      "In the Salon Privé, she will look at one of your crew and that will be enough. They won't hear a word you say until the point resolves.",
     ],
     bossName:   'Mme. Le Prix',
     bossTitle:  'Proprietress of the Salon Privé',
     bossVenue:  'The Riverboat — Salon Privé',
-    bossTeaser: "Mme. Le Prix runs a quiet house. Your crew stays silent in the Salon Privé.",
+    bossTeaser: "Mme. Le Prix does not silence your crew. She simply looks at one of them.",
     atmosphere: 'elegant',
   },
 
@@ -303,12 +303,12 @@ export const FLOORS: readonly FloorConfig[] = [
     introLines: [
       'Obsidian felt. Floor-to-ceiling glass. The city grid glitters sixty stories below.',
       "The Executive doesn't cheat. He doesn't need to.",
-      "One number ends it all. Don't roll it.",
+      "Roll a four and it costs you. Roll it twice and it costs more. Roll it a third time — and it's over.",
     ],
     bossName:   'The Executive',
     bossTitle:  'Penthouse Host',
     bossVenue:  'The Strip — Penthouse',
-    bossTeaser: "The Executive has one rule. It's the only one that matters.",
+    bossTeaser: "The Executive runs a three-strike room. The first four costs you. The second costs more. The third ends your run.",
     atmosphere: 'electric',
   },
 
@@ -381,12 +381,12 @@ export const FLOORS: readonly FloorConfig[] = [
     introLines: [
       'The table is here. The felt, the chips, the dice — all correct. The geometry of the room is not correct. The light arrives from the wrong direction.',
       'The Emissary studied the transmission for eleven years. It reconstructed the game faithfully, except for one concept it could not translate.',
-      'That concept is the natural. Here, sevens on come-out mean nothing. You earn every dollar the hard way.',
+      "What it couldn't translate was delay. Your crew's earnings don't pay out immediately — they arrive one roll later. Seven-out before then, and the signal is lost entirely.",
     ],
     bossName:   'The Emissary',
     bossTitle:  'First Point of Contact',
     bossVenue:  'The Signal — The Receiving Chamber',
-    bossTeaser: 'The Emissary studied the game for eleven years. It misunderstood one rule. That rule is the one that matters.',
+    bossTeaser: "The Emissary understands the game. It simply can't process your crew's earnings in real time.",
     atmosphere: 'alien',
   },
 

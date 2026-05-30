@@ -47,7 +47,7 @@ export const COMP_DEFS: CompDef[] = [
     threshold:   9,
     name:        'Sea Legs',
     icon:        '⚓',
-    effect:      'Hype resets to 50% on Seven Out instead of zeroing. Mme. Le Prix reward.',
+    effect:      'Hype resets to 50% on Seven Out instead of 1.0×. Earned by defeating Mme. Le Prix.',
     accentColor: '#0d9488',  // teal — Riverboat floor
   },
   {

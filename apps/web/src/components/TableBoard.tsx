@@ -72,6 +72,13 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
   const fireCrew         = useGameStore((s) => s.fireCrew);
   const mechanicFreeze   = useGameStore((s) => s.mechanicFreeze);
   const setMechanicFreeze = useGameStore((s) => s.setMechanicFreeze);
+  // Charm animation — Mme. Le Prix (DISABLE_CREW boss)
+  const charmingSlot      = useGameStore((s) => s.charmingSlot);
+  const clearCharmingSlot = useGameStore((s) => s.clearCharmingSlot);
+  const _charmKey         = useGameStore((s) => s._charmKey);
+  // True while cascade portrait animations are running (NOT including charm — charm
+  // waits for cascade to finish before starting its own portrait expansion).
+  const cascadeRunning    = useGameStore((s) => s.cascadeQueue.length > 0);
   const { flashType, _flashKey }           = useGameStore(selectFlash);
   const { wallFlash, _wallFlashKey }       = useGameStore(selectWallFlash);
   const reorderCrew   = useGameStore((s) => s.reorderCrew);
@@ -384,7 +391,13 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           <SortableContext items={slotIds} strategy={horizontalListSortingStrategy}>
             <div className="flex justify-around items-end gap-1">
-              {crewSlots.slice(0, unlockedSlots).map((slot, i) => (
+              {crewSlots.slice(0, unlockedSlots).map((slot, i) => {
+                // Charm animation — true when this slot is being enchanted by
+                // Mme. Le Prix AND cascade portrait animations are not running.
+                // Cascade takes priority: charm waits until the last crew bark
+                // finishes before expanding its own portrait.
+                const isCharmingSlot = charmingSlot === i && !cascadeRunning;
+                return (
                 <div key={slotIds[i] ?? `slot-${i}`} data-slot-index={i}>
                   <CrewPortrait
                     sortableId={slotIds[i] ?? `slot-${i}`}
@@ -393,10 +406,18 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
                     crewName={crewNameFromId(slot?.crewId ?? null)}
                     visualId={crewVisualIdFromId(slot?.crewId ?? null)}
                     cooldownState={slot?.cooldownState ?? 0}
-                    isTriggering={activeSlot === i}
-                    barkSeq={activeSlot === i ? (activeBark?.seq ?? null) : null}
-                    barkCrewId={activeSlot === i ? (activeBark?.barkCrewId ?? null) : null}
-                    onAnimationEnd={handleAnimationEnd}
+                    isTriggering={activeSlot === i || isCharmingSlot}
+                    barkSeq={
+                      isCharmingSlot
+                        ? _charmKey
+                        : activeSlot === i ? (activeBark?.seq ?? null) : null
+                    }
+                    barkCrewId={
+                      isCharmingSlot ? null
+                      : activeSlot === i ? (activeBark?.barkCrewId ?? null) : null
+                    }
+                    barkOverride={isCharmingSlot ? '"OOH LA LA!"' : undefined}
+                    onAnimationEnd={isCharmingSlot ? clearCharmingSlot : handleAnimationEnd}
                     onFire={!isRolling && !isAutoCollecting && slot !== null ? () => { void fireCrew(i); } : undefined}
                     onSetFreeze={
                       slot?.crewId === 3 && !isRolling && !isAutoCollecting && slot.cooldownState === 0 && !mechanicFreeze
@@ -406,7 +427,8 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
                     freezeState={slot?.crewId === 3 ? mechanicFreeze : null}
                   />
                 </div>
-              ))}
+                );
+              })}
             </div>
           </SortableContext>
         </DndContext>

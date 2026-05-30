@@ -180,6 +180,17 @@ interface TurnSettledPayload {
   highestMarkerReached:    number;
   /** Non-zero when Sarge's non-compliance fine was deducted this roll (cents). */
   nonComplianceFine?:      number;
+  /**
+   * Index of the crew slot currently enchanted by Mme. Le Prix.
+   * Present only during a DISABLE_CREW boss fight (mid-fight updates).
+   */
+  charmedCrewSlot?:        number;
+  /**
+   * True when the enchanted crew's ability WOULD HAVE triggered on this roll but
+   * was suppressed by the charm. The "OOH LA LA!" bark only plays when true.
+   * Absent (not false) when the charm did not suppress an active ability.
+   */
+  charmFired?:             boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -242,6 +253,30 @@ export interface GameState {
    * Synced from the server via turn:settled and recruit responses.
    */
   bossPointHits: number;
+
+  /**
+   * The crew slot index (0-based) currently enchanted by Mme. Le Prix, or null
+   * when outside a DISABLE_CREW boss fight. Set per-come-out from the
+   * turn:settled charmedCrewSlot field; cleared on marker transition.
+   */
+  charmedCrewSlot: number | null;
+
+  /**
+   * Entry charm slot picked when the player transitions into the DISABLE_CREW
+   * boss fight. Held here until clearTransition('BOSS_ENTRY') fires, at which
+   * point it is moved into charmingSlot to start the bark animation. This
+   * prevents the charm appearing during the pub / boss-intro screens.
+   */
+  pendingBossEntryCharm: number | null;
+
+  /**
+   * The crew slot currently playing the charm animation (portrait expansion +
+   * "OOH LA LA!" bark bubble). Non-null only during the animation window.
+   * After the animation completes, clearCharmingSlot() moves this value into
+   * charmedCrewSlot so the ❤️ settles on that crew member.
+   * Distinct from charmedCrewSlot so the icon settles AFTER the bark, not before.
+   */
+  charmingSlot: number | null;
 
   // ── Crew ──────────────────────────────────────────────────────────────────
   crewSlots: StoredCrewSlots;
@@ -343,6 +378,13 @@ export interface GameState {
    * system — each increment spawns a new spark that flies from source to meter.
    */
   _hypeKey: number;
+
+  /**
+   * Increments each time Mme. Le Prix enchants a new crew slot (per come-out
+   * resolution in the DISABLE_CREW boss fight). React key for the "OOH LA LA!"
+   * portrait label — re-fires even when the same slot index is re-selected.
+   */
+  _charmKey: number;
 
   // ── Payout pops ───────────────────────────────────────────────────────────
   /**
@@ -681,6 +723,13 @@ export interface GameActions {
   dequeueEvent(): void;
 
   /**
+   * Called by TableBoard's CrewPortrait onAnimationEnd when the charm
+   * animation (portrait expansion + "OOH LA LA!" bark) finishes for the
+   * charmingSlot. Moves charmingSlot → charmedCrewSlot so the ❤️ settles.
+   */
+  clearCharmingSlot(): void;
+
+  /**
    * Submit the current bets and trigger a dice roll.
    *
    * Sets isRolling=true optimistically. On HTTP success, waits for the
@@ -910,6 +959,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   shooters:            5,
   currentMarkerIndex:  0,
   bossPointHits:       0,
+  charmedCrewSlot:     null,
+  pendingBossEntryCharm: null,
+  charmingSlot:        null,
   bets:                DEFAULT_BETS,
   committedBets:       DEFAULT_BETS,
   activeChip:          500,  // $5 default
@@ -934,6 +986,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   _hypeFlashKey:      0,
   lastHypeSource:     null,
   _hypeKey:           0,
+  _charmKey:          0,
   payoutPops:         null,
   _popsKey:           0,
   pointRingType:      null,
@@ -1033,9 +1086,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _hypeFlashKey:     0,
       lastHypeSource:    null,
       _hypeKey:          0,
-      payoutPops:        null,
-      _popsKey:          0,
-      pointRingType:     null,
+      _charmKey:             0,
+      charmedCrewSlot:       null,
+      pendingBossEntryCharm: null,
+      charmingSlot:          null,
+      payoutPops:            null,
+      _popsKey:             0,
+      pointRingType:        null,
       _pointRingKey:     0,
       _reRollKey:        0,
       // Reset bets to zero so a new run never inherits a live bet from the
@@ -1250,9 +1307,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _hypeFlashKey:       0,
       lastHypeSource:      null,
       _hypeKey:            0,
-      payoutPops:          null,
-      _popsKey:            0,
-      _reRollKey:          0,
+      _charmKey:             0,
+      charmedCrewSlot:       null,
+      pendingBossEntryCharm: null,
+      charmingSlot:          null,
+      payoutPops:            null,
+      _popsKey:              0,
+      _reRollKey:            0,
       pendingCascadeQueue:       [],
       cascadeQueue:              [],
       pendingTransition:         false,
@@ -1447,6 +1508,14 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({ isRolling: rolling });
   },
 
+  clearCharmingSlot() {
+    // Called by TableBoard's CrewPortrait onAnimationEnd for the charming slot.
+    // Moves charmingSlot → charmedCrewSlot so the ❤️ icon settles on the crew member
+    // AFTER the bark animation completes (not during).
+    const { charmingSlot } = get();
+    set({ charmedCrewSlot: charmingSlot, charmingSlot: null });
+  },
+
   dequeueEvent() {
     set((state) => ({ cascadeQueue: state.cascadeQueue.slice(1) }));
     const { cascadeQueue, chipRainDone, pendingTransition } = get();
@@ -1465,11 +1534,14 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _flashKey,
       _hypeFlashKey,
       _hypeKey,
+      _charmKey,
       _popsKey,
       pendingCascadeQueue,
       status: currentStatus,
       unacknowledgedUnlocks,
       isAutoCollecting,
+      charmedCrewSlot: oldCharmedSlot,
+      charmingSlot:    oldCharmingSlot,
     } = get();
     if (!p) return;
 
@@ -1536,6 +1608,50 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     if ((p.nonComplianceFine ?? 0) > 0) {
       console.warn(`[Sarge] Non-compliance fine applied: $${(p.nonComplianceFine! / 100).toFixed(2)}`);
     }
+
+    // ── Charm slot update (Mme. Le Prix — DISABLE_CREW boss) ─────────────────
+    // TRANSITION / GAME_OVER takes highest priority — the boss fight has ended.
+    // The charm must be cleared (both charmedCrewSlot and charmingSlot) even
+    // when charmedCrewSlot is still in the payload (the winning roll is ON the
+    // boss marker so the server always sends it; without this guard the ❤️
+    // would persist through the pub screen and into the next marker).
+    //
+    // When a mid-fight come-out resolves: instead of immediately updating
+    // charmedCrewSlot, we start the charm bark animation by setting charmingSlot.
+    // clearCharmingSlot() fires when the portrait animation ends, moving
+    // charmingSlot → charmedCrewSlot so the ❤️ settles AFTER the bark.
+    // This also fires on re-charm (same slot selected again) — the bark plays
+    // every time, even when the slot index hasn't changed.
+    //
+    // charmedCrewSlot is NOT updated here when charmFired — it stays as the
+    // old value until clearCharmingSlot() is called. During the point phase
+    // (no charmedCrewSlot in payload) both values are preserved unchanged.
+    const isEndingBossFight = p.runStatus === 'TRANSITION' || p.runStatus === 'GAME_OVER';
+    // charmFired: server tells us the charmed crew's ability would have triggered
+    // this roll. Only when true do we play the bark animation.
+    const charmFired = !isEndingBossFight && p.charmFired === true;
+
+    // charmedCrewSlot (the ❤️ position):
+    //   - Boss fight ending → clear immediately.
+    //   - Charm bark playing (charmFired) → keep old slot; clearCharmingSlot()
+    //     will move it after the animation ends.
+    //   - Slot changed silently (come-out resolved, no ability suppressed) →
+    //     move ❤️ directly with no animation.
+    //   - No charm update this roll (POINT_SET / NO_RESOLUTION) → preserve.
+    const newCharmedSlot: number | null = isEndingBossFight
+      ? null
+      : charmFired
+        ? oldCharmedSlot
+        : p.charmedCrewSlot !== undefined
+          ? p.charmedCrewSlot
+          : oldCharmedSlot;
+
+    // charmingSlot: set to the new target slot when charm fires this roll;
+    // cleared on boss-fight end; preserved if no charm event this roll.
+    const newCharmingSlot: number | null =
+      isEndingBossFight ? null
+      : charmFired      ? p.charmedCrewSlot!
+      : oldCharmingSlot;
 
     // Lose results always take priority. Win fires for canonical win results AND
     // any roll where the player nets money (e.g. NO_RESOLUTION with a hardway
@@ -1652,6 +1768,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _hypeFlashKey:        flashTier !== null ? _hypeFlashKey + 1 : _hypeFlashKey,
       lastHypeSource:       hypeSource,
       _hypeKey:             hypeSource !== null ? _hypeKey + 1 : _hypeKey,
+      charmedCrewSlot:       newCharmedSlot,
+      charmingSlot:          newCharmingSlot,
+      _charmKey:             charmFired ? _charmKey + 1 : _charmKey,
       payoutPops,
       _popsKey:             hasPops ? _popsKey + 1 : _popsKey,
       // Flush buffered cascade events at the reveal moment — portrait
@@ -1773,8 +1892,23 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         set({ activeTransition: null, transitionPhaseIndex: 0, titleShown: true });
       } else if (type === 'BOSS_ENTRY') {
         // Re-arm the unlock modal if it was suppressed during the dread sequence.
-        const hasUnacknowledged = get().unacknowledgedUnlocks.length > 0;
-        set({ activeTransition: null, transitionPhaseIndex: 0, unlockModalReady: hasUnacknowledged });
+        const hasUnacknowledged  = get().unacknowledgedUnlocks.length > 0;
+        const pendingCharm       = get().pendingBossEntryCharm;
+        const currentCharmKey    = get()._charmKey;
+        set({
+          activeTransition:      null,
+          transitionPhaseIndex:  0,
+          unlockModalReady:      hasUnacknowledged,
+          // Start the charm animation so the player sees "OOH LA LA!" with portrait
+          // expansion before the first roll — just like a crew power firing.
+          // charmingSlot drives the bark; clearCharmingSlot() moves it to
+          // charmedCrewSlot (settles the ❤️) when the animation finishes.
+          ...(pendingCharm !== null && {
+            charmingSlot:          pendingCharm,
+            pendingBossEntryCharm: null,
+            _charmKey:             currentCharmKey + 1,
+          }),
+        });
       } else {
         set({ activeTransition: null, transitionPhaseIndex: 0 });
       }
@@ -1874,6 +2008,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           mechanicFreeze:  { lockedValue: number; rollsRemaining: number } | null;
           originalDice?:   [number, number];
           nudgedFrom?:     [number, number];
+          /** Enchanted crew slot index (DISABLE_CREW boss only — mid-fight updates). */
+          charmedCrewSlot?: number;
+          /** True when the charmed crew's ability would have fired this roll. Drives "OOH LA LA!" bark. */
+          charmFired?: boolean;
         };
       };
 
@@ -1926,8 +2064,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         newBossPointHits:        data.run.bossPointHits,
         payoutBreakdown:         data.roll.payoutBreakdown,
         highestMarkerReached:    data.run.highestMarkerReached ?? 0,
-        ...(data.roll.originalDice !== undefined && { originalDice: data.roll.originalDice }),
-        ...(data.roll.nudgedFrom   !== undefined && { nudgedFrom:   data.roll.nudgedFrom   }),
+        ...(data.roll.originalDice    !== undefined && { originalDice:    data.roll.originalDice    }),
+        ...(data.roll.nudgedFrom      !== undefined && { nudgedFrom:      data.roll.nudgedFrom      }),
+        ...(data.roll.charmedCrewSlot !== undefined && { charmedCrewSlot: data.roll.charmedCrewSlot }),
+        ...(data.roll.charmFired      === true      && { charmFired:      true                      }),
       };
 
       const isLeftySave = settlement.originalDice !== undefined;
@@ -1990,15 +2130,21 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }
 
     const data = (await res.json()) as {
-      bankroll:       number;
-      shooters:       number;
-      hype:           number;
-      phase:          GamePhase;
-      status:         RunStatus;
-      point:          number | null;
-      crewSlots:      StoredCrewSlots;
-      bossPointHits:  number;
-      unlockedSlots?: 3 | 4 | 5;
+      bankroll:            number;
+      shooters:            number;
+      hype:                number;
+      phase:               GamePhase;
+      status:              RunStatus;
+      point:               number | null;
+      crewSlots:           StoredCrewSlots;
+      bossPointHits:       number;
+      unlockedSlots?:      3 | 4 | 5;
+      /**
+       * Present only when entering the Mme. Le Prix (DISABLE_CREW) boss fight.
+       * The client stashes this in pendingBossEntryCharm; clearTransition('BOSS_ENTRY')
+       * reveals the ❤️ and fires the "OOH LA LA!" sting after the boss-intro cinematic.
+       */
+      bossEntryCharmSlot?: number;
     };
 
     const newUnlockedSlots = data.unlockedSlots ?? get().unlockedSlots;
@@ -2021,6 +2167,16 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastRollResult: null,
       lastDelta:      null,
       cascadeQueue:   [],
+      // Pub is always outside any boss fight — clear any lingering charm state.
+      // Backstop for charmedCrewSlot (applyPendingSettlement TRANSITION branch
+      // handles the normal case) and charmingSlot (in case animation was mid-flight).
+      charmedCrewSlot: null,
+      charmingSlot:    null,
+      // Stash the entry charm for Mme. Le Prix — clearTransition('BOSS_ENTRY') will
+      // reveal it (set charmedCrewSlot + fire sting) once the boss-intro cinematic ends.
+      ...(data.bossEntryCharmSlot !== undefined && {
+        pendingBossEntryCharm: data.bossEntryCharmSlot,
+      }),
     }));
 
   },
@@ -2231,8 +2387,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 // Selectors (memoised via shallow comparison in components)
 // ---------------------------------------------------------------------------
 
-/** True while any cascade event is pending animation. */
-export const selectIsCascading = (s: GameState) => s.cascadeQueue.length > 0;
+/**
+ * True while any cascade event is pending animation OR while the Mme. Le Prix
+ * charm bark animation is playing (charmingSlot !== null). Both states lock
+ * the Roll button and the crew rail DnD sensors.
+ */
+export const selectIsCascading = (s: GameState) =>
+  s.cascadeQueue.length > 0 || s.charmingSlot !== null;
 
 /** The slot index that should currently be animating (head of queue), or -1. */
 export const selectActiveSlot = (s: GameState): number =>

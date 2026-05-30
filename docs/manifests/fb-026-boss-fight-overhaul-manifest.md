@@ -1,4 +1,5 @@
 # Implementation Manifest — FB-026 — Boss Fight & Comp Overhaul
+[IMPLEMENTED - 05/28/2026]
 
 > **Scope:** Redesigns 6 of 9 bosses to counter the dominant Grinder/additive build strategy.
 > The Foreman (F1) and The Sovereign's comp are unchanged. The Sovereign's *mechanic* is
@@ -158,6 +159,7 @@ After all edits run:
 ---
 
 ## Step 2 — The Tariff: Mme. Le Prix (F3)
+[IMPLEMENTED - 05/28/2026]
 
 **Goal:** Replace the full crew disable (returning [] from modifyCascadeOrder) with a 35%
 additive tax. Crew still fire and animate normally; their cash bonuses are reduced by 35%
@@ -281,6 +283,7 @@ Run npm run typecheck after completing.
 ---
 
 ## Step 3 — High Altitude + Death Spiral: The Commander (F7)
+[IMPLEMENTED - 05/26/2026]
 
 **Goal:** Replace flat 0.5× hype decay on 7-out with tier-scaled decay: On Fire (≥2.5×)
 loses 0.8×; Heating Up (≥1.5×) loses 0.6×; below 1.5× loses 0.4×. Add Death Spiral
@@ -413,6 +416,7 @@ Run npm run typecheck after completing.
 ---
 
 ## Step 4 — Three-Strike System: The Executive (F4)
+[IMPLEMENTED - 05/28/2026]
 
 **Goal:** Replace the instant-loss-on-first-4 mechanic with a three-strike escalation.
 First 4 rolled: drain 20% of current bankroll, roll converts to NO_RESOLUTION (bets stay).
@@ -548,6 +552,7 @@ Run npm run typecheck after completing.
 ---
 
 ## Step 5 — DB Migration: pending_additive_cents
+[IMPLEMENTED - 05/28/2026]
 
 **Goal:** Add a single new column to the runs table to support additive escrow (used by
 both The Hierophant and The Emissary in Steps 6–7). Safe to add with DEFAULT 0 — all
@@ -581,6 +586,7 @@ Run npm run typecheck to confirm the schema type update compiled cleanly.
 ---
 
 ## Step 6 — Hierophant Escrow: The Hierophant (F5)
+[IMPLEMENTED - 05/28/2026]
 
 **Goal:** Replace the bankroll-seizure-on-7-out mechanic with an additive escrow system.
 Crew additives are held in pendingAdditiveCents rather than paid immediately. On the next
@@ -710,6 +716,7 @@ Run npm run typecheck after completing.
 ---
 
 ## Step 7 — Transmission Delay: The Emissary (F8)
+[IMPLEMENTED - 05/28/2026]
 
 **Goal:** Replace FIRST_CONTACT_PROTOCOL (come-out 7/11 blocked → blank roll) with
 Transmission Delay. Crew additives are held one roll, same as Hierophant escrow — but
@@ -846,6 +853,7 @@ Run npm run typecheck after completing.
 ---
 
 ## Step 8 — Non-compliance Fine + Odds Minimum: Sarge (F2)
+[IMPLEMENTED - 05/28/2026]
 
 **Goal:** Two changes to RISING_MIN_BETS. (1) Extend the rising minimum to odds bets —
 if the player's odds bet is below (bossMinOdds × passLine / minPassLine), they pay the
@@ -995,6 +1003,7 @@ Run npm run typecheck after completing.
 ---
 
 ## Step 9 — Targeted Demolition + Load-Bearing: The Architect (F9)
+[IMPLEMENTED - 05/28/2026]
 
 **Goal:** Change CONVERGENCE slot removal from "highest-numbered slot" to "the slot that
 fired most recently during this seven-out roll's cascade." If no crew fired this roll,

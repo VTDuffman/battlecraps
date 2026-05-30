@@ -159,7 +159,8 @@ export const BattleCrapsRulesSection: React.FC = () => {
       <SectionHeader>Hype Multiplier</SectionHeader>
       <p className="text-white/50 leading-relaxed py-2">
         Every consecutive point hit by the current shooter increases your Hype
-        multiplier. It boosts the profit portion of every winning payout.
+        multiplier. It boosts the profit portion of every winning payout. Hype resets
+        at the start of every new marker — it's built fresh on each floor, not carried forward.
       </p>
       <div className="space-y-0.5">
         <Row label="Starting Hype"       value="1.00×" />
@@ -167,6 +168,7 @@ export const BattleCrapsRulesSection: React.FC = () => {
         <Row label="Natural (7 or 11)"   value="+0.10×" valueColor="text-green-400" />
         <Row label="Craps Out"           value="−0.05×" valueColor="text-yellow-500" />
         <Row label="Seven Out"           value="Resets to 1.00×" valueColor="text-red-400" />
+        <Row label="New Marker"          value="Resets to 1.00×" valueColor="text-blue-400" />
         <Row label="Heating Up (tier 2)" value="≥ 1.50×" valueColor="text-amber-400" />
         <Row label="On Fire (tier 3)"    value="≥ 2.50×" valueColor="text-orange-400" />
       </div>

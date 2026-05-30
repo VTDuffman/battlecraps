@@ -47,7 +47,7 @@ export function getCrewHireCost(rarity: CrewRarity, clearedMarkerTargetCents: nu
 export type BossRuleType =
   | 'EXTORTION_FEE'          // Floor 1 — The Foreman: 20% tax on all winning payouts
   | 'RISING_MIN_BETS'        // Floor 2 — Sarge: minimum Pass Line bet rises each Point Hit
-  | 'DISABLE_CREW'           // Floor 3 — Mme. Le Prix: Crew cascade is fully suppressed
+  | 'DISABLE_CREW'           // Floor 3 — Mme. Le Prix: one crew member enchanted per come-out
   | 'FOURS_INSTANT_LOSS'     // Floor 4 — The Executive: rolling a total of 4 is instant loss
   | 'TRIBUTE'                // Floor 5 — The Hierophant: crew additives held in escrow; 25% seized on 7-out
   | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: min bet floods 15% of target every 5 rolls
@@ -92,7 +92,7 @@ export interface RisingMinBetsParams {
 export type BossRuleParams =
   | { rule: 'EXTORTION_FEE';      taxPct: number }
   | { rule: 'RISING_MIN_BETS';    startPct: number; incrementPct: number; capPct: number; nonComplianceFinePct: number }
-  | { rule: 'DISABLE_CREW'; additiveTarifPct: number }
+  | { rule: 'DISABLE_CREW' }
   | { rule: 'FOURS_INSTANT_LOSS'; triggerTotal: number }
   | { rule: 'TRIBUTE';            escrowSeizurePct: number }
   | { rule: 'TIDAL_SURGE'; stageMultipliers: readonly [number, number, number, number]; stageLabels: readonly [string, string, string, string] }
@@ -342,17 +342,17 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Vibe
       dreadTagline:        'HOW CHARMING.',
       entryLines: [
-        "Fresh money. How delightful.",
-        "Your crew may stay — but they work at my rates.",
-        "Every dollar they earn, I take thirty-five cents. Non-negotiable.",
+        "Bienvenue. You may sit.",
+        "Your crew is welcome here — most of them.",
+        "Every come-out, one of yours will be... occupied with other things.",
       ],
-      ruleBlurb:          "The Salon Privé has a service charge. Every additive your crew generates is reduced by 35% before it reaches your bankroll. Multipliers and hype are untouched — her cut is strictly monetary.",
+      ruleBlurb:          "Before each come-out roll, Mme. Le Prix enchants one of your crew. That crew member is mesmerized for the duration of the come-out — and through any point phase that follows. Upon resolution, her eye falls on someone new.",
       victoryQuote:       "…improbable. You may keep your winnings.",
       defeatAnnouncement: 'TABLE CLOSED',
       // Mechanic
       rule:           'DISABLE_CREW',
-      ruleHeaderText: 'CREW ADDITIVES TAXED 35% — MULTIPLIERS AND HYPE ARE EXEMPT',
-      ruleParams:     { rule: 'DISABLE_CREW', additiveTarifPct: 0.35 },
+      ruleHeaderText: 'ONE CREW ENCHANTED EACH COME-OUT — SITS OUT THE CASCADE',
+      ruleParams:     { rule: 'DISABLE_CREW' },
       // Comp
       compReward:      'HYPE_RESET_HALF',
       compPerkId:      COMP_PERK_IDS.SEA_LEGS,

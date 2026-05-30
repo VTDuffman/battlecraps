@@ -27,6 +27,26 @@ export function rollDice(): [number, number] {
   return [drawD6(), drawD6()];
 }
 
+/**
+ * Returns a uniformly random integer in [0, n-1] using rejection sampling.
+ * Avoids modulo bias by rejecting bytes >= floor(256/n)*n.
+ * Requires n > 0.
+ */
+export function randomBelow(n: number): number {
+  if (n <= 0) throw new Error('randomBelow: n must be > 0');
+  if (n === 1) return 0;
+  // Largest multiple of n that fits in [0, 255].
+  const threshold = 256 - (256 % n);
+  const buf = new Uint8Array(1);
+  while (true) {
+    webcrypto.getRandomValues(buf);
+    const byte = buf[0];
+    if (byte === undefined) continue; // unreachable; satisfies noUncheckedIndexedAccess
+    if (byte < threshold) return byte % n;
+    // byte in [threshold, 255]: discard and re-draw to avoid modulo bias
+  }
+}
+
 function drawD6(): number {
   const buf = new Uint8Array(1);
   while (true) {

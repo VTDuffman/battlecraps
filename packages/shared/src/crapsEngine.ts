@@ -705,6 +705,16 @@ export function buildRollReceipt(
   ctx: TurnContext,
   events?: CascadeEvent[],
   bossDeductions?: ReadonlyArray<{ amount: number; source: string; label: string }>,
+  hypeContext?: {
+    /** run.hype before this roll — the starting hype. */
+    prevHype:   number;
+    /** Hype after the base game tick, before the cascade. Equal to prevHype when
+     *  the roll result has no base tick (POINT_SET, NO_RESOLUTION). */
+    seededHype: number;
+    /** Note describing the end-of-roll hype state change — seven-out reset,
+     *  Commander decay, or marker-cleared reset. Omit when hype carries forward. */
+    resetNote?: string;
+  },
 ): RollReceipt {
   const { dice, diceTotal, isHardway, rollResult, activePoint, bets } = ctx;
   const lines: RollReceiptLine[] = [];
@@ -845,7 +855,7 @@ export function buildRollReceipt(
     });
   }
 
-  // ── Multiplier breakdown — per-crew then hype ─────────────────────────────
+  // ── Multiplier breakdown — per-crew ──────────────────────────────────────
   if (events && events.length > 0) {
     let prevMultCount = 0;
     for (const event of events) {
@@ -860,10 +870,59 @@ export function buildRollReceipt(
         prevMultCount = mults.length;
       }
     }
-    if (ctx.hype !== 1.0) {
-      lines.push({ kind: 'info', text: `Hype: ${ctx.hype.toFixed(2)}×` });
+  }
+
+  // ── Hype breakdown ────────────────────────────────────────────────────────
+  if (hypeContext) {
+    const { prevHype, seededHype, resetNote } = hypeContext;
+
+    // ── Base game tick ───────────────────────────────────────────────────────
+    const baseDelta = Math.round((seededHype - prevHype) * 10_000) / 10_000;
+    if (Math.abs(baseDelta) >= 0.001) {
+      const tickLabel =
+        rollResult === 'POINT_HIT'  ? 'Point Hit streak' :
+        rollResult === 'NATURAL'    ? 'Natural'           :
+        rollResult === 'CRAPS_OUT'  ? 'Craps Out'        : 'Base tick';
+      lines.push({
+        kind: 'info',
+        text: `Hype ${baseDelta > 0 ? '+' : ''}${baseDelta.toFixed(2)}× (${tickLabel})`,
+      });
     }
+
+    // ── Per-crew hype changes ────────────────────────────────────────────────
+    if (events && events.length > 0) {
+      let runningHype = seededHype;
+      for (const event of events) {
+        const eventHype = event.contextDelta.hype;
+        if (eventHype !== undefined) {
+          const delta = Math.round((eventHype - runningHype) * 10_000) / 10_000;
+          if (Math.abs(delta) >= 0.001) {
+            lines.push({
+              kind: 'info',
+              text: `${event.crewName}: ${delta > 0 ? '+' : ''}${delta.toFixed(2)}× hype`,
+            });
+          }
+          runningHype = eventHype;
+        }
+      }
+    }
+
+    // ── Net hype summary for this roll ───────────────────────────────────────
+    const netDelta = Math.round((ctx.hype - prevHype) * 10_000) / 10_000;
+    if (Math.abs(netDelta) >= 0.001) {
+      lines.push({
+        kind: 'info',
+        text: `Hype: ${prevHype.toFixed(2)}× → ${ctx.hype.toFixed(2)}×`,
+      });
+    }
+
+    // ── End-of-roll reset note ───────────────────────────────────────────────
+    if (resetNote) {
+      lines.push({ kind: 'info', text: resetNote });
+    }
+
   } else if (finalMultiplier !== 1.0) {
+    // Fallback for call sites that don't pass hypeContext (e.g. early-exit paths).
     lines.push({
       kind: 'info',
       text: `Hype Applied: ${finalMultiplier.toFixed(2)}× (profits boosted)`,

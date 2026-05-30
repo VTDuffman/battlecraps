@@ -24,6 +24,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
 import { isBossMarker, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, COMP_PERK_IDS, type CompRewardType, type CrewRarity } from '@battlecraps/shared';
+import { randomBelow } from '../lib/rng.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
 
@@ -183,7 +184,28 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         newCrewSlots[slotIndex!] = { crewId: crewId!, cooldownState: 0 };
       }
 
-      // ── 5b. Lucky Charm immediate hype floor ───────────────────────────────
+      // ── 5b. DISABLE_CREW boss: pick entry charm from final crew ──────────────
+      // When the player is entering the Mme. Le Prix (DISABLE_CREW) boss fight,
+      // we pick the initial enchanted crew slot NOW — after recruitment — so the
+      // charm always reflects the crew that will actually play the boss.
+      // The slot index is stored in bossPointHits (the dual-purpose field for
+      // this boss rule) and returned as bossEntryCharmSlot for the client to
+      // stash in pendingBossEntryCharm until the boss-intro cinematic clears.
+      const isEnteringDisableCrewBoss =
+        isBossMarker(run.currentMarkerIndex) &&
+        GAUNTLET[run.currentMarkerIndex]?.boss?.rule === 'DISABLE_CREW';
+      let bossEntryCharmSlot: number | null = null;
+      if (isEnteringDisableCrewBoss) {
+        const filledSlots = (newCrewSlots as (typeof newCrewSlots[0])[])
+          .slice(0, run.unlockedSlots as number)
+          .map((slot, i) => (slot !== null ? i : -1))
+          .filter((i): i is number => i >= 0);
+        if (filledSlots.length > 0) {
+          bossEntryCharmSlot = filledSlots[randomBelow(filledSlots.length)] ?? 0;
+        }
+      }
+
+      // ── 5c. Lucky Charm immediate hype floor ───────────────────────────────
       // If the resulting crew is Lucky Charm as the sole member, apply the 2.0×
       // hype floor right now so the recruit response (and UI) reflects it before
       // the first roll. Mirrors the cascade formula: +1.0 when below floor,
@@ -207,7 +229,10 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
           shooters:      5 + compShooterBonus,
           crewSlots:     newCrewSlots,
           hype:          newHype,
-          bossPointHits: 0,  // always reset on segment start
+          // DISABLE_CREW boss: preserve the entry charm in bossPointHits so the
+          // cascade excludes the correct slot from the very first come-out.
+          // All other bosses always reset to 0 on segment start.
+          bossPointHits: isEnteringDisableCrewBoss ? (bossEntryCharmSlot ?? 0) : 0,
           updatedAt:     new Date(),
         })
         .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
@@ -230,6 +255,10 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         crewSlots:     persistedRun.crewSlots,
         bossPointHits: persistedRun.bossPointHits,
         unlockedSlots: persistedRun.unlockedSlots as 3 | 4 | 5,
+        // Present only when entering the Mme. Le Prix (DISABLE_CREW) boss fight.
+        // The client stashes this in pendingBossEntryCharm and reveals the ❤️
+        // after the boss-intro cinematic clears — not during the pub screen.
+        ...(bossEntryCharmSlot !== null && { bossEntryCharmSlot }),
       });
     },
   );

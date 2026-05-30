@@ -164,6 +164,47 @@ function playGroan(ctx: AudioContext, dest: AudioNode): void {
   });
 }
 
+/** Ascending charm sting — C5 → E5 → G5 (≈400ms), vibrato on the final note */
+function playCharmSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0      = ctx.currentTime;
+  const noteDur = 0.13; // each note gate (seconds)
+  // C5 = 523.25 Hz, E5 = 659.25 Hz, G5 = 783.99 Hz
+  const notes = [523.25, 659.25, 783.99];
+
+  notes.forEach((freq, i) => {
+    const start  = t0 + i * noteDur;
+    const isFinal = i === notes.length - 1;
+    const gate   = noteDur * (isFinal ? 2.0 : 0.85); // final note rings longer
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+
+    // Vibrato on G5: 6 Hz LFO, ±8 Hz depth
+    if (isFinal) {
+      const lfo      = ctx.createOscillator();
+      lfo.type       = 'sine';
+      lfo.frequency.value = 6;
+      const lfoGain        = ctx.createGain();
+      lfoGain.gain.value   = 8;
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      lfo.start(start);
+      lfo.stop(start + gate + 0.01);
+    }
+
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0, start);
+    env.gain.linearRampToValueAtTime(0.18, start + 0.020);
+    env.gain.exponentialRampToValueAtTime(0.001, start + gate);
+
+    osc.connect(env);
+    env.connect(dest);
+    osc.start(start);
+    osc.stop(start + gate + 0.01);
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Dice audio — WAV buffer loader
 // ---------------------------------------------------------------------------
@@ -215,6 +256,7 @@ export function useCrowdAudio(): {
   const flashType          = useGameStore((s) => s.flashType);
   const _flashKey          = useGameStore((s) => s._flashKey);
   const _rollKey           = useGameStore((s) => s._rollKey);
+  const _charmKey          = useGameStore((s) => s._charmKey);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
 
   const isNullSpaceRef = useRef(false);
@@ -227,6 +269,7 @@ export function useCrowdAudio(): {
   // Capture entry-state keys to suppress ghost sounds on remount
   const initialRollKey  = useRef(_rollKey);
   const initialFlashKey = useRef(_flashKey);
+  const initialCharmKey = useRef(_charmKey);
 
   // ── Singleton AudioContext + master gain ────────────────────────────────
   // Returns null if muted (volume 0) — no context needed, no sounds play.
@@ -296,6 +339,14 @@ export function useCrowdAudio(): {
     if (!ctx) return;
     void playDiceRattle(ctx, getDest(ctx));
   }, [_rollKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Charm sting when Mme. Le Prix enchants a new slot ───────────────────
+  useEffect(() => {
+    if (_charmKey === 0 || _charmKey === initialCharmKey.current) return;
+    const ctx = getCtx();
+    if (!ctx) return;
+    playCharmSting(ctx, getDest(ctx));
+  }, [_charmKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { muted, toggleMute, sfxVolume, setSfxVolume };
 }

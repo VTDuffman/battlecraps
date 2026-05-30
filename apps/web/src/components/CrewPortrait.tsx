@@ -34,6 +34,9 @@ interface CrewPortraitProps {
   isTriggering:   boolean;
   barkSeq:        number | null;   // changes → re-mounts bark element
   barkCrewId:     number | null;   // when set (Mimic), use this ID for bark text lookup
+  /** When set, overrides the normal getBark() text in the bark bubble. Used by
+   *  the Mme. Le Prix charm animation to show '"OOH LA LA!"' instead of a crew line. */
+  barkOverride?:  string;
   onAnimationEnd: () => void;
   /** Called after the 1-second hold-to-fire completes. Undefined = no fire button shown. */
   onFire?:        () => void;
@@ -226,16 +229,18 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   isTriggering,
   barkSeq,
   barkCrewId,
+  barkOverride,
   onAnimationEnd,
   onFire,
   onSetFreeze,
   freezeState,
 }) => {
-  const portraitRef       = useRef<HTMLDivElement>(null);
-  const hype              = useGameStore((s) => s.hype);
-  const isRolling         = useGameStore((s) => s.isRolling);
+  const portraitRef        = useRef<HTMLDivElement>(null);
+  const hype               = useGameStore((s) => s.hype);
+  const isRolling          = useGameStore((s) => s.isRolling);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
-  const markerTargetCents = MARKER_TARGETS[currentMarkerIndex] ?? 5000;
+  const charmedCrewSlot    = useGameStore((s) => s.charmedCrewSlot);
+  const markerTargetCents  = MARKER_TARGETS[currentMarkerIndex] ?? 5000;
 
   // ── Emoji pulse tier — scales with hype, suppressed while triggering/cooldown
   const onCooldownNow = cooldownState > 0;
@@ -315,8 +320,10 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
     return () => el.removeEventListener('animationend', handler);
   }, [isTriggering, onAnimationEnd]);
 
-  const isEmpty  = crewId === null;
+  const isEmpty    = crewId === null;
   const onCooldown = cooldownState > 0;
+  /** True while this slot is enchanted by Mme. Le Prix (DISABLE_CREW boss). */
+  const isCharmed  = !isEmpty && charmedCrewSlot === slotIndex;
 
   // ── Drag-and-drop sortable ─────────────────────────────────────────────────
   const {
@@ -379,7 +386,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
               pointer-events-none z-20
             "
           >
-            {getBark(barkCrewId ?? crewId, crewName)}
+            {barkOverride ?? getBark(barkCrewId ?? crewId, crewName)}
           </motion.div>
         )}
       </AnimatePresence>
@@ -420,10 +427,12 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
           'relative rounded-sm overflow-hidden',
           'border-2 transition-colors duration-150',
 
-          // Empty slot styling
+          // Empty slot styling; charmed slot gets rose border
           isEmpty
             ? 'border-felt-light/40 bg-felt-dark/60'
-            : 'border-gold/60 bg-felt-dark',
+            : isCharmed
+              ? 'border-pink-400/90 bg-felt-dark shadow-[0_0_8px_2px_rgba(244,114,182,0.35)]'
+              : 'border-gold/60 bg-felt-dark',
 
           // Holding: red border + soft glow overrides gold
           holding
@@ -462,7 +471,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
                 animationDelay:  emojiPulseClass ? emojiDelay : undefined,
               }}
             >
-              {crewId !== null ? (CREW_EMOJI[crewId] ?? '?') : '?'}
+              {isCharmed ? '❤️' : (crewId !== null ? (CREW_EMOJI[crewId] ?? '?') : '?')}
             </span>
           </div>
         )}

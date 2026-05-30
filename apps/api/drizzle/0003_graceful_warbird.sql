@@ -1,0 +1,1 @@
+ALTER TABLE "runs" ADD COLUMN IF NOT EXISTS "pending_additive_cents" integer DEFAULT 0 NOT NULL;

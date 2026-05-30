@@ -133,12 +133,12 @@ This project uses strict TypeScript. Whenever you write or modify TypeScript cod
 ## Game Constants (quick reference)
 
 **Gauntlet targets (Boss = 2× M2 per floor):** F1: $50/$100/$200 | F2: $300/$500/$1k | F3: $1.5k/$2k/$4k | F4: $5k/$7.5k/$15k | F5: $30k/$50k/$100k | F6: $150k/$250k/$500k | F7: $1M/$1.5M/$3M | F8: $5M/$7.5M/$15M | F9: $20M/$30M/$60M
-**Bosses (F1–F9):** The Foreman (20% payout tax — unchanged) | Sarge (rising min-bets + non-compliance fine + odds minimum) | Mme. Le Prix (35% additive tariff — crew still fires) | The Executive (three-strike: −20% / −40% / GAME_OVER on 4) | The Hierophant (additive escrow — 25% seized on 7-out) | The Sovereign (four-stage tide: LOW/EBB/HIGH/FLOW per come-out) | The Commander (tier-scaled hype decay + death spiral below 0.75×) | The Emissary (transmission delay — additives held one roll, evaporate on 7-out) | The Architect (targeted demolition — last-triggered slot removed + load-bearing penalty; no comp)
+**Bosses (F1–F9):** The Foreman (20% payout tax — unchanged) | Sarge (rising min-bets + non-compliance fine + odds minimum) | Mme. Le Prix (enchants one random crew per come-out — excluded from cascade through point resolution) | The Executive (three-strike: −20% / −40% / GAME_OVER on 4) | The Hierophant (additive escrow — 25% seized on 7-out) | The Sovereign (four-stage tide: LOW/EBB/HIGH/FLOW per come-out) | The Commander (tier-scaled hype decay + death spiral below 0.75×) | The Emissary (transmission delay — additives held one roll, evaporate on 7-out) | The Architect (targeted demolition — last-triggered slot removed + load-bearing penalty; no comp)
 **Comps (F1–F8):** The Vig (crew cash +20%) | Member's Jacket (+1 shooter) | Sea Legs (7-out resets hype to 50% — safely below Commander's High Altitude zone) | Board Seat (+1 crew slot) | The Covenant (Hierophant escrow seizure halved to 12.5%; Sarge fines halved) | Poseidon's Favor (first come-out can't craps-out) | Cargo Hold (+1 crew slot, full capacity) | The Frequency (naturals award 3% of marker target)
 **Odds:** 4/10 → 3× max, 2:1 | 5/9 → 4× max, 3:2 | 6/8 → 5× max, 6:5
 **Hardways:** 4/10 = 7:1 | 6/8 = 9:1
 **Bet max:** 10% of marker target
-**Hype ticks:** POINT_HIT +0.15×–0.30× streak-based (BASE=0.15, +0.05 per consecutive hit, CAP=3) | NATURAL +0.10 | CRAPS_OUT −0.05 (floor 1.0); resets to 1.0× on seven-out. Tier thresholds: ≥1.5× = Heating Up, ≥2.5× = On Fire.
+**Hype ticks:** POINT_HIT +0.15×–0.30× streak-based (BASE=0.15, +0.05 per consecutive hit, CAP=3) | NATURAL +0.10 | CRAPS_OUT −0.05 (floor 1.0); resets to 1.0× on seven-out and at every marker boundary (hype is built within a marker, not carried forward). Tier thresholds: ≥1.5× = Heating Up, ≥2.5× = On Fire.
 
 ---
 

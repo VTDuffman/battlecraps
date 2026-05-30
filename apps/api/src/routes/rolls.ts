@@ -48,7 +48,7 @@ import {
 
 import { db } from '../db/client.js';
 import { runs, users, type RunRow, type UserRow, type StoredCrewSlots, type StoredCrewSlot } from '../db/schema.js';
-import { rollDice } from '../lib/rng.js';
+import { rollDice, randomBelow } from '../lib/rng.js';
 import { getIO } from '../lib/io.js';
 import { hydrateCrewMember } from '../lib/crewRegistry.js';
 import { evaluateUnlocks } from '../lib/unlocks.js';
@@ -204,6 +204,19 @@ interface WsTurnSettledPayload {
   executiveStrikeNumber?: 1 | 2 | 3;
   /** Non-zero when Sarge's non-compliance fine was applied this roll (cents). */
   nonComplianceFine?: number;
+  /**
+   * Index of the crew slot currently enchanted by Mme. Le Prix.
+   * Present only during a DISABLE_CREW boss fight.
+   * Client uses this to update the ❤️ indicator on the charmed portrait.
+   */
+  charmedCrewSlot?: number;
+  /**
+   * True when the enchanted crew's ability WOULD HAVE triggered on this roll but
+   * was suppressed by the charm. The client fires the "OOH LA LA!" bark animation
+   * only when this is true — not on every roll in the boss fight.
+   * Absent (not false) when the charm did not suppress an active ability.
+   */
+  charmFired?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -265,6 +278,7 @@ async function rollHandler(
   const activeBossRule   = bossMarkerConfig?.boss?.rule ?? null;
   const isHierophantEscrow  = activeBossRule === 'TRIBUTE'            && isBossMarker(run.currentMarkerIndex);
   const isTransmissionDelay = activeBossRule === 'TRANSMISSION_DELAY' && isBossMarker(run.currentMarkerIndex);
+  const isOrbitalDecay      = activeBossRule === 'ORBITAL_DECAY'      && isBossMarker(run.currentMarkerIndex);
   const hasTheCovenant = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_COVENANT);
   const bossState: BossRuleState = { bossPointHits: run.bossPointHits, markerIndex: run.currentMarkerIndex, covenantActive: hasTheCovenant };
 
@@ -660,20 +674,78 @@ async function rollHandler(
     ? (events[events.length - 1]?.slotIndex ?? null)
     : null;
 
-  // ── 8b. DISABLE_CREW (The Tariff) — tax crew additives before Vig applies ─
-  // Applied before The Vig so the +20% Vig bonus stacks on already-taxed additives
-  // (multiplicative order doesn't matter here, but semantically the boss takes first).
-  const tarifedContext = bossHooks?.modifyAdditives && finalContext.additives > 0
-    ? { ...finalContext, additives: bossHooks.modifyAdditives(finalContext.additives, bossParams!, bossState) }
-    : finalContext;
+  // ── DISABLE_CREW: reselect charmed slot after each come-out resolution ────
+  // Fires on NATURAL, CRAPS_OUT, POINT_HIT, SEVEN_OUT (any result that ends
+  // a come-out or point phase and starts a new come-out).
+  // POINT_SET and NO_RESOLUTION hold the current charm — same slot persists
+  // through the point phase.
+  const isDisableCrewBoss =
+    activeBossRule === 'DISABLE_CREW' && isBossMarker(run.currentMarkerIndex);
+  const comesOutResolved =
+    finalContext.rollResult === 'NATURAL'   ||
+    finalContext.rollResult === 'CRAPS_OUT' ||
+    finalContext.rollResult === 'POINT_HIT' ||
+    finalContext.rollResult === 'SEVEN_OUT';
 
-  // ── 8c. The Vig comp — scale crew additive bonuses by 1.20 ───────────────
+  // ── DISABLE_CREW: detect if charmed crew would have fired this roll ─────────
+  // The charmed slot was excluded from slotOrder in the cascade. Check whether
+  // that slot's crew member was ready to fire (non-null, within unlocked range,
+  // cooldownState === 0). If so, the enchantment actively negated an ability —
+  // triggers "OOH LA LA!" audio on the client.
+  const currentCharmSlot  = bossState.bossPointHits;
+  const charmedCrewMember = isDisableCrewBoss ? (crewSlots[currentCharmSlot] ?? null) : null;
+  // Test whether the charmed crew member would have fired on this roll.
+  // We call execute() with the pre-cascade context and a no-op rollDice that returns
+  // the actual rolled dice (avoids consuming real RNG from crypto source). We then
+  // compare the output context against the input to detect any game-affecting change.
+  // Only when there is an observable change do we set charmFired: true so the client
+  // plays the "OOH LA LA!" bark — not on every roll in the boss fight.
+  const charmedWouldHaveFired = (() => {
+    if (!isDisableCrewBoss || charmedCrewMember === null) return false;
+    if (currentCharmSlot >= (run.unlockedSlots as number)) return false;
+    if (charmedCrewMember.cooldownState !== 0) return false;
+    const noopRoll: () => [number, number] = () => dice;
+    try {
+      const { context: out } = charmedCrewMember.execute(preCascadeCtx, noopRoll);
+      const inp = preCascadeCtx;
+      return (
+        out.additives          !== inp.additives          ||
+        out.hype               !== inp.hype               ||
+        out.rollResult         !== inp.rollResult         ||
+        out.multipliers.length !== inp.multipliers.length ||
+        out.dice[0]            !== inp.dice[0]            ||
+        out.dice[1]            !== inp.dice[1]            ||
+        out.resolvedBets.passLine        !== inp.resolvedBets.passLine        ||
+        out.resolvedBets.hardways.hard4  !== inp.resolvedBets.hardways.hard4  ||
+        out.resolvedBets.hardways.hard6  !== inp.resolvedBets.hardways.hard6  ||
+        out.resolvedBets.hardways.hard8  !== inp.resolvedBets.hardways.hard8  ||
+        out.resolvedBets.hardways.hard10 !== inp.resolvedBets.hardways.hard10
+      );
+    } catch {
+      return false;
+    }
+  })();
+
+  let nextCharmSlot: number | null = null;
+  if (isDisableCrewBoss && comesOutResolved) {
+    // Collect filled slot indices within the unlocked range.
+    const filledSlots = crewSlots
+      .slice(0, run.unlockedSlots as number)
+      .map((slot, i) => (slot !== null ? i : -1))
+      .filter((i): i is number => i >= 0);
+    if (filledSlots.length > 0) {
+      const pick = randomBelow(filledSlots.length);
+      nextCharmSlot = filledSlots[pick] ?? 0;
+    }
+  }
+
+  // ── 8b. The Vig comp — scale crew additive bonuses by 1.20 ─────────────────
   // Applied post-cascade so individual crew execute() functions stay unaware.
   // Rounds to the nearest dollar (100 cents) per project convention.
   const hasTheVig = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_VIG);
-  const viggedContext = hasTheVig && tarifedContext.additives > 0
-    ? { ...tarifedContext, additives: Math.round(tarifedContext.additives * 1.2 / 100) * 100 }
-    : tarifedContext;
+  const viggedContext = hasTheVig && finalContext.additives > 0
+    ? { ...finalContext, additives: Math.round(finalContext.additives * 1.2 / 100) * 100 }
+    : finalContext;
 
   // ── 8f. CONVERGENCE (Load-Bearing) — cumulative 15% additive penalty per removed slot ─
   // bossPointHits = number of slots already removed this boss fight (0–5).
@@ -795,20 +867,65 @@ async function rollHandler(
   if (tributeAmount > 0 && bossMarkerConfig?.boss) {
     bossDeductions.push({ amount: tributeAmount, source: bossMarkerConfig.boss.name, label: 'tribute' });
   }
-  const receipt = buildRollReceipt(loadBearingContext, events, bossDeductions.length > 0 ? bossDeductions : undefined);
-
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
   const nextState = computeNextState(run, viggedContext, postStrikeBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot);
 
-  const hitMarker      = nextState.currentMarkerIndex > run.currentMarkerIndex;
-  const newMarkerIndex = nextState.currentMarkerIndex;
+  // ── DISABLE_CREW: override bossPointHits with the newly selected charm slot ─
+  const finalNextState = nextCharmSlot !== null
+    ? { ...nextState, bossPointHits: nextCharmSlot }
+    : nextState;
+
+  const hitMarker      = finalNextState.currentMarkerIndex > run.currentMarkerIndex;
+  const newMarkerIndex = finalNextState.currentMarkerIndex;
+
+  // The persisted bossPointHits for this roll.
+  // For DISABLE_CREW: on come-out resolution, this is the newly selected charm
+  // slot (nextCharmSlot overrode finalNextState.bossPointHits). On POINT_SET /
+  // NO_RESOLUTION, it preserves the current charm. The initial entry charm is
+  // chosen at recruit time (recruit.ts), not here, so the first boss come-out
+  // always fires against the crew the player actually recruited.
+  const persistedBossPointHits = finalNextState.bossPointHits;
+
+  // ── Hype reset note for roll log ──────────────────────────────────────────
+  let hypeResetNote: string | undefined;
+  if (hitMarker) {
+    hypeResetNote = 'Marker Cleared — Hype resets to 1.00×';
+  } else if (finalContext.rollResult === 'SEVEN_OUT') {
+    if (isOrbitalDecay && isBossMarker(run.currentMarkerIndex)) {
+      const decayParams = GAUNTLET[run.currentMarkerIndex]!.boss!.ruleParams as
+        Extract<BossRuleParams, { rule: 'ORBITAL_DECAY' }>;
+      const decayAmount =
+        run.hype >= 2.5 ? decayParams.onFireDecay
+        : run.hype >= 1.5 ? decayParams.heatingUpDecay
+        : decayParams.baseDecay;
+      const cascadeHypeDelta = Math.max(0, finalContext.hype - run.hype);
+      const nextHype = Math.max(
+        decayParams.hypeFloor,
+        Math.round((run.hype - decayAmount + cascadeHypeDelta) * 10_000) / 10_000,
+      );
+      const tier = run.hype >= 2.5 ? 'On Fire' : run.hype >= 1.5 ? 'Heating Up' : 'Below 1.5×';
+      hypeResetNote = `Commander: −${decayAmount.toFixed(2)}× (${tier}) → ${nextHype.toFixed(2)}×`;
+    } else if (hasSeaLegs) {
+      const nextHype = Math.round((1.0 + (finalContext.hype - 1.0) / 2) * 10_000) / 10_000;
+      hypeResetNote = `Seven Out — Sea Legs: Hype holds at ${nextHype.toFixed(2)}×`;
+    } else {
+      hypeResetNote = 'Seven Out — Hype resets to 1.00×';
+    }
+  }
+
+  const receipt = buildRollReceipt(
+    loadBearingContext,
+    events,
+    bossDeductions.length > 0 ? bossDeductions : undefined,
+    { prevHype: run.hype, seededHype, resetNote: hypeResetNote },
+  );
 
   // ── CONVERGENCE: Targeted Demolition — persist the removed slot as null ───
   // nextState.removedSlotIndex is non-null only on a CONVERGENCE SEVEN_OUT.
   // The cascade ran with the pre-removal crew; the DB write permanently zeroes
   // the targeted slot so it is absent from all future cascade runs.
-  const removedSlotIndex = nextState.removedSlotIndex;
+  const removedSlotIndex = finalNextState.removedSlotIndex;
   const finalUpdatedCrewSlots: (CrewMember | null)[] = removedSlotIndex !== null
     ? updatedCrewSlots.map((slot, i) => i === removedSlotIndex ? null : slot)
     : [...updatedCrewSlots];
@@ -835,24 +952,24 @@ async function rollHandler(
   const updatedRun = await db
     .update(runs)
     .set({
-      status:             nextState.status,
-      phase:              nextState.phase,
-      bankrollCents:      nextState.bankrollCents,
-      shooters:           nextState.shooters,
-      currentPoint:       nextState.currentPoint,
-      hype:                 nextState.hype,
-      consecutivePointHits: nextState.consecutivePointHits,
-      bossPointHits:        nextState.bossPointHits,
-      bets:                 nextState.bets,
+      status:             finalNextState.status,
+      phase:              finalNextState.phase,
+      bankrollCents:      finalNextState.bankrollCents,
+      shooters:           finalNextState.shooters,
+      currentPoint:       finalNextState.currentPoint,
+      hype:                 finalNextState.hype,
+      consecutivePointHits: finalNextState.consecutivePointHits,
+      bossPointHits:        persistedBossPointHits,
+      bets:                 finalNextState.bets,
       crewSlots:          serialiseCrewSlots(
                             finalUpdatedCrewSlots,
-                            nextState.shooters < run.shooters, // new shooter → reset per_shooter cooldowns
+                            finalNextState.shooters < run.shooters, // new shooter → reset per_shooter cooldowns
                           ),
       mechanicFreeze:        nextMechanicFreeze,
-      currentMarkerIndex:    nextState.currentMarkerIndex,
-      previousRollTotal:     nextState.previousRollTotal,
-      shooterRollCount:      nextState.shooterRollCount,
-      pointPhaseBlankStreak: nextState.pointPhaseBlankStreak,
+      currentMarkerIndex:    finalNextState.currentMarkerIndex,
+      previousRollTotal:     finalNextState.previousRollTotal,
+      shooterRollCount:      finalNextState.shooterRollCount,
+      pointPhaseBlankStreak: finalNextState.pointPhaseBlankStreak,
       highestRollAmplifiedCents: newHighestRollAmplifiedCents,
       pendingAdditiveCents: isTransmissionDelay ? tdEscrowHeld : (isHierophantEscrow ? escrowHeld : 0),
       updatedAt:             new Date(),
@@ -961,9 +1078,9 @@ async function rollHandler(
     newPoint:        persistedRun.currentPoint ?? null,
     runStatus:       persistedRun.status,
     newMarkerIndex:  persistedRun.currentMarkerIndex,
-    newBets:                 nextState.bets,
-    newConsecutivePointHits: nextState.consecutivePointHits,
-    newBossPointHits:        nextState.bossPointHits,
+    newBets:                 finalNextState.bets,
+    newConsecutivePointHits: finalNextState.consecutivePointHits,
+    newBossPointHits:        persistedBossPointHits,
     payoutBreakdown,
     ...(finalContext.flags.sevenOutBlocked && { originalDice: dice }),
     ...(finalContext.flags.nudgedFrom !== undefined && { nudgedFrom: finalContext.flags.nudgedFrom }),
@@ -973,6 +1090,8 @@ async function rollHandler(
       : user.highestMarkerReached,
     ...(isExecutiveStrike && { executiveStrikeNumber: (run.bossPointHits + 1) as 1 | 2 | 3 }),
     ...(nonComplianceFine > 0 && { nonComplianceFine }),
+    ...(isDisableCrewBoss && { charmedCrewSlot: persistedBossPointHits }),
+    ...(charmedWouldHaveFired && { charmFired: true }),
   };
   io.to(runRoom).emit('turn:settled', settledPayload);
 
@@ -994,7 +1113,7 @@ async function rollHandler(
       // The fully resolved bet state after all wipes and clears.
       // The store uses this to immediately sync the table — the server
       // is the single source of truth for what chips are on the felt.
-      resolvedBets:    nextState.bets,
+      resolvedBets:    finalNextState.bets,
       // Included here so the client can apply the full settlement from the
       // HTTP response without depending on the WebSocket turn:settled event.
       payoutBreakdown,
@@ -1002,6 +1121,10 @@ async function rollHandler(
       mechanicFreeze:  nextMechanicFreeze,
       ...(finalContext.flags.sevenOutBlocked && { originalDice: dice }),
       ...(finalContext.flags.nudgedFrom !== undefined && { nudgedFrom: finalContext.flags.nudgedFrom }),
+      // Charmed crew slot for Mme. Le Prix (DISABLE_CREW boss) — mirrors WsTurnSettledPayload
+      // so the HTTP path can update the store without depending on the WebSocket event.
+      ...(isDisableCrewBoss && { charmedCrewSlot: persistedBossPointHits }),
+      ...(charmedWouldHaveFired && { charmFired: true }),
     },
   });
 }
@@ -1112,7 +1235,7 @@ function computeNextState(
         bankrollCents:        newBankroll,
         shooters:             run.shooters,
         currentPoint:         null,
-        hype:                 finalCtx.hype,  // Hype accumulates on a NATURAL
+        hype:                 hitMarker ? 1.0 : finalCtx.hype,  // Reset to 1.0× on marker clear; otherwise accumulates
         bets:                 clearedBets,
         currentMarkerIndex:   hitMarker ? currentMarkerIndex + 1 : currentMarkerIndex,
         consecutivePointHits: run.consecutivePointHits, // streak unaffected by naturals
@@ -1193,7 +1316,7 @@ function computeNextState(
         bankrollCents:        newBankroll,
         shooters:             run.shooters,
         currentPoint:         null,
-        hype:                 finalCtx.hype, // Hype persists (already ticked above)
+        hype:                 hitMarker ? 1.0 : finalCtx.hype, // Reset to 1.0× on marker clear; otherwise persists
         bets:                 clearedBets,
         currentMarkerIndex:   hitMarker ? currentMarkerIndex + 1 : currentMarkerIndex,
         // Streak resets on marker clear (new chapter); otherwise increments.
@@ -1284,6 +1407,12 @@ function computeNextState(
 
       const markerCleared = nextMarkerIndex !== currentMarkerIndex;
 
+      // Hype resets to 1.0× at every marker boundary — within-marker resource, not carried forward.
+      // Sea Legs and Commander decay operate on seven-out, not on marker advance; both are unaffected.
+      if (markerCleared) {
+        nextHype = 1.0;
+      }
+
       // ── CONVERGENCE: Targeted Demolition — determine which slot to remove ──
       // The most recently triggered slot (last CascadeEvent.slotIndex) takes the
       // hit. If no crew fired this roll, fall back to the highest-numbered active
@@ -1350,7 +1479,7 @@ function computeNextState(
           bankrollCents:        newBankroll + refund,
           shooters:             run.shooters,
           currentPoint:         null,
-          hype:                 finalCtx.hype,
+          hype:                 1.0, // Reset to 1.0× at marker boundary
           bets:                 zeroBets,
           currentMarkerIndex:   currentMarkerIndex + 1,
           consecutivePointHits:  0,

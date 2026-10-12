@@ -15,7 +15,7 @@ There are nine bosses across the 9-floor gauntlet:
 | 2  | 1 — The Loading Dock | $200 | The Foreman | `EXTORTION_FEE` |
 | 5  | 2 — VFW Hall | $1,000 | Sarge | `RISING_MIN_BETS` |
 | 8  | 3 — Riverboat | $4,000 | Mme. Le Prix | `DISABLE_CREW` |
-| 11 | 4 — The Strip | $15,000 | The Executive | `FOURS_INSTANT_LOSS` |
+| 11 | 4 — The Strip | $15,000 | The Executive | `CROSS_CALIBRATION` |
 | 14 | 5 — The Lodge | $100,000 | The Hierophant | `TRIBUTE` |
 | 17 | 6 — Atlantis | $500,000 | The Sovereign | `TIDAL_SURGE` |
 | 20 | 7 — The Station | $3,000,000 | The Commander | `ORBITAL_DECAY` |
@@ -184,17 +184,26 @@ The entire crew cascade is suppressed for the duration of the fight. Crew portra
 
 ### The Executive — Floor 4
 
-**Rule:** `FOURS_INSTANT_LOSS` | **Target:** $15,000 | **Index:** 11
+**Rule:** `CROSS_CALIBRATION` | **Target:** $15,000 | **Index:** 11
 
-Rolling a dice total of 4 — combinations [1,3], [3,1], [2,2] — ends the entire run immediately. This is 3/36 ≈ 8.3% per roll.
+A 5-tier Performance Review rating (0–4) is tracked via `bossPointHits` for the duration of the fight. The rating initializes to 2 (Strong) when the player enters the boss fight.
 
-**Implementation note:** `modifyOutcome` sets `ctx.flags.instantLoss = true`. The server checks this flag after `modifyOutcome` returns and before the cascade fires. An early-exit path persists the `GAME_OVER` status and emits the final WebSocket event without settling bets.
+**Rating movement:**
+- Natural or Point Hit → +1 (capped at 4, "Exceptional")
+- Craps Out or Seven-Out → −1 (floored at 0, "Action Required")
+- Point Set or No Resolution → neutral, no change
+
+**PIP termination:** Rolling a Craps Out or Seven-Out while the rating is already at 0 (Action Required) triggers an immediate GAME_OVER. The `turn:settled` WebSocket payload includes `pipTermination: true`; the client shows the Pink Slip modal.
+
+**Exceptional bonus:** While the rating is at 4, the payout is enhanced by 15% of gross profit (rounded to nearest dollar). Applied after `settleTurn` and the Foreman's tax layer.
+
+**Implementation note:** No hook file. All logic is inline in `rolls.ts`. `bossPointHits` stores the rating integer. `bossRating: { index, changed, direction }` is emitted on every roll in the fight.
 
 ```typescript
-ruleParams: { rule: 'FOURS_INSTANT_LOSS', triggerTotal: 4 }
+ruleParams: { rule: 'CROSS_CALIBRATION' }
 ```
 
-**Comp:** Golden Touch — First come-out roll each segment is guaranteed a Natural (7 or 11).
+**Comp:** Board Seat — A fourth crew slot unlocks.
 
 ---
 
@@ -292,7 +301,7 @@ export type BossRuleParams =
   | { rule: 'EXTORTION_FEE';          taxPct: number }
   | { rule: 'RISING_MIN_BETS';        startPct: number; incrementPct: number; capPct: number }
   | { rule: 'DISABLE_CREW' }
-  | { rule: 'FOURS_INSTANT_LOSS';     triggerTotal: number }
+  | { rule: 'CROSS_CALIBRATION' }
   | { rule: 'TRIBUTE';                tributePct: number }
   | { rule: 'TIDAL_SURGE';            cycleLength: number; surgeDuration: number; surgePct: number }
   | { rule: 'ORBITAL_DECAY';          decayAmount: number; hypeFloor: number }
@@ -329,8 +338,10 @@ TypeScript narrows the type inside each hook file via the `rule` discriminant. T
 | Sarge fight, 1 point hit | Min bet $60; holds if next roll is Seven Out |
 | Sarge fight, capped | Min bet $200; no further increase |
 | Mme. Le Prix fight | No crew events in roll log; no barks; cooldowns unchanged |
-| Executive fight, diceTotal = 4 | `ctx.flags.instantLoss = true`; run transitions to GAME_OVER |
-| Executive fight, diceTotal ≠ 4 | Normal resolution |
+| Executive fight, Natural or Point Hit | `bossPointHits` increments (capped at 4); `bossRating.direction = 'up'` in `turn:settled` |
+| Executive fight, Craps Out or Seven-Out above rating 0 | `bossPointHits` decrements; `bossRating.direction = 'down'`; no GAME_OVER |
+| Executive fight, rating already at 0, bad roll | PIP fires: run transitions to GAME_OVER; `pipTermination: true` in `turn:settled` |
+| Executive fight, rating at 4 (Exceptional), winning roll | Payout includes +15% gross profit bonus |
 | Hierophant fight, seven-out | 15% of bankroll seized (7.5% with THE_COVENANT) |
 | Sovereign fight, roll 5 | Surge window opens; min-bet spikes to 15% of target |
 | Sovereign fight, roll 7 | Surge ends; min-bet returns to 0 |

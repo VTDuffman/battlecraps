@@ -54,7 +54,6 @@ export function makeCtx(overrides: Partial<TurnContext> = {}): TurnContext {
       sevenOutBlocked:   false,
       passLineProtected: false,
       hardwayProtected:  false,
-      instantLoss:       false,
     },
     resolvedBets:            makeBets(),
     mechanicLockedValue:     null,

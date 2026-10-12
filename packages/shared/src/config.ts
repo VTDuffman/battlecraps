@@ -48,7 +48,7 @@ export type BossRuleType =
   | 'EXTORTION_FEE'          // Floor 1 — The Foreman: 20% tax on all winning payouts
   | 'RISING_MIN_BETS'        // Floor 2 — Sarge: minimum Pass Line bet rises each Point Hit
   | 'DISABLE_CREW'           // Floor 3 — Mme. Le Prix: one crew member enchanted per come-out
-  | 'FOURS_INSTANT_LOSS'     // Floor 4 — The Executive: rolling a total of 4 is instant loss
+  | 'CROSS_CALIBRATION'      // Floor 4 — The Executive: performance review rating tracks roll outcomes
   | 'TRIBUTE'                // Floor 5 — The Hierophant: crew additives held in escrow; 25% seized on 7-out
   | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: min bet floods 15% of target every 5 rolls
   | 'ORBITAL_DECAY'          // Floor 7 — The Commander: seven-out drains hype by 0.5×, can go below 1.0×
@@ -93,7 +93,7 @@ export type BossRuleParams =
   | { rule: 'EXTORTION_FEE';      taxPct: number }
   | { rule: 'RISING_MIN_BETS';    startPct: number; incrementPct: number; capPct: number; nonComplianceFinePct: number }
   | { rule: 'DISABLE_CREW' }
-  | { rule: 'FOURS_INSTANT_LOSS'; triggerTotal: number }
+  | { rule: 'CROSS_CALIBRATION' }
   | { rule: 'TRIBUTE';            escrowSeizurePct: number }
   | { rule: 'TIDAL_SURGE'; stageMultipliers: readonly [number, number, number, number]; stageLabels: readonly [string, string, string, string] }
   | {
@@ -388,19 +388,19 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       name:  'The Executive',
       title: 'CFO, High Limit Division',
       // Vibe
-      dreadTagline:        'YOUR MEETING IS SCHEDULED.',
+      dreadTagline:        'YOUR REVIEW IS PENDING.',
       entryLines: [
         "Sit down. We've been expecting you.",
-        "One rule. Roll a four — and it costs you. The first time.",
-        "The house has reviewed your file. Three strikes and you're finished.",
+        "We've been tracking your performance metrics.",
+        "Every roll moves the needle — one way or another.",
       ],
-      ruleBlurb:          "Roll a 4 and it costs you. First offence: 20% of your bankroll. Second: 40%. Third: the run ends. No exceptions. The Executive always collects.",
+      ruleBlurb:          "The Executive tracks your Performance Review rating throughout the fight. Every roll outcome shifts it up or down. Reach Action Required and one more bad roll ends the run.",
       victoryQuote:       "…restructuring was inevitable. Well played.",
       defeatAnnouncement: 'EXECUTIVE OVERRIDE',
       // Mechanic
-      rule:           'FOURS_INSTANT_LOSS',
-      ruleHeaderText: 'ROLLING A 4: FIRST STRIKE −20% | SECOND −40% | THIRD = GAME OVER',
-      ruleParams:     { rule: 'FOURS_INSTANT_LOSS', triggerTotal: 4 },
+      rule:           'CROSS_CALIBRATION',
+      ruleHeaderText: 'PERFORMANCE REVIEW: STRONG — EVERY ROLL SHIFTS YOUR RATING',
+      ruleParams:     { rule: 'CROSS_CALIBRATION' },
       // Comp
       compReward:      'BOARD_SEAT',
       compPerkId:      0,
@@ -408,7 +408,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compDescription: 'A fourth crew slot unlocks. Expand your operation.',
       compFanLabel:    'BOARD',
       // Legacy
-      flavorText: "Fours are for losers. Don't roll one.",
+      flavorText: "We've been tracking your performance metrics. Every roll moves the needle.",
     },
   },
 

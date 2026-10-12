@@ -14,7 +14,6 @@ import type { BossRuleHooks } from './types.js';
 import { extortionFeeHooks }   from './extortionFee.js';
 import { risingMinBetsHooks }  from './risingMinBets.js';
 import { disableCrewHooks }    from './disableCrew.js';
-import { foursInstantLossHooks } from './foursInstantLoss.js';
 import { tributeHooks }        from './tribute.js';
 import { tidalSurgeHooks }     from './tidalSurge.js';
 import { orbitalDecayHooks }          from './orbitalDecay.js';
@@ -25,7 +24,7 @@ export const BOSS_RULE_HOOKS: Record<BossRuleType, BossRuleHooks> = {
   EXTORTION_FEE:           extortionFeeHooks,
   RISING_MIN_BETS:         risingMinBetsHooks,
   DISABLE_CREW:            disableCrewHooks,
-  FOURS_INSTANT_LOSS:      foursInstantLossHooks,
+  CROSS_CALIBRATION:       firstContactProtocolHooks,  // placeholder — logic is inline in rolls.ts
   TRIBUTE:                 tributeHooks,
   TIDAL_SURGE:             tidalSurgeHooks,
   ORBITAL_DECAY:           orbitalDecayHooks,

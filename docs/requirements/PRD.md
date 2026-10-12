@@ -183,9 +183,9 @@ $6k / $9k / $12.5k
 
 The Executive
 
-4s = Instant Loss
+Cross Calibration: 5-tier Performance Review rating (Exceptional/Very Strong/Strong/Below Strong/Action Required). Natural/Point Hit +1, Craps Out/Seven-Out −1. PIP termination at Action Required + bad roll. +15% payout bonus at Exceptional.
 
-Golden Touch: 1st Roll is 7/11
+Board Seat: +1 crew slot
 
 5.1.1 Rising Min-Bets Mechanics (Sarge — Floor 1 Boss)
 

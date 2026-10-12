@@ -215,7 +215,7 @@ describe('getBossMinBet', () => {
     expect(getBossMinBet(8, 0)).toBeNull();
   });
 
-  it('returns null for FOURS_INSTANT_LOSS boss', () => {
+  it('returns null for CROSS_CALIBRATION boss (no rising min bets)', () => {
     // Marker 11 = The Executive
     expect(getBossMinBet(11, 0)).toBeNull();
   });

@@ -525,7 +525,6 @@ export function resolveRoll(
       sevenOutBlocked:   false,
       passLineProtected: false,
       hardwayProtected:  false,
-      instantLoss:       false,
     },
 
     // ── Resolved bets — zeroed for any bet that won or lost this roll ────

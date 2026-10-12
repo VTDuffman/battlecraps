@@ -629,7 +629,7 @@ Five of the new crew required three new cross-roll game state fields: `previousR
 
 **Type:** Feature / Polish
 **Area:** UI / Animation / Store / API (`apps/web/src/`, `apps/api/src/`)
-**Status:** Pending implementation
+**Status:** Implemented (2026-05-08 — shipped in PR #17, commit f0d857a, labeled "FB-012")
 
 ### Problem
 
@@ -1441,7 +1441,7 @@ Both tickets touch all 30 crew files (FB-023 removes `baseCost`; this removes fl
 
 **Type:** Feature / Balance
 **Area:** Crew System / `packages/shared`, `apps/api`, `apps/web`
-**Status:** Ready for implementation
+**Status:** Implemented (2026-05-27, PR #24)
 **Technical design:** `docs/design/fb-025-crew-slot-progression-tdd.md`
 
 ### Problem
@@ -1492,7 +1492,7 @@ The crew rail physically grows from 3 → 4 → 5 slots as slots are earned. Exi
 
 **Type:** Boss Redesign / Character
 **Area:** Boss mechanics / `apps/api/src/routes/rolls.ts`, `apps/web/src/components/BossRoomHeader.tsx`, `apps/web/src/store/useGameStore.ts`, `packages/shared/src/config.ts`
-**Status:** Planned
+**Status:** Implemented (2026-10-12 commit; branch `feature/fb-027-executive-cross-calibration`, pending merge to `main`)
 
 ### Overview
 
@@ -1587,7 +1587,7 @@ The rating label uses the exact tier names: Exceptional / Very Strong / Strong /
 
 **Type:** Balance / Boss Redesign
 **Area:** Boss mechanics / `packages/shared/src/config.ts`, `packages/shared/src/bossRules/`, `apps/api/src/routes/rolls.ts`, `apps/api/drizzle/`
-**Status:** In Progress
+**Status:** Implemented (2026-05-28 — all 11 manifest steps; Executive three-strike later superseded by FB-027)
 **Manifest:** `docs/manifests/fb-026-boss-fight-overhaul-manifest.md`
 
 ### Problem

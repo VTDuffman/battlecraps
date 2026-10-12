@@ -174,7 +174,6 @@ docs/manifests/       # manifest-instruction-prompt.md, implemented/ (FB-009, FB
 - KI-014: Typography overhaul missing from Title and Transition screens (Medium)
 
 **Not yet implemented:**
-- Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md` — 64×64 SNES-style PNGs)
-- Cinematic crew unlock experience (backlog: FB-013)
+- Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md` — 64×64 SNES-style PNGs; only Lefty done so far)
 - Mobile-First UI/UX & Readability Overhaul (backlog: FB-016 — HD-Retro typography, Roll Log bottom sheet, high-contrast panels)
 - Tutorial Replay & State Reset (backlog: FB-017 — replay button in HowToPlayScreen, backend tutorial-reset endpoint)

@@ -19,6 +19,7 @@ import {
   resetTestDb,
 } from '../helpers/testSetup.js';
 import type { Bets } from '@battlecraps/shared';
+import { getIO } from '../../lib/io.js';
 
 const PASS_ONLY = (amt: number): Bets => ({
   passLine: amt,
@@ -143,57 +144,107 @@ describe('DISABLE_CREW — Mme. Le Prix (marker 8)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// FOURS_INSTANT_LOSS (The Executive — marker index 11, $12,500)
+// CROSS_CALIBRATION — The Executive (marker index 11, $15,000)
+//
+// bossPointHits stores the Performance Review rating (0–4).
+// Rating initialises to 2 (Strong) on fight entry. Movement:
+//   Natural / Point Hit   → +1 (capped at 4, Exceptional)
+//   Craps Out / Seven-Out → −1 (floored at 0, Action Required)
+//   Point Set / No Resolution → neutral
+// PIP: Craps Out or Seven-Out while already at 0 → GAME_OVER, pipTermination: true
+// Exceptional: +15% gross profit bonus while rating = 4
+//
+// Marker 11: target = 1_500_000¢ ($15,000), minBet = 25_000¢
 // ---------------------------------------------------------------------------
 
-describe('FOURS_INSTANT_LOSS — The Executive (marker 11)', () => {
-  it('rolling a 4 on come-out triggers GAME_OVER regardless of bankroll', async () => {
+describe('CROSS_CALIBRATION — The Executive (marker 11)', () => {
+  it('rating starts at index 2 (Strong) — natural on first roll bumps it to 3', async () => {
     const run = await createRun(userId, {
       currentMarkerIndex: 11,
-      bankrollCents:      500_000, // healthy bankroll — still instant loss
-      bets:               { passLine: 0, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } },
+      bankrollCents:      300_000,
+      bossPointHits:      2,
     });
 
-    // Roll 1+3 = 4 → instant loss (passLine 25_000 satisfies minBet=21_000 at marker 11)
+    // Roll 3+4=7 → NATURAL
     const { status, body } = await rollWithDice(
-      app, run.id,
-      { passLine: 25_000, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } },
-      1, 3,
+      app, run.id, PASS_ONLY(25_000), 3, 4,
     );
 
     expect(status).toBe(200);
     const r = body['run'] as Record<string, unknown>;
-    expect(r['status']).toBe('GAME_OVER');
-
-    const roll = body['roll'] as Record<string, unknown>;
-    expect(roll['rollResult']).toBe('POINT_SET'); // raw outcome before the instant-loss override
-    expect(roll['diceTotal']).toBe(4);
+    expect(r['bossPointHits']).toBe(3);
   });
 
-  it('rolling a 2+2 (hard 4) also triggers GAME_OVER', async () => {
+  it('point hit (+1) also increases the rating', async () => {
     const run = await createRun(userId, {
       currentMarkerIndex: 11,
-      bankrollCents:      500_000,
+      bankrollCents:      300_000,
+      bossPointHits:      2,
+      status:             'POINT_ACTIVE',
+      phase:              'POINT_ACTIVE',
+      currentPoint:       6,
+      bets:               { passLine: 25_000, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } },
     });
 
+    // Roll 3+3=6 → POINT_HIT (point was 6)
     const { status, body } = await rollWithDice(
       app, run.id,
       { passLine: 25_000, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } },
-      2, 2,
+      3, 3,
     );
 
     expect(status).toBe(200);
     const r = body['run'] as Record<string, unknown>;
-    expect(r['status']).toBe('GAME_OVER');
+    expect(r['bossPointHits']).toBe(3);
   });
 
-  it('does NOT trigger on non-4 totals', async () => {
+  it('rating is capped at 4 (Exceptional) — natural does not push it above 4', async () => {
     const run = await createRun(userId, {
       currentMarkerIndex: 11,
-      bankrollCents:      500_000,
+      bankrollCents:      300_000,
+      bossPointHits:      4,
     });
 
-    // Roll 3+4=7 — natural, should not trigger instant loss
+    // Roll 3+4=7 → NATURAL
+    const { status, body } = await rollWithDice(
+      app, run.id, PASS_ONLY(25_000), 3, 4,
+    );
+
+    expect(status).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['bossPointHits']).toBe(4);
+  });
+
+  it('craps out (−1) decreases the rating', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: 11,
+      bankrollCents:      300_000,
+      bossPointHits:      2,
+    });
+
+    // Roll 1+2=3 → CRAPS_OUT
+    const { status, body } = await rollWithDice(
+      app, run.id, PASS_ONLY(25_000), 1, 2,
+    );
+
+    expect(status).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['bossPointHits']).toBe(1);
+    expect(r['status']).not.toBe('GAME_OVER');
+  });
+
+  it('seven-out (−1) decreases the rating and does not trigger PIP when above 0', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: 11,
+      bankrollCents:      300_000,
+      bossPointHits:      1,
+      status:             'POINT_ACTIVE',
+      phase:              'POINT_ACTIVE',
+      currentPoint:       8,
+      bets:               { passLine: 25_000, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } },
+    });
+
+    // Roll 3+4=7 → SEVEN_OUT while point is 8
     const { status, body } = await rollWithDice(
       app, run.id,
       { passLine: 25_000, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } },
@@ -202,6 +253,119 @@ describe('FOURS_INSTANT_LOSS — The Executive (marker 11)', () => {
 
     expect(status).toBe(200);
     const r = body['run'] as Record<string, unknown>;
+    expect(r['bossPointHits']).toBe(0);
     expect(r['status']).not.toBe('GAME_OVER');
+  });
+
+  it('at index 0 (Action Required), a seven-out triggers GAME_OVER with pipTermination', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: 11,
+      bankrollCents:      300_000,
+      bossPointHits:      0,
+      status:             'POINT_ACTIVE',
+      phase:              'POINT_ACTIVE',
+      currentPoint:       8,
+      bets:               { passLine: 25_000, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } },
+    });
+
+    const emitSpy = vi.fn();
+    vi.mocked(getIO).mockReturnValueOnce({
+      to: () => ({ emit: emitSpy }),
+    } as unknown as ReturnType<typeof getIO>);
+
+    // Roll 3+4=7 → SEVEN_OUT while at Action Required
+    const { status, body } = await rollWithDice(
+      app, run.id,
+      { passLine: 25_000, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } },
+      3, 4,
+    );
+
+    expect(status).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['status']).toBe('GAME_OVER');
+
+    const settledArgs = emitSpy.mock.calls.find(
+      (args: unknown[]) => args[0] === 'turn:settled',
+    );
+    expect(settledArgs).toBeDefined();
+    const payload = settledArgs![1] as Record<string, unknown>;
+    expect(payload['pipTermination']).toBe(true);
+  });
+
+  it('at index 0 (Action Required), a craps out triggers GAME_OVER with pipTermination', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: 11,
+      bankrollCents:      300_000,
+      bossPointHits:      0,
+    });
+
+    const emitSpy = vi.fn();
+    vi.mocked(getIO).mockReturnValueOnce({
+      to: () => ({ emit: emitSpy }),
+    } as unknown as ReturnType<typeof getIO>);
+
+    // Roll 1+2=3 → CRAPS_OUT while at Action Required
+    const { status, body } = await rollWithDice(
+      app, run.id, PASS_ONLY(25_000), 1, 2,
+    );
+
+    expect(status).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['status']).toBe('GAME_OVER');
+
+    const settledArgs = emitSpy.mock.calls.find(
+      (args: unknown[]) => args[0] === 'turn:settled',
+    );
+    expect(settledArgs).toBeDefined();
+    const payload = settledArgs![1] as Record<string, unknown>;
+    expect(payload['pipTermination']).toBe(true);
+  });
+
+  it('at index 4 (Exceptional), the payout includes a 1.15× gross profit bonus', async () => {
+    // passLine=25_000¢, NATURAL: raw profit=25_000¢
+    // bonus = Math.round(25_000 * 0.15 / 100) * 100 = 3_800¢
+    // payout = 25_000 (stake) + 25_000 (profit) + 3_800 (bonus) = 53_800¢
+    // newBankroll = 300_000 − 25_000 (betDelta) + 53_800 = 328_800¢
+    const run = await createRun(userId, {
+      currentMarkerIndex: 11,
+      bankrollCents:      300_000,
+      bossPointHits:      4,
+    });
+
+    // Roll 3+4=7 → NATURAL
+    const { status, body } = await rollWithDice(
+      app, run.id, PASS_ONLY(25_000), 3, 4,
+    );
+
+    expect(status).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['bankrollCents']).toBe(328_800);
+  });
+
+  it('turn:settled payload includes bossRating with { index, changed, direction }', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: 11,
+      bankrollCents:      300_000,
+      bossPointHits:      2,
+    });
+
+    const emitSpy = vi.fn();
+    vi.mocked(getIO).mockReturnValueOnce({
+      to: () => ({ emit: emitSpy }),
+    } as unknown as ReturnType<typeof getIO>);
+
+    // Roll 3+4=7 → NATURAL; rating moves 2 → 3 (changed=true, direction='up')
+    await rollWithDice(app, run.id, PASS_ONLY(25_000), 3, 4);
+
+    const settledArgs = emitSpy.mock.calls.find(
+      (args: unknown[]) => args[0] === 'turn:settled',
+    );
+    expect(settledArgs).toBeDefined();
+    const payload = settledArgs![1] as Record<string, unknown>;
+    expect(payload['bossRating']).toMatchObject({
+      index:     3,
+      changed:   true,
+      direction: 'up',
+    });
   });
 });

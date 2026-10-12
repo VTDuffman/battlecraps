@@ -334,7 +334,6 @@ describe('Mathlete (ID 4)', () => {
         sevenOutBlocked:   false,
         passLineProtected: false,
         hardwayProtected:  false,
-        instantLoss:       false,
       },
       additives:         0,
       markerTargetCents: TARGET,
@@ -358,7 +357,6 @@ describe('Mathlete (ID 4)', () => {
         sevenOutBlocked:   false,
         passLineProtected: false,
         hardwayProtected:  false,
-        instantLoss:       false,
       },
     });
     const result = mathlete.execute(ctx, neverCalledRng);
@@ -374,7 +372,7 @@ describe('Mathlete (ID 4)', () => {
       isHardway:    false,
       bets:         makeBets({ hardways: makeHardwayBets({ hard8: 300 }) }),
       resolvedBets: makeBets({ hardways: makeHardwayBets({ hard8: 0 }) }),
-      flags: { sevenOutBlocked: false, passLineProtected: false, hardwayProtected: false, instantLoss: false },
+      flags: { sevenOutBlocked: false, passLineProtected: false, hardwayProtected: false },
       additives:    0,
       markerTargetCents: TARGET,
     });
@@ -421,7 +419,6 @@ describe('Floor Walker (ID 5)', () => {
         sevenOutBlocked:   false,
         passLineProtected: false,
         hardwayProtected:  false,
-        instantLoss:       false,
       },
     });
     const result = floorWalker.execute(ctx, neverCalledRng);
@@ -443,7 +440,6 @@ describe('Floor Walker (ID 5)', () => {
         sevenOutBlocked:   false,
         passLineProtected: false,
         hardwayProtected:  false,
-        instantLoss:       false,
       },
     });
     const result = floorWalker.execute(ctx, neverCalledRng);

@@ -1488,6 +1488,101 @@ The crew rail physically grows from 3 → 4 → 5 slots as slots are earned. Exi
 
 ---
 
+## FB-027 — The Executive: Cross Calibration
+
+**Type:** Boss Redesign / Character
+**Area:** Boss mechanics / `apps/api/src/routes/rolls.ts`, `apps/web/src/components/BossRoomHeader.tsx`, `apps/web/src/store/useGameStore.ts`, `packages/shared/src/config.ts`
+**Status:** Planned
+
+### Overview
+
+Replace The Executive's (Floor 4) three-strike mechanic with "Cross Calibration" — a persistent Performance Review rating that tracks player performance across the entire boss fight. The mechanic gives The Executive a corporate villain character voice, a visible tension meter, and a brutal instant-death condition that escalates naturally from the player's own play.
+
+### The Performance Review
+
+Players enter The Executive's fight with a rating of **Strong**. Every roll outcome shifts the rating one step up or down. The rating persists across come-out rolls for the entire boss fight.
+
+| Rating | Style | Effect |
+|---|---|---|
+| **Exceptional** | Gold / celebratory | +15% payout bonus applied to gross profit |
+| **Very Strong** | Green | No effect |
+| **Strong** | Neutral (default) | No effect |
+| **Below Strong** | Yellow / warning | No effect |
+| **Action Required** | Flashing red | One more bad roll = instant game over |
+
+**Rating movement — one step per event, symmetric:**
+
+| Event | Direction |
+|---|---|
+| Natural (7 or 11 on come-out) | +1 |
+| Point Hit | +1 |
+| Craps Out (2, 3, 12 on come-out) | −1 |
+| Seven-Out | −1 |
+
+Rating is clamped at both ends (cannot go above Exceptional or below Action Required before the PIP trigger).
+
+### The PIP (Instant Death)
+
+If the player is at **Action Required** and rolls any negative outcome (Craps Out or Seven-Out), The Executive puts them on a Performance Improvement Plan — immediate `GAME_OVER`.
+
+A **Pink Slip modal** displays before the game-over screen, styled as a cold corporate HR document:
+
+> **PERFORMANCE IMPROVEMENT PLAN**
+> Effective immediately, your employment has been terminated.
+> We wish you the best in your future endeavors.
+
+The modal replaces the standard game-over flow for this specific loss condition — same underlying `GAME_OVER` outcome, distinct presentation.
+
+### Character Voice — Corporate Speak Barks
+
+When the rating changes, The Executive delivers a bark in the boss room header (same bark bubble mechanism as Mme. Le Prix). Barks fire on every rating change event.
+
+**Rating goes up (positive corporate nonsense):**
+- "Let's circle back on that synergy."
+- "You're really moving the needle."
+- "Excellent value-add. Very on-brand."
+- "I'm seeing real alignment with our objectives."
+- "That's the kind of paradigm shift we're looking for."
+- "You're leveraging your bandwidth effectively."
+
+**Rating goes down (ominous corporate nonsense):**
+- "We need to discuss your engagement metrics."
+- "This isn't aligned with our Q4 objectives."
+- "I'm concerned about your trajectory."
+- "Let's schedule a touch-base about your performance pathway."
+- "This is not the culture fit we were looking for."
+- "I'd like to loop in HR on this one."
+
+Barks are selected randomly from the appropriate pool. One bark per rating-change event.
+
+### UI — Rating Display
+
+The current rating is displayed persistently in the `BossRoomHeader` during The Executive's fight. The display style reflects the current rating:
+
+- **Exceptional:** Gold text, subtle glow
+- **Very Strong / Strong:** Standard theme color
+- **Below Strong:** Yellow / amber text
+- **Action Required:** Bold red text, CSS flash animation (same pattern as fire-glow on dice) — player should feel panic
+
+The rating label uses the exact tier names: Exceptional / Very Strong / Strong / Below Strong / Action Required.
+
+### Implementation Notes
+
+- **State:** Use `bossPointHits` (general-purpose boss state int) to store the rating index. Initialize to `2` (Strong = index 2 in a 0–4 scale where 0 = Action Required, 4 = Exceptional). This mirrors how `bossPointHits` tracks seven-out count for The Architect.
+- **Rating index mapping:** `0` = Action Required, `1` = Below Strong, `2` = Strong, `3` = Very Strong, `4` = Exceptional.
+- **Hook pattern:** Implement inline in `rolls.ts` (same pattern as `TIDAL_SURGE`, `ORBITAL_DECAY`, `FIRST_CONTACT_PROTOCOL`). No new `bossRules/` hook file needed.
+- **PIP game-over:** Emit `GAME_OVER` via the existing loss path. The Pink Slip modal is a client-side presentation layer — server emits a `turn:settled` with `outcome: GAME_OVER` plus a new flag `pipTermination: true` so the client can route to the correct modal.
+- **Payout bonus:** At Exceptional (`bossPointHits === 4`), apply a `1.15×` multiplier to gross profit in the payout calculation — same layer as the Foreman's extortion tax but additive in the player's favor.
+- **Bark delivery:** Emit a `bossRating` field on the `turn:settled` socket event containing `{ rating: number, changed: boolean, direction: 'up' | 'down' | null }`. Client reads this to trigger the bark animation and select the line.
+- **Replaces:** The three-strike 4s mechanic (`FOURS_INSTANT_LOSS` in `bossRules/`) is fully removed for The Executive. The `FOURS_INSTANT_LOSS` boss rule implementation may be deleted.
+
+### Out of Scope
+
+- The Executive's comp (Board Seat — +1 crew slot) is unchanged.
+- The Covenant comp has no interaction with this mechanic — no changes needed.
+
+---
+
 ## FB-026 — Boss Fight & Comp Overhaul
 
 **Type:** Balance / Boss Redesign

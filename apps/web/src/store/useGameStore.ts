@@ -152,6 +152,28 @@ export interface QueuedCascadeEvent extends CascadeEvent {
 }
 
 // ---------------------------------------------------------------------------
+// The Executive — corporate speak bark line pools
+// ---------------------------------------------------------------------------
+
+const EXECUTIVE_BARKS_UP: string[] = [
+  "Let's circle back on that synergy.",
+  "You're really moving the needle.",
+  "Excellent value-add. Very on-brand.",
+  "I'm seeing real alignment with our objectives.",
+  "That's the kind of paradigm shift we're looking for.",
+  "You're leveraging your bandwidth effectively.",
+];
+
+const EXECUTIVE_BARKS_DOWN: string[] = [
+  "We need to discuss your engagement metrics.",
+  "This isn't aligned with our Q4 objectives.",
+  "I'm concerned about your trajectory.",
+  "Let's schedule a touch-base about your performance pathway.",
+  "This is not the culture fit we were looking for.",
+  "I'd like to loop in HR on this one.",
+];
+
+// ---------------------------------------------------------------------------
 // WS payload types (must match apps/api/src/routes/rolls.ts)
 // ---------------------------------------------------------------------------
 
@@ -191,6 +213,13 @@ interface TurnSettledPayload {
    * Absent (not false) when the charm did not suppress an active ability.
    */
   charmFired?:             boolean;
+  /**
+   * Present during The Executive's boss fight. Carries the current Cross Calibration
+   * rating index (0–4) and whether it changed this roll, plus the direction of change.
+   */
+  bossRating?:             { index: number; changed: boolean; direction: 'up' | 'down' | null };
+  /** True when The Executive fires the final termination (pip termination / game over). */
+  pipTermination?:         boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -668,6 +697,28 @@ export interface GameState {
    * null until the first snapshotForFeedback() call.
    */
   feedbackContextSnapshot: FeedbackContextSnapshot | null;
+
+  // ── The Executive (FB-027) ────────────────────────────────────────────────
+
+  /**
+   * Current Cross Calibration rating index (0–4) for The Executive's boss fight.
+   * null when not in The Executive's fight. Set on every turn:settled that carries
+   * bossRating; reset to null on boss fight end / floor transition.
+   */
+  executiveRating: number | null;
+
+  /**
+   * Corporate-speak bark line to display, and a monotonic key so React re-fires
+   * the animation even when consecutive barks carry the same text.
+   * null when no bark is playing.
+   */
+  executiveBark: { line: string; key: number } | null;
+
+  /**
+   * True when turn:settled carries pipTermination: true (The Executive fires the
+   * final pink-slip termination). The GameOverScreen reads this to show the Pink Slip.
+   */
+  pipTermination: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -924,6 +975,18 @@ export interface GameActions {
    * Clear the feedback context snapshot after the modal is dismissed.
    */
   clearFeedbackSnapshot(): void;
+
+  /**
+   * Clear the Executive bark after the animation window completes.
+   * Called by the bark UI component's animation-end handler (or a safety timeout).
+   */
+  clearExecutiveBark(): void;
+
+  /**
+   * Dismiss the Pink Slip modal after the player acknowledges the PIP termination.
+   * Clears pipTermination so the standard GameOverScreen renders.
+   */
+  clearPipTermination(): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -1027,6 +1090,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   unlockedSlots:     3,
   slotIds:           buildSlotIds(3),
   feedbackContextSnapshot: null,
+  executiveRating:         null,
+  executiveBark:           null,
+  pipTermination:          false,
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -1095,6 +1161,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       pointRingType:        null,
       _pointRingKey:     0,
       _reRollKey:        0,
+      executiveRating:   null,
+      executiveBark:     null,
+      pipTermination:    false,
       // Reset bets to zero so a new run never inherits a live bet from the
       // previous run. initialState.bets (present when reloading an existing
       // run via /runs/:id) will override this via the spread below.
@@ -1333,6 +1402,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       crewUnlockedThisRun:       [],
       pubDraft:                  [],
       unlockModalReady:          false,
+      executiveRating:           null,
+      executiveBark:             null,
+      pipTermination:            false,
     });
   },
 
@@ -1540,8 +1612,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       status: currentStatus,
       unacknowledgedUnlocks,
       isAutoCollecting,
-      charmedCrewSlot: oldCharmedSlot,
-      charmingSlot:    oldCharmingSlot,
+      charmedCrewSlot:  oldCharmedSlot,
+      charmingSlot:     oldCharmingSlot,
+      executiveBark:    oldExecutiveBark,
     } = get();
     if (!p) return;
 
@@ -1733,6 +1806,31 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       flashTier = 'heating-up';
     }
 
+    // ── The Executive — rating, bark, and pip-termination ─────────────────────
+    const newExecutiveRating: number | null = isEndingBossFight
+      ? null
+      : p.bossRating !== undefined
+        ? p.bossRating.index
+        : get().executiveRating;
+
+    let newExecutiveBark: { line: string; key: number } | null = isEndingBossFight
+      ? null
+      : oldExecutiveBark;
+
+    if (!isEndingBossFight && p.bossRating?.changed === true) {
+      const pool = p.bossRating.direction === 'up' ? EXECUTIVE_BARKS_UP : EXECUTIVE_BARKS_DOWN;
+      const line = pool[Math.floor(Math.random() * pool.length)] ?? pool[0] ?? '';
+      newExecutiveBark = { line, key: (oldExecutiveBark?.key ?? 0) + 1 };
+      // Safety timeout — clears the bark if the UI component never calls clearExecutiveBark().
+      const barkKey = newExecutiveBark.key;
+      setTimeout(() => {
+        const cur = get().executiveBark;
+        if (cur?.key === barkKey) set({ executiveBark: null });
+      }, 3000);
+    }
+
+    const newPipTermination = p.pipTermination === true ? true : get().pipTermination;
+
     set({
       bankroll:             p.newBankroll,
       bets:                 p.newBets,
@@ -1771,6 +1869,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       charmedCrewSlot:       newCharmedSlot,
       charmingSlot:          newCharmingSlot,
       _charmKey:             charmFired ? _charmKey + 1 : _charmKey,
+      executiveRating:       newExecutiveRating,
+      executiveBark:         newExecutiveBark,
+      pipTermination:        newPipTermination,
       payoutPops,
       _popsKey:             hasPops ? _popsKey + 1 : _popsKey,
       // Flush buffered cascade events at the reveal moment — portrait
@@ -2012,6 +2113,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           charmedCrewSlot?: number;
           /** True when the charmed crew's ability would have fired this roll. Drives "OOH LA LA!" bark. */
           charmFired?: boolean;
+          bossRating?: { index: number; changed: boolean; direction: 'up' | 'down' | null };
+          pipTermination?: boolean;
         };
       };
 
@@ -2038,6 +2141,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           newBossPointHits:        data.run.bossPointHits,
           payoutBreakdown:         data.roll.payoutBreakdown,
           highestMarkerReached:    data.run.highestMarkerReached ?? 0,
+          ...(data.roll.bossRating    !== undefined && { bossRating:    data.roll.bossRating    }),
+          ...(data.roll.pipTermination === true     && { pipTermination: true as const           }),
         };
         set({ pendingSettlement: autoSettlement });
         get().applyPendingSettlement();
@@ -2068,6 +2173,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ...(data.roll.nudgedFrom      !== undefined && { nudgedFrom:      data.roll.nudgedFrom      }),
         ...(data.roll.charmedCrewSlot !== undefined && { charmedCrewSlot: data.roll.charmedCrewSlot }),
         ...(data.roll.charmFired      === true      && { charmFired:      true                      }),
+        ...(data.roll.bossRating      !== undefined && { bossRating:      data.roll.bossRating      }),
+        ...(data.roll.pipTermination  === true      && { pipTermination:  true as const              }),
       };
 
       const isLeftySave = settlement.originalDice !== undefined;
@@ -2332,6 +2439,14 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   clearFeedbackSnapshot() {
     set({ feedbackContextSnapshot: null });
+  },
+
+  clearExecutiveBark() {
+    set({ executiveBark: null });
+  },
+
+  clearPipTermination() {
+    set({ pipTermination: false });
   },
 
   async reorderCrew(oldIndex, newIndex) {

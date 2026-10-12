@@ -135,13 +135,6 @@ export interface TurnContextFlags {
   hardwayProtected: boolean;
 
   /**
-   * Set by the FOURS_INSTANT_LOSS boss rule hook when the dice total equals the
-   * boss's triggerTotal. The server checks this after cascade completes and
-   * transitions the run directly to GAME_OVER regardless of bankroll or shooters.
-   */
-  instantLoss: boolean;
-
-  /**
    * Set by The Physics Professor when he nudges paired dice toward the active
    * point. Records the pre-nudge dice values so the client can animate a
    * physical flip from the original face to the corrected face.
@@ -162,8 +155,6 @@ export interface TurnContextFlags {
    */
   naturalBlocked?: boolean;
 
-  /** Set by FOURS_INSTANT_LOSS when dice total 4 — triggers Three-Strike handling. */
-  executiveStrike?: boolean;
 }
 
 /**

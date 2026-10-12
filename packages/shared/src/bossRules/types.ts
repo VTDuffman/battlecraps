@@ -45,7 +45,7 @@ export interface BossRuleHooks {
    * Called after classifyRoll() but before the cascade.
    * Returns a (potentially modified) TurnContext. Hook must not mutate `ctx`.
    *
-   * Used by: FOURS_INSTANT_LOSS — sets ctx.flags.executiveStrike + NO_RESOLUTION when dice match.
+   * Currently unused — no boss rule uses modifyOutcome. Retained for future extensibility.
    */
   modifyOutcome?(ctx: TurnContext, params: BossRuleParams, state: BossRuleState): TurnContext;
 

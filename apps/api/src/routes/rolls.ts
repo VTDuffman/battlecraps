@@ -200,8 +200,6 @@ interface WsTurnSettledPayload {
    * Updated when a marker is cleared; otherwise carries the user's previous best.
    */
   highestMarkerReached: number;
-  /** Present when The Executive's three-strike rule triggered (4 was rolled). Strike index 1, 2, or 3. */
-  executiveStrikeNumber?: 1 | 2 | 3;
   /** Non-zero when Sarge's non-compliance fine was applied this roll (cents). */
   nonComplianceFine?: number;
   /**
@@ -217,6 +215,23 @@ interface WsTurnSettledPayload {
    * Absent (not false) when the charm did not suppress an active ability.
    */
   charmFired?: boolean;
+  /**
+   * Present on every roll during a CROSS_CALIBRATION (The Executive) boss fight.
+   * Describes the performance review rating state after this roll resolves.
+   * `changed` is false when the rating was already clamped (0 or 4) or the outcome
+   * was neutral (POINT_SET / NO_RESOLUTION). `direction` is null when unchanged.
+   */
+  bossRating?: {
+    index: number;
+    changed: boolean;
+    direction: 'up' | 'down' | null;
+  };
+  /**
+   * Present (and true) only when The Executive's Pink Slip fires — the rating was
+   * at 0 (Action Required) and another Craps Out or Seven-Out occurred.
+   * The client shows the Pink Slip modal instead of the standard game-over screen.
+   */
+  pipTermination?: true;
 }
 
 // ---------------------------------------------------------------------------
@@ -276,9 +291,10 @@ async function rollHandler(
   const bossHooks        = bossMarkerConfig?.boss ? BOSS_RULE_HOOKS[bossMarkerConfig.boss.ruleParams.rule] : undefined;
   const bossParams       = bossMarkerConfig?.boss ? bossMarkerConfig.boss.ruleParams : undefined;
   const activeBossRule   = bossMarkerConfig?.boss?.rule ?? null;
-  const isHierophantEscrow  = activeBossRule === 'TRIBUTE'            && isBossMarker(run.currentMarkerIndex);
-  const isTransmissionDelay = activeBossRule === 'TRANSMISSION_DELAY' && isBossMarker(run.currentMarkerIndex);
-  const isOrbitalDecay      = activeBossRule === 'ORBITAL_DECAY'      && isBossMarker(run.currentMarkerIndex);
+  const isHierophantEscrow  = activeBossRule === 'TRIBUTE'             && isBossMarker(run.currentMarkerIndex);
+  const isTransmissionDelay = activeBossRule === 'TRANSMISSION_DELAY'  && isBossMarker(run.currentMarkerIndex);
+  const isOrbitalDecay      = activeBossRule === 'ORBITAL_DECAY'       && isBossMarker(run.currentMarkerIndex);
+  const isCrossCalibrationBoss = activeBossRule === 'CROSS_CALIBRATION' && isBossMarker(run.currentMarkerIndex);
   const hasTheCovenant = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_COVENANT);
   const bossState: BossRuleState = { bossPointHits: run.bossPointHits, markerIndex: run.currentMarkerIndex, covenantActive: hasTheCovenant };
 
@@ -381,7 +397,7 @@ async function rollHandler(
         bets:                  zeroBets,
         currentMarkerIndex:    nextMkrIndex,
         consecutivePointHits:  0,
-        bossPointHits:         0,
+        bossPointHits:         GAUNTLET[nextMkrIndex]?.boss?.rule === 'CROSS_CALIBRATION' ? 2 : 0,
         pointPhaseBlankStreak: 0,
         mechanicFreeze:        null,
         hype:                  run.hype,
@@ -572,73 +588,12 @@ async function rollHandler(
     ? { ...initialCtx, hype: seededHype }
     : initialCtx;
 
-  // ── 7c. Boss outcome modifier (e.g. The Executive: 4s set executiveStrike) ──
+  // ── 7c. Boss outcome modifier ─────────────────────────────────────────────
   const outcomeCtx = bossHooks?.modifyOutcome
     ? bossHooks.modifyOutcome(seededCtx, bossParams!, bossState)
     : seededCtx;
 
-  // ── 7d. Three-strike third-4 check — early GAME_OVER before cascade fires ───
-  if (outcomeCtx.flags.executiveStrike && run.bossPointHits >= 2) {
-    const lossBankroll = run.bankrollCents - betDelta;
-    const zeroBets: Bets = {
-      passLine: 0, odds: 0,
-      hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 },
-    };
-
-    const lossRun = await db
-      .update(runs)
-      .set({ status: 'GAME_OVER', bankrollCents: lossBankroll, bets: zeroBets, updatedAt: new Date() })
-      .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
-      .returning();
-
-    if (lossRun[0] === undefined) {
-      return reply.status(409).send({ error: 'Conflict: run was modified by another request. Please retry.' });
-    }
-
-    // Leaderboard: submit entry for this instant-loss GAME_OVER (fire-and-forget).
-    void submitLeaderboardEntry(user as UserRow, lossRun[0]).catch((err: unknown) => {
-      request.log.error({ err }, '[leaderboard] submission error (instant-loss)');
-    });
-
-    const io = getIO();
-    const lossPayload: WsTurnSettledPayload = {
-      runId,
-      dice:                    outcomeCtx.dice,
-      diceTotal:               outcomeCtx.diceTotal,
-      rollResult:              outcomeCtx.rollResult,
-      bankrollDelta:           -betDelta,
-      newBankroll:             lossBankroll,
-      newShooters:             run.shooters,
-      newHype:                 run.hype,
-      newPhase:                run.phase as GamePhase,
-      newPoint:                null,
-      runStatus:               'GAME_OVER',
-      newMarkerIndex:          run.currentMarkerIndex,
-      newBets:                 zeroBets,
-      newConsecutivePointHits: 0,
-      newBossPointHits:        run.bossPointHits,
-      payoutBreakdown:         { passLine: 0, odds: 0, hardways: 0 },
-      highestMarkerReached:    user.highestMarkerReached,
-    };
-    io.to(`run:${runId}`).emit('turn:settled', lossPayload);
-
-    return reply.status(200).send({
-      run: lossRun[0],
-      roll: {
-        dice:            outcomeCtx.dice,
-        diceTotal:       outcomeCtx.diceTotal,
-        rollResult:      outcomeCtx.rollResult,
-        cascadeEvents:   [],
-        bankrollDelta:   -betDelta,
-        receipt:         buildRollReceipt(outcomeCtx),
-        resolvedBets:    zeroBets,
-        payoutBreakdown: { passLine: 0, odds: 0, hardways: 0 },
-        mechanicFreeze:  null,
-      },
-    });
-  }
-
-  // ── 7e. POSEIDONS_FAVOR — block craps-out on first shooter roll ───────────────
+  // ── 7d. POSEIDONS_FAVOR — block craps-out on first shooter roll ───────────────
   // Fires after classifyRoll() and boss modifyOutcome() but BEFORE the cascade so
   // crew never see a CRAPS_OUT that was suppressed by this comp.
   const hasPoseidonsFavor = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.POSEIDONS_FAVOR);
@@ -673,6 +628,23 @@ async function rollHandler(
   const lastTriggeredSlot = events.length > 0
     ? (events[events.length - 1]?.slotIndex ?? null)
     : null;
+
+  // ── CROSS_CALIBRATION: PIP termination check ─────────────────────────────
+  // When the rating is at 0 (Action Required) and another bad outcome lands,
+  // the Pink Slip fires — GAME_OVER regardless of remaining shooters.
+  // Uses the post-cascade rollResult so Lefty's save and Poseidon's block
+  // are respected (they change the result before we check).
+  //
+  // effectiveRating guards against the uninitialized-DB case: bossPointHits
+  // defaults to 0 in the DB, but the fight entry rating is 2 (Strong). Any
+  // run that reached the Executive before the initialization write ran would
+  // otherwise treat the very first roll as already at Action Required.
+  const effectiveRating = (isCrossCalibrationBoss && run.bossPointHits === 0) ? 2 : run.bossPointHits;
+  const pipTermination = (
+    isCrossCalibrationBoss &&
+    effectiveRating === 0 &&
+    (finalContext.rollResult === 'CRAPS_OUT' || finalContext.rollResult === 'SEVEN_OUT')
+  );
 
   // ── DISABLE_CREW: reselect charmed slot after each come-out resolution ────
   // Fires on NATURAL, CRAPS_OUT, POINT_HIT, SEVEN_OUT (any result that ends
@@ -790,9 +762,20 @@ async function rollHandler(
   //   SEVEN_OUT (bets already deducted at POINT_SET): betDelta=0 → delta=0
   //   POINT_SET (bets frozen): payout=0, betDelta=passLine → delta=-passLine
   const rawPayout = settleTurn(tdEscrowContext);
-  const payout = bossHooks?.modifyPayout
+  const bossModifiedPayout = bossHooks?.modifyPayout
     ? bossHooks.modifyPayout(rawPayout, tdEscrowContext.baseStakeReturned, bossParams!, bossState)
     : rawPayout;
+  // ── CROSS_CALIBRATION: Exceptional rating (4) → 1.15× gross profit ────────
+  // Applied at the same layer as the Foreman's extortion tax, but in the player's
+  // favor. Rounds to the nearest dollar (100 cents) per project convention.
+  const crossCalibrationExceptionalBonus = (isCrossCalibrationBoss && effectiveRating === 4)
+    ? (() => {
+        const stake = tdEscrowContext.baseStakeReturned;
+        const grossProfit = bossModifiedPayout - stake;
+        return grossProfit > 0 ? Math.round(grossProfit * 0.15 / 100) * 100 : 0;
+      })()
+    : 0;
+  const payout = bossModifiedPayout + crossCalibrationExceptionalBonus;
   const newBankroll = run.bankrollCents - betDelta + payout;
 
   // ── 9b. TRIBUTE — modifySevenOut hook is now a no-op (escrow logic is inline below) ──
@@ -839,17 +822,7 @@ async function rollHandler(
   // Rounds to nearest dollar; can be 0 when no fine applies this roll.
   const postFineBankroll = postEscrowBankroll - nonComplianceFine;
 
-  // ── 9d. EXECUTIVE THREE-STRIKE — drain on first and second 4 rolled ───────
-  // Third strike already handled as early GAME_OVER before the cascade (step 7d).
-  // bossPointHits here is still the PRE-roll count (0 = first 4, 1 = second 4).
-  const isExecutiveStrike =
-    finalContext.flags.executiveStrike === true &&
-    isBossMarker(run.currentMarkerIndex);
-  const strikeDrain = isExecutiveStrike
-    ? Math.round(postFineBankroll * (run.bossPointHits === 0 ? 0.20 : 0.40) / 100) * 100
-    : 0;
-  const postStrikeBankroll = postFineBankroll - strikeDrain;
-  const bankrollDelta = postStrikeBankroll - run.bankrollCents;
+  const bankrollDelta = postFineBankroll - run.bankrollCents;
 
   const rollAmplifiedProfit = payout - viggedContext.baseStakeReturned;
   const newHighestRollAmplifiedCents = Math.max(
@@ -869,12 +842,33 @@ async function rollHandler(
   }
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
-  const nextState = computeNextState(run, viggedContext, postStrikeBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot);
+  const nextState = computeNextState(run, viggedContext, postFineBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot);
 
   // ── DISABLE_CREW: override bossPointHits with the newly selected charm slot ─
-  const finalNextState = nextCharmSlot !== null
+  const charmAdjustedState = nextCharmSlot !== null
     ? { ...nextState, bossPointHits: nextCharmSlot }
     : nextState;
+  // ── CROSS_CALIBRATION: PIP termination overrides status to GAME_OVER ──────
+  const finalNextState = pipTermination
+    ? { ...charmAdjustedState, status: 'GAME_OVER' as const }
+    : charmAdjustedState;
+
+  // ── CROSS_CALIBRATION: compute bossRating for socket payload ──────────────
+  // Emitted on every roll in the boss fight. `changed` and `direction` tell the
+  // client whether to animate a rating transition. On PIP (clamp at 0), changed
+  // is false and direction is null — the client infers termination from pipTermination.
+  const bossRatingPayload = isCrossCalibrationBoss
+    ? (() => {
+        const oldRating = effectiveRating;
+        const newRating = finalNextState.bossPointHits;
+        const changed = newRating !== oldRating;
+        return {
+          index: newRating,
+          changed,
+          direction: changed ? (newRating > oldRating ? 'up' as const : 'down' as const) : null,
+        };
+      })()
+    : undefined;
 
   const hitMarker      = finalNextState.currentMarkerIndex > run.currentMarkerIndex;
   const newMarkerIndex = finalNextState.currentMarkerIndex;
@@ -999,7 +993,8 @@ async function rollHandler(
 
   // ── 12c. Leaderboard submission (fire-and-forget) ─────────────────────────
   // submitLeaderboardEntry is idempotent via ON CONFLICT (run_id) DO NOTHING.
-  if (nextState.status === 'GAME_OVER') {
+  // Uses finalNextState.status so PIP termination (CROSS_CALIBRATION) is captured.
+  if (finalNextState.status === 'GAME_OVER') {
     void submitLeaderboardEntry(user as UserRow, persistedRun).catch((err: unknown) => {
       request.log.error({ err }, '[leaderboard] submission error');
     });
@@ -1088,10 +1083,11 @@ async function rollHandler(
     highestMarkerReached: hitMarker
       ? Math.max(user.highestMarkerReached, newMarkerIndex)
       : user.highestMarkerReached,
-    ...(isExecutiveStrike && { executiveStrikeNumber: (run.bossPointHits + 1) as 1 | 2 | 3 }),
     ...(nonComplianceFine > 0 && { nonComplianceFine }),
     ...(isDisableCrewBoss && { charmedCrewSlot: persistedBossPointHits }),
     ...(charmedWouldHaveFired && { charmFired: true }),
+    ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
+    ...(pipTermination && { pipTermination: true as const }),
   };
   io.to(runRoom).emit('turn:settled', settledPayload);
 
@@ -1125,6 +1121,8 @@ async function rollHandler(
       // so the HTTP path can update the store without depending on the WebSocket event.
       ...(isDisableCrewBoss && { charmedCrewSlot: persistedBossPointHits }),
       ...(charmedWouldHaveFired && { charmFired: true }),
+      ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
+      ...(pipTermination && { pipTermination: true as const }),
     },
   });
 }
@@ -1182,10 +1180,13 @@ function computeNextState(
   // TIDAL_SURGE is the only boss rule that advances `bossPointHits` on EVERY roll
   // (not just POINT_HIT). Detect it once here and build a helper used across all
   // result branches to keep the logic consistent.
-  const activeBossRule  = GAUNTLET[currentMarkerIndex]?.boss?.rule ?? null;
-  const isTidalSurge    = activeBossRule === 'TIDAL_SURGE';
-  const isOrbitalDecay  = activeBossRule === 'ORBITAL_DECAY' && isBossMarker(currentMarkerIndex);
-  const isConvergence   = activeBossRule === 'CONVERGENCE'   && isBossMarker(currentMarkerIndex);
+  const activeBossRule     = GAUNTLET[currentMarkerIndex]?.boss?.rule ?? null;
+  const isTidalSurge       = activeBossRule === 'TIDAL_SURGE';
+  const isOrbitalDecay     = activeBossRule === 'ORBITAL_DECAY'       && isBossMarker(currentMarkerIndex);
+  const isConvergence      = activeBossRule === 'CONVERGENCE'         && isBossMarker(currentMarkerIndex);
+  const isCrossCalibration = activeBossRule === 'CROSS_CALIBRATION'   && isBossMarker(currentMarkerIndex);
+  // Guards the same uninitialized-DB case as effectiveRating in the outer handler.
+  const effectiveBossPointHits = (isCrossCalibration && run.bossPointHits === 0) ? 2 : run.bossPointHits;
   const tidalCycleTotal = isTidalSurge && isBossMarker(currentMarkerIndex)
     ? (() => {
         const p = GAUNTLET[currentMarkerIndex]!.boss!.ruleParams as
@@ -1195,7 +1196,14 @@ function computeNextState(
     : 0;
 
   const nextBossCounter = (current: number, result: RollResult, hitMarker: boolean): number => {
-    if (hitMarker) return 0; // Boss defeated or marker cleared — always reset
+    if (hitMarker) {
+      // When clearing a marker, check if the destination is a CROSS_CALIBRATION boss.
+      // If so, initialize the rating to 2 (Strong) instead of resetting to 0.
+      const nextIdx = currentMarkerIndex + 1;
+      const nextBossRule = GAUNTLET[nextIdx]?.boss?.rule;
+      if (nextBossRule === 'CROSS_CALIBRATION') return 2;
+      return 0;
+    }
     if (isTidalSurge) {
       if (!isBossMarker(currentMarkerIndex)) return 0;
       const advancesToComeOut =
@@ -1204,6 +1212,13 @@ function computeNextState(
         result === 'POINT_HIT'  ||
         result === 'SEVEN_OUT';
       return advancesToComeOut ? (current + 1) % tidalCycleTotal : current;
+    }
+    if (isCrossCalibration) {
+      // Rating movement: Natural/Point Hit → +1 (cap 4); Craps Out/Seven-Out → −1 (floor 0).
+      // POINT_SET and NO_RESOLUTION are neutral — no change.
+      if (result === 'NATURAL' || result === 'POINT_HIT') return Math.min(4, current + 1);
+      if (result === 'CRAPS_OUT' || result === 'SEVEN_OUT') return Math.max(0, current - 1);
+      return current;
     }
     // RISING_MIN_BETS: only increment on POINT_HIT mid-boss-fight
     if (result === 'POINT_HIT' && isBossMarker(currentMarkerIndex)) return current + 1;
@@ -1239,7 +1254,7 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex:   hitMarker ? currentMarkerIndex + 1 : currentMarkerIndex,
         consecutivePointHits: run.consecutivePointHits, // streak unaffected by naturals
-        bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, hitMarker),
+        bossPointHits:         nextBossCounter(effectiveBossPointHits, rollResult, hitMarker),
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
@@ -1260,7 +1275,7 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex,
         consecutivePointHits:  run.consecutivePointHits, // streak unaffected by craps-out
-        bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, false),
+        bossPointHits:         nextBossCounter(effectiveBossPointHits, rollResult, false),
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
@@ -1284,7 +1299,7 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex,
         consecutivePointHits:  run.consecutivePointHits, // unchanged until the point resolves
-        bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, false),
+        bossPointHits:         nextBossCounter(effectiveBossPointHits, rollResult, false),
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
@@ -1322,11 +1337,13 @@ function computeNextState(
         // Streak resets on marker clear (new chapter); otherwise increments.
         consecutivePointHits:  hitMarker ? 0 : run.consecutivePointHits + 1,
         // CONVERGENCE: counter only changes on SEVEN_OUT; hold steady on POINT_HIT.
+        // hitMarker path uses nextBossCounter so CROSS_CALIBRATION initializes to 2
+        // when the player clears a non-boss marker on their way into the boss fight.
         bossPointHits: hitMarker
-          ? 0
+          ? nextBossCounter(effectiveBossPointHits, rollResult, true)
           : isConvergence
             ? run.bossPointHits
-            : nextBossCounter(run.bossPointHits, rollResult, false),
+            : nextBossCounter(effectiveBossPointHits, rollResult, false),
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
@@ -1437,7 +1454,7 @@ function computeNextState(
         // All other rules: delegate to nextBossCounter (resets on marker clear).
         bossPointHits: (isConvergence && !markerCleared)
           ? Math.min(5, run.bossPointHits + 1)
-          : nextBossCounter(run.bossPointHits, rollResult, markerCleared),
+          : nextBossCounter(effectiveBossPointHits, rollResult, markerCleared),
         // New shooter: counters reset. Blocked seven-out: shooter survives, counters continue.
         previousRollTotal:     shooterLost ? null : finalCtx.diceTotal,
         shooterRollCount:      shooterLost ? 0 : run.shooterRollCount + 1,
@@ -1483,7 +1500,7 @@ function computeNextState(
           bets:                 zeroBets,
           currentMarkerIndex:   currentMarkerIndex + 1,
           consecutivePointHits:  0,
-          bossPointHits:         nextBossCounter(run.bossPointHits, rollResult, true),
+          bossPointHits:         nextBossCounter(effectiveBossPointHits, rollResult, true),
           previousRollTotal:     finalCtx.diceTotal,
           shooterRollCount:      run.shooterRollCount + 1,
           pointPhaseBlankStreak: 0,
@@ -1501,9 +1518,7 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex,
         consecutivePointHits:  run.consecutivePointHits, // no change on non-resolving roll
-        bossPointHits:         finalCtx.flags.executiveStrike && isBossMarker(currentMarkerIndex)
-                                 ? run.bossPointHits + 1
-                                 : nextBossCounter(run.bossPointHits, rollResult, false),
+        bossPointHits:         nextBossCounter(effectiveBossPointHits, rollResult, false),
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: run.pointPhaseBlankStreak + 1,

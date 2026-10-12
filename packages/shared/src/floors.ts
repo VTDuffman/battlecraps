@@ -303,12 +303,12 @@ export const FLOORS: readonly FloorConfig[] = [
     introLines: [
       'Obsidian felt. Floor-to-ceiling glass. The city grid glitters sixty stories below.',
       "The Executive doesn't cheat. He doesn't need to.",
-      "Roll a four and it costs you. Roll it twice and it costs more. Roll it a third time — and it's over.",
+      'Your performance is being evaluated. It always has been.',
     ],
     bossName:   'The Executive',
     bossTitle:  'Penthouse Host',
     bossVenue:  'The Strip — Penthouse',
-    bossTeaser: "The Executive runs a three-strike room. The first four costs you. The second costs more. The third ends your run.",
+    bossTeaser: "The Executive runs a performance review. Every roll updates your rating. Slip to Action Required and roll badly — and you're terminated.",
     atmosphere: 'electric',
   },
 

@@ -10,14 +10,20 @@
 // =============================================================================
 
 import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getBossMinBet, GAUNTLET, isBossMarker, type BossRuleParams } from '@battlecraps/shared';
 import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 import { getFloorTheme } from '../lib/floorThemes.js';
 
+const RATING_LABELS = ['ACTION REQUIRED', 'BELOW STRONG', 'STRONG', 'VERY STRONG', 'EXCEPTIONAL'] as const;
+const RATING_COLORS = ['#ef4444', '#fbbf24', '#c8d8e8', '#4ade80', '#f5c842'] as const;
+
 export const BossRoomHeader: React.FC = () => {
-  const currentMarkerIndex = useGameStore(selectDisplayMarkerIndex);
-  const bossPointHits      = useGameStore((s) => s.bossPointHits);
-  const currentHype        = useGameStore((s) => s.hype);
+  const currentMarkerIndex  = useGameStore(selectDisplayMarkerIndex);
+  const bossPointHits       = useGameStore((s) => s.bossPointHits);
+  const currentHype         = useGameStore((s) => s.hype);
+  const executiveRating  = useGameStore((s) => s.executiveRating);
+  const executiveBark    = useGameStore((s) => s.executiveBark);
 
   if (!isBossMarker(currentMarkerIndex)) return null;
 
@@ -34,6 +40,7 @@ export const BossRoomHeader: React.FC = () => {
   const isOrbitalDecay      = boss.rule === 'ORBITAL_DECAY';
   const isTransmissionDelay = boss.rule === 'TRANSMISSION_DELAY';
   const isConvergence       = boss.rule === 'CONVERGENCE';
+  const isExecutive         = boss.rule === 'CROSS_CALIBRATION';
   const tidalParams = isTidalSurge
     ? (boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>)
     : null;
@@ -84,11 +91,63 @@ export const BossRoomHeader: React.FC = () => {
             >
               {boss.name.toUpperCase()}
             </div>
+            {/* Executive corporate-speak bark bubble */}
+            <AnimatePresence>
+              {executiveBark !== null && (
+                <motion.div
+                  key={executiveBark.key}
+                  initial={{ scale: 0.85, opacity: 0, y: -4 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.9, opacity: 0, transition: { duration: 0.2 } }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 14 }}
+                  className="mt-1 font-pixel text-[8px] leading-snug italic"
+                  style={{ color: '#e2e8f0', maxWidth: '160px' }}
+                >
+                  "{executiveBark.line}"
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
         {/* Right: tide state / min-bet / rule indicator */}
-        {isTidalSurge && tidalParams !== null ? (
+        {isExecutive ? (
+          (() => {
+            const ratingIndex   = executiveRating;
+            const label         = ratingIndex !== null ? (RATING_LABELS[ratingIndex] ?? 'STRONG') : null;
+            const color         = ratingIndex !== null ? (RATING_COLORS[ratingIndex] ?? '#c8d8e8') : '#c8d8e8';
+            const isActionReq   = ratingIndex === 0;
+            const isExceptional = ratingIndex === 4;
+            return (
+              <div className="flex-none text-right">
+                <div
+                  className="font-pixel text-[7.5px] tracking-widest leading-none"
+                  style={{ color: 'rgba(200,216,232,0.60)' }}
+                >
+                  PERF REVIEW
+                </div>
+                {label !== null ? (
+                  <div
+                    className={`font-pixel text-r-12 leading-tight font-bold${isActionReq ? ' animate-executive-action-required' : ''}`}
+                    style={{
+                      color:      isActionReq ? undefined : color,
+                      textShadow: isExceptional ? `0 0 8px ${color}bb, 0 0 18px ${color}55` : undefined,
+                    }}
+                  >
+                    {label}
+                  </div>
+                ) : (
+                  <div
+                    className="font-pixel text-r-12 leading-tight"
+                    style={{ color: '#c8d8e8' }}
+                  >
+                    PENDING…
+                  </div>
+                )}
+              </div>
+            );
+          })()
+        ) : isTidalSurge && tidalParams !== null ? (
           <div className="flex-none text-right">
             <div className="font-pixel text-[7.5px] tracking-widest leading-none"
               style={{ color: inHighTide ? '#fbbf24' : 'rgba(0,201,160,0.70)' }}>

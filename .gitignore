@@ -34,3 +34,6 @@ Thumbs.db
 
 # Auto-generated artifacts
 apps/web/src/lib/releaseNotes.json
+
+# Claude Code worktrees (local only)
+.claude/worktrees/

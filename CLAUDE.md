@@ -169,9 +169,7 @@ docs/manifests/       # manifest-instruction-prompt.md, implemented/ (FB-009, FB
 
 **Active development:** None currently.
 
-**Open defects:** See `docs/testing/known-issues.md` for full list. Current open issues:
-- KI-013: Global text still too small on mobile despite typography overhaul (High)
-- KI-014: Typography overhaul missing from Title and Transition screens (Medium)
+**Open defects:** None (all 71 entries in `docs/testing/known-issues.md` closed as of 2026-10-12). KI-013/KI-014 (mobile text size) were fixed 2026-05-21 via an ad hoc font-size sweep.
 
 **Not yet implemented:**
 - Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md` — 64×64 SNES-style PNGs; only Lefty done so far)

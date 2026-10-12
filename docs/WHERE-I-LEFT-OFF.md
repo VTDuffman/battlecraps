@@ -38,12 +38,10 @@ Also already shipped, easy to forget: **FB-013 cinematic crew unlock** (2026-05-
 - [ ] `.claude/worktrees/blissful-kalam-958c69` is a stale worktree reference sitting deleted-but-uncommitted. Safe to commit the removal or clean up.
 - [ ] Two unmerged stale remote branches: `claude/bankroll-cap-timing-mNJfg`, `claude/blissful-kalam-958c69`. Review, then delete.
 
-**Open defects** (`docs/testing/known-issues.md`):
-- KI-013: global text still too small on mobile (High)
-- KI-014: typography overhaul missing from Title and Transition screens (Medium)
+**Open defects:** none. All 71 entries in `docs/testing/known-issues.md` are closed (checked 2026-10-12). KI-013/KI-014 (mobile text size) were fixed 2026-05-21 with an ad hoc font-size sweep, not the full FB-016 overhaul.
 
 **Not built yet:**
-- FB-016 mobile-first UI overhaul: stashed on `feature/fb-016-mobile-ui` (last touched 2026-04-21, mostly design docs). Would also fix KI-013/KI-014. **Best next build.**
+- FB-016 mobile-first UI overhaul: stashed on `feature/fb-016-mobile-ui` (last touched 2026-04-21, mostly design docs). The text-size bugs are already patched, so this is now a polish/readability upgrade (HD-retro typography, Roll Log bottom sheet, high-contrast panels), not a bug fix.
 - FB-017 tutorial replay & reset: nothing built (no reset endpoint, no replay button)
 - Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md`): only Lefty done (`apps/web/public/sprites/crew/lefty.png`); 29 to go
 - FB-020 3D physics dice: attempted, abandoned, stashed
@@ -84,4 +82,4 @@ docker compose up -d postgres-test      # needed for API integration tests
 
 1. Play one full run without fixing anything. Is it still fun?
 2. Merge FB-027; settle the Mme. Le Prix docs question.
-3. Decide: polish the web beta (FB-016 → fixes KI-013/014, then sprites) **or** start the Steam/local spike.
+3. Decide: polish the web beta (FB-016 readability, sprites, FB-017) **or** start the Steam/local spike.

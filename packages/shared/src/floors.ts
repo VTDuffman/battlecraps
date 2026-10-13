@@ -49,7 +49,7 @@
  *   TITLE         — First-load cinematic (Phase 6)
  *   MARKER_INTRO  — Brief orientation card after pub, before first roll (Phase 3)
  *   FLOOR_REVEAL  — Full-screen new-floor announcement (Phase 4)
- *   VICTORY       — Full victory cinematic after clearing all 9 markers (Phase 8)
+ *   VICTORY       — Full victory cinematic after clearing all 27 markers (Phase 8)
  *   GAME_OVER     — End screen after all shooters are lost (Phase 9)
  */
 export type TransitionType =

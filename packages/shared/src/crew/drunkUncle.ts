@@ -12,7 +12,7 @@
 //
 // Direction uses d2 of the same roll:
 //   d2 odd  (1, 3, 5) → +0.5 Hype
-//   d2 even (2, 4, 6) → −0.1 Hype
+//   d2 even (2, 4, 6) → −0.25 Hype
 //
 // SERVER IMPLEMENTATION NOTE:
 //   The Drunk Uncle causes the server to call its RNG one extra time per

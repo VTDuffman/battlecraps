@@ -199,8 +199,8 @@ export function resolveCascade(
   // modified by all previous crew members, in slot order.
   let ctx = initialCtx;
 
-  // Boss hook: DISABLE_CREW returns [] to skip the entire loop.
-  // CONVERGENCE returns [0..N-1] where N shrinks with each seven-out.
+  // Boss hook: DISABLE_CREW (Mme. Le Prix) omits the charmed slot.
+  // (CONVERGENCE has no hook — removed crew are already null in crewSlots.)
   // Default: fire slots 0→(unlockedSlots-1) — respects the slot unlock progression.
   const slotOrder =
     bossHooks?.modifyCascadeOrder?.(crewSlots.length, bossParams!, bossState) ??

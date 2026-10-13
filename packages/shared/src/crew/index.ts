@@ -23,7 +23,8 @@ export { nervousIntern }      from './nervousIntern.js';
 export { hypeTrainHolly }     from './hypeTrainHolly.js';
 export { drunkUncle }         from './drunkUncle.js';
 
-// WILDCARD crew (+ exported sentinel IDs for server-side special handling)
+// WILDCARD crew + The Lucky Charm (HYPE) — exported sentinel IDs for
+// server-side special handling
 export { mimic,       MIMIC_ID }         from './mimic.js';
 export { oldPro,      OLD_PRO_ID }       from './oldPro.js';
 export { luckyCharm,  LUCKY_CHARM_ID }   from './luckyCharm.js';
@@ -44,7 +45,7 @@ export { evenKeel }         from './evenKeel.js';
 export { doorman }          from './doorman.js';
 export { grinder }          from './grinder.js';
 
-// PAYOUT Starter crew (IDs 26–27)
+// HYPE Starter crew, formerly PAYOUT (IDs 26–27)
 export { handicapper }      from './handicapper.js';
 export { mirror }           from './mirror.js';
 

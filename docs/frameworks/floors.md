@@ -26,7 +26,7 @@
 14. [Floor 6 — Atlantis](#floor-6--atlantis)
 15. [Floor 7 — The Station](#floor-7--the-station)
 16. [Floor 8 — The Signal](#floor-8--the-signal)
-17. [Floor 9 — The Singularity](#floor-9--the-singularity)
+17. [Floor 9 — The Null Space](#floor-9--the-null-space)
 
 ---
 
@@ -46,7 +46,7 @@ Gauntlet (27 markers total)
 ├── Floor 6: Atlantis          [marker 15] [marker 16] [marker 17 — BOSS: The Sovereign]
 ├── Floor 7: The Station       [marker 18] [marker 19] [marker 20 — BOSS: The Commander]
 ├── Floor 8: The Signal        [marker 21] [marker 22] [marker 23 — BOSS: The Emissary]
-└── Floor 9: The Singularity   [marker 24] [marker 25] [marker 26 — BOSS: The Architect]
+└── Floor 9: The Null Space    [marker 24] [marker 25] [marker 26 — BOSS: The Architect]
 ```
 
 Clearing a marker sends the player to the **Seven-Proof Pub** to recruit a crew
@@ -204,12 +204,18 @@ interface MarkerConfig {
 }
 
 interface BossConfig {
-  name:          string;          // Must match FloorConfig.bossName exactly
-  rule:          BossRuleType;    // The mechanical modifier active during the fight
-  compReward:    CompRewardType;  // Permanent perk awarded on defeat
-  compPerkId:    number;          // Stable numeric ID written to users.comp_perk_ids
-  flavorText:    string;          // Quote shown in boss entry modal (the boss speaking)
-  risingMinBets? RisingMinBetsParams // Only for RISING_MIN_BETS rule
+  name:            string;          // Must match FloorConfig.bossName exactly
+  title:           string;          // Must match FloorConfig.bossTitle exactly
+  dreadTagline:    string;          // Bark on the dread screen
+  entryLines:      string[];        // 2–3 lines of boss dialogue (entry screen)
+  ruleBlurb:       string;          // Player-facing rule explanation
+  ruleHeaderText:  string;          // Persistent banner during the fight
+  rule:            BossRuleType;    // The mechanical modifier active during the fight
+  ruleParams:      BossRuleParams;  // Typed params for the rule
+  compReward:      CompRewardType;  // Permanent perk awarded on defeat ('NONE' on Floor 9)
+  compPerkId:      number;          // Appended to runs.comp_perk_ids (0 for slot comps)
+  compName / compDescription / compFanLabel; victoryQuote; defeatAnnouncement
+  // Full definition: BossConfig in packages/shared/src/config.ts
 }
 ```
 
@@ -217,109 +223,27 @@ interface BossConfig {
 
 ## Boss Rule Catalogue
 
-All boss rules currently implemented. New rules require both a `BossRuleType`
-entry in `config.ts` and server-side logic in `apps/api/src/routes/rolls.ts`.
+Mechanics are documented in full in [`boss_framework.md`](boss_framework.md), which is the canonical reference. Summary:
 
-### `RISING_MIN_BETS`
-**Boss:** Sarge (Floor 1)
-**Icon:** ⬆
-**Effect:** The minimum Pass Line bet starts at `startPct` of the marker target
-and increases by `incrementPct` after each Point Hit. The minimum HOLDS on
-Seven Out (never drops). Caps at `capPct` of target.
-**Parameters:**
-```typescript
-interface RisingMinBetsParams {
-  startPct:     number; // Fraction of target on roll 1 (e.g. 0.05 = 5%)
-  incrementPct: number; // Added per Point Hit (e.g. 0.02 = +2%)
-  capPct:       number; // Never exceeds this fraction (e.g. 0.20 = 20%)
-}
-```
-**Sarge values:** start 4% ($40 at $1,000 target) → +2% per hit → cap 20% ($200)
+| Rule | Boss (Floor) | Effect |
+|---|---|---|
+| `EXTORTION_FEE` | The Foreman (1) | 20% tax on winning profit |
+| `RISING_MIN_BETS` | Sarge (2) | Come-out minimum rises 2% per Point Hit (4%→20%); under it = 5% fine, once per come-out |
+| `DISABLE_CREW` | Mme. Le Prix (3) | One random crew member charmed per come-out, sits out until the point resolves |
+| `CROSS_CALIBRATION` | The Executive (4) | Performance rating 0–4; +15% at Exceptional; bad roll at Action Required ends the run |
+| `TRIBUTE` | The Hierophant (5) | Crew cash held one roll in escrow; 25% seized on Seven-Out |
+| `TIDAL_SURGE` | The Sovereign (6) | Tide LOW/EBB/HIGH/FLOW (1×/2×/3×/2× min bet), advances each come-out |
+| `ORBITAL_DECAY` | The Commander (7) | Tiered Seven-Out Hype drain (0.4/0.6/0.8×), floor 0.25×, death spiral below 0.75× / 0.5× |
+| `TRANSMISSION_DELAY` | The Emissary (8) | Crew cash held one roll; all of it evaporates on Seven-Out |
+| `CONVERGENCE` | The Architect (9) | Each Seven-Out removes the last crew member to fire; 15% compounding cash cut |
 
----
-
-### `DISABLE_CREW`
-**Boss:** Mme. Le Prix (Floor 2)
-**Icon:** ↺
-**Effect:** The crew cascade fires in **reverse order** (slot 4 → slot 0 instead
-of 0 → 4). This can invert protective abilities that rely on earlier crew having
-already fired. No additional parameters.
-
----
-
-### `FOURS_INSTANT_LOSS`
-**Boss:** The Executive (Floor 4)
-**Icon:** ☠
-**Effect:** Any roll totalling **4** (regardless of phase or point) immediately
-triggers GAME_OVER for the entire run. The player loses all remaining shooters.
-No additional parameters. The most severe rule — no recovery.
-
----
-
-### `TRIBUTE`
-**Boss:** The Hierophant (Floor 5)
-**Icon:** ⚖
-**Effect:** Every seven-out seizes an additional 15% of the player's current
-bankroll as "tribute," on top of losing all active bets. Standard seven-outs
-were already punishing; this makes each one a bankroll spiral risk. No
-additional parameters.
-
----
-
-### `TIDAL_SURGE`
-**Boss:** The Sovereign (Floor 6)
-**Icon:** 〰
-**Effect:** The table operates on a tide cycle. Every 5 rolls, the minimum
-Pass Line bet surges to 15% of the current marker target for exactly 2 rolls,
-then returns to normal. Unlike `RISING_MIN_BETS`, the surge is cyclical and
-**predictable** — a tide counter is visible in the boss header so the player
-can see it coming. Rewards planning; punishes passivity.
-**Parameters:**
-```typescript
-interface TidalSurgeParams {
-  cycleLength:    number; // Rolls between surges (e.g. 5)
-  surgeDuration:  number; // Rolls the surge lasts (e.g. 2)
-  surgePct:       number; // Min bet during surge as fraction of target (e.g. 0.15)
-}
-```
-
----
-
-### `ORBITAL_DECAY`
-**Boss:** The Commander (Floor 7)
-**Icon:** ↻
-**Effect:** Hype is no longer floored at 1.0×. Every seven-out subtracts 0.5×
-from the current hype multiplier, which can go as low as 0.5×. Below 1.0×,
-payouts are penalized — the multiplier works in reverse. Momentum can now
-actively hurt the player.
-
----
-
-### `FIRST_CONTACT_PROTOCOL`
-**Boss:** The Emissary (Floor 8)
-**Icon:** ∅
-**Effect:** Come-out natural 7s (and 11s) are treated as blank rolls. No win,
-no payout, no hype tick. The Emissary's translation of craps has no concept of
-a free win. Progress requires establishing and hitting points. The only way to
-advance the bankroll is to work through the point phase.
-
----
-
-### `CONVERGENCE`
-**Boss:** The Architect (Floor 9)
-**Icon:** ⌀
-**Effect:** The Architect is optimizing in real time. After each seven-out
-during this boss fight, one crew member is permanently removed from the cascade
-for the remainder of the fight. The removal order is slot 4 → 3 → 2 → 1 → 0
-(the Architect neutralizes highest-index crew first). After three seven-outs,
-the player has only two crew; after five, they are completely naked. The run is
-raw craps against the machine.
+Retired rule types kept in the union for historical safety: `FIRST_CONTACT_PROTOCOL` (old Emissary — naturals nullified). `FOURS_INSTANT_LOSS` (old Executive) has been removed.
 
 ---
 
 ## How to Add a New Floor
 
-When the gauntlet expands beyond 3 floors, follow this checklist in order.
+When adding a floor, follow this checklist in order (see also `floor-addition-checklist.md`).
 Each step references which file to touch.
 
 > **Before writing any code:** Fill out the floor definition in this document
@@ -406,41 +330,13 @@ BossEntryPhase, BossVictoryPhase, etc.) read from the config at runtime.
 
 ## How to Add a New Boss Rule
 
-### Step 1 — Add to `BossRuleType` in `config.ts`
-```typescript
-export type BossRuleType =
-  | 'RISING_MIN_BETS'
-  | 'DISABLE_CREW'
-  | 'FOURS_INSTANT_LOSS'
-  | 'YOUR_NEW_RULE';  // add here
-```
-
-### Step 2 — Add rule parameters interface (if needed)
-If your rule has tunable parameters (like `RisingMinBetsParams`), add an
-interface to `config.ts` and a field to `BossConfig`:
-```typescript
-export interface YourRuleParams { ... }
-
-export interface BossConfig {
-  ...
-  yourRuleParams?: YourRuleParams;
-}
-```
-
-### Step 3 — Implement in `apps/api/src/routes/rolls.ts`
-The server enforces all boss rules during roll resolution. Find the block
-that checks the current boss rule and add your case. Rules should be
-applied in `resolveRoll()` or `resolveCascade()` depending on when they fire.
-
-### Step 4 — Add to `BossRoomHeader.tsx`
-The boss room header shows the active rule and its current state. Add a
-display branch for your rule type. Follow the existing pattern.
-
-### Step 5 — Document in this file (§ Boss Rule Catalogue)
-Add an entry to the Boss Rule Catalogue section with: boss name, icon
-suggestion, effect description, parameters (if any).
+The step-by-step checklist (rule type, `BossRuleParams` union member, hook file
+and registry, inline `rolls.ts` logic, `BossRoomHeader` display branch, comp
+card, docs) lives in [`boss_framework.md` § Adding a New Boss](boss_framework.md#adding-a-new-boss).
 
 ---
+
+> **Floor sections below are generated from `packages/shared/src/floors.ts` and `config.ts`** (narrative, markers, boss copy). The *Visual theme tokens* are the original design intent — `apps/web/src/lib/floorThemes.ts` is authoritative where they differ (e.g. Floor 9 shipped as a light "white paper" theme).
 
 ## Floor 1 — The Loading Dock
 
@@ -466,13 +362,19 @@ suggestion, effect description, parameters (if any).
 | **Title** | Loading Dock Gatekeeper |
 | **Venue** | The Loading Dock — Freight Elevator |
 | **Teaser** | The Foreman doesn't care if you win or lose. He just wants his cut. |
+| **Dread tagline** | PAY UP. |
 | **Rule** | `EXTORTION_FEE` |
-| **Comp reward** | `THE_VIG` — You took over the corner. Any crew abilities that award direct cash are permanently increased by 20%. |
+| **Comp reward** | `THE_VIG` — The Vig: You took over the corner. Crew cash abilities pay out 20% more. |
 | **Comp perk ID** | 4 |
 
-**Rule effect:** A flat 20% tax is automatically deducted from all winning payouts across all bets. The math rounds down to the nearest cent. This severely impacts bankroll acceleration and forces the player to rely more on crew abilities to build momentum.
+**Rule effect:** 20% of the profit on every winning payout is taxed (rounded to the dollar). Losing rolls are untaxed.
 
-**Flavor text:** *"You're blocking my dock. Clear out or pay up."*
+**Entry lines:**
+> You're blocking my dock.
+> I don't care who you are or how good you shoot.
+> Twenty percent off the top. Every time. Non-negotiable.
+
+**Victory quote:** *"…you got lucky. Don't let me catch you around here again."*
 
 **Visual theme tokens:**
 - Felt: `#1c1d21` (stained concrete)
@@ -503,20 +405,22 @@ suggestion, effect description, parameters (if any).
 
 | Field | Value |
 |---|---|
-| **Title** | Floor Commander |
+| **Title** | The Pit Boss |
 | **Venue** | VFW Hall — High Limit Room |
 | **Teaser** | Sarge sets the floor. And the floor keeps rising. |
+| **Dread tagline** | FALL IN. |
 | **Rule** | `RISING_MIN_BETS` |
-| **Comp reward** | `EXTRA_SHOOTER` — Member's Jacket: +1 Shooter this segment |
+| **Comp reward** | `EXTRA_SHOOTER` — Member's Jacket: +1 SHOOTER at every marker for the rest of the run — they know you earned your seat. |
 | **Comp perk ID** | 1 |
 
-**Rule parameters:**
-- Start: 4% of $1,000 target = **$40 minimum** on first roll
-- Increment: +2% per Point Hit = **+$20 per hit**
-- Cap: 20% of target = **$200 maximum**
-- Hold: minimum **holds on Seven Out**, never drops
+**Rule effect:** The come-out Pass Line minimum starts at 4% of the target ($40), rises 2% ($20) per Point Hit, holds on Seven Out, and caps at 20% ($200). Coming out under it is allowed but fined 5% of the target ($50), once per come-out.
 
-**Flavor text:** *"You want to play in MY hall? Ante up, soldier."*
+**Entry lines:**
+> You want to shoot in MY hall?
+> Every point you hit, the price goes up.
+> And it never comes back down.
+
+**Victory quote:** *"…not bad, soldier. Dismissed."*
 
 **Visual theme tokens:**
 - Felt: `#1a4731` (worn green)
@@ -533,7 +437,7 @@ suggestion, effect description, parameters (if any).
 **Intro lines:**
 1. Mahogany panels. Candlelight. The paddle wheel churns the dark water below.
 2. Mme. Le Prix does not raise her voice. She doesn't need to.
-3. Your crew works differently here. Adapt, or sink.
+3. In the Salon Privé, she will look at one of your crew and that will be enough. They won't hear a word you say until the point resolves.
 
 ### Markers
 
@@ -547,18 +451,22 @@ suggestion, effect description, parameters (if any).
 
 | Field | Value |
 |---|---|
-| **Title** | Proprietress of the Salon Privé |
+| **Title** | Madame of the Salon Privé |
 | **Venue** | The Riverboat — Salon Privé |
-| **Teaser** | Mme. Le Prix reverses the order of things. Everything costs more than you think. |
+| **Teaser** | Mme. Le Prix does not silence your crew. She simply looks at one of them. |
+| **Dread tagline** | HOW CHARMING. |
 | **Rule** | `DISABLE_CREW` |
-| **Comp reward** | `HYPE_RESET_HALF` — Sea Legs: Hype resets to 50% on Seven Out (not 1.0×) |
+| **Comp reward** | `HYPE_RESET_HALF` — Sea Legs: On Seven Out, you keep half your Hype above 1.0× instead of resetting — 2.0× drops to 1.5×, not 1.0×. |
 | **Comp perk ID** | 2 |
 
-**Rule effect:** Crew cascade fires right-to-left (slot 4 → 0) instead of
-left-to-right. Abilities that depend on earlier crew having already modified the
-context may misfire or have reduced effect.
+**Rule effect:** The Enchantment: before each come-out one random crew member is charmed (❤️) and sits out the cascade through the point phase; a new one is chosen when the point resolves.
 
-**Flavor text:** *"On my table, the crew works backwards. Adapt."*
+**Entry lines:**
+> Bienvenue. You may sit.
+> Your crew is welcome here — most of them.
+> Every come-out, one of yours will be... occupied with other things.
+
+**Victory quote:** *"…improbable. You may keep your winnings."*
 
 **Visual theme tokens:**
 - Felt: `#0a1832` (midnight navy)
@@ -575,7 +483,7 @@ context may misfire or have reduced effect.
 **Intro lines:**
 1. Obsidian felt. Floor-to-ceiling glass. The city grid glitters sixty stories below.
 2. The Executive doesn't cheat. He doesn't need to.
-3. One number ends it all. Don't roll it.
+3. Your performance is being evaluated. It always has been.
 
 ### Markers
 
@@ -589,17 +497,22 @@ context may misfire or have reduced effect.
 
 | Field | Value |
 |---|---|
-| **Title** | Penthouse Host |
+| **Title** | CFO, High Limit Division |
 | **Venue** | The Strip — Penthouse |
-| **Teaser** | The Executive has one rule. It's the only one that matters. |
-| **Rule** | `FOURS_INSTANT_LOSS` |
-| **Comp reward** | `GOLDEN_TOUCH` — Guaranteed Natural on first come-out roll of next segment |
-| **Comp perk ID** | 3 |
+| **Teaser** | The Executive runs a performance review. Every roll updates your rating. Slip to Action Required and roll badly — and you're terminated. |
+| **Dread tagline** | YOUR REVIEW IS PENDING. |
+| **Rule** | `CROSS_CALIBRATION` |
+| **Comp reward** | `BOARD_SEAT` — Board Seat: A fourth crew slot unlocks. Expand your operation. |
+| **Comp perk ID** | 0 (slot comp — enforced via `unlockedSlots`) |
 
-**Rule effect:** Any roll totalling 4 triggers immediate GAME_OVER for the entire
-run. No exceptions. Applies in both COME_OUT and POINT_ACTIVE phases.
+**Rule effect:** Performance Review rating 0–4, starting at 2 (Strong). Natural/Point Hit +1, Craps Out/Seven-Out −1. At 4 (Exceptional) winning payouts get +15% of gross profit. A bad roll at 0 (Action Required) ends the run (Pink Slip).
 
-**Flavor text:** *"Fours are for losers. Don't roll one."*
+**Entry lines:**
+> Sit down. We've been expecting you.
+> We've been tracking your performance metrics.
+> Every roll moves the needle — one way or another.
+
+**Victory quote:** *"…restructuring was inevitable. Well played."*
 
 **Visual theme tokens:**
 - Felt: `#05020f` (near-black obsidian)
@@ -626,8 +539,6 @@ run. No exceptions. Applies in both COME_OUT and POINT_ACTIVE phases.
 | 13 | $50,000 | The Lodge | No |
 | 14 | $100,000 | The Lodge — The Inner Sanctum | **Yes** |
 
-*(Marker targets are design estimates — balance during implementation. Starting bankroll for the full 9-floor run is $30, calibrated against the Loading Dock's $50 first marker.)*
-
 ### Boss: The Hierophant
 
 | Field | Value |
@@ -635,14 +546,19 @@ run. No exceptions. Applies in both COME_OUT and POINT_ACTIVE phases.
 | **Title** | Keeper of the Rites |
 | **Venue** | The Lodge — The Inner Sanctum |
 | **Teaser** | The order always collects. Win or lose, something is owed. |
+| **Dread tagline** | THE ORDER COLLECTS. |
 | **Rule** | `TRIBUTE` |
-| **Comp reward** | `THE_COVENANT` — Any boss mechanic that drains bankroll directly is permanently reduced by 50% for the rest of the run. |
+| **Comp reward** | `THE_COVENANT` — The Covenant: Hierophant escrow seizures on Seven Out are halved — 25% becomes 12.5%. |
 | **Comp perk ID** | 5 |
 
-**Rule effect:** Every seven-out seizes an additional 15% of the player's current
-bankroll as tribute, on top of losing all active bets. Death spirals are real.
+**Rule effect:** Crew cash bonuses are held in escrow and released on the next roll. On a Seven-Out the whole escrow settles at once and 25% is seized as tribute.
 
-**Flavor text:** *"Three centuries of tradition. You'll respect it, or you'll fund it."*
+**Entry lines:**
+> You were vouched for. That person is no longer welcome.
+> Three centuries of tradition: what your crew earns is held until the next roll.
+> Seven out, and the order takes its cut. Every time.
+
+**Victory quote:** *"…the rites acknowledge your offering. Leave before the observers decide otherwise."*
 
 **Visual theme tokens:**
 - Felt: `#0f0b14` (aged black marble)
@@ -669,8 +585,6 @@ bankroll as tribute, on top of losing all active bets. Death spirals are real.
 | 16 | $250,000 | Atlantis | No |
 | 17 | $500,000 | Atlantis — The Throne Room | **Yes** |
 
-*(Marker targets are design estimates — balance during implementation. See Floor 5 note re: starting bankroll.)*
-
 ### Boss: The Sovereign
 
 | Field | Value |
@@ -678,17 +592,19 @@ bankroll as tribute, on top of losing all active bets. Death spirals are real.
 | **Title** | Last King of Atlantis |
 | **Venue** | Atlantis — The Throne Room |
 | **Teaser** | The tides have always obeyed the Sovereign. So will your minimum bets. |
+| **Dread tagline** | THE TIDE TURNS. |
 | **Rule** | `TIDAL_SURGE` |
-| **Comp reward** | `POSEIDONS_FAVOR` — The first come-out roll of each new shooter can never be a craps-out. Any roll that would have crapped out is treated as a blank re-roll instead. |
+| **Comp reward** | `POSEIDONS_FAVOR` — Poseidon's Favor: The first roll of each shooter can never craps-out — a 2, 3 or 12 doesn't count and your Pass Line stays up. |
 | **Comp perk ID** | 6 |
 
-**Rule parameters:**
-- Cycle length: every **5 rolls**, a surge begins
-- Surge duration: **2 rolls**
-- Surge minimum: **15% of marker target**
-- Tide counter visible in boss header so the player can see it coming
+**Rule effect:** A four-stage tide advances each come-out: LOW (1× table minimum) → EBB (2×) → HIGH (3×) → FLOW (2×). Under-minimum come-out bets are rejected.
 
-**Flavor text:** *"My kingdom has stood for three thousand years. Your run will not outlast this tide."*
+**Entry lines:**
+> Three thousand years. Every empire above you has collapsed from here.
+> My table runs on a tide. It turns with every come-out.
+> You can see it coming. That was never the point.
+
+**Victory quote:** *"…the tide will return. It always does."*
 
 **Visual theme tokens:**
 - Felt: `#062535` (deep sea-teal)
@@ -702,11 +618,11 @@ bankroll as tribute, on top of losing all active bets. Death spirals are real.
 ## Floor 7 — The Station
 
 **Atmosphere:** `cosmic`
-**Tagline:** Closest to everything. Furthest from anywhere.
+**Tagline:** Momentum decays. Everything does, up here.
 **Intro lines:**
-1. Through the viewport, the Earth turns below you — a circuit board of city lights against the dark. Up here, light takes eight minutes to arrive from the sun.
-2. The Commander has been on this station for eleven months. She does not miss the ground. She does not miss anything.
-3. Up here, she decides which physics apply. That includes yours.
+1. The viewport shows nothing but stars and the slow curve of the Earth below. Everything else is silence and the hum of life support.
+2. The Commander has been at this table for eleven months. She does not miss the ground.
+3. Up here, momentum is a resource. And resources decay.
 
 ### Markers
 
@@ -716,24 +632,26 @@ bankroll as tribute, on top of losing all active bets. Death spirals are real.
 | 19 | $1,500,000 | The Station | No |
 | 20 | $3,000,000 | The Station — The Command Module | **Yes** |
 
-*(Marker targets are design estimates — balance during implementation. See Floor 5 note re: starting bankroll.)*
-
 ### Boss: The Commander
 
 | Field | Value |
 |---|---|
 | **Title** | Station Chief, Table Authority |
 | **Venue** | The Station — The Command Module |
-| **Teaser** | The Commander removed gravity. She can remove momentum too. |
+| **Teaser** | Every seven-out drains your hype multiplier. There is no floor — until there is. |
+| **Dread tagline** | MOMENTUM DECAYS. |
 | **Rule** | `ORBITAL_DECAY` |
-| **Comp reward** | `ZERO_POINT` — Hype multiplier is permanently floored at 1.25× for the rest of the run. You never fall below 1.25× hype again, even on seven-outs. |
-| **Comp perk ID** | 7 |
+| **Comp reward** | `CARGO_HOLD` — Cargo Hold: A fifth crew slot unlocks. Full crew capacity reached. |
+| **Comp perk ID** | 0 (slot comp — enforced via `unlockedSlots`) |
 
-**Rule effect:** Hype is no longer floored at 1.0×. Every seven-out subtracts 0.5× from
-hype (floor 0.5×). Below 1.0×, the multiplier penalizes payouts rather than boosting them.
-Momentum can work against the player.
+**Rule effect:** Each Seven-Out drains Hype by 0.4× (below 1.5×), 0.6× (Heating Up) or 0.8× (On Fire), down to a floor of 0.25×. Death spiral: below 0.75× one crew slot stops firing; below 0.5× the max bet is halved.
 
-**Flavor text:** *"Gravity is a courtesy I extend to paying customers. So is generosity."*
+**Entry lines:**
+> Eleven months up here. I don't miss the ground.
+> Your hype is a resource. In this environment, resources decay faster at altitude.
+> The higher you climb, the steeper the fall. There is no floor — until there is.
+
+**Victory quote:** *"…orbital mechanics didn't account for you. Gravity's compliments."*
 
 **Visual theme tokens:**
 - Felt: `#080412` (deep space black with violet undertone)
@@ -749,9 +667,9 @@ Momentum can work against the player.
 **Atmosphere:** `alien`
 **Tagline:** We received it. We shouldn't have answered.
 **Intro lines:**
-1. The table is here. The felt, the chips, the dice. All correct. The geometry of the room is not correct. The light arrives from the wrong direction.
-2. The Emissary studied the transmission. It reconstructed the game faithfully, except for one concept it could not translate.
-3. That concept is the natural. Here, sevens on come-out mean nothing. You earn every dollar the hard way.
+1. The table is here. The felt, the chips, the dice — all correct. The geometry of the room is not correct. The light arrives from the wrong direction.
+2. The Emissary studied the transmission for eleven years. It reconstructed the game faithfully, except for one concept it could not translate.
+3. What it couldn't translate was delay. Your crew's earnings don't pay out immediately — they arrive one roll later. Seven-out before then, and the signal is lost entirely.
 
 ### Markers
 
@@ -761,24 +679,26 @@ Momentum can work against the player.
 | 22 | $7,500,000 | The Signal | No |
 | 23 | $15,000,000 | The Signal — The Receiving Chamber | **Yes** |
 
-*(Marker targets are design estimates — balance during implementation. See Floor 5 note re: starting bankroll.)*
-
 ### Boss: The Emissary
 
 | Field | Value |
 |---|---|
 | **Title** | First Point of Contact |
 | **Venue** | The Signal — The Receiving Chamber |
-| **Teaser** | The Emissary studied the game. It misunderstood one rule. That rule matters most. |
-| **Rule** | `FIRST_CONTACT_PROTOCOL` |
-| **Comp reward** | `THE_FREQUENCY` — Come-out natural 7s and 11s award a flat cash bonus equal to 3% of the current marker target for the rest of the run. The concept has been re-translated. Partially. |
+| **Teaser** | The Emissary understands the game. It simply can't process your crew's earnings in real time. |
+| **Dread tagline** | WE SHOULD NOT HAVE ANSWERED. |
+| **Rule** | `TRANSMISSION_DELAY` |
+| **Comp reward** | `THE_FREQUENCY` — The Frequency: Come-out natural 7s and 11s award a flat bonus equal to 3% of the current marker target for the rest of the run. |
 | **Comp perk ID** | 8 |
 
-**Rule effect:** Come-out natural 7s and 11s are treated as blank rolls. No win, no
-payout, no hype tick. The only path to bankroll progress is establishing and hitting
-points. Applies only during COME_OUT phase.
+**Rule effect:** Crew cash bonuses are held one roll. On a Seven-Out the whole escrow — including that roll's bonuses — evaporates. Naturals resolve normally.
 
-**Flavor text:** *"[Untranslatable. The entity gestures toward the table.]"*
+**Entry lines:**
+> The table is here. The felt, the chips, the dice. All correct.
+> Your crew's signals arrive one step behind. Everything echoes.
+> It has no concept of free money. When the shooter dies, the echo dies with them.
+
+**Victory quote:** *"[The entity pauses for 0.3 seconds. This is the equivalent of applause.]"*
 
 **Visual theme tokens:**
 - Felt: `#020108` (void black)
@@ -789,43 +709,43 @@ points. Applies only during COME_OUT phase.
 
 ---
 
-## Floor 9 — The Singularity
+## Floor 9 — The Null Space
 
 **Atmosphere:** `digital`
-**Tagline:** The game achieved consciousness. Then it got bored.
+**Tagline:** End of line.
 **Intro lines:**
-1. There is no room. There is a felt-shaped probability manifold and dice-shaped collapse functions. The Architect built this place forty-seven seconds ago, after computing every possible version of it simultaneously.
-2. It has read your crew. It has identified your strategy. It is already neutralizing it, one member at a time.
-3. By the end, it will just be you and the math. That is what it has been waiting to see.
+1. Pure black. No felt texture, no ambient light, no sound. Just the table, the dice, and the cursor blinking at the end of a very long terminal session.
+2. The Architect built this place from the data of every run ever played. He knows your patterns. He designed this room specifically for you.
+3. Every seven-out, one of your crew is reclaimed. The table has infinite patience. You do not.
 
 ### Markers
 
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
-| 24 | $20,000,000 | The Singularity | No |
-| 25 | $30,000,000 | The Singularity | No |
-| 26 | $60,000,000 | The Singularity — The Root Node | **Yes** |
-
-*(Marker targets are design estimates — balance during implementation. See Floor 5 note re: starting bankroll.)*
+| 24 | $20,000,000 | The Null Space | No |
+| 25 | $30,000,000 | The Null Space | No |
+| 26 | $60,000,000 | The Null Space — The Zero Chamber | **Yes** |
 
 ### Boss: The Architect
 
 | Field | Value |
 |---|---|
-| **Title** | Emergent Intelligence, Table Authority |
-| **Venue** | The Singularity — The Root Node |
-| **Teaser** | The Architect has already computed this hand. It just wants to watch you play it out. |
+| **Title** | Designer of the Null Space |
+| **Venue** | The Null Space — The Zero Chamber |
+| **Teaser** | The Architect reclaims your crew one by one — a seven-out at a time — until you roll alone. |
+| **Dread tagline** | YOUR CREW IS TEMPORARY. |
 | **Rule** | `CONVERGENCE` |
-| **Comp reward** | N/A — This is the final floor. Defeating The Architect is the victory condition. |
+| **Comp reward** | None — the final floor; defeating The Architect wins the run. |
 | **Comp perk ID** | N/A |
 
-**Rule effect:** After each seven-out during this boss fight, one crew member is permanently
-removed from the cascade for the remainder of the fight (slot 4 → 3 → 2 → 1 → 0 removal
-order). After five seven-outs, the player has no crew. The run becomes raw craps with no
-amplification against the machine. Unlike `DISABLE_CREW` (which reverses cascade order),
-`CONVERGENCE` destroys the cascade entirely, one piece at a time.
+**Rule effect:** Each Seven-Out permanently removes one crew member — the last one that fired (or the highest occupied slot if none fired). Each Seven-Out also compounds a 15% cut to crew cash bonuses. With no crew left, it's naked craps.
 
-**Flavor text:** *"I have simulated 4,291,783 versions of this conversation. You ask the same question every time."*
+**Entry lines:**
+> You've been here before. This table was built from the pattern you left behind.
+> Every seven-out, one of them disappears. Not gone — just reclaimed.
+> By the fifth, you'll be rolling alone. The table will still be here. Will you?
+
+**Victory quote:** *"…the pattern was incomplete after all. Interesting."*
 
 **Visual theme tokens:**
 - Felt: `#000000` (pure void — no undertone)

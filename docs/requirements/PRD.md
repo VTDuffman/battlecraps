@@ -1,4 +1,4 @@
-Product Requirements Document: Battlecraps (v1.1)
+Product Requirements Document: Battlecraps (v1.2 — synced with the beta build, 2026-10-13)
 
 1. Executive Summary
 
@@ -6,24 +6,24 @@ Battlecraps is a full-stack, 16-bit roguelike deck-builder that uses a simplifie
 
 2. Core Game Loop
 
-The Entry: Player starts with $250, 5 Shooters (Lives), 1.0x Hype, and all Crew slots empty.
+The Entry: Player starts with $30, 5 Shooters (Lives), 1.0x Hype, and 3 empty Crew slots.
 
 Starting Conditions:
-- Bankroll: $250 (25,000 cents internally)
-- Shooters: 5
+- Bankroll: $30 (3,000 cents internally) — below the $50 first marker
+- Shooters: 5 (refilled to 5 at every marker; 6 with the Member's Jacket comp)
 - Hype: 1.0x
-- Crew Slots: 5 (all empty at run start)
-- Starting Marker: Floor 1, Marker 0
+- Crew Slots: 3 active of 5 (Board Seat comp unlocks the 4th, Cargo Hold the 5th)
+- Starting Marker: Floor 1 (The Loading Dock), Marker 0
 
 The Table: Player places bets (Pass Line, Odds, Hardways) to reach a specific cash Marker. Bets are deducted from the bankroll at placement (deduct-on-placement model); losses are already reflected before dice roll.
 
-The Roll: Dice are thrown; a 7-out ends a Shooter's life and resets Hype to 1.0x.
+The Roll: Dice are thrown; a 7-out ends a Shooter's life and resets Hype to 1.0x (Sea Legs, Lucky Charm and The Commander change this).
 
-The Cascade: Active Crew members trigger abilities clockwise (positions 1 through 5) to modify the result.
+The Cascade: After the dice land, active Crew members trigger abilities left-to-right (slot 1 through the last unlocked slot) to modify the result.
 
 The Bar: Upon hitting a Marker, the player transitions to a recruitment phase to draft/replace Crew.
 
-The Boss: Every 3rd Marker is a "High Limit Room" (Boss) with rule-breaking constraints.
+The Boss: Every 3rd Marker is a "High Limit Room" (Boss) with rule-breaking constraints. 27 markers across 9 floors; beating the Floor 9 boss wins the run.
 
 3. Functional Requirements
 
@@ -38,7 +38,8 @@ Odds: True-odds betting allowed behind the Point (4/10 @ 2:1; 5/9 @ 3:2; 6/8 @ 6
 Hardways: Bets on 4, 6, 8, 10 appearing as pairs. Payouts: Hard 4/10 @ 7:1; Hard 6/8 @ 9:1. Hardway bets are cleared on a Seven Out or when the matching number rolls "soft" (non-paired). High-payout triggers for Crew abilities.
 
 Bet Constraints:
-- Maximum bet per type: 10% of the current Marker target. Placing a chip that would exceed the maximum tops the bet out at the maximum rather than rejecting the click — the player always gets the most out of each chip placement.
+- Maximum bet per type: 10% of the current Marker target (15% with The Old Pro). In Sarge and Sovereign boss fights the max is floored at 5× the boss minimum; The Commander's death spiral halves it. Placing a chip that would exceed the maximum tops the bet out at the maximum rather than rejecting the click.
+- Minimum come-out Pass Line bet: ~1/6 of the table max, snapped to $5, never below $5 (`getMinBet`). Bosses can raise it (Sarge, The Sovereign).
 - Bets are deducted from bankroll at placement; losses require no further deduction at resolution.
 - Odds bets are only valid while a point is active.
 
@@ -64,9 +65,10 @@ Hype is a persistent per-run multiplier that scales all profits above the base s
 
 Hype Lifecycle:
 - Starts at 1.0x at run start.
-- Increased by crew abilities and point streaks (see 3.4).
-- Resets to 1.0x on any Seven Out.
-- Resets to 1.0x on any Marker clear (Hype does not carry between segments).
+- Increased by crew abilities and base-game ticks (see 3.4).
+- Resets to 1.0x on any Seven Out — except: Sea Legs keeps half the Hype above 1.0x; crew Hype gained on the seven-out roll (e.g. Lucky Charm +1.0) carries to the next shooter; The Commander's fight replaces the reset with a tiered drain that can go below 1.0x.
+- Resets to 1.0x on any Marker clear (Hype does not carry between markers).
+- Tiers: ≥1.5x Heating Up, ≥2.5x On Fire (visual effects).
 
 Hype escalation occurs in two layers:
 1. Base-game streak ticks (Section 3.4), applied before the Crew cascade fires.
@@ -74,18 +76,17 @@ Hype escalation occurs in two layers:
 
 3.4 Hype Escalation (Point Streak System)
 
-Consecutive Point Hits grant a base-game Hype tick before the Crew cascade executes. This creates a "hot streak" feel independent of crew composition.
+Base-game Hype ticks are applied before the Crew cascade executes. Consecutive Point Hits create a "hot streak" feel independent of crew composition.
 
-Streak thresholds:
-- 1st consecutive Point Hit: +0.05x Hype
-- 2nd consecutive Point Hit: +0.10x Hype
-- 3rd+ consecutive Point Hit: +0.20x Hype per hit
+- Point Hit: +0.15x (1st), +0.20x (2nd consecutive), +0.25x (3rd), +0.30x (4th+, capped) — `getBaseHypeTick()`
+- Natural: +0.10x
+- Craps Out: −0.05x (never below 1.0x)
 
 Streak counter resets to 0 on any Seven Out or Marker clear.
 
 3.5 Persistence & Auth (The Full-Stack)
 
-User Accounts: Secure authentication (JWT) to track "Comps" (Permanent Upgrades) and "Unlocked Crew." Auth layer is currently a placeholder (x-user-id header) pending full JWT implementation.
+User Accounts: Clerk authentication (Google OAuth) with JWT verification on every API route. The user record tracks unlocked crew, unlock progress, tutorial completion, and personal bests. Comp perks are scoped to a single run (`runs.comp_perk_ids`).
 
 Run Persistence: Complete run state (Bankroll, Shooters, Hype, Crew, point streak, bets) must be saved to a database after every roll settlement to prevent loss on refresh.
 
@@ -93,11 +94,13 @@ Run Persistence: Complete run state (Bankroll, Shooters, Hype, Crew, point strea
 
 4.1 Data Models
 
-User: uid, username, email, password_hash, unlocked_crew[], comp_perks[], lifetime_earnings.
+Authoritative schema: `apps/api/src/db/schema.ts`. Summary:
 
-Run: run_id, user_id, status, phase, bankroll, shooters, current_marker_index, floor, current_point, hype, consecutive_point_hits, bets (jsonb), crew_slots[5] (jsonb), rewards_finalised.
+User: id, clerk_id, username, email, unlocked_crew_ids[], unlock_progress (jsonb), tutorial_completed, max_bankroll_cents, highest_marker_reached.
 
-CrewMember: id, name, ability_category, cooldown_type, cooldown_state, base_cost, visual_id, description, is_starter_roster.
+Run: id, user_id, status, phase, bankroll_cents, shooters, current_marker_index, current_point, hype, consecutive_point_hits, boss_roll_count (`bossPointHits` in code — the per-boss counter), bets (jsonb), crew_slots[5] (jsonb), unlocked_slots, comp_perk_ids[], pending_additive_cents (boss escrow), mechanic_freeze, is_dev_run.
+
+CrewDefinition: id, name, ability_category, cooldown_type, rarity, visual_id, brief/detailed/unlock descriptions, unlock_quote, is_starter_roster. Hire cost is computed at recruit time from rarity (no stored cost).
 
 TurnContext (runtime, not persisted): dice, dice_total, is_hardway, roll_result, active_point, base_payouts, additives[], multipliers[], hype, flags (sevenOutBlocked, passLineProtected, hardwayProtected), resolved_bets.
 
@@ -111,9 +114,9 @@ POINT_ACTIVE (phase: POINT_ACTIVE): Point established; Odds and Hardway betting 
 
 RESOLUTION: Dice rolled; Cascade executing; Settlement pending. Transient — immediately advances to next stable state.
 
-TRANSITION: Marker hit; Loading "The Seven-Proof Pub" (recruitment screen). Shooters reset to 5. Hype resets to 1.0x.
+TRANSITION: Marker hit; Loading "The Seven-Proof Pub" (recruitment screen). Shooters reset to 5 (6 with Member's Jacket). Hype resets to 1.0x.
 
-GAME_OVER: Shooters = 0 or final Marker cleared. No further rolls permitted. Meta-progression rewards calculated.
+GAME_OVER: Shooters = 0 below the marker target, bankroll below the minimum bet with no chips on the table, an Executive PIP termination, or the final Marker cleared (victory). No further rolls permitted. Leaderboard entry submitted.
 
 4.3 Real-Time Event Model (WebSocket)
 
@@ -123,7 +126,7 @@ cascade:trigger — Emitted once per Crew member that fires during a cascade. In
 
 turn:settled — Emitted once after all cascade events, with the final RollReceipt (see 4.4).
 
-WebSocket authentication uses the userId in the socket handshake payload.
+WebSocket clients join a per-run room (`run:<id>`). Unlock grants are pushed as `unlocks:granted`.
 
 4.4 Roll Receipt
 
@@ -139,101 +142,37 @@ Displayed in the Roll Log UI component (see Section 6).
 
 5.1 The Gauntlet
 
-Floor
+27 markers across 9 floors; the third marker of each floor is a boss. Authoritative data: `GAUNTLET` in `packages/shared/src/config.ts`. Boss mechanics: `docs/frameworks/boss_framework.md`.
 
-Venue
+| Floor | Venue | Marker Targets | Boss | Boss Rule | Comp Reward |
+|---|---|---|---|---|---|
+| 1 | The Loading Dock | $50 / $100 / $200 | The Foreman | 20% tax on winning profit | The Vig: crew cash bonuses +20% |
+| 2 | VFW Hall | $300 / $500 / $1k | Sarge | Rising min bet (4%→20%); under it = 5% fine | Member's Jacket: +1 shooter every marker |
+| 3 | The Riverboat | $1.5k / $2k / $4k | Mme. Le Prix | One crew charmed per come-out | Sea Legs: keep half the Hype above 1.0x on Seven Out |
+| 4 | The Strip | $5k / $7.5k / $15k | The Executive | Performance Review rating; PIP termination | Board Seat: 4th crew slot |
+| 5 | The Lodge | $30k / $50k / $100k | The Hierophant | Crew cash held one roll; 25% seized on Seven Out | The Covenant: halves that seizure (redesign pending, FB-029) |
+| 6 | Atlantis | $150k / $250k / $500k | The Sovereign | Tide LOW/EBB/HIGH/FLOW min bet (1×/2×/3×/2×) | Poseidon's Favor: first-roll craps-out doesn't count |
+| 7 | The Station | $1M / $1.5M / $3M | The Commander | Tiered Seven-Out Hype drain + death spiral | Cargo Hold: 5th crew slot |
+| 8 | The Signal | $5M / $7.5M / $15M | The Emissary | Crew cash held one roll; evaporates on Seven Out | The Frequency: Naturals pay 3% of target |
+| 9 | The Null Space | $20M / $30M / $60M | The Architect | Seven Out removes the last crew to fire | None (victory) |
 
-Marker Targets
+5.1.1 Rising Min-Bets Mechanics (Sarge — Floor 2 Boss)
 
-Boss
+The come-out Pass Line minimum starts at 4% of the marker target and rises by 2% per Point Hit scored during the fight, capped at 20%.
 
-Boss Rule
+Formula: minBet = targetCents × min(0.04 + 0.02 × bossPointHits, 0.20), rounded up to the nearest dollar.
 
-Comp Reward
+Escalation trigger: the counter (bossPointHits) increments ONLY on a POINT_HIT that does not clear the marker. All other outcomes leave it unchanged; the min-bet HOLDS on a Seven Out.
 
-1
+Non-compliance: coming out under the minimum is allowed but fined 5% of the target, once per come-out (no further fines during that point phase).
 
-VFW Hall
+Example ($1,000 target): Roll 1 = $40 min. Hit the point twice → $80 min. Hit it again → $100 min. Seven Out → still $100. Cap reached at 8 Point Hits → $200 max thereafter.
 
-$450 / $600 / $1k
+5.2 The Crew (30)
 
-Sarge
+30 crew members: 15 Starter crew (IDs 16–30, always available) and 15 unlockable crew (IDs 1–15, earned via in-game achievements). Full abilities, numbers, unlock conditions and player-facing copy: `docs/frameworks/crew_framework.md` (copy mirrors `apps/api/src/db/seed.ts`).
 
-Rising Min-Bets (escalates on Point Hit)
-
-Member's Jacket: +1 Shooter
-
-2
-
-Riverboat
-
-$1.5k / $2.5k / $4k
-
-Mme. Le Prix
-
-Enchants one crew per come-out (sits out the cascade)
-
-Sea Legs: Hype resets 50%
-
-3
-
-The Strip
-
-$6k / $9k / $12.5k
-
-The Executive
-
-Cross Calibration: 5-tier Performance Review rating (Exceptional/Very Strong/Strong/Below Strong/Action Required). Natural/Point Hit +1, Craps Out/Seven-Out −1. PIP termination at Action Required + bad roll. +15% payout bonus at Exceptional.
-
-Board Seat: +1 crew slot
-
-5.1.1 Rising Min-Bets Mechanics (Sarge — Floor 1 Boss)
-
-The Pass Line minimum bet starts at 5% of the marker target and rises by 2% per Point Hit scored during the fight, capped at 20%.
-
-Formula: minBet = targetCents × clamp(0.05 + 0.02 × bossPointHits, 0, 0.20), rounded up to the nearest dollar.
-
-Escalation trigger: the counter (bossPointHits) increments ONLY on a POINT_HIT that does not clear the marker. All other outcomes — NATURAL, CRAPS_OUT, POINT_SET, SEVEN_OUT, NO_RESOLUTION — leave the counter unchanged.
-
-Seven Out behaviour: the min-bet HOLDS at its current level on a Seven Out. Sarge does not let the pressure drop just because the shooter changed.
-
-Cap / reset: the min-bet never exceeds 20% of the target ($200 for the $1k Marker 2 boss). The counter resets to 0 when the player clears the marker and enters TRANSITION.
-
-Example (Marker 2, $1,000 target): Roll 1 = $50 min. Hit the point twice → $90 min. Hit it again → $110 min. Seven Out → still $110. Cap reached at 8 Point Hits → $200 max thereafter.
-
-5.2 The Starter 15 (Archetypes)
-
-The 15 starter crew members required for the MVP logic engine:
-
-"Lefty" McGuffin (Dice): Re-rolls a Seven Out (1x per Shooter).
-
-The Physics Prof (Dice): Shifts both dice ±1 toward the active Point value. No effect during Come Out.
-
-The Mechanic (Dice): Once per Shooter, locks a chosen die face (1–6) for up to 4 rolls or until Seven Out. The player selects the value via the UI; the lock is applied before the cascade fires each roll.
-
-The Mathlete (Table): Hardways stay up on "Soft" rolls (non-paired matching totals).
-
-The Floor Walker (Table): First Seven Out per Shooter refunds the Pass Line stake (no payout, but bet returned to bankroll).
-
-The Regular (Payout): Grants a free Odds bonus equal to the Pass Line bet on a Natural.
-
-The Big Spender (Payout): +$100 flat bonus on Hardway wins. Amplified by Hype.
-
-The Shark (Payout): Floor-scaled bonus (1.25× max bet) on any Point Hit. Amplified by Hype.
-
-The Whale (Payout): 1.2x multiplier on all winning payouts. Stacks multiplicatively with other crew multipliers.
-
-The Nervous Intern (Hype): +0.2x Hype on Natural 7/11.
-
-"Hype-Train" Holly (Hype): +0.3x Hype on any Point Hit.
-
-The Drunk Uncle (Hype): 33% chance per roll to randomly add or subtract up to 0.5x Hype. Unreliable but affordable.
-
-The Mimic (Wildcard): Copies the previous slot's ability. Requires an occupied slot to the left; handled outside the standard execute() pipeline.
-
-The Old Pro (Wildcard): +1 Shooter per Marker reached. Fires on TRANSITION state.
-
-The Lucky Charm (Hype): On the first Seven Out per shooter, injects +1.0 Hype before the reset. Next shooter starts at ≥2.0× Hype. One use per shooter; resets on new shooter.
+Hire cost scales with rarity and the marker just cleared (2× max bet for Starter up to 9× for Legendary). Cash-bonus crew scale with the current marker's max bet.
 
 6. UI/UX Requirements
 
@@ -243,7 +182,7 @@ Dice Animation: 3D scaling effect on roll (Mode-7 style or CSS transforms) movin
 
 Feedback: Successive visual highlighting for Crew triggers (Portraits flash, Barks/Text Bubbles appear). One portrait fires per cascade:trigger event.
 
-Layout: Top-down table. Top half is the betting grid; bottom half is the "Rail" showing the 5 Crew portraits reading left to right. Bankroll, Shooter count, and Hype meter displayed on the table.
+Layout: Top-down table. Top half is the betting grid; bottom half is the "Rail" showing the Crew portraits (3–5 slots) reading left to right, reorderable by drag-and-drop. Bankroll, Shooter count, and Hype meter displayed on the table.
 
 Roll Log: Itemized transaction receipt displayed after each roll, showing per-bet breakdowns, crew contributions, Hype multiplier applied, and final net. Color-coded by outcome type (win = green, loss = red, info = blue).
 

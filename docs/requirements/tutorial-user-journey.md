@@ -1,5 +1,7 @@
 # BattleCraps Tutorial — UX/Design Proposal
 
+> **Status:** Pre-implementation design proposal (historical). The shipped tutorial differs — e.g. the first marker is $50 (not $300), the Floor 1 boss is The Foreman (not Sarge), and the gauntlet is 9 floors / 27 markers. The script as implemented lives in `apps/web/src/lib/tutorialBeats.ts`; the technical design is `docs/design/tutorial-technical-design.md`.
+
 ## Context
 Playtesters unfamiliar with craps are hitting the table cold with no mental model. The tutorial must bridge two knowledge gaps: (1) base craps mechanics and (2) BattleCraps-specific systems. It should feel like part of the game world, not bolted-on help text.
 

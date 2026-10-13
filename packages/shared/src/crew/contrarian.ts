@@ -3,7 +3,7 @@
 // packages/shared/src/crew/contrarian.ts
 //
 // Category:    WILDCARD
-// Ability:     Dynamic additive (0.45× max-bet) whenever this roll total < last.
+// Ability:     Dynamic additive (0.25× max-bet) whenever this roll total < last.
 // Cooldown:    none
 //
 // Trigger: ctx.previousRollTotal !== null && ctx.diceTotal < ctx.previousRollTotal

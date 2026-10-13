@@ -50,20 +50,20 @@ export type BossRuleType =
   | 'DISABLE_CREW'           // Floor 3 — Mme. Le Prix: one crew member enchanted per come-out
   | 'CROSS_CALIBRATION'      // Floor 4 — The Executive: performance review rating tracks roll outcomes
   | 'TRIBUTE'                // Floor 5 — The Hierophant: crew additives held in escrow; 25% seized on 7-out
-  | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: min bet floods 15% of target every 5 rolls
-  | 'ORBITAL_DECAY'          // Floor 7 — The Commander: seven-out drains hype by 0.5×, can go below 1.0×
+  | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: 4-stage tide (1×/2×/3×/2× min bet), advances each come-out
+  | 'ORBITAL_DECAY'          // Floor 7 — The Commander: tiered seven-out hype drain (0.4/0.6/0.8×), floor 0.25×
   | 'FIRST_CONTACT_PROTOCOL' // Floor 8 — retired mechanic; kept in union for historical safety
   | 'TRANSMISSION_DELAY'     // Floor 8 — The Emissary: crew additives held one roll; evaporate on 7-out
-  | 'CONVERGENCE';           // Floor 9 — The Architect: each seven-out removes one crew slot from the cascade
+  | 'CONVERGENCE';           // Floor 9 — The Architect: each seven-out removes the last crew member to fire
 
 /** The permanent comp perk awarded for defeating a boss. */
 export type CompRewardType =
   | 'THE_VIG'         // Floor 1 — The Vig: crew cash abilities pay out 20% more
-  | 'EXTRA_SHOOTER'   // Floor 2 — Member's Jacket: +1 Shooter at next segment reset
-  | 'HYPE_RESET_HALF' // Floor 3 — Sea Legs: Hype resets to 50% of current (not 1.0×)
+  | 'EXTRA_SHOOTER'   // Floor 2 — Member's Jacket: +1 Shooter at every marker for the rest of the run
+  | 'HYPE_RESET_HALF' // Floor 3 — Sea Legs: on Seven Out, keep half the Hype above 1.0×
   | 'BOARD_SEAT'      // Floor 4 — Board Seat: a fourth crew slot unlocks
-  | 'THE_COVENANT'    // Floor 5 — The Covenant: direct bankroll drains reduced by 50%
-  | 'POSEIDONS_FAVOR' // Floor 6 — Poseidon's Favor: first come-out can never craps-out
+  | 'THE_COVENANT'    // Floor 5 — The Covenant: halves Hierophant escrow seizure (redesign pending)
+  | 'POSEIDONS_FAVOR' // Floor 6 — Poseidon's Favor: each shooter's first-roll craps-out doesn't count
   | 'CARGO_HOLD'      // Floor 7 — Cargo Hold: a fifth crew slot unlocks
   | 'THE_FREQUENCY'   // Floor 8 — The Frequency: come-out naturals award 3% of marker target as bonus
   | 'NONE';           // Floor 9 — No comp awarded; The Null Space is the end of the line
@@ -188,11 +188,11 @@ export interface MarkerConfig {
 
 export const COMP_PERK_IDS = {
   THE_VIG:          4,  // Floor 1 boss reward — crew cash abilities +20%
-  MEMBER_JACKET:    1,  // Floor 2 boss reward — +1 Shooter per segment reset
-  SEA_LEGS:         2,  // Floor 3 boss reward — Hype resets to 50%
+  MEMBER_JACKET:    1,  // Floor 2 boss reward — +1 Shooter at every marker
+  SEA_LEGS:         2,  // Floor 3 boss reward — keep half the Hype above 1.0× on Seven Out
   // ID 3 (GOLDEN_TOUCH) retired in FB-025 — slot unlock comps use perkId 0
-  THE_COVENANT:     5,  // Floor 5 boss reward — direct bankroll drains reduced by 50%
-  POSEIDONS_FAVOR:  6,  // Floor 6 boss reward — first come-out can never craps-out
+  THE_COVENANT:     5,  // Floor 5 boss reward — halves Hierophant escrow seizure (redesign pending)
+  POSEIDONS_FAVOR:  6,  // Floor 6 boss reward — each shooter's first-roll craps-out doesn't count
   // ID 7 (ZERO_POINT) retired in FB-025 — slot unlock comps use perkId 0
   THE_FREQUENCY:    8,  // Floor 8 boss reward — 3% marker target bonus on come-out naturals
 } as const;

@@ -6,7 +6,6 @@
 // Ability:     +0.4 Hype on a CRAPS_OUT (come-out roll of 2, 3, or 12).
 // Cooldown:    none
 //
-// CRAPS_OUT is the only roll result where no other crew normally fires.
 // The Silver Lining turns the worst come-out outcome into a Hype bump.
 // Frequency: 4/36 ≈ 11% of come-out rolls.
 // =============================================================================

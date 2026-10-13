@@ -272,7 +272,7 @@ export async function evaluateUnlocks(
   // ID 9 (Whale): Reach $20,000 (2,000,000 cents) bankroll in a single run
   if (persistedRun.bankrollCents >= 2_000_000) tryUnlock(9);
 
-  // ID 14 (Old Pro): Win the game — clear all 9 Gauntlet markers.
+  // ID 14 (Old Pro): Win the game — clear all 27 Gauntlet markers.
   // Detected when the run transitions to GAME_OVER and bankroll meets the last
   // marker's target (distinguishes a win GAME_OVER from a bust GAME_OVER).
   const lastMarkerTarget = MARKER_TARGETS[MARKER_TARGETS.length - 1] ?? Infinity;

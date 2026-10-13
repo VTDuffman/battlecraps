@@ -3,7 +3,7 @@
 // packages/shared/src/crew/bookkeeper.ts
 //
 // Category:    WILDCARD
-// Ability:     Dynamic additive (0.50× max-bet) on every 3rd roll of the shooter.
+// Ability:     Dynamic additive (0.25× max-bet) on every 3rd roll of the shooter.
 // Cooldown:    none
 //
 // Trigger: ctx.shooterRollCount % 3 === 0

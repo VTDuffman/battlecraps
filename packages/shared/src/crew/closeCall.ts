@@ -3,7 +3,7 @@
 // packages/shared/src/crew/closeCall.ts
 //
 // Category:    DICE
-// Ability:     Dynamic additive (0.65× max-bet) whenever dice show consecutive values.
+// Ability:     Dynamic additive (0.35× max-bet) whenever dice show consecutive values.
 // Cooldown:    none
 //
 // Trigger: Math.abs(ctx.dice[0] - ctx.dice[1]) === 1

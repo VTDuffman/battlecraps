@@ -3,7 +3,7 @@
 // packages/shared/src/crew/pressureCooker.ts
 //
 // Category:    WILDCARD
-// Ability:     +0.5 Hype AND dynamic additive (1.5× max-bet) after 5 consecutive
+// Ability:     +0.5 Hype AND dynamic additive (0.75× max-bet) after 5 consecutive
 //              blank point-phase rolls.
 // Cooldown:    none
 //
@@ -13,9 +13,9 @@
 // A value of 4 means four prior consecutive NO_RESOLUTION rolls — this roll
 // is the fifth, which triggers the release.
 //
-// computeNextState() resets pointPhaseBlankStreak to 0 after the crew fires
-// (detects streak >= 4 after a NO_RESOLUTION). On any other roll result the
-// streak also resets to 0.
+// computeNextState() (rolls.ts) resets pointPhaseBlankStreak to 0 on the roll
+// the crew fires (streak >= 4 on a NO_RESOLUTION), so it fires again on the
+// 10th, 15th… blank. Any other roll result also resets the streak to 0.
 // =============================================================================
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';

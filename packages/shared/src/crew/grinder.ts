@@ -3,7 +3,7 @@
 // packages/shared/src/crew/grinder.ts
 //
 // Category:    TABLE
-// Ability:     Dynamic additive (0.28× max-bet) on every NO_RESOLUTION.
+// Ability:     Dynamic additive (0.15× max-bet) on every NO_RESOLUTION.
 // Cooldown:    none
 //
 // Trigger: ctx.rollResult === 'NO_RESOLUTION'

@@ -53,7 +53,7 @@ export interface BossRuleHooks {
    * Called at the top of resolveCascade() to determine which slot indices (and
    * in what order) the cascade will visit. Return [] to skip the entire loop.
    *
-   * Used by: CONVERGENCE — returns [0..N-1] where N shrinks each seven-out.
+   * Used by: DISABLE_CREW — skips Mme. Le Prix's charmed slot.
    *
    * `state` carries the live per-fight runtime values (bossPointHits, etc.),
    * passed through from the roll handler so hooks can react to accumulated state.
@@ -79,7 +79,8 @@ export interface BossRuleHooks {
    * computeNextState runs. Return the (potentially reduced) post-drain
    * bankroll in cents.
    *
-   * Used by: TRIBUTE — seizes a percentage of bankroll on every seven-out.
+   * Currently unused — TRIBUTE's escrow seizure is inline in rolls.ts.
+   * Retained for future extensibility.
    */
   modifySevenOut?(
     bankrollAfterLoss: number,

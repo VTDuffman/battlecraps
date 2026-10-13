@@ -3,7 +3,7 @@
 // packages/shared/src/crew/aceMcgee.ts
 //
 // Category:    DICE
-// Ability:     Dynamic additive (0.75× max-bet) whenever a 1 appears on either die.
+// Ability:     Dynamic additive (0.40× max-bet) whenever a 1 appears on either die.
 // Cooldown:    none
 //
 // Trigger: ctx.dice[0] === 1 || ctx.dice[1] === 1

@@ -639,8 +639,8 @@ async function rollHandler(
   // Each crew member's execute() fires left-to-right (slot 0 → 4), each one
   // seeing the TurnContext as modified by all previous crew members.
   //
-  // For CONVERGENCE: inject bossSevenOutCount into TurnContext so the hook
-  // (and any future crew that reads it) has the PRE-roll seven-out counter.
+  // For CONVERGENCE: inject the PRE-roll seven-out count into TurnContext as
+  // bossSevenOutCount (informational — no hook or crew reads it today).
   const isConvergenceBoss = activeBossRule === 'CONVERGENCE' && isBossMarker(run.currentMarkerIndex);
   const preCascadeCtx = isConvergenceBoss
     ? { ...poseidonCtx, bossSevenOutCount: run.bossPointHits }
@@ -803,7 +803,7 @@ async function rollHandler(
   const payout = bossModifiedPayout + crossCalibrationExceptionalBonus;
   const newBankroll = run.bankrollCents - betDelta + payout;
 
-  // ── 9b. TRIBUTE — modifySevenOut hook is now a no-op (escrow logic is inline below) ──
+  // ── 9b. TRIBUTE has no modifySevenOut hook — its escrow logic is inline below (9e/9f) ──
   const tributedBankroll = newBankroll;
 
   // ── 9c. THE_FREQUENCY comp — flat bonus on come-out naturals ──────────────
@@ -1224,10 +1224,13 @@ function computeNextState(
   const { rollResult, flags } = finalCtx;
   const currentMarkerIndex = run.currentMarkerIndex;
 
-  // ── TIDAL_SURGE: per-roll tide counter ────────────────────────────────────
-  // TIDAL_SURGE is the only boss rule that advances `bossPointHits` on EVERY roll
-  // (not just POINT_HIT). Detect it once here and build a helper used across all
-  // result branches to keep the logic consistent.
+  // ── Boss counter (bossPointHits) — meaning depends on the active rule ─────
+  //   RISING_MIN_BETS:   Sarge's point-hit count (+1 per POINT_HIT).
+  //   TIDAL_SURGE:       tide stage — advances on every come-out resolution.
+  //   CROSS_CALIBRATION: Executive's rating (0–4).
+  //   DISABLE_CREW:      Le Prix's charmed slot (overridden in the roll handler).
+  //   CONVERGENCE:       Architect's seven-out count (handled in the SEVEN_OUT branch).
+  // nextBossCounter() keeps this consistent across all result branches.
   const activeBossRule     = GAUNTLET[currentMarkerIndex]?.boss?.rule ?? null;
   const isTidalSurge       = activeBossRule === 'TIDAL_SURGE';
   const isOrbitalDecay     = activeBossRule === 'ORBITAL_DECAY'       && isBossMarker(currentMarkerIndex);
@@ -1444,7 +1447,7 @@ function computeNextState(
 
       // Preserve any hype the crew injected during this cascade (e.g. Holly
       // firing on a Seven-Out gives the next shooter a head start).
-      // Sea Legs (Floor 2 boss comp) preserves half the accumulated hype above 1.0
+      // Sea Legs (Floor 3 boss comp) preserves half the accumulated hype above 1.0
       // so a high-hype run isn't completely reset on seven-out.
       // cascadeHypeDelta captures crew head-start above pre-roll level and stacks on top.
       const cascadeHypeDelta = Math.max(0, finalCtx.hype - run.hype);

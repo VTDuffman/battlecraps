@@ -8,7 +8,7 @@
 //
 // The Nervous Intern is a starter HYPE crew member — cheap, reliable, and
 // simple. Every time a Natural rolls on the come-out, he excitedly boosts the
-// global Hype multiplier by 0.2x. Small gains that compound over time.
+// global Hype multiplier by 0.30x. Small gains that compound over time.
 //
 // Because Hype is a persistent multiplier (it carries forward roll-to-roll
 // and resets only on SEVEN_OUT), The Nervous Intern's value grows
@@ -46,7 +46,7 @@ const HYPE_BONUS = 0.30;
  *   assert(result2.context.hype === 1.5); // unchanged
  *
  *   // Should stack with other Hype crew in the same cascade:
- *   // (hype: 1.0 → Nervous Intern → 1.30 → Drunk Uncle adds 0.3 → 1.60)
+ *   // (hype: 1.0 → Nervous Intern → 1.30 → Drunk Uncle adds 0.5 → 1.80)
  */
 export const nervousIntern: CrewMember = {
   id:               10,

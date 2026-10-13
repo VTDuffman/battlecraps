@@ -3,7 +3,7 @@
 // packages/shared/src/crew/evenKeel.ts
 //
 // Category:    TABLE
-// Ability:     Dynamic additive (1.0× max-bet) whenever both dice show even faces.
+// Ability:     Dynamic additive (0.50× max-bet) whenever both dice show even faces.
 // Cooldown:    none
 //
 // Trigger: ctx.dice[0] % 2 === 0 && ctx.dice[1] % 2 === 0

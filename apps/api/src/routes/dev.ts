@@ -43,7 +43,9 @@ import { buildRunStatePayload, fetchUnacknowledgedUnlocks } from './runs.js';
 // Validation — ranges are loose here; buildDevRunState() clamps precisely.
 // ---------------------------------------------------------------------------
 
-const cents = z.number().int().min(0).max(1_000_000_000);
+// Money columns are BIGINT (Floor 9 targets reach $60M = 6e9 cents). Cap at
+// $100B, well inside Number.MAX_SAFE_INTEGER.
+const cents = z.number().int().min(0).max(10_000_000_000_000);
 
 const betsSchema = z.object({
   passLine: cents,

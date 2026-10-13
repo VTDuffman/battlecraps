@@ -20,7 +20,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { leaderboardEntries, runs, users } from '../../db/schema.js';
 import { isDevClerkId } from '../../lib/devAuth.js';
-import { MARKER_TARGETS, getMinBet } from '@battlecraps/shared';
+import { DEV_SCENARIOS, MARKER_TARGETS, getMinBet } from '@battlecraps/shared';
 import {
   buildTestApp,
   createTestUser,
@@ -608,5 +608,48 @@ describe('dev account routes', () => {
     const { status, body } = await post('/api/v1/dev/account/unlocks', { resetUnacknowledged: true });
     expect(status).toBe(200);
     expect(body['unacknowledgedUnlockIds']).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Floor 9 money — BIGINT columns (targets up to $60M = 6e9 cents > INT4 max)
+// ---------------------------------------------------------------------------
+
+describe('Floor 9 bankrolls beyond the old INTEGER ceiling', () => {
+  const INT4_MAX = 2_147_483_647;
+
+  async function createFromPreset(name: string) {
+    const preset = DEV_SCENARIOS.find((p) => p.name === name);
+    if (!preset) throw new Error(`preset missing: ${name}`);
+    const res = await app.inject({
+      method:  'POST',
+      url:     '/api/v1/dev/runs',
+      headers: { 'content-type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+      payload: JSON.stringify(preset),
+    });
+    return { status: res.statusCode, body: res.json() as Record<string, unknown>, preset };
+  }
+
+  beforeEach(() => setDevEnv('true', TEST_CLERK_ID));
+
+  it('creates every Architect preset (bankrolls well above $21.47M)', async () => {
+    for (const name of DEV_SCENARIOS.filter((p) => p.markerIndex === 26).map((p) => p.name ?? '')) {
+      const { status, body } = await createFromPreset(name);
+      expect(status, `${name}: ${JSON.stringify(body)}`).toBe(201);
+      expect((body['run'] as Record<string, unknown>)['bankroll'] as number).toBeGreaterThan(INT4_MAX);
+    }
+  });
+
+  it('"Final marker — hit the point to win": the winning roll persists a $60M+ bankroll', async () => {
+    const { status, body, preset } = await createFromPreset('Final marker — hit the point to win');
+    expect(status, JSON.stringify(body)).toBe(201);
+    const runId = body['runId'] as string;
+
+    const roll = await rollWithDice(app, runId, preset.bets!, 3, 3); // point 6 hit
+    expect(roll.status, JSON.stringify(roll.body)).toBe(200);
+    const run = roll.body['run'] as Record<string, unknown>;
+    expect(run['status']).toBe('GAME_OVER');               // cleared the last marker
+    expect(run['bankrollCents'] as number).toBeGreaterThanOrEqual(MARKER_TARGETS[26] ?? Infinity);
+    expect(typeof run['bankrollCents']).toBe('number');    // bigint mode 'number', not string
   });
 });

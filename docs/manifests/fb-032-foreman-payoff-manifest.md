@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-032 The Foreman: The Cut and The Payoff
 
 **Design doc:** `docs/design/fb-032-foreman-payoff-design.md`
-**Status:** Phases 1–2 done locally (not pushed; playtested 2026-10-13 ✅). Next: Phase 3 barks, Phase 4 defeat cinematics, Phase 5 Dev Mode.
+**Status:** Phases 1–3 done locally (not pushed). Next: Phase 4 defeat cinematics, Phase 5 Dev Mode.
 
 **Rules:** each phase ends at a 🛑 gate. Before calling a phase done: `npm run typecheck`, `npm run build`, `npm run test`, and the API integration suite (Docker `postgres-test`; recreate it after schema changes). Pushing to `main` deploys; the schema change applies at API startup.
 
@@ -39,6 +39,8 @@
 3. **`BossRoomHeader`:** generic bark bubble (same look as the Executive's).
 
 🛑 **Gate:** do the barks feel good? Decide whether to roll out to other bosses.
+
+--- Implemented locally (2026-10-13): trigger rules live in shared `bossBarks.ts` (`pickBossBark`, injectable random; 10 unit tests). Milestones (payoff / 80% / 50%) always bark; plain win 55% / loss 35% and never over a showing bark; silent on a run-ending roll. Rendered in the Executive's bark style under the boss name. Rolling out to another boss = add `barks` to its config. ---
 
 ## Phase 4: Boss defeat cinematics (pilot: Foreman "DOCK CLOSED")
 

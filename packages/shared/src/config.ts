@@ -97,6 +97,12 @@ export type BossRuleParams =
   | { rule: 'CONVERGENCE' };             // Floor 9 — no params; counter tracked via bossPointHits
 
 /** Full descriptor for a boss fight. Only present on markers where isBoss is true. */
+/**
+ * FB-032: moments a boss can bark at. progress50/progress80/payoff apply to
+ * payoff bosses (The Foreman); win/loss to any boss.
+ */
+export type BossBarkTrigger = 'win' | 'loss' | 'progress50' | 'progress80' | 'payoff';
+
 export interface BossConfig {
   // ── Identity ──────────────────────────────────────────────────────────────
   /** NPC name shown in boss entry and victory screens. */
@@ -109,6 +115,11 @@ export interface BossConfig {
    * their rule; distinct from the comp icons in CompCard.tsx.
    */
   sigil: string;
+  /**
+   * FB-032: in-fight barks, by trigger (see bossBarks.ts). Optional — a boss
+   * with no barks stays silent. Lines are short; one shows at a time.
+   */
+  barks?: Partial<Record<BossBarkTrigger, readonly string[]>>;
 
   // ── Vibe copy ─────────────────────────────────────────────────────────────
   /** 1–3 word bark displayed on the dread screen before the rule briefing. */
@@ -247,6 +258,33 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compFanLabel:    'THE VIG',
       // Legacy
       flavorText: "Twenty percent off the top. Pay me off and I don't see nothin'.",
+      // FB-032 barks (pilot)
+      barks: {
+        win: [
+          "Keep 'em coming.",
+          "That's my cut.",
+          "Pleasure doing business.",
+          "Atta boy. Slide it over.",
+          "Every little bit, pal.",
+        ],
+        loss: [
+          "Tough break. My cut's still my cut.",
+          "Dock's still open. Keep shooting.",
+          "Don't cry on my forklift.",
+        ],
+        progress50: [
+          "Now we're talkin'.",
+          "Halfway to friends.",
+        ],
+        progress80: [
+          "Almost square, pal.",
+          "One more and I don't see nothin'.",
+        ],
+        payoff: [
+          "I didn't see nothin'. Get outta here.",
+          "We're square. Beat it.",
+        ],
+      },
     },
   },
 

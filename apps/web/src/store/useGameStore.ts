@@ -33,7 +33,7 @@ import type {
   CelebrationSnapshot,
   TransitionType,
 } from '@battlecraps/shared';
-import { validateOddsBet, getMaxBet, getBossMinBet, getBossPayoffCents, isBossMarker, GAUNTLET, MARKER_TARGETS } from '@battlecraps/shared';
+import { validateOddsBet, getMaxBet, getBossMinBet, getBossPayoffCents, isBossMarker, pickBossBark, GAUNTLET, MARKER_TARGETS } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // Bet field type — identifies a single wager within the Bets structure
@@ -782,6 +782,14 @@ export interface GameState {
   _cutKey: number;
   /** Date.now() when the Payoff was reached; holds the celebration for the PAID IN FULL stamp. */
   payoffAt: number | null;
+
+  /**
+   * FB-032: the boss's current in-fight bark (generic system; lines live in
+   * config.ts `barks`). key re-fires the animation for repeated text. Null = silent.
+   */
+  bossBark: { line: string; key: number } | null;
+  /** Last bark line shown — avoids repeating it back-to-back. */
+  bossBarkLastLine: string | null;
 }
 
 /** FB-028: what a cinematic preview should show. */
@@ -1115,6 +1123,8 @@ export interface GameActions {
    * Clear the Executive bark after the animation window completes.
    * Called by the bark UI component's animation-end handler (or a safety timeout).
    */
+  /** FB-032: dismiss the current boss bark (BossRoomHeader calls this after it animates out). */
+  clearBossBark(): void;
   clearExecutiveBark(): void;
 
   /**
@@ -1268,6 +1278,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   lastBossCut:             null,
   _cutKey:                 0,
   payoffAt:                null,
+  bossBark:                null,
+  bossBarkLastLine:        null,
   executiveRating:         null,
   executiveBark:           null,
   pipTermination:          false,
@@ -1355,6 +1367,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bossProgressCents: 0,
       lastBossCut:    null,
       payoffAt:       null,
+      bossBark:       null,
       devLastRoll:    null,
       ...initialState,
       // Always sync committedBets to the server's confirmed bet state so
@@ -1545,6 +1558,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bossProgressCents:   0,
       lastBossCut:         null,
       payoffAt:            null,
+      bossBark:            null,
+      bossBarkLastLine:    null,
       status:              null,
       phase:               null,
       bankroll:            0,
@@ -2034,6 +2049,30 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       ? (currentCrewSlots.map((slot, i) => (i === p.removedCrewSlot ? null : slot)) as StoredCrewSlots)
       : currentCrewSlots;
 
+    // ── FB-032: generic boss barks (lines in config.ts; rules in shared bossBarks.ts) ─
+    const { bossBark: oldBossBark, bossBarkLastLine, bossProgressCents: cutBefore } = get();
+    const bark = pickBossBark({
+      markerIndex:   oldMarkerIndex,
+      bankrollDelta: p.bankrollDelta,
+      isLoss:        p.rollResult === 'CRAPS_OUT' || p.rollResult === 'SEVEN_OUT',
+      isGameOver:    p.runStatus === 'GAME_OVER',
+      ...(p.bossCut && {
+        cut: { before: cutBefore, after: p.bossCut.total, payoff: p.bossCut.payoff, paidOff: p.bossCut.paidOff },
+      }),
+      barkShowing:   oldBossBark !== null,
+      lastLine:      bossBarkLastLine,
+    });
+    const newBossBark = bark !== null
+      ? { line: bark.line, key: (oldBossBark?.key ?? 0) + 1 }
+      : oldBossBark;
+    if (bark !== null && newBossBark !== null) {
+      // Safety clear in case the header never calls clearBossBark().
+      const barkKey = newBossBark.key;
+      setTimeout(() => {
+        if (get().bossBark?.key === barkKey) set({ bossBark: null });
+      }, bark.trigger === 'payoff' ? 3600 : 3000);
+    }
+
     set({
       bankroll:             p.newBankroll,
       bets:                 p.newBets,
@@ -2082,6 +2121,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastBossCut:           p.bossCut ?? null,
       _cutKey:               p.bossCut && p.bossCut.amount > 0 ? get()._cutKey + 1 : get()._cutKey,
       payoffAt:              p.bossCut?.paidOff === true ? Date.now() : get().payoffAt,
+      bossBark:              newBossBark,
+      bossBarkLastLine:      bark?.line ?? bossBarkLastLine,
       payoutPops,
       _popsKey:             hasPops ? _popsKey + 1 : _popsKey,
       // Flush buffered cascade events at the reveal moment — portrait
@@ -2795,6 +2836,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   clearFeedbackSnapshot() {
     set({ feedbackContextSnapshot: null });
+  },
+
+  clearBossBark() {
+    set({ bossBark: null });
   },
 
   clearExecutiveBark() {

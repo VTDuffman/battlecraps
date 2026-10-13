@@ -143,6 +143,13 @@ Demo: you see `isDev: true` in the provision response; nobody else does. No user
 **Prompt:**
 > Unit: `getRealisticDefaults` for markers 0, 3, 11, 20, 26 (comps/slots/shooters correct). Integration: non-dev → 404 on `POST /dev/runs`; locked crew without `ignoreUnlocks` → 422; `entry: 'transition'` into marker 11 → after a skip-recruit the run is at marker 11 with `bossPointHits` 2 (end-to-end proof of Phase 0); created run has `isDevRun = true`.
 
+### Phase 2 implementation notes (2026-10-12)
+- **Default entry is `table` for every marker** (not `transition` for bosses). Entry cinematics, boss entry included, still play from `TransitionOrchestrator` detection, and table entry is the only mode where boss counter / hype / shooters overrides apply. `transition` is opt-in and resets those to the real entry values (the real pub writes them); the builder says so.
+- **Loading the run:** the builder stores the new id in `bc_run_id` and calls App's existing Continue Run handler, so dev runs hydrate through the same `GET /runs/:id` → `connectToRun` path as a page refresh. No new hydration code.
+- **Hydration bug fixed (affects players too):** reloading a run never passed `unlockedSlots`, `bossPointHits`, or `consecutivePointHits` to the client, so after a refresh the crew rail showed 3 slots until the next pub, and boss displays (Sarge min bet, Executive rating, Sovereign tide, Architect slots, Le Prix charm) started from 0. `GET/POST /runs` now return them; `connectToRun` derives `executiveRating` / `pendingBossEntryCharm` via `bossDisplayFromCounter()`.
+- `DevScenarioBuilder` ships as its own lazy chunk (~23 kB, 5 kB gzip), never loaded for non-devs.
+- Tests: 26 shared unit tests (`devScenario.test.ts`), 8 new API integration tests in `dev.test.ts` (19 total).
+
 ### 🛑 APPROVAL GATE: Phase 2
 Demo: from the title screen, start "Executive one roll from PIP", lose one roll, see the Pink Slip. Under a minute.
 

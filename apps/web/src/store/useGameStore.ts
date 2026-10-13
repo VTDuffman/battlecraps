@@ -1022,6 +1022,27 @@ function buildSlotIds(n: number): string[] {
   return Array.from({ length: n }, (_, i) => `slot-${i}`);
 }
 
+/**
+ * Derives boss display state from the stored bossPointHits when a run is
+ * (re)hydrated. Only applies at the table during a boss fight; the pub
+ * (TRANSITION) recomputes these on exit.
+ * - CROSS_CALIBRATION: executiveRating = rating.
+ * - DISABLE_CREW: queue the charm so it settles after the boss-entry cinematic
+ *   (connectToRun resets bossEntryShownForMarker, so that cinematic replays).
+ */
+function bossDisplayFromCounter(initialState: Partial<GameState>): Partial<GameState> {
+  const markerIndex   = initialState.currentMarkerIndex ?? 0;
+  const bossPointHits = initialState.bossPointHits;
+  const atTable       = initialState.status === 'IDLE_TABLE' || initialState.status === 'POINT_ACTIVE';
+  if (bossPointHits === undefined || !atTable || !isBossMarker(markerIndex)) return {};
+
+  switch (GAUNTLET[markerIndex]?.boss?.rule) {
+    case 'CROSS_CALIBRATION': return { executiveRating: bossPointHits };
+    case 'DISABLE_CREW':      return { pendingBossEntryCharm: bossPointHits };
+    default:                  return {};
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Store implementation
 // ---------------------------------------------------------------------------
@@ -1198,6 +1219,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // always has exactly the right number of dnd-kit drag targets.
       // Placed after ...initialState so we read the resolved unlockedSlots value.
       slotIds: buildSlotIds(initialState.unlockedSlots ?? 3),
+      // Boss displays are normally driven by turn:settled; rebuild them from the
+      // stored counter so a reload (or a dev run) mid-fight shows the right state.
+      ...bossDisplayFromCounter(initialState),
     });
 
     // ── Socket event handlers ─────────────────────────────────────────────

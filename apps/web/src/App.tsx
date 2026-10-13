@@ -72,6 +72,9 @@ interface RunStateData {
   unacknowledgedUnlocks?: UnacknowledgedUnlockData[];
   highestMarkerReached?: number;
   isDevRun?:             boolean;
+  unlockedSlots?:        3 | 4 | 5;
+  bossPointHits?:        number;
+  consecutivePointHits?: number;
 }
 
 interface CreateRunResponse {
@@ -245,6 +248,9 @@ const AuthenticatedApp: React.FC = () => {
             }),
             highestMarkerReached:  data.highestMarkerReached ?? 0,
             isDevRun:              data.isDevRun === true,
+            ...(data.unlockedSlots !== undefined && { unlockedSlots: data.unlockedSlots }),
+            ...(data.bossPointHits !== undefined && { bossPointHits: data.bossPointHits }),
+            ...(data.consecutivePointHits !== undefined && { consecutivePointHits: data.consecutivePointHits }),
           });
           setLoading(false);
           return;
@@ -288,6 +294,9 @@ const AuthenticatedApp: React.FC = () => {
         }),
         highestMarkerReached:  data.run.highestMarkerReached ?? 0,
         isDevRun:              data.run.isDevRun === true,
+        ...(data.run.unlockedSlots !== undefined && { unlockedSlots: data.run.unlockedSlots }),
+        ...(data.run.bossPointHits !== undefined && { bossPointHits: data.run.bossPointHits }),
+        ...(data.run.consecutivePointHits !== undefined && { consecutivePointHits: data.run.consecutivePointHits }),
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -387,6 +396,7 @@ const AuthenticatedApp: React.FC = () => {
           hasActiveRun={localStorage.getItem(LS_RUN_ID) !== null}
           onContinue={handleContinue}
           onNewRun={handleNewRun}
+          onDevRunCreated={handleContinue}
         />
         {!aliasChosen && (
           <AliasPickerModal

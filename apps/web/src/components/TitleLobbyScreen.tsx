@@ -14,12 +14,16 @@
 // Visual tone: Floor 1 theme (gold / green), matching TitleScreenPhase.
 // =============================================================================
 
-import React, { useState }    from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { getFloorTheme }      from '../lib/floorThemes.js';
 import { HowToPlayScreen }    from './tutorial/HowToPlayScreen.js';
 import { VersionDisplay }     from './VersionDisplay.js';
 import { LeaderboardScreen }  from './LeaderboardScreen.js';
 import { FeedbackModal }      from './FeedbackModal.js';
+import { useGameStore }       from '../store/useGameStore.js';
+
+// FB-028: lazy so players never download the dev builder chunk.
+const DevScenarioBuilder = lazy(() => import('./dev/DevScenarioBuilder.js'));
 
 const theme = getFloorTheme(0);
 
@@ -30,17 +34,22 @@ interface TitleLobbyScreenProps {
   onContinue: () => void;
   /** Called when the player confirms they want to start a fresh run. */
   onNewRun: () => void;
+  /** FB-028: a dev run was created and stored as the active run — load it. */
+  onDevRunCreated?: () => void;
 }
 
 export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
   hasActiveRun,
   onContinue,
   onNewRun,
+  onDevRunCreated,
 }) => {
   const [confirming,    setConfirming]    = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [feedbackOpen,  setFeedbackOpen]  = useState(false);
+  const [devBuilderOpen, setDevBuilderOpen] = useState(false);
+  const isDev = useGameStore((s) => s.isDev);
 
   const handleNewRunClick = () => {
     if (hasActiveRun) {
@@ -223,6 +232,18 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
         >
           ★ HIGH ROLLER'S CLUB
         </button>
+
+        {/* FB-028: Developer Mode — only rendered for allowlisted devs */}
+        {isDev && onDevRunCreated && (
+          <button
+            type="button"
+            onClick={() => setDevBuilderOpen(true)}
+            className="w-full py-2.5 rounded border-2 font-mono text-sm font-bold tracking-widest transition-all duration-150 active:scale-95"
+            style={{ borderColor: '#d0208a', color: '#d0208a', backgroundColor: 'rgba(208,32,138,0.08)' }}
+          >
+            ⚙ DEV RUN
+          </button>
+        )}
       </div>
 
       {/* Version display + feedback — bottom row, above accent bar */}
@@ -261,6 +282,15 @@ export const TitleLobbyScreen: React.FC<TitleLobbyScreenProps> = ({
       />
 
       <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+
+      {isDev && devBuilderOpen && onDevRunCreated && (
+        <Suspense fallback={null}>
+          <DevScenarioBuilder
+            onClose={() => setDevBuilderOpen(false)}
+            onCreated={() => { setDevBuilderOpen(false); onDevRunCreated(); }}
+          />
+        </Suspense>
+      )}
 
       {/* Confirmation overlay — shown when player clicks "New Run" over an active run */}
       {confirming && (

@@ -173,7 +173,7 @@ The clock starts on the first roll after the point is set; come-out rolls never 
 - **Why after the cascade:**
   - Blank-roll crew (the Grinder) still pay for that roll.
   - Crew that react to a dice Seven-Out don't trigger: Lefty, Floor Walker, Lucky Charm. If Lefty re-rolls a real 7 into a blank on the last roll, time is still up.
-- **Client:** `clockExpired: true` is sent in the roll response and `turn:settled`. The dice show `TIME'S UP!`, and the header counts down (`CLOCK 6` → `LAST ROLL`).
+- **Client:** `clockExpired: true` is sent in the roll response and `turn:settled`. The dice show `TIME'S UP!`, and the header shows a two-digit seven-segment clock (`SevenSegmentDisplay`) counting rolls left, `06` → `01` — gold, red for the last two, blinking on the last, dimmed on the come-out.
 
 **Odds:** a 6-roll clock times out 18% (4/10), 14% (5/9) and 11% (6/8) of points.
 

@@ -95,6 +95,21 @@ Register **bell DING**, the counter flashes, a **"PAID IN FULL"** stamp slams ov
 ## 7. Measuring Floor 2 impact (decision 2)
 With Dev Mode: run the Foreman ~10–15 times from realistic defaults and note the bankroll you leave with. Compare against today's guaranteed $200+. If Floor 2 starts too lean, tune `payoffCents` up or add a kickback (deferred idea: "he slides you a little something").
 
+### Results (2026-10-13, Monte Carlo — `scripts/sim/foreman-payoff-sim.mjs`)
+200k simulated fights per row, crew-less baseline, flat $20 pass line (trust the comparison, not the absolute %). Arriving with $100:
+
+| Rule | Clears Foreman | Median bankroll leaving | Clears F2-M1 after | Through both |
+|---|---|---|---|---|
+| Old ($200 bankroll) | 21% | $211 | 51% | 11% |
+| Payoff $20 | 66% | $134 | 29% | 19% |
+| **Payoff $25 (shipped)** | **56%** | **$142** | **33%** | **18%** |
+| Payoff $30 | 46% | $158 | 36% | 17% |
+| Payoff $35 | 37% | $174 | 40% | 15% |
+
+(Arriving with $120: old 14.5% through both vs $25 → 21%.)
+
+**Finding:** the Payoff leaves players leaner for Floor 2 (F2-M1 clear rate drops from ~51% to ~33%), but far more get past the Foreman, so **end-to-end survival through F2-M1 rises ~70%** at $25. The rework is friendlier overall, matching the "not harder" goal. To land closer to the old difficulty, $35 (37% Foreman clears) still beats the old rule end-to-end. **Decision: keep $25** unless playtests say the early game is too soft.
+
 ## 8. Boss defeat cinematics (pilot: The Foreman, "DOCK CLOSED")
 
 **Decision (2026-10-13):** losing a boss fight gets a signature "cinematic exit" before the game-over screen, so the player *feels* the loss. Built as a **per-boss system**, piloted on the Foreman (like barks), then rolled out.

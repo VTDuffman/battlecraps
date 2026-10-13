@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-032 The Foreman: The Cut and The Payoff
 
 **Design doc:** `docs/design/fb-032-foreman-payoff-design.md`
-**Status:** Phases 1–4 done locally (not pushed). Next: Phase 5 Dev Mode + measurement.
+**Status:** ✅ All phases (1–5) done 2026-10-13. Ready to push.
 
 **Rules:** each phase ends at a 🛑 gate. Before calling a phase done: `npm run typecheck`, `npm run build`, `npm run test`, and the API integration suite (Docker `postgres-test`; recreate it after schema changes). Pushing to `main` deploys; the schema change applies at API startup.
 
@@ -63,3 +63,5 @@
 3. **Measure** Floor 2 starting bankroll over ~10–15 Dev Mode runs (design §7); tune `payoffCents` if needed.
 
 🛑 **Gate:** FB-032 complete → backlog + CLAUDE.md.
+
+--- Implemented locally (2026-10-13): "Cut so far" control (builder + live panel, PATCH, 422 off payoff markers); 3 Foreman presets; measurement done by Monte Carlo instead of hand runs (`scripts/sim/foreman-payoff-sim.mjs`, results in design §7): $25 Payoff kept — ~70% better survival through F2-M1 than the old rule despite a leaner Floor 2 bankroll. ---

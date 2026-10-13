@@ -1822,7 +1822,7 @@ Before each come-out, Sarge barks an **order** shown in the boss header. Follow 
 
 **Type:** Boss redesign + boss bark system (pilot)
 **Area:** `packages/shared/src/config.ts`, `packages/shared/src/bossRules/extortionFee.ts`, `apps/api/src/routes/rolls.ts`, `apps/web/src/components/BossRoomHeader.tsx`
-**Status:** Designed (2026-10-13); pending implementation approval
+**Status:** Implemented (2026-10-13) — the Cut + Payoff, cash register, PAID IN FULL, boss barks (pilot), boss defeat cinematics (pilot: DOCK CLOSED), Dev Mode controls
 **Design:** `docs/design/fb-032-foreman-payoff-design.md`
 **Manifest:** `docs/manifests/fb-032-foreman-payoff-manifest.md`
 

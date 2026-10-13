@@ -181,6 +181,8 @@ docs/manifests/       # manifest-instruction-prompt.md, implemented/ (FB-009, FB
 
 **Developer Mode (FB-028) live** (2026-10-13) — allowlisted developer only: Scenario Builder (DEV RUN on title screen, 10 presets), forced dice (🎲 DEV), live Dev Panel (backtick: edits, jumps, inspector, copy-as-scenario, cinematic previews, account unlock/tutorial toggles). Dev runs are isolated from leaderboard/unlocks/stats.
 
+**The Foreman rework (FB-032) live** (2026-10-13) — his 20% skim ("the Cut") accumulates on a front-and-center cash register (rolling digits, ka-ching); the room clears only at the $25 **Payoff** (PAID IN FULL stamp + bell), never on bankroll. Pilots two per-boss systems: **boss barks** (`config.ts` `barks`, rules in shared `bossBarks.ts`, floating `BossBarkFloat`) and **boss defeat cinematics** (`defeatCinematic`, `components/defeat/`; Foreman = DOCK CLOSED door slam). Tuning sim: `scripts/sim/foreman-payoff-sim.mjs`.
+
 **Active development:** None currently.
 
 **Open defects:** KI-079 (`settleTurn` float rounding can lose $1 on large bets). All other entries in `docs/testing/known-issues.md` are closed. KI-074–078 were found and fixed in the 2026-10-13 documentation audit (PR #26). KI-013/KI-014 (mobile text size) were fixed 2026-05-21 via an ad hoc font-size sweep.

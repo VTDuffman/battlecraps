@@ -1631,7 +1631,7 @@ Redesign 6 of 9 bosses to counter additive strategies directly. All changes are 
 
 **Type:** Developer tooling
 **Area:** `apps/api/src/routes/dev.ts` (new), `apps/api/src/lib/devAuth.ts` (new), `packages/shared/src/devScenario.ts` (new), `apps/web/src/components/dev/` (new)
-**Status:** Designed. Phase 0 hotfix shipped (2026-10-12); Phases 1–5 pending approval
+**Status:** Implemented (2026-10-12/13) — all phases (0–5) shipped
 **Design:** `docs/design/fb-028-developer-mode-design.md`
 **Manifest:** `docs/manifests/fb-028-developer-mode-manifest.md`
 

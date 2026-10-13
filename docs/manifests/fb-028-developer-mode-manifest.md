@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-028 Developer Mode
 
 **Design doc:** `docs/design/fb-028-developer-mode-design.md` (decisions in §7)
-**Status:** Phases 0–4 shipped. Phase 5 **pending approval, one phase at a time.**
+**Status:** ✅ All phases (0–5) shipped 2026-10-13. FB-028 complete.
 
 **Rules for every phase**
 - Each phase ends at a **🛑 APPROVAL GATE**. Nothing in the next phase starts until Mike says go.
@@ -251,7 +251,11 @@ Demo: from the title screen, start "Executive one roll from PIP", lose one roll,
 - Panel: **Preview cinematics** (boss entry, boss victory + comp, floor reveal, marker intro, marker clear, unlock recap, victory sequence, title, Pink Slip) and **Account** (reset tutorial, clear pending unlock cinematics, crew unlock checklist with grant/revoke diff), each account action behind an inline confirm.
 - Tests: 6 integration tests (37 in `dev.test.ts`).
 
-### 🛑 APPROVAL GATE: Phase 5 → mark FB-028 Implemented in backlog + CLAUDE.md.
+### 🛑 APPROVAL GATE: Phase 5
+
+--- Implemented (`f9db640`, `b7e44d2`, `5b3a62d`; verified locally by Mike 2026-10-13) ---
+
+Post-Phase-5 fixes: queued unlock cinematic never played (client never received the `unlocks:granted`-equivalent update; `applyDevUnlockChange()` mirrors it). Floor 9 presets rejected by a $10M money cap in `dev.ts`; raised to $100B. `schema.ts` money columns aligned with production's INT8 (promoted 2026-05-23 by never-merged commit `1714b78`; `drizzle/0005` records it).
 
 ---
 

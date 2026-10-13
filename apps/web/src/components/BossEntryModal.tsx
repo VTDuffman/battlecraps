@@ -55,15 +55,19 @@ export const BossEntryModal: React.FC<BossEntryModalProps> = ({
       <div className="flex flex-col items-center gap-3 px-8 text-center">
         {/* Star badge */}
         <div
-          className="w-[72px] h-[72px] rounded flex items-center justify-center font-pixel text-r-27"
+          className="w-[72px] h-[72px] rounded flex items-center justify-center"
           style={{
+            fontSize:   '40px',
+            lineHeight: 1,
             color:      theme.bossStarColor,
             background: theme.bossStarBg,
             border:     theme.bossStarBorder,
             boxShadow:  theme.bossStarGlow,
           }}
+          role="img"
+          aria-label={`${boss.name} sigil`}
         >
-          ★
+          {boss.sigil}
         </div>
 
         <div className="font-pixel text-r-9 tracking-[0.3em]" style={{ color: `${theme.bossTextColor}b3` }}>

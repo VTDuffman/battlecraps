@@ -205,6 +205,61 @@ function playCharmSting(ctx: AudioContext, dest: AudioNode): void {
   });
 }
 
+/** Boss sigil impact — sub-bass drop (110 → 38 Hz) layered with a low noise thump (≈900ms) */
+function playBossImpactSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime;
+
+  // Sub boom: sine pitch-drops like a kick drum, long decay for weight.
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(110, t0);
+  sub.frequency.exponentialRampToValueAtTime(38, t0 + 0.35);
+  const subEnv = ctx.createGain();
+  subEnv.gain.setValueAtTime(0.0001, t0);
+  subEnv.gain.exponentialRampToValueAtTime(0.55, t0 + 0.012);
+  subEnv.gain.exponentialRampToValueAtTime(0.001, t0 + 0.9);
+  sub.connect(subEnv);
+  subEnv.connect(dest);
+  sub.start(t0);
+  sub.stop(t0 + 0.92);
+
+  // Thump: lowpassed noise burst for the "slam" transient.
+  const noise = ctx.createBufferSource();
+  noise.buffer = makeNoiseBuf(ctx, 0.25);
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(900, t0);
+  lp.frequency.exponentialRampToValueAtTime(120, t0 + 0.2);
+  const noiseEnv = ctx.createGain();
+  noiseEnv.gain.setValueAtTime(0.35, t0);
+  noiseEnv.gain.exponentialRampToValueAtTime(0.001, t0 + 0.22);
+  noise.connect(lp);
+  lp.connect(noiseEnv);
+  noiseEnv.connect(dest);
+  noise.start(t0);
+  noise.stop(t0 + 0.25);
+}
+
+/**
+ * Plays the boss-entry impact sting. Exported standalone (not via the hook)
+ * because the boss-entry cinematic runs while TableBoard — which mounts
+ * useCrowdAudio — is unmounted. Shares the module-level AudioContext and
+ * master volume; silent when muted.
+ */
+export function playBossImpact(): void {
+  const vol = _initSfxVolume();
+  if (vol === 0) return;
+  if (!globalAudioCtx) {
+    globalAudioCtx = new AudioContext();
+    masterGain = globalAudioCtx.createGain();
+    masterGain.gain.value = vol;
+    masterGain.connect(globalAudioCtx.destination);
+  }
+  const ctx = globalAudioCtx;
+  if (ctx.state === 'suspended') void ctx.resume();
+  playBossImpactSting(ctx, masterGain ?? ctx.destination);
+}
+
 // ---------------------------------------------------------------------------
 // Dice audio — WAV buffer loader
 // ---------------------------------------------------------------------------

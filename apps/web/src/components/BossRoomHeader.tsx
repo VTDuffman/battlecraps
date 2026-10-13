@@ -73,14 +73,18 @@ export const BossRoomHeader: React.FC = () => {
         {/* Left: boss identity */}
         <div className="flex items-center gap-2 min-w-0">
           <div
-            className="flex-none w-[30px] h-[30px] rounded flex items-center justify-center font-pixel text-r-12"
+            className="flex-none w-[30px] h-[30px] rounded flex items-center justify-center"
             style={{
+              fontSize:   '18px',
+              lineHeight: 1,
               color:      theme.bossStarColor,
               background: theme.bossStarBg,
               border:     theme.bossStarBorder,
             }}
+            role="img"
+            aria-label={`${boss.name} sigil`}
           >
-            ★
+            {boss.sigil}
           </div>
           <div className="min-w-0">
             <div

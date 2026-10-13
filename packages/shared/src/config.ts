@@ -103,6 +103,12 @@ export interface BossConfig {
   name: string;
   /** Subtitle rendered beneath the name on the dread screen. */
   title: string;
+  /**
+   * Boss emblem shown on the boss-entry cinematic, entry modal and boss room
+   * header (replaces the generic ★). One glyph that reads as the boss and
+   * their rule; distinct from the comp icons in CompCard.tsx.
+   */
+  sigil: string;
 
   // ── Vibe copy ─────────────────────────────────────────────────────────────
   /** 1–3 word bark displayed on the dread screen before the rule briefing. */
@@ -217,6 +223,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Identity
       name:  'The Foreman',
       title: 'Loading Dock Gatekeeper',
+      sigil: '🔨',
       // Vibe
       dreadTagline:        'PAY UP.',
       entryLines: [
@@ -265,6 +272,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Identity
       name:  'Sarge',
       title: 'The Pit Boss',
+      sigil: '⏱️',
       // Vibe
       dreadTagline:        'DOUBLE TIME.',
       entryLines: [
@@ -313,6 +321,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Identity
       name:  'Mme. Le Prix',
       title: 'Madame of the Salon Privé',
+      sigil: '💋',
       // Vibe
       dreadTagline:        'HOW CHARMING.',
       entryLines: [
@@ -361,6 +370,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Identity
       name:  'The Executive',
       title: 'CFO, High Limit Division',
+      sigil: '💼',
       // Vibe
       dreadTagline:        'YOUR REVIEW IS PENDING.',
       entryLines: [
@@ -409,6 +419,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Identity
       name:  'The Hierophant',
       title: 'Keeper of the Rites',
+      sigil: '👁️',
       // Vibe
       dreadTagline:        'THE ORDER COLLECTS.',
       entryLines: [
@@ -457,6 +468,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Identity
       name:  'The Sovereign',
       title: 'Last King of Atlantis',
+      sigil: '👑',
       // Vibe
       dreadTagline:        'THE TIDE TURNS.',
       entryLines: [
@@ -509,6 +521,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Identity
       name:  'The Commander',
       title: 'Station Chief, Table Authority',
+      sigil: '🎖️',
       // Vibe
       dreadTagline:        'MOMENTUM DECAYS.',
       entryLines: [
@@ -563,6 +576,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Identity
       name:  'The Emissary',
       title: 'First Point of Contact',
+      sigil: '🛸',
       // Vibe
       dreadTagline: 'WE SHOULD NOT HAVE ANSWERED.',
       entryLines: [
@@ -611,6 +625,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Identity
       name:  'The Architect',
       title: 'Designer of the Null Space',
+      sigil: '📐',
       // Vibe
       dreadTagline: 'YOUR CREW IS TEMPORARY.',
       entryLines: [

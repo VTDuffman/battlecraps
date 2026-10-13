@@ -43,9 +43,11 @@ Only works for allowlisted Clerk IDs (`DEV_MODE_ENABLED` + `DEV_CLERK_IDS` on Re
 - [x] ~~PR #21 / `claude/blissful-kalam-958c69`~~: closed as superseded and branch deleted (2026-10-13).
 - [x] ~~Mme. Le Prix docs mismatch~~: code is **The Enchantment** (one crew sits out each come-out; commit `eca480e`). Backlog, boss framework, PRD and the FB-026 manifest now say so (2026-10-13). In-game text was already correct.
 - [x] ~~`runs.pending_additive_cents` INT4~~: promoted to BIGINT at API startup + `drizzle/0006` (2026-10-13).
-- [ ] `docs/frameworks/boss_framework.md` is stale beyond Le Prix (e.g. Sarge checklist says underbets are rejected, they're fined; Hierophant says 15% bankroll tribute, it's 25% escrow; Emissary listed as `FIRST_CONTACT_PROTOCOL`, it's `TRANSMISSION_DELAY`). Worth a full audit against `config.ts` / `bossRules/`.
+- [x] ~~`boss_framework.md` stale~~: full documentation audit done 2026-10-13. PR #26 fixed mechanics (Poseidon soft-lock, Emissary double payout, Sarge repeat fine, Architect double removal, Pressure Cooker), PR #27 fixed player-facing text, and the internal-docs PR rewrote `boss_framework.md`, regenerated `floors.md` floor sections from code, and synced `crew_framework.md`, the PRD and `CLAUDE.md`.
+- [ ] **FB-029 The Covenant redesign** — the Floor 5 comp currently does nothing after it's earned. Design needed (options listed in the backlog entry).
+- [ ] **KI-079** — `settleTurn` float rounding loses $1 on large bets. Small fix, low severity.
 
-**Open defects:** none. All entries in `docs/testing/known-issues.md` are closed.
+**Open defects:** KI-079 (low). Everything else in `docs/testing/known-issues.md` is closed.
 
 **Not built yet:**
 - FB-016 mobile-first UI overhaul: stashed on `feature/fb-016-mobile-ui` (kept on purpose; mostly design docs). Text-size bugs are already patched, so this is a polish upgrade.

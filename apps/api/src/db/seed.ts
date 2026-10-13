@@ -68,7 +68,7 @@ const RARITY: Record<number, string> = {
 
 // ---------------------------------------------------------------------------
 // Brief descriptions — one sentence shown on crew cards and hover tooltips.
-// Canonical copy from crew_framework.md.
+// Canonical copy — mirrored in docs/frameworks/crew_framework.md.
 // ---------------------------------------------------------------------------
 
 const BRIEF_DESCRIPTIONS: Record<number, string> = {
@@ -106,7 +106,7 @@ const BRIEF_DESCRIPTIONS: Record<number, string> = {
 
 // ---------------------------------------------------------------------------
 // Detailed descriptions — 2–3 sentences shown in the expanded help view.
-// Canonical copy from crew_framework.md.
+// Canonical copy — mirrored in docs/frameworks/crew_framework.md.
 // ---------------------------------------------------------------------------
 
 const DETAILED_DESCRIPTIONS: Record<number, string> = {
@@ -169,7 +169,7 @@ const UNLOCK_QUOTES: Record<number, string> = {
 
 // ---------------------------------------------------------------------------
 // Unlock descriptions — IDs 1–15 only; Starter crew have no unlock condition.
-// Canonical copy from crew_framework.md.
+// Canonical copy — mirrored in docs/frameworks/crew_framework.md.
 // ---------------------------------------------------------------------------
 
 const UNLOCK_DESCRIPTIONS: Record<number, string> = {

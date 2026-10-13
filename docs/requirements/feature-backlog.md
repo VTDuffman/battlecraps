@@ -1642,3 +1642,33 @@ Testing late-game content (bosses, comps, bug repros) requires replaying the gau
 ### Solution
 
 A developer-only mode, bound to Mike's Clerk login via a server-side allowlist, that can create any game state instantly: Scenario Builder (any marker, bankroll, shooters, hype, crew, comps, boss state), forced dice, a live in-game dev panel, saved scenarios, and cinematic previews. Dev runs are flagged (`runs.is_dev_run`) and never touch the leaderboard, unlocks, or account stats.
+
+---
+
+## FB-029 — The Covenant Comp Redesign
+
+**Type:** Game design
+**Area:** `packages/shared/src/config.ts` (Floor 5 boss comp), `apps/api/src/routes/rolls.ts`, `apps/web/src/components/CompCard.tsx`
+**Status:** Open — design needed
+**Source:** Documentation audit, 2026-10-13
+
+### Problem
+
+The Covenant is awarded for defeating The Hierophant (Floor 5), but its only effect is to halve The Hierophant's escrow seizure (25% → 12.5%). Once earned, that fight is over, so the comp does nothing for the rest of the run. Its old description also promised halved Sarge fines, which were never implemented (`BossRuleState.covenantActive` is never read) and would be moot anyway (Sarge is Floor 2).
+
+### Goal
+
+Give the Floor 5 comp an effect that matters on Floors 6–9 (Sovereign tide minimums, Commander Hype decay, Emissary escrow evaporation, Architect crew removal), in keeping with the secret-order theme.
+
+### Candidate directions (from the audit)
+
+- **The Order Protects:** once per marker, the first Seven-Out doesn't cost a shooter life (bets still lost, Hype still resets).
+- **Halve later drains:** Emissary evaporation 100% → 50%; Architect load-bearing 15% → 7.5% per Seven-Out.
+- **Sanctified crew:** slot 1 can never be charmed or demolished.
+- **Tithe returned:** 10% of Pass Line + Odds lost on a Seven-Out comes back.
+
+### Acceptance
+
+- New effect implemented with integration tests, reachable on Floors 6–9.
+- `compDescription` (config.ts), `COMP_DEFS` (CompCard.tsx), `boss_framework.md`, `floors.md`, `PRD.md`, `CLAUDE.md` updated together.
+

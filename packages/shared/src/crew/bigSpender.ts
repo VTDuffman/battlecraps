@@ -3,7 +3,7 @@
 // packages/shared/src/crew/bigSpender.ts
 //
 // Category:    PAYOUT
-// Ability:     Dynamic additive (1.5× max-bet) on any roll where a Hardway bet wins.
+// Ability:     Dynamic additive (0.75× max-bet) on any roll where a Hardway bet wins.
 // Cooldown:    none
 //
 // The Big Spender is a straightforward PAYOUT crew member. When any hardway

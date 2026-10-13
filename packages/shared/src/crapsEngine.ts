@@ -697,7 +697,7 @@ function calcLostBetsThisRoll(ctx: TurnContext): number {
  * @param events        Ordered cascade events — used to attribute additives and
  *                      multipliers to specific crew members by name.
  * @param bossDeductions Zero or more boss deductions to surface as loss lines
- *                      (e.g. extortion fee from modifyPayout, tribute from modifySevenOut).
+ *                      (e.g. extortion fee from modifyPayout).
  *                      Each entry appears as its own line and is subtracted from netDelta.
  */
 export function buildRollReceipt(

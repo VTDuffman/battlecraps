@@ -1804,3 +1804,97 @@ An empty sixth pip appears from Floor 2, marker 3 onward (one floor before the c
 *Bug A — `TableBoard.tsx`:* Replace the hardcoded `currentMarkerIndex > 2` threshold with a pip capacity derived directly from the `shooters` value already present in game state. The rendered pip count should always equal `Math.max(5, shooters)` — no marker-index heuristic is needed. This makes the strip self-correcting: it shows 5 pips when `shooters === 5` and 6 pips only once `shooters` has been set to `6` by the server.
 
 *Bug B — `recruit.ts`:* Extend the `compShooterBonus` check to also consult `run.compPerkIds`. The Member's Jacket perk ID (`COMP_PERK_IDS.MEMBER_JACKET`, value `1`, defined in `packages/shared/src/config.ts`) should be checked alongside the immediate boss-victory condition — if either is true, `compShooterBonus = 1`. Since `run.compPerkIds` is already populated by the `array_append` call earlier in the same handler (from KI-063 / KI-072 fix work), the data is available; the `compShooterBonus` derivation simply needs to read it. This ensures the bonus is restored correctly for every pub visit after the comp is first granted, for the full remainder of the run.
+
+---
+
+## KI-074 — Poseidon's Favor: blocked craps-out lost the bet and could crash the next roll
+
+**Area:** `apps/api/src/routes/rolls.ts` (POSEIDONS_FAVOR block, `computeNextState` NO_RESOLUTION branch)
+**Severity:** High
+**Status:** Fixed (2026-10-13, PR #26)
+**Source:** Documentation audit
+
+**Issue:**
+A blocked first-roll craps-out was re-labelled `NO_RESOLUTION`, but the Pass Line stake was still lost and `computeNextState` moved the run to `POINT_ACTIVE` with no point. The next roll then called `classifyDiceOutcome` in POINT_ACTIVE with a null point, which throws.
+
+**Fix applied:**
+The blocked roll now doesn't count: the Pass Line is restored in `resolvedBets`, the −0.05 craps-out hype tick is skipped, and the run stays `IDLE_TABLE` / `COME_OUT`. The Grinder ignores this NO_RESOLUTION. The client shows "POSEIDON'S FAVOR" (`crapsOutBlocked`).
+
+---
+
+## KI-075 — The Emissary released held crew bonuses twice
+
+**Area:** `apps/api/src/routes/rolls.ts` (escrow release, steps 9e/9f)
+**Severity:** High
+**Status:** Fixed (2026-10-13, PR #26)
+**Source:** Documentation audit
+
+**Issue:**
+Under TRANSMISSION_DELAY, `pendingAdditiveCents` was released once by the Emissary path and again by the (unconditional) Hierophant path on every non-seven-out roll, overpaying crew bonuses. Separately, bonuses earned *on* the seven-out roll survived to the next shooter, and bonuses held on a marker-clearing roll were never paid.
+
+**Fix applied:**
+Single escrow path for both bosses. On a seven-out the whole escrow (previous + this roll) settles at once — 100% evaporates (Emissary) or 25% is seized (Hierophant). Escrow held on a marker-clearing roll is paid out.
+
+---
+
+## KI-076 — Sarge fined the same non-compliant bet on every point-phase roll
+
+**Area:** `apps/api/src/routes/rolls.ts` (boss `validateBet` call), `packages/shared/src/bossRules/risingMinBets.ts`
+**Severity:** Medium
+**Status:** Fixed (2026-10-13, PR #26)
+**Source:** Documentation audit
+
+**Issue:**
+`validateBet` ran on every roll, so an under-minimum come-out Pass Line (locked for the point phase) was fined 5% of the target again on each point-phase roll. The separate odds check was mathematically equivalent to the Pass Line check and never fired on its own.
+
+**Fix applied:**
+Boss `validateBet` hooks run on the come-out only. Odds check removed.
+
+---
+
+## KI-077 — The Architect removed two crew per seven-out; the rail never updated
+
+**Area:** `packages/shared/src/bossRules/convergence.ts`, `apps/api/src/routes/rolls.ts`, `apps/web/src/components/BossRoomHeader.tsx`, `apps/web/src/store/useGameStore.ts`
+**Severity:** High
+**Status:** Fixed (2026-10-13, PR #26)
+**Source:** Documentation audit
+
+**Issue:**
+Each seven-out both nulled the last-fired crew slot *and* shrank the cascade window from the right, so players typically lost two crew while the header showed "4/5 CREW". The no-one-fired fallback could target an already-empty slot. The client was never told which slot was removed, so the crew stayed on the rail until refresh.
+
+**Fix applied:**
+Shrinking window removed — exactly one crew member per seven-out (last fired, else highest occupied active slot). `removedCrewSlot` emitted and applied client-side; header shows "N CREW LEFT".
+
+---
+
+## KI-078 — Pressure Cooker fired only once per point phase
+
+**Area:** `apps/api/src/routes/rolls.ts` (`computeNextState` NO_RESOLUTION branch)
+**Severity:** Medium
+**Status:** Fixed (2026-10-13, PR #26)
+**Source:** Documentation audit
+
+**Issue:**
+The crew fires when `pointPhaseBlankStreak === 4`, but the streak was never reset after firing, so it fired on the 5th blank and never again that point phase — contradicting every description ("every five rolls").
+
+**Fix applied:**
+The streak resets to 0 on the roll the Pressure Cooker fires, so it releases on blanks 5, 10, 15…
+
+---
+
+## KI-079 — settleTurn can lose $1 to floating-point rounding on large bets
+
+**Area:** `packages/shared/src/crapsEngine.ts` (`settleTurn`)
+**Severity:** Low
+**Status:** Open
+**Source:** Documentation audit (integration test, 2026-10-13)
+
+**Issue:**
+`Math.floor((boostedProfit × finalMultiplier) / 100) × 100` is computed in floating point. For a 25,000,000¢ profit at 1.15× Hype, `25_000_000 × 1.15 = 28_749_999.999…`, which floors to 28,749,900¢ — $1 short. Affects late-floor bet sizes.
+
+**Steps to Reproduce:**
+Emissary fight (marker 23), Pass Line 25,000,000¢ on point 6, hype 1.0, roll 4+2. Expected profit 28,750,000¢; actual 28,749,900¢. (See the escrow-on-clear test in `apps/api/src/__tests__/integration/bossRules.test.ts`.)
+
+**High-Level Fix:**
+Round the product before flooring (e.g. `Math.floor(Math.round(boostedProfit × finalMultiplier) / 100) × 100`), or do the multiply in integer basis points. Update the integration test expectation when fixed.
+

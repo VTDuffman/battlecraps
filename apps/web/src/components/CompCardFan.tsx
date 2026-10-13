@@ -7,9 +7,10 @@
 //
 // Earned comps are derived from currentMarkerIndex thresholds — no API needed:
 //   >= 3  → The Foreman defeated → The Vig        (Crew cash abilities +20%)
-//   >= 6  → Sarge defeated       → Member's Jacket (+1 Shooter per segment)
-//   >= 9  → Mme. Le Prix beaten  → Sea Legs        (Hype resets to 50% not zero)
+//   >= 6  → Sarge defeated       → Member's Jacket (+1 Shooter at every marker)
+//   >= 9  → Mme. Le Prix beaten  → Sea Legs        (keep half the Hype above 1.0× on Seven Out)
 //   >= 12 → The Executive down   → Board Seat      (Crew slot 4 unlocked)
+//   … one comp per boss through Floor 8 — see COMP_DEFS in CompCard.tsx
 //
 // Animation: newly earned cards play animate-comp-deal-in (slide from top-left
 // with rotation + spring overshoot). Only NEW cards animate — existing cards

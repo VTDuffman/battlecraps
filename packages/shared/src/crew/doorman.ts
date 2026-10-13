@@ -3,7 +3,7 @@
 // packages/shared/src/crew/doorman.ts
 //
 // Category:    TABLE
-// Ability:     Dynamic additive (0.5× max-bet) on every come-out roll.
+// Ability:     Dynamic additive (0.25× max-bet) on every come-out roll.
 // Cooldown:    none
 //
 // Trigger: NATURAL || CRAPS_OUT || POINT_SET

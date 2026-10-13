@@ -350,7 +350,7 @@ export interface TurnContext {
    * The number of seven-outs accumulated so far in the current CONVERGENCE boss fight.
    * Equals run.bossPointHits at the start of the roll (PRE-resolution).
    * undefined for all non-CONVERGENCE boss fights and non-boss markers.
-   * Used by the CONVERGENCE hook to determine how many crew slots to suppress.
+   * Informational only — no hook or crew reads it since the shrinking cascade window was removed.
    */
   readonly bossSevenOutCount?: number;
 

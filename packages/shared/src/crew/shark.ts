@@ -3,7 +3,7 @@
 // packages/shared/src/crew/shark.ts
 //
 // Category:    PAYOUT
-// Ability:     Dynamic additive (1.25× max-bet) on any Point Hit.
+// Ability:     Dynamic additive (0.65× max-bet) on any Point Hit.
 // Cooldown:    none
 //
 // The Shark is the premier PAYOUT crew for the grind game. Every Point Hit —

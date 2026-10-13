@@ -1,6 +1,6 @@
 # BattleCraps — Crew & Level Scaling Balance Analysis
 
-> **Status:** Brainstorm / pre-implementation. No numbers in this doc have been applied to the codebase.
+> **Status:** Implemented (May 2026), except the F2 marker change (`$300 → $450` — F2 marker 1 is still $300). The additive values were then roughly halved again on 2026-05-22 (commit `1e281cd`), so the numbers below are historical. Current values: `docs/frameworks/crew_framework.md` and each `packages/shared/src/crew/*.ts`. *(Status updated in the 2026-10-13 doc audit.)*
 > **Prepared by:** Game design review session, 2026-05-19.
 
 ---

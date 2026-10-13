@@ -484,7 +484,7 @@ describe('Crew-bonus escrow', () => {
     expect(status, JSON.stringify(body)).toBe(200);
     const r = body['run'] as Record<string, unknown>;
     expect(r['status']).toBe('TRANSITION');
-    // (1_503_749_900, not …750_000: settleTurn loses $1 to float rounding on 25M × 1.15 — tracked separately.)
+    // (1_503_749_900, not …750_000: settleTurn loses $1 to float rounding on 25M × 1.15 — KI-079.)
     expect(r['bankrollCents']).toBe(1_601_249_900);
     expect(r['pendingAdditiveCents']).toBe(0);
   });

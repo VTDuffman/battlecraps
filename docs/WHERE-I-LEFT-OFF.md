@@ -15,13 +15,13 @@ BattleCraps is in **beta**, live at battlecraps.com, playable end to end, with f
 - Clerk auth, leaderboards, tutorial, release notes, feedback system, floor music
 - **Developer Mode** (FB-028), for you only: start anywhere, force dice, edit live runs, preview cinematics
 - **Everything green (2026-10-13):** typecheck + build clean, 414/414 engine tests, **87/87 API integration tests**
-- **Repo clean:** only `main` plus two intentionally kept branches (see Loose ends)
+- **Repo clean:** only `main` plus `feature/fb-016-mobile-ui` (stashed on purpose)
 
 ## Recent work (newest first)
 
 | Date | What |
 |---|---|
-| 2026-10-13 | Cleanup: 11 merged remote branches deleted; the 6 stale integration tests fixed (Sarge fine, additive nerf, hype-before-payout, FB-025 slots) |
+| 2026-10-13 | Cleanup: 12 stale remote branches removed (11 merged + superseded PR #21); the 6 stale integration tests fixed (Sarge fine, additive nerf, hype-before-payout, FB-025 slots) |
 | 2026-10-13 | `schema.ts` money columns → BIGINT to match prod (prod was converted 2026-05-23; Floor 9 targets reach $60M) |
 | 2026-10-12/13 | **FB-028 Developer Mode**, Phases 0–5 (see below) |
 | 2026-10-12 | Bug fix: reloading a run dropped crew slots + boss state (rail fell back to 3 slots) |
@@ -40,7 +40,7 @@ Only works for allowlisted Clerk IDs (`DEV_MODE_ENABLED` + `DEV_CLERK_IDS` on Re
 
 ## Loose ends
 
-- [ ] **PR #21 / `claude/blissful-kalam-958c69`:** an early version of the May 21 mobile text + PubScreen fixes. `main` has later versions (`9fcf486`, `bb6e8af`), so it looks superseded. Close the PR and delete the branch once you're sure.
+- [x] ~~PR #21 / `claude/blissful-kalam-958c69`~~: closed as superseded and branch deleted (2026-10-13).
 - [ ] Mme. Le Prix (F3) docs disagree: backlog/FB-026 says "35% additive tariff", CLAUDE.md says "enchants one random crew per come-out" (the 2026-05-30 charm commit). Playtest, pick one, update docs.
 - [ ] `runs.pending_additive_cents` is still INT4 (max ~$21.47M). Only matters if Hierophant/Emissary escrow alone passes that, which is unlikely.
 

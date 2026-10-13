@@ -1,0 +1,101 @@
+# FB-032: The Foreman: "The Cut" and "The Payoff" (Design)
+
+**Status:** Design agreed 2026-10-13. Ready for implementation.
+**Author:** Mike + Claude
+
+---
+
+## 1. Summary
+
+Rework the Floor 1 boss. The Foreman still skims every winning roll, but you no longer clear his room by reaching a bankroll target. Instead his skim, **the Cut**, accumulates on a cash-register counter, and when it reaches **the Payoff** he looks the other way and you move on.
+
+Also introduces a **general boss bark system**, piloted on the Foreman. If it lands, the other eight bosses get barks by adding lines to `config.ts`.
+
+## 2. Decisions (2026-10-13)
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | Naming | The skim is **"the Cut"**; the clear amount is **"the Payoff"**. The Floor 1 comp stays **The Vig** (no clash). |
+| 2 | Floor 2 starting bankroll may be lower than today (you can pay him off with less than $200 banked) | **Accept and measure** with Developer Mode before tuning. |
+| 3 | Exit condition | **The Payoff is the only way out.** No bankroll marker for the Foreman fight. |
+| 4 | Barks | **Foreman first**, built generically so other bosses can be added later. |
+
+## 3. Mechanic
+
+- **The Cut:** unchanged rate. 20% of the profit on every winning roll, rounded to the dollar (`extortionFee.ts`). Losing rolls are untaxed. Each roll's skim is added to a running total for the fight.
+- **The Payoff:** **$25** to start (= 20% of ~$125 of winning rolls, the same amount of winning today's $200 target needs from a ~$100 arrival). Tunable via `ruleParams.payoffCents`.
+- **Clearing:** when the Cut total reaches the Payoff, the roll that crossed it clears the marker through the normal marker-clear path (celebration → pub → Floor 2). Bankroll ≥ target **never** clears this marker.
+- **Losing:** unchanged. Running out of shooters or bankroll is still game over.
+- **Easier, not harder:** losses can't push you away from the Payoff, unlike a bankroll target.
+
+### What still uses the Foreman marker's `targetCents` ($200)
+
+Not the clear condition anymore, but it still drives **table max / min bet** (10% / ~1/60 of target), **pub hire costs** (`getCrewHireCost` uses the cleared marker's target) and **crew additive scaling** (`markerTargetCents`). Keep it at $200 so Floor 1 economy is unchanged.
+
+## 4. Presentation
+
+### Cash-register counter (boss room header)
+`THE CUT  $18 / $25` with **mechanical rolling digits**: each digit column scrolls like an old register. Replaces the bankroll marker-progress bar for this fight only (the bar would be meaningless).
+
+### Per-win "ka-ching"
+Each taxed win: digits roll up, a small **ka-ching** pop at the register (reuses the existing `kaching-pop` keyframe) and a synthesized **register ka-ching** sound.
+
+### Barks (pilot)
+Short Foreman lines in the boss bark bubble (same style as the Executive's), chosen at random from a pool per trigger:
+
+| Trigger | Example lines |
+|---|---|
+| A taxed win | "Keep 'em coming." · "That's my cut." · "Pleasure doing business." |
+| Cut ≥ 50% of Payoff | "Now we're talkin'." · "Halfway to friends." |
+| Cut ≥ 80% of Payoff | "Almost square, pal." · "One more and I don't see nothin'." |
+| A losing roll *(occasional)* | "Tough break. My cut's still my cut." |
+| The Payoff | "I didn't see nothin'. Get outta here." |
+
+Barks are throttled (one at a time, not on every roll) so they stay fun.
+
+### The Payoff moment
+Register **bell DING**, the counter flashes, a **"PAID IN FULL"** stamp slams over the register, the Foreman's closing line, then the normal marker-clear celebration. Respects `prefers-reduced-motion` (fade instead of slam) and mute/volume.
+
+## 5. Generic boss bark system
+
+- `BossConfig.barks?: Partial<Record<BossBarkTrigger, readonly string[]>>` in `config.ts`, with the copy living next to the rest of each boss's text.
+- `BossBarkTrigger` is a small shared union (`'win' | 'loss' | 'progress50' | 'progress80' | 'payoff'` to start; bosses opt into the triggers they use).
+- Store: one `bossBark: { line, key } | null` slot plus `fireBossBark(trigger)` (picks a line, throttles, auto-clears), replacing nothing yet. **The Executive keeps its current barks**; migrating it is a follow-up once the system proves out.
+- `BossRoomHeader` renders the bubble for any boss (generalizing the Executive's bubble).
+- Adding barks to another boss later = add lines to its config + fire the right triggers.
+
+## 6. Technical design
+
+### Data
+- New column `runs.boss_progress_cents bigint NOT NULL DEFAULT 0` (the existing `boss_roll_count` is a smallint counter; money needs BIGINT). Startup `ADD COLUMN IF NOT EXISTS` in `server.ts` + Drizzle migration. Generic name so future money-tracking bosses can reuse it.
+- Reset to 0 on every marker entry (alongside `getBossEntryCounter`).
+
+### Rule params
+`{ rule: 'EXTORTION_FEE', taxPct: 0.20, payoffCents: 2_500 }`.
+
+### Server (`rolls.ts`)
+- Compute this roll's cut = payout before tax − payout after tax (already computed for `modifyPayout`).
+- Add it to `bossProgressCents`; if it reaches `payoffCents`, the roll clears the marker (`hitMarker`) via the normal path.
+- On the Foreman marker, **skip every bankroll-based clear**: the main settle path and the pre-roll auto-clear block.
+- Emit `bossCut: { amount, total, payoff, paidOff }` on `turn:settled` and the HTTP roll response.
+
+### Client
+- Store: `bossProgressCents` (hydrated on load like `bossPointHits`), applied from `bossCut` on settlement; fire barks from it.
+- `MarkerProgress` / auto-collect / **✓ TARGET MET — ADVANCE**: disabled on payoff-cleared markers (bankroll can't clear them).
+- New `CashRegister` component (rolling digits) in `BossRoomHeader`; the Payoff moment overlay.
+- Audio: `playRegisterKaChing()`, `playRegisterBell()` (standalone, like `playBossImpact`).
+
+### Player-facing copy to update (single sources of truth per CLAUDE.md)
+`config.ts` (`ruleBlurb`, `ruleHeaderText`, `entryLines`, `dreadTagline`, `flavorText`), `floors.ts` narrative if it mentions the tax, `CompCard.tsx` (The Vig unchanged), Sal in `tutorialBeats.ts` ("The Foreman takes his cut" → mention the payoff), How to Play (reads `ruleBlurb` automatically), `boss_framework.md`, PRD, CLAUDE.md game constants.
+
+### Developer Mode
+- `getBossCounterRange` / `BossCounterControl`: a **Cut so far ($)** control for the Foreman (writes `bossProgressCents`).
+- Presets: "Foreman — one win from the Payoff", "Foreman — fresh fight".
+
+## 7. Measuring Floor 2 impact (decision 2)
+With Dev Mode: run the Foreman ~10–15 times from realistic defaults and note the bankroll you leave with. Compare against today's guaranteed $200+. If Floor 2 starts too lean, tune `payoffCents` up or add a kickback (deferred idea: "he slides you a little something").
+
+## 8. Out of scope
+- Barks for the other 8 bosses (pending this pilot).
+- Migrating the Executive onto the generic bark system.
+- A kickback/top-up on payoff (only if measurement says it's needed).

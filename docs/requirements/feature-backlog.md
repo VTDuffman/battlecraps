@@ -1815,3 +1815,21 @@ Before each come-out, Sarge barks an **order** shown in the boss header. Follow 
 - Is a shooter loss too harsh at Floor 2? Alternative penalty: a 5%-of-target fine (reuses Sarge's old fine plumbing).
 - Possible blend with FB-030: disobeying an order puts that point on the roll clock.
 
+
+---
+
+## FB-032 — The Foreman: "The Cut" and "The Payoff"
+
+**Type:** Boss redesign + boss bark system (pilot)
+**Area:** `packages/shared/src/config.ts`, `packages/shared/src/bossRules/extortionFee.ts`, `apps/api/src/routes/rolls.ts`, `apps/web/src/components/BossRoomHeader.tsx`
+**Status:** Designed (2026-10-13); pending implementation approval
+**Design:** `docs/design/fb-032-foreman-payoff-design.md`
+**Manifest:** `docs/manifests/fb-032-foreman-payoff-manifest.md`
+
+### Problem
+
+The Floor 1 boss is a flat 20% payout tax with a bankroll target: a stat penalty with no personality.
+
+### Solution
+
+The Foreman's 20% skim, **the Cut**, accumulates on a cash-register counter. When it reaches **the Payoff** ($25 to start) he looks the other way and you move on; the Payoff is the **only** way out (no bankroll target). Losses can't push you back, so it's no harder than today. Pilots a **generic boss bark system** (lines in `config.ts`) on the Foreman before rolling barks out to the other bosses.

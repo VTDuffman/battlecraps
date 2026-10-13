@@ -7,7 +7,8 @@
 // Cooldown:    none
 //
 // Trigger: ctx.rollResult === 'NO_RESOLUTION'
-// NO_RESOLUTION cannot occur on come-out — this is point-phase only.
+// Point-phase only. A come-out craps-out blocked by Poseidon's Favor is also
+// reported as NO_RESOLUTION (with no active point), so that case is excluded.
 // Frequency: ~65–70% of point-phase rolls.
 // Turns the most common "nothing happened" roll into steady income.
 // =============================================================================
@@ -26,7 +27,7 @@ export const grinder: CrewMember = {
   rarity:           'Starter',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
-    if (ctx.rollResult !== 'NO_RESOLUTION') {
+    if (ctx.rollResult !== 'NO_RESOLUTION' || ctx.activePoint === null) {
       return { context: ctx, newCooldown: 0 };
     }
 

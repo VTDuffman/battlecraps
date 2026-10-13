@@ -2,7 +2,7 @@
 // CREW: THE MIRROR
 // packages/shared/src/crew/mirror.ts
 //
-// Category:    PAYOUT
+// Category:    HYPE
 // Ability:     +0.2 Hype on any roll totalling 7, regardless of phase.
 // Cooldown:    none
 //
@@ -18,7 +18,7 @@ const HYPE_BOOST = 0.2;
 export const mirror: CrewMember = {
   id:               27,
   name:             'The Mirror',
-  abilityCategory:  'PAYOUT',
+  abilityCategory:  'HYPE',
   cooldownType:     'none',
   cooldownState:    0,
   visualId:         'mirror',

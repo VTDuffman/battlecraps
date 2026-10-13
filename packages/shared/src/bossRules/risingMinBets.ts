@@ -5,9 +5,10 @@
 // Point Hit, starting at startPct, capping at capPct. Holds on Seven Out —
 // the pressure never drops once Sarge turns it up.
 //
-// Non-compliance fine (FB-026): if passLine or proportional odds is below the
-// rising minimum, the roll is allowed but a flat fine (nonComplianceFinePct ×
-// marker target) is deducted from the bankroll after settlement.
+// Non-compliance fine (FB-026): if the come-out Pass Line is below the rising
+// minimum, the roll is allowed but a flat fine (nonComplianceFinePct × marker
+// target) is deducted from the bankroll after settlement. rolls.ts only calls
+// validateBet on the come-out, so each under-minimum bet is fined once.
 // =============================================================================
 
 import { GAUNTLET } from '../config.js';
@@ -31,18 +32,6 @@ export const risingMinBetsHooks: BossRuleHooks = {
         fine,
         message: `Below Sarge's minimum of $${bossMin / 100}. A $${fine / 100} non-compliance fine was applied.`,
       };
-    }
-
-    // Odds check: odds must meet the same proportional minimum as passLine.
-    // Only enforced when an odds bet is active — odds are purely optional.
-    if (bets.odds > 0 && bets.passLine > 0) {
-      const oddsMin = Math.floor(bossMin * (bets.odds / bets.passLine) / 100) * 100;
-      if (bets.odds < oddsMin) {
-        return {
-          fine,
-          message: `Odds bet below Sarge's minimum. A $${fine / 100} non-compliance fine was applied.`,
-        };
-      }
     }
 
     return null;

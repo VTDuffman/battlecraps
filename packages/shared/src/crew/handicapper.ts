@@ -2,7 +2,7 @@
 // CREW: THE HANDICAPPER
 // packages/shared/src/crew/handicapper.ts
 //
-// Category:    PAYOUT
+// Category:    HYPE
 // Ability:     Adds Hype on POINT_SET — scaled to the difficulty of the point.
 //              Points 4 or 10  → +0.3 Hype
 //              Points 5 or 9   → +0.2 Hype
@@ -19,7 +19,7 @@ import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../type
 export const handicapper: CrewMember = {
   id:               26,
   name:             'The Handicapper',
-  abilityCategory:  'PAYOUT',
+  abilityCategory:  'HYPE',
   cooldownType:     'none',
   cooldownState:    0,
   visualId:         'handicapper',

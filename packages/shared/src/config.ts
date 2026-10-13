@@ -75,7 +75,7 @@ export type CompRewardType =
  * when a new boss rule type is introduced — no other shared types need changing.
  */
 export type BossRuleParams =
-  | { rule: 'EXTORTION_FEE';      taxPct: number }
+  | { rule: 'EXTORTION_FEE';      taxPct: number; payoffCents: number }  // FB-032: the Cut clears the room at payoffCents
   | { rule: 'DOUBLE_TIME';        rollLimit: number }
   | { rule: 'DISABLE_CREW' }
   | { rule: 'CROSS_CALIBRATION' }
@@ -237,7 +237,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Mechanic
       rule:           'EXTORTION_FEE',
       ruleHeaderText: 'THE FOREMAN TAKES 20% OF ALL WINNING PAYOUTS',
-      ruleParams:     { rule: 'EXTORTION_FEE', taxPct: 0.20 },
+      ruleParams:     { rule: 'EXTORTION_FEE', taxPct: 0.20, payoffCents: 2_500 },
       // Comp
       compReward:      'THE_VIG',
       compPerkId:      COMP_PERK_IDS.THE_VIG,
@@ -683,6 +683,18 @@ export function isBossMarker(markerIndex: number): boolean {
 export function getBossEntryCounter(markerIndex: number): number {
   if (!isBossMarker(markerIndex)) return 0;
   return GAUNTLET[markerIndex]?.boss?.rule === 'CROSS_CALIBRATION' ? 2 : 0;
+}
+
+/**
+ * FB-032: the Payoff (cents) for a marker cleared by paying the boss off
+ * instead of reaching a bankroll target, or null for a normal marker.
+ * Currently only The Foreman: his Cut (the 20% skim) clears the room once it
+ * totals payoffCents. Bankroll never clears a payoff marker.
+ */
+export function getBossPayoffCents(markerIndex: number): number | null {
+  if (!isBossMarker(markerIndex)) return null;
+  const params = GAUNTLET[markerIndex]?.boss?.ruleParams;
+  return params?.rule === 'EXTORTION_FEE' ? params.payoffCents : null;
 }
 
 /**

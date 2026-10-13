@@ -36,6 +36,7 @@ import {
   getMinBet,
   isBossMarker,
   getBossEntryCounter,
+  getBossPayoffCents,
   getBaseHypeTick,
   OLD_PRO_ID,
   type CascadeEvent,
@@ -153,6 +154,13 @@ type WsCascadeTriggerPayload = CascadeEvent;
  *
  * Event name: 'turn:settled'
  */
+interface BossCutPayload {
+  amount:  number;
+  total:   number;
+  payoff:  number;
+  paidOff: boolean;
+}
+
 interface WsTurnSettledPayload {
   runId:            string;
   dice:             [number, number];
@@ -207,6 +215,12 @@ interface WsTurnSettledPayload {
   highestMarkerReached: number;
   /** Sarge's DOUBLE_TIME clock ran out: a blank on the last allowed roll became a SEVEN_OUT. */
   clockExpired?: boolean;
+  /**
+   * FB-032: The Foreman's Cut. Present on every roll of a payoff fight.
+   * amount = skimmed this roll; total = running Cut (after this roll);
+   * payoff = the Payoff; paidOff = this roll reached it (marker cleared).
+   */
+  bossCut?: BossCutPayload;
   /**
    * Index of the crew slot currently enchanted by Mme. Le Prix.
    * Present only during a DISABLE_CREW boss fight.
@@ -388,7 +402,14 @@ async function rollHandler(
   // No deductions apply — returned bets are not winnings.
   const postBetBankroll     = run.bankrollCents - betDelta;
   const postBetMarkerTarget = MARKER_TARGETS[run.currentMarkerIndex];
-  if (postBetMarkerTarget !== undefined && postBetBankroll >= postBetMarkerTarget) {
+  // FB-032: a payoff marker (The Foreman) clears on his Cut reaching the
+  // Payoff, never on bankroll. This also catches a Cut that crossed the Payoff
+  // on a roll whose branch doesn't check for a clear (e.g. a crew bonus on craps).
+  const payoffCents         = getBossPayoffCents(run.currentMarkerIndex);
+  const alreadyClears       = payoffCents !== null
+    ? run.bossProgressCents >= payoffCents
+    : postBetMarkerTarget !== undefined && postBetBankroll >= postBetMarkerTarget;
+  if (alreadyClears) {
     const remainingBets  = sumBets(incomingBets);
     const rawBankroll    = postBetBankroll + remainingBets;
     const bankrollDelta  = sumBets(run.bets as Bets);   // total of all previously-placed bets returned
@@ -409,6 +430,7 @@ async function rollHandler(
         currentMarkerIndex:    nextMkrIndex,
         consecutivePointHits:  0,
         bossPointHits:         getBossEntryCounter(nextMkrIndex),
+        bossProgressCents:     0,
         pointPhaseBlankStreak: 0,
         mechanicFreeze:        null,
         hype:                  run.hype,
@@ -813,6 +835,13 @@ async function rollHandler(
   const bossModifiedPayout = bossHooks?.modifyPayout
     ? bossHooks.modifyPayout(rawPayout, tdEscrowContext.baseStakeReturned, bossParams!, bossState)
     : rawPayout;
+
+  // ── FB-032: The Foreman's Cut → Payoff ────────────────────────────────────
+  // His Cut is exactly what modifyPayout skimmed. It accumulates over the fight;
+  // reaching the Payoff is the ONLY way to clear his room (see computeNextState).
+  const cutThisRoll       = payoffCents !== null ? Math.max(0, rawPayout - bossModifiedPayout) : 0;
+  const newBossProgress   = payoffCents !== null ? run.bossProgressCents + cutThisRoll : 0;
+  const payoffReached     = payoffCents !== null && newBossProgress >= payoffCents;
   // ── CROSS_CALIBRATION: Exceptional rating (4) → 1.15× gross profit ────────
   // Applied at the same layer as the Foreman's extortion tax, but in the player's
   // favor. Rounds to the nearest dollar (100 cents) per project convention.
@@ -888,7 +917,7 @@ async function rollHandler(
   }
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
-  const nextState = computeNextState(run, viggedContext, postEscrowBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot);
+  const nextState = computeNextState(run, viggedContext, postEscrowBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot, payoffReached);
 
   // ── DISABLE_CREW: override bossPointHits with the newly selected charm slot ─
   const charmAdjustedState = nextCharmSlot !== null
@@ -931,6 +960,10 @@ async function rollHandler(
 
   const hitMarker      = finalNextState.currentMarkerIndex > run.currentMarkerIndex;
   const newMarkerIndex = finalNextState.currentMarkerIndex;
+
+  const bossCutPayload: BossCutPayload | undefined = payoffCents !== null
+    ? { amount: cutThisRoll, total: newBossProgress, payoff: payoffCents, paidOff: payoffReached && hitMarker }
+    : undefined;
 
   // The persisted bossPointHits for this roll.
   // For DISABLE_CREW: on come-out resolution, this is the newly selected charm
@@ -1014,6 +1047,8 @@ async function rollHandler(
       hype:                 finalNextState.hype,
       consecutivePointHits: finalNextState.consecutivePointHits,
       bossPointHits:        persistedBossPointHits,
+      // FB-032: running Cut toward the Payoff; resets when the marker changes.
+      bossProgressCents:    hitMarker ? 0 : newBossProgress,
       bets:                 finalNextState.bets,
       crewSlots:          serialiseCrewSlots(
                             finalUpdatedCrewSlots,
@@ -1149,6 +1184,7 @@ async function rollHandler(
       ? Math.max(user.highestMarkerReached, newMarkerIndex)
       : user.highestMarkerReached,
     ...(finalContext.flags.clockExpired && { clockExpired: true }),
+    ...(bossCutPayload !== undefined && { bossCut: bossCutPayload }),
     ...(isDisableCrewBoss && { charmedCrewSlot: persistedBossPointHits }),
     ...(charmedWouldHaveFired && { charmFired: true }),
     ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
@@ -1190,6 +1226,7 @@ async function rollHandler(
       ...(pipTermination && { pipTermination: true as const }),
       ...(finalContext.flags.crapsOutBlocked && { crapsOutBlocked: true as const }),
       ...(finalContext.flags.clockExpired && { clockExpired: true as const }),
+      ...(bossCutPayload !== undefined && { bossCut: bossCutPayload }),
       ...(removedSlotIndex !== null && { removedCrewSlot: removedSlotIndex }),
     },
   });
@@ -1225,6 +1262,8 @@ function computeNextState(
   incomingBets:        Bets,
   hasSeaLegs:          boolean = false,
   lastTriggeredSlot?:  number | null,
+  /** FB-032: this roll's Cut brought the boss Payoff total to/over the Payoff. */
+  payoffReached:       boolean = false,
 ): {
   status:               RunRow['status'];
   phase:                RunRow['phase'];
@@ -1243,6 +1282,17 @@ function computeNextState(
 } {
   const { rollResult, flags } = finalCtx;
   const currentMarkerIndex = run.currentMarkerIndex;
+
+  // ── Marker clear check — the single source of truth for every branch ──────
+  // Normal markers clear when the bankroll reaches the target. A payoff marker
+  // (FB-032, The Foreman) clears ONLY when his Cut reaches the Payoff; bankroll
+  // never clears it.
+  const isPayoffMarker = getBossPayoffCents(currentMarkerIndex) !== null;
+  const clearsMarker = (bankroll: number): boolean => {
+    if (isPayoffMarker) return payoffReached;
+    const target = MARKER_TARGETS[currentMarkerIndex];
+    return target !== undefined && bankroll >= target;
+  };
 
   // ── Boss counter (bossPointHits) — meaning depends on the active rule ─────
   //   DOUBLE_TIME:       Sarge's clock — point-phase rolls used (+1 per blank, 0 otherwise).
@@ -1306,8 +1356,7 @@ function computeNextState(
     case 'NATURAL': {
       // A Natural pays out immediately — the bankroll can cross a marker threshold
       // on a come-out win just as easily as on a POINT_HIT. Check here too.
-      const markerTarget  = MARKER_TARGETS[currentMarkerIndex];
-      const hitMarker     = markerTarget !== undefined && newBankroll >= markerTarget;
+      const hitMarker     = clearsMarker(newBankroll);
       const naturalStatus = hitMarker
         ? (currentMarkerIndex >= MARKER_TARGETS.length - 1 ? 'GAME_OVER' : 'TRANSITION')
         : isBelowMinBet(newBankroll, clearedBets, currentMarkerIndex)
@@ -1380,8 +1429,7 @@ function computeNextState(
 
     case 'POINT_HIT': {
       // Did the player hit a gauntlet marker?
-      const markerTarget = MARKER_TARGETS[currentMarkerIndex];
-      const hitMarker    = markerTarget !== undefined && newBankroll >= markerTarget;
+      const hitMarker    = clearsMarker(newBankroll);
 
       let nextStatus: RunRow['status'];
       if (hitMarker) {
@@ -1438,8 +1486,7 @@ function computeNextState(
         // Last shooter gone — evaluate vs current marker target.
         // If the player still has enough bankroll, they survive and go to The Pub.
         // If not, they bust.
-        const markerTarget = MARKER_TARGETS[currentMarkerIndex];
-        const meetsTarget  = markerTarget !== undefined && newBankroll >= markerTarget;
+        const meetsTarget  = clearsMarker(newBankroll);
 
         if (meetsTarget) {
           const isLastMarker = currentMarkerIndex >= MARKER_TARGETS.length - 1;
@@ -1457,8 +1504,7 @@ function computeNextState(
         // Shooters remain and bankroll is healthy — but the marker may have
         // already been crossed by a hardway win on a prior NO_RESOLUTION roll.
         // The seven-out resolves the point phase, so check now.
-        const markerTarget = MARKER_TARGETS[currentMarkerIndex];
-        const meetsTarget  = markerTarget !== undefined && newBankroll >= markerTarget;
+        const meetsTarget  = clearsMarker(newBankroll);
 
         if (meetsTarget) {
           const isLastMarker = currentMarkerIndex >= MARKER_TARGETS.length - 1;
@@ -1555,9 +1601,8 @@ function computeNextState(
       // Pass line and odds are still locked on the table (clearedBets is
       // non-zero). The final bankroll on a marker clear is newBankroll + refund,
       // so that is what must meet the target — not the cash-only snapshot.
-      const markerTarget = MARKER_TARGETS[currentMarkerIndex];
       const refund       = sumBets(clearedBets);
-      const hitMarker    = markerTarget !== undefined && (newBankroll + refund) >= markerTarget;
+      const hitMarker    = clearsMarker(newBankroll + refund);
 
       if (hitMarker) {
         const zeroBets: Bets = {

@@ -258,6 +258,14 @@ export const runs = pgTable(
      */
     pendingAdditiveCents: bigint('pending_additive_cents', { mode: 'number' }).notNull().default(0),
 
+    /**
+     * FB-032: money progress toward a boss Payoff, in cents. For The Foreman it
+     * is the running total of his Cut (the 20% skim); the marker clears when it
+     * reaches the rule's payoffCents. 0 outside payoff fights; reset to 0 on
+     * every marker entry. BIGINT like the other money columns.
+     */
+    bossProgressCents: bigint('boss_progress_cents', { mode: 'number' }).notNull().default(0),
+
     // ── Shooter lives ──────────────────────────────────────────────────────
 
     /** Remaining shooter lives. Game over at 0. Starts at 5. */

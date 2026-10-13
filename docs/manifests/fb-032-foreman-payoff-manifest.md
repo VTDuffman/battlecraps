@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-032 The Foreman: The Cut and The Payoff
 
 **Design doc:** `docs/design/fb-032-foreman-payoff-design.md`
-**Status:** Pending approval.
+**Status:** Phase 1 done locally (not pushed). Phase 2 next.
 
 **Rules:** each phase ends at a 🛑 gate. Before calling a phase done: `npm run typecheck`, `npm run build`, `npm run test`, and the API integration suite (Docker `postgres-test`; recreate it after schema changes). Pushing to `main` deploys; the schema change applies at API startup.
 
@@ -16,6 +16,8 @@
 5. **Tests:** a win adds 20% of profit to the cut; a loss adds nothing; bankroll ≥ $200 does **not** clear the Foreman; crossing the Payoff clears it (→ TRANSITION, marker 3) even with a low bankroll; cut resets on entering the next marker; game over still works.
 
 🛑 **Gate:** server behavior verified by tests.
+
+--- Implemented locally (2026-10-13): single `clearsMarker()` check replaces all six bankroll-clear sites (5 in `computeNextState` + the pre-roll auto-clear). CRAPS_OUT / POINT_SET never clear; a Cut that crosses the Payoff there is caught by the pre-roll check on the next request. 8 integration + 2 unit tests. **Not pushed:** the current client would show a dead TARGET MET button at the Foreman until Phase 2. ---
 
 ## Phase 2: Client: register, Payoff moment, copy
 

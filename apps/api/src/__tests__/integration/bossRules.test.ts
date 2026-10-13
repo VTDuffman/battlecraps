@@ -589,3 +589,104 @@ describe('CONVERGENCE — The Architect (marker 26)', () => {
     expect(slots[1]).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// EXTORTION_FEE — The Foreman (marker 2): "The Cut" and "The Payoff" (FB-032)
+//
+// The Foreman still skims 20% of the profit on every winning roll (the Cut),
+// but his room clears ONLY when the running Cut reaches the Payoff (2_500¢).
+// Bankroll never clears it. Marker 2: target 20_000¢ (still drives bet limits),
+// min bet 500¢, max bet 2_000¢.
+//
+// A natural on a 1_000¢ pass line: the +0.10 hype tick applies before payout,
+// so profit = 1_100¢ and the Cut = Math.round(1_100 × 0.20 / 100) × 100 = 200¢.
+// ---------------------------------------------------------------------------
+
+describe('EXTORTION_FEE — The Foreman (marker 2): the Cut and the Payoff', () => {
+  const FOREMAN = 2;
+  const PAYOFF  = 2_500;
+
+  async function rollAtForeman(
+    setup: Parameters<typeof createRun>[1],
+    bet: number, d1: number, d2: number,
+  ) {
+    const run = await createRun(userId, { currentMarkerIndex: FOREMAN, ...setup });
+    const res = await rollWithDice(app, run.id, PASS_ONLY(bet), d1, d2);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    return {
+      run:  res.body['run'] as Record<string, unknown>,
+      roll: res.body['roll'] as Record<string, unknown>,
+    };
+  }
+
+  it('a win adds his 20% skim to the Cut', async () => {
+    const { run, roll } = await rollAtForeman({ bankrollCents: 10_000 }, 1_000, 3, 4); // natural
+    expect(run['bossProgressCents']).toBe(200);
+    expect(roll['bossCut']).toEqual({ amount: 200, total: 200, payoff: PAYOFF, paidOff: false });
+    expect(run['currentMarkerIndex']).toBe(FOREMAN);
+  });
+
+  it('a losing roll adds nothing', async () => {
+    const { run, roll } = await rollAtForeman({ bankrollCents: 10_000, bossProgressCents: 1_000 }, 1_000, 1, 1); // craps
+    expect(run['bossProgressCents']).toBe(1_000);
+    expect((roll['bossCut'] as Record<string, unknown>)['amount']).toBe(0);
+  });
+
+  it('a bankroll at/above the $200 target does NOT clear his room', async () => {
+    const { run } = await rollAtForeman({ bankrollCents: 30_000 }, 1_000, 3, 4); // natural, rich
+    expect(run['status']).toBe('IDLE_TABLE');
+    expect(run['currentMarkerIndex']).toBe(FOREMAN);
+  });
+
+  it('crossing the Payoff clears the room even with a low bankroll, and resets the Cut', async () => {
+    const { run, roll } = await rollAtForeman({ bankrollCents: 3_000, bossProgressCents: 2_400 }, 1_000, 3, 4);
+    expect((roll['bossCut'] as Record<string, unknown>)['paidOff']).toBe(true);
+    expect(run['status']).toBe('TRANSITION');
+    expect(run['currentMarkerIndex']).toBe(FOREMAN + 1);
+    expect(run['bossProgressCents']).toBe(0);
+  });
+
+  it('a Cut already at the Payoff clears on the next roll request (pre-roll check)', async () => {
+    const run = await createRun(userId, { currentMarkerIndex: FOREMAN, bankrollCents: 3_000, bossProgressCents: PAYOFF });
+    const res = await rollWithDice(app, run.id, PASS_ONLY(0), 3, 4);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const r = res.body['run'] as Record<string, unknown>;
+    expect(r['status']).toBe('TRANSITION');
+    expect(r['currentMarkerIndex']).toBe(FOREMAN + 1);
+    expect(r['bossProgressCents']).toBe(0);
+  });
+
+  it('losing the last shooter short of the Payoff is game over, however big the bankroll', async () => {
+    const { run } = await rollAtForeman({
+      bankrollCents: 30_000,
+      bossProgressCents: 1_000,
+      status: 'POINT_ACTIVE', phase: 'POINT_ACTIVE', currentPoint: 8,
+      bets: PASS_ONLY(1_000),
+      shooters: 1,
+    }, 1_000, 3, 4); // seven-out
+    expect(run['status']).toBe('GAME_OVER');
+  });
+
+  it('leaving the pub resets the Cut', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: FOREMAN, status: 'TRANSITION', bankrollCents: 5_000, bossProgressCents: 1_800,
+    });
+    const res = await app.inject({
+      method:  'POST',
+      url:     `/api/v1/runs/${run.id}/recruit`,
+      headers: { 'content-type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+      payload: JSON.stringify({}),
+    });
+    expect(res.statusCode, res.body).toBe(200);
+    const after = await rollWithDice(app, run.id, PASS_ONLY(1_000), 1, 1); // craps: no cut
+    expect((after.body['run'] as Record<string, unknown>)['bossProgressCents']).toBe(0);
+  });
+
+  it('normal markers ignore the Cut and still clear on bankroll', async () => {
+    const run = await createRun(userId, { currentMarkerIndex: 1, bankrollCents: 9_500 }); // target 10_000
+    const res = await rollWithDice(app, run.id, PASS_ONLY(1_000), 3, 4);
+    const r = res.body['run'] as Record<string, unknown>;
+    expect(r['status']).toBe('TRANSITION');
+    expect((res.body['roll'] as Record<string, unknown>)['bossCut']).toBeUndefined();
+  });
+});

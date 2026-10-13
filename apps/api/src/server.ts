@@ -304,6 +304,13 @@ await db.execute(sql`
 `);
 app.log.info('[migrate] pub_draft ensured');
 
+// FB-032: boss_progress_cents — the Foreman's running Cut toward his Payoff.
+// Mirrors drizzle/0008.
+await db.execute(sql`
+  ALTER TABLE runs ADD COLUMN IF NOT EXISTS boss_progress_cents bigint NOT NULL DEFAULT 0
+`);
+app.log.info('[migrate] boss_progress_cents ensured');
+
 // ---------------------------------------------------------------------------
 // Start listening
 // ---------------------------------------------------------------------------

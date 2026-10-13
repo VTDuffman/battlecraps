@@ -7,6 +7,7 @@ import {
   getBossMinBet,
   isBossMarker,
   getBossEntryCounter,
+  getBossPayoffCents,
   getCrewHireCost,
   getBaseHypeTick,
   RARITY_COST_MULTIPLIERS,
@@ -362,5 +363,18 @@ describe('getBossEntryCounter', () => {
   it('returns 0 for out-of-range indices', () => {
     expect(getBossEntryCounter(-1)).toBe(0);
     expect(getBossEntryCounter(GAUNTLET.length)).toBe(0);
+  });
+});
+
+describe('getBossPayoffCents (FB-032)', () => {
+  it('The Foreman (marker 2) clears on a $25 Payoff', () => {
+    expect(getBossPayoffCents(2)).toBe(2_500);
+  });
+
+  it('every other marker is a normal bankroll-target marker', () => {
+    GAUNTLET.forEach((_, i) => {
+      if (i === 2) return;
+      expect(getBossPayoffCents(i)).toBeNull();
+    });
   });
 });

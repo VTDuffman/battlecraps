@@ -68,6 +68,8 @@ interface CreateRunResponse {
     unlockedSlots: 3 | 4 | 5;
     /** Boss counter (meaning depends on the boss rule) — hydrates boss displays on load. */
     bossPointHits: number;
+    /** FB-032: running Cut toward a boss Payoff (0 outside payoff fights). */
+    bossProgressCents: number;
     consecutivePointHits: number;
     /** FB-028: true for Developer Mode runs. */
     isDevRun: boolean;
@@ -97,6 +99,7 @@ export async function buildRunStatePayload(run: RunRow, userRow: UserRow) {
     highestMarkerReached:  userRow.highestMarkerReached,
     unlockedSlots:         run.unlockedSlots as 3 | 4 | 5,
     bossPointHits:         run.bossPointHits,
+    bossProgressCents:     run.bossProgressCents,
     consecutivePointHits:  run.consecutivePointHits,
     compPerkIds:           run.compPerkIds,
     pendingAdditiveCents:  run.pendingAdditiveCents,
@@ -178,6 +181,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
           highestMarkerReached:  user.highestMarkerReached,
           unlockedSlots:         run.unlockedSlots as 3 | 4 | 5,
           bossPointHits:         run.bossPointHits,
+          bossProgressCents:     run.bossProgressCents,
           consecutivePointHits:  run.consecutivePointHits,
           isDevRun:              run.isDevRun,
         },

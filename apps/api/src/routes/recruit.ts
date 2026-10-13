@@ -237,6 +237,8 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
           bossPointHits: isEnteringDisableCrewBoss
             ? (bossEntryCharmSlot ?? 0)
             : getBossEntryCounter(run.currentMarkerIndex),
+          // FB-032: fresh Cut for the next fight (the pub sits between markers).
+          bossProgressCents: 0,
           updatedAt:     new Date(),
         })
         .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))

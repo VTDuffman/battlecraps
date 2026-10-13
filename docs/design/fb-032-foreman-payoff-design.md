@@ -34,8 +34,8 @@ Not the clear condition anymore, but it still drives **table max / min bet** (10
 
 ## 4. Presentation
 
-### Cash-register counter (boss room header)
-`THE CUT  $18 / $25` with **mechanical rolling digits**: each digit column scrolls like an old register. Replaces the bankroll marker-progress bar for this fight only (the bar would be meaningless).
+### Cash-register counter (front and center)
+`THE CUT  $18 / $25` with **mechanical rolling digits**: each digit column scrolls like an old register. Shown large, centered under the table **in place of** the marker-progress bar (the only Cut readout; not in the boss header).
 
 ### Per-win "ka-ching"
 Each taxed win: digits roll up, a small **ka-ching** pop at the register (reuses the existing `kaching-pop` keyframe) and a synthesized **register ka-ching** sound.

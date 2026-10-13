@@ -46,6 +46,7 @@ import {
 } from '../store/useGameStore.js';
 import { BettingGrid, ChipSelector } from './BettingGrid.js';
 import { BossRoomHeader }  from './BossRoomHeader.js';
+import { CashRegister }    from './CashRegister.js';
 import { DiceZone }      from './DiceZone.js';
 import { CrewPortrait }  from './CrewPortrait.js';
 import { RollLog }       from './RollLog.js';
@@ -865,19 +866,27 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
   liveMarkerIndex,
   targetMet,
 }) => {
-  // FB-032: at a payoff marker (The Foreman) the bar tracks his Cut toward the
-  // Payoff instead of bankroll toward the target (bankroll can't clear it).
-  const bossProgressCents = useGameStore((s) => s.bossProgressCents);
-  const payoff      = getBossPayoffCents(markerIndex);
-  const target      = payoff ?? MARKER_TARGETS[markerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
-  const current     = payoff !== null ? bossProgressCents : bankroll;
+  const target      = MARKER_TARGETS[markerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
   const isBoss      = isBossMarker(markerIndex);
   const isCleared   = markerIndex !== liveMarkerIndex;
-  const progress    = isCleared ? 1 : Math.min(current / target, 1);
-  const label       = payoff !== null ? '★ THE CUT' : isBoss ? '★ BOSS' : `MARKER ${markerIndex + 1}`;
+  const progress    = isCleared ? 1 : Math.min(bankroll / target, 1);
+  const label       = isBoss ? '★ BOSS' : `MARKER ${markerIndex + 1}`;
   const pct         = Math.round(progress * 100);
   const theme       = useFloorTheme();
   const isNullSpace = getFloorIndex(markerIndex) === 8;
+
+  // FB-032: a payoff marker (The Foreman) is cleared by his Cut, not bankroll —
+  // the cash register takes the progress bar's place, front and center. It
+  // stays mounted through the celebration hold (markerIndex is the display
+  // marker) so the PAID IN FULL stamp can land.
+  const payoff = getBossPayoffCents(markerIndex);
+  if (payoff !== null) {
+    return (
+      <div className="w-full px-2 flex justify-center" data-tutorial-zone="marker-progress">
+        <CashRegister payoffCents={payoff} size="large" />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full px-2 space-y-1" data-tutorial-zone="marker-progress">
@@ -892,7 +901,7 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
           className={`font-pixel transition-all duration-300 ${targetMet ? 'text-r-9' : 'text-r-7'}`}
           style={{ color: isNullSpace ? 'rgba(0,0,0,0.40)' : 'rgba(255,255,255,0.30)' }}
         >
-          ${Math.round(current / 100).toLocaleString('en-US')} / ${Math.round(target / 100).toLocaleString('en-US')}
+          ${Math.round(bankroll / 100).toLocaleString('en-US')} / ${Math.round(target / 100).toLocaleString('en-US')}
         </span>
       </div>
 

@@ -2,7 +2,8 @@
 // BATTLECRAPS — CASH REGISTER (FB-032, The Foreman)
 // apps/web/src/components/CashRegister.tsx
 //
-// Boss-room readout for The Foreman's Cut: "THE CUT $18 / $25" with mechanical
+// Readout for The Foreman's Cut — shown front and center in place of the marker
+// progress bar (TableBoard MarkerProgress): "THE CUT $18 / $25" with mechanical
 // rolling digits. Each skim rolls the digits up with a "+$N" pop and a
 // ka-ching; reaching the Payoff slams a PAID IN FULL stamp over the table with
 // a register bell. The store holds the marker-clear celebration for
@@ -52,7 +53,12 @@ const RollingDollars: React.FC<{ cents: number; minDigits: number }> = ({ cents,
 // Component
 // ---------------------------------------------------------------------------
 
-export const CashRegister: React.FC<{ payoffCents: number }> = ({ payoffCents }) => {
+export const CashRegister: React.FC<{
+  payoffCents: number;
+  /** 'large' = front-and-center under the table (replaces the marker progress bar). */
+  size?: 'small' | 'large';
+}> = ({ payoffCents, size = 'small' }) => {
+  const large = size === 'large';
   const total    = useGameStore((s) => s.bossProgressCents);
   const lastCut  = useGameStore((s) => s.lastBossCut);
   const cutKey   = useGameStore((s) => s._cutKey);
@@ -89,14 +95,14 @@ export const CashRegister: React.FC<{ payoffCents: number }> = ({ payoffCents })
 
   return (
     <div className="relative flex-none flex items-center gap-1.5" aria-live="polite">
-      {/* Label sits left of the counter so it never collides with the HUD buttons above. */}
-      <div className="font-pixel text-[7.5px] tracking-widest leading-none" style={{ color: 'rgba(124,252,154,0.65)' }}>
+      {/* Label sits left of the counter, on the same line. */}
+      <div className={`font-pixel tracking-widest leading-none ${large ? 'text-r-11' : 'text-[7.5px]'}`} style={{ color: 'rgba(124,252,154,0.70)' }}>
         THE CUT
       </div>
       <div
-        className={`inline-flex items-baseline gap-1 rounded px-1.5 py-0.5 font-mono font-bold leading-none${paidOff ? ' animate-register-flash' : ''}`}
+        className={`inline-flex items-baseline gap-1 rounded font-mono font-bold leading-none ${large ? 'px-3 py-1.5' : 'px-1.5 py-0.5'}${paidOff ? ' animate-register-flash' : ''}`}
         style={{
-          fontSize:   '16px',
+          fontSize:   large ? '30px' : '16px',
           color:      REGISTER_GREEN,
           background: 'rgba(0,0,0,0.75)',
           border:     `1px solid ${REGISTER_GREEN}55`,
@@ -107,13 +113,13 @@ export const CashRegister: React.FC<{ payoffCents: number }> = ({ payoffCents })
       >
         <span>$</span>
         <RollingDollars cents={total} minDigits={minDigits} />
-        <span className="text-[10px] opacity-60">/ ${Math.floor(payoffCents / 100)}</span>
+        <span className="opacity-60" style={{ fontSize: large ? '14px' : '10px' }}>/ ${Math.floor(payoffCents / 100)}</span>
       </div>
 
       {pop && (
         <div
           key={pop.key}
-          className="pointer-events-none absolute left-1/2 top-full font-pixel text-r-10 animate-kaching-pop"
+          className={`pointer-events-none absolute left-1/2 top-full font-pixel animate-kaching-pop ${large ? 'text-r-15' : 'text-r-10'}`}
           style={{ color: REGISTER_GREEN, textShadow: '0 0 8px rgba(0,0,0,0.9)' }}
         >
           +${Math.round(pop.amount / 100)}

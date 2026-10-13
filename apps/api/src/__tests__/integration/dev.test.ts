@@ -20,6 +20,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { leaderboardEntries, runs, users } from '../../db/schema.js';
 import { isDevClerkId } from '../../lib/devAuth.js';
+import { MARKER_TARGETS, getMinBet } from '@battlecraps/shared';
 import {
   buildTestApp,
   createTestUser,
@@ -341,5 +342,67 @@ describe('POST /dev/runs', () => {
     const { status, body } = await createDevRun({ markerIndex: 8, crew: [null, 17, null] });
     expect(status, JSON.stringify(body)).toBe(201);
     expect((await getRun(body['runId'] as string)).bossPointHits).toBe(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Forced dice (Phase 3) — cheat_dice honoured only for devs on dev runs
+// ---------------------------------------------------------------------------
+
+describe('forced dice (cheat_dice) after the tutorial', () => {
+  // Marker 3 with half its target banked: room for several wins without
+  // auto-clearing the marker, and a legal (minimum) pass line bet.
+  const MARKER   = 3;
+  const PASS     = { passLine: getMinBet(MARKER), odds: 0, hardways: NO_HARDWAYS };
+  const runSetup = { currentMarkerIndex: MARKER, bankrollCents: Math.round((MARKER_TARGETS[MARKER] ?? 0) / 2) };
+
+  beforeEach(async () => {
+    await db.update(users).set({ tutorialCompleted: true }).where(eq(users.id, userId));
+  });
+
+  afterEach(async () => {
+    await db.update(users).set({ tutorialCompleted: false }).where(eq(users.id, userId));
+  });
+
+  async function rollDiceSeen(runId: string, d1: number, d2: number): Promise<number[]> {
+    const { status, body } = await rollWithDice(app, runId, PASS, d1, d2);
+    expect(status, JSON.stringify(body)).toBe(200);
+    return (body['roll'] as Record<string, unknown>)['dice'] as number[];
+  }
+
+  /** Forcing [6,6] five times: if every roll comes back [6,6] the force was honoured. */
+  async function allForced(runId: string): Promise<boolean> {
+    let forced = true;
+    for (let i = 0; i < 5; i++) {
+      const dice = await rollDiceSeen(runId, 6, 6);
+      if (dice[0] !== 6 || dice[1] !== 6) forced = false;
+    }
+    return forced;
+  }
+
+  it('honoured for an allowlisted dev on a dev run', async () => {
+    setDevEnv('true', TEST_CLERK_ID);
+    const run = await createRun(userId, { ...runSetup, isDevRun: true });
+    expect(await rollDiceSeen(run.id, 1, 1)).toEqual([1, 1]);
+    expect(await rollDiceSeen(run.id, 2, 5)).toEqual([2, 5]);
+    expect(await rollDiceSeen(run.id, 6, 6)).toEqual([6, 6]);
+  });
+
+  it('ignored for an allowlisted dev on a REAL run', async () => {
+    setDevEnv('true', TEST_CLERK_ID);
+    const run = await createRun(userId, runSetup);
+    expect(await allForced(run.id)).toBe(false);
+  });
+
+  it('ignored for a non-allowlisted user, even on a dev run', async () => {
+    setDevEnv('true', 'user_someone_else');
+    const run = await createRun(userId, { ...runSetup, isDevRun: true });
+    expect(await allForced(run.id)).toBe(false);
+  });
+
+  it('ignored when the kill switch is off', async () => {
+    setDevEnv(undefined, TEST_CLERK_ID);
+    const run = await createRun(userId, { ...runSetup, isDevRun: true });
+    expect(await allForced(run.id)).toBe(false);
   });
 });

@@ -732,6 +732,12 @@ export interface GameState {
 
   /** True when the connected run was created via Developer Mode. */
   isDevRun: boolean;
+
+  /**
+   * FB-028 dice control: queued [d1, d2] rolls, consumed one per roll and sent
+   * as cheat_dice on dev runs only. Cleared on connect / disconnect.
+   */
+  devDiceQueue: [number, number][];
 }
 
 // ---------------------------------------------------------------------------
@@ -851,6 +857,13 @@ export interface GameActions {
 
   /** FB-028: set from the /auth/provision response. */
   setIsDev(isDev: boolean): void;
+
+  /** FB-028: append a roll to the dev dice queue. */
+  pushDevDice(dice: [number, number]): void;
+  /** FB-028: remove one queued roll by index. */
+  removeDevDice(index: number): void;
+  /** FB-028: empty the dev dice queue. */
+  clearDevDice(): void;
 
   /**
    * Inject the Clerk getToken function from the React auth context.
@@ -1129,6 +1142,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   feedbackContextSnapshot: null,
   isDev:                   false,
   isDevRun:                false,
+  devDiceQueue:            [],
   executiveRating:         null,
   executiveBark:           null,
   pipTermination:          false,
@@ -1209,6 +1223,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bets:           DEFAULT_BETS,
       // FB-028: real run unless initialState says otherwise.
       isDevRun:       false,
+      devDiceQueue:   [],
       ...initialState,
       // Always sync committedBets to the server's confirmed bet state so
       // that right-click undo has the correct floor when reconnecting.
@@ -1391,6 +1406,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({
       runId:               null,
       isDevRun:            false,
+      devDiceQueue:        [],
       status:              null,
       phase:               null,
       bankroll:            0,
@@ -2101,15 +2117,25 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   async rollDice(cheatDice?: [number, number]) {
-    const { runId, bets, isRolling, tutorialCheatDice } = get();
+    const { runId, bets, isRolling, tutorialCheatDice, isDevRun, devDiceQueue } = get();
     if (isRolling || !runId) return false;
+
+    // FB-028: on a dev run, the next queued dev roll (if any) is sent as
+    // cheat_dice. The server only honours it for allowlisted devs on dev runs.
+    const devDice = isDevRun ? devDiceQueue[0] : undefined;
 
     // If no explicit dice were passed but buffered tutorial dice are loaded,
     // consume them now and clear the buffer atomically with the isRolling flag.
     const effectiveDice: [number, number] | undefined =
-      cheatDice ?? (tutorialCheatDice ?? undefined);
+      cheatDice ?? tutorialCheatDice ?? devDice;
+    const consumedDevDice = cheatDice === undefined && tutorialCheatDice === null && devDice !== undefined;
 
-    set((state) => ({ isRolling: true, tutorialCheatDice: null, _rollKey: state._rollKey + 1 }));
+    set((state) => ({
+      isRolling: true,
+      tutorialCheatDice: null,
+      _rollKey: state._rollKey + 1,
+      ...(consumedDevDice && { devDiceQueue: state.devDiceQueue.slice(1) }),
+    }));
     try {
       const token = await get().getToken?.();
       const res = await fetch(`${API_BASE}/api/v1/runs/${runId}/roll`, {
@@ -2465,6 +2491,18 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   setIsDev(isDev) {
     set({ isDev });
+  },
+
+  pushDevDice(dice) {
+    set((state) => ({ devDiceQueue: [...state.devDiceQueue, dice] }));
+  },
+
+  removeDevDice(index) {
+    set((state) => ({ devDiceQueue: state.devDiceQueue.filter((_, i) => i !== index) }));
+  },
+
+  clearDevDice() {
+    set({ devDiceQueue: [] });
   },
 
   markCompsAnimated(count) {

@@ -54,6 +54,7 @@ import { getIO } from '../lib/io.js';
 import { hydrateCrewMember } from '../lib/crewRegistry.js';
 import { evaluateUnlocks } from '../lib/unlocks.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
+import { isDevClerkId } from '../lib/devAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
 import { submitLeaderboardEntry } from './leaderboard.js';
 
@@ -104,9 +105,9 @@ const rollBodySchema = {
      */
     bets: betsSchema,
     /**
-     * Tutorial-only: predetermined dice values [die1, die2].
-     * Only honoured when the requesting user's tutorialCompleted flag is false.
-     * Ignored for any other user to prevent exploit use in real runs.
+     * Predetermined dice values [die1, die2]. Honoured only when the user has
+     * not completed the tutorial, or (FB-028) when an allowlisted developer is
+     * rolling on a dev run. Ignored otherwise to prevent rigging real runs.
      */
     cheat_dice: {
       type: 'array',
@@ -543,13 +544,19 @@ async function rollHandler(
   const crewSlots = hydrateCrewSlots(run.crewSlots);
 
   // ── 6. Generate dice (server-side RNG, or tutorial predetermined values) ────
-  // cheat_dice is only honoured when the requesting user has not yet completed
-  // the tutorial. This prevents the field being used to rig rolls in real runs.
+  // cheat_dice is honoured only (a) during the tutorial, or (b) for an
+  // allowlisted developer on a dev run (FB-028). Requiring a dev run means even
+  // the developer can never rig a real run. Forced dice replace the RNG before
+  // the cascade, so dice-modifying crew still apply.
   const cheatDice = request.body.cheat_dice;
+  const isDevForcedRoll = cheatDice !== undefined && isDevRun && isDevClerkId(request.clerkId);
   let dice: [number, number] =
-    cheatDice !== undefined && !user.tutorialCompleted
+    cheatDice !== undefined && (!user.tutorialCompleted || isDevForcedRoll)
       ? cheatDice
       : rollDice();
+  if (isDevForcedRoll) {
+    request.log.info({ runId, cheatDice }, '[dev] forced dice');
+  }
 
   // ── 7. Resolve roll — classify outcome and compute base payouts ────────────
   // ── Death Spiral — cascade slot penalty at hype < 0.75× ──────────────────

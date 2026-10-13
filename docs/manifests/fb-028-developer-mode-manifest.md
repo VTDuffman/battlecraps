@@ -179,6 +179,12 @@ Demo: from the title screen, start "Executive one roll from PIP", lose one roll,
 ### Step 3.4: Tests
 > Integration: tutorial-complete **non-dev** user's `cheat_dice` is ignored (result differs from forced over N tries or spy on `rollDice`); dev user on a **real** (non-dev) run is ignored; dev user on dev run is honored.
 
+### Phase 3 implementation notes (2026-10-12)
+- `rolls.ts`: `cheat_dice` honoured when `!tutorialCompleted || (isDevRun && isDevClerkId)`; dev-forced rolls logged as `[dev] forced dice`.
+- Store: `devDiceQueue` + `pushDevDice` / `removeDevDice` / `clearDevDice`; `rollDice()` consumes the head of the queue on dev runs (explicit dice and tutorial dice take precedence). Queue resets on connect/disconnect.
+- `DevDiceControl` is mounted by `DevRunBadge` (already dev-run-only) as a lazy chunk (~2 kB gzip): floating **🎲 DEV** button → panel with phase-aware presets, custom d6 pickers, and the queue.
+- Tests: 4 integration tests (honoured for dev on dev run; ignored on a real run, for non-devs, and with the kill switch off). Note for future tests: a bankroll at/above the marker target triggers the auto-clear path, which returns placeholder dice.
+
 ### 🛑 APPROVAL GATE: Phase 3
 
 ---

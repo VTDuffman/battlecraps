@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-032 The Foreman: The Cut and The Payoff
 
 **Design doc:** `docs/design/fb-032-foreman-payoff-design.md`
-**Status:** Phases 1–2 done locally (not pushed). Awaiting local playtest.
+**Status:** Phases 1–2 done locally (not pushed; playtested 2026-10-13 ✅). Next: Phase 3 barks, Phase 4 defeat cinematics, Phase 5 Dev Mode.
 
 **Rules:** each phase ends at a 🛑 gate. Before calling a phase done: `npm run typecheck`, `npm run build`, `npm run test`, and the API integration suite (Docker `postgres-test`; recreate it after schema changes). Pushing to `main` deploys; the schema change applies at API startup.
 
@@ -40,7 +40,19 @@
 
 🛑 **Gate:** do the barks feel good? Decide whether to roll out to other bosses.
 
-## Phase 4: Developer Mode + measurement
+## Phase 4: Boss defeat cinematics (pilot: Foreman "DOCK CLOSED")
+
+1. **Shared:** `BossDefeatCinematicId` union + `BossConfig.defeatCinematic?`; Foreman → `'DOCK_CLOSED'`.
+2. **Store:** on a settlement that ends the run (`GAME_OVER`, not victory) during a boss fight with a `defeatCinematic`, hold the status flip (`pendingDefeat { id, ... }`) and release it when the cinematic calls `finishDefeatCinematic()`; safety timeout (~6 s). Covers last-shooter and below-min-bet game overs.
+3. **`DockClosedCinematic` component:** register flashes **BALANCE DUE $N** → roll-up door drops over the table → CLANG + shake → **DOCK CLOSED** stencil + Foreman line → hold → finish. Reduced-motion fallback.
+4. **Registry + mount:** `DefeatCinematic` host renders the boss's component while `pendingDefeat` is set (portal over the table).
+5. **Audio:** `playDoorRattle()`, `playDoorClang()`, `playDeadThunk()` (standalone, mute/volume aware).
+6. **Dev Mode:** "Defeat cinematic" preview per boss in the Dev Panel (client-only).
+7. **Docs:** boss_framework (Foreman + the system), CLAUDE.md constraint note.
+
+🛑 **Gate:** lose to the Foreman locally (Dev Mode + forced seven-out on the last shooter). Does it *feel* like a loss?
+
+## Phase 5: Developer Mode + measurement
 
 1. **Dev controls:** "Cut so far ($)" for the Foreman in `BossCounterControl` / PATCH; `getBossCounterRange` support.
 2. **Presets:** "Foreman — fresh fight", "Foreman — one win from the Payoff".

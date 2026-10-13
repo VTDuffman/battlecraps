@@ -9,7 +9,7 @@
 
 Rework the Floor 1 boss. The Foreman still skims every winning roll, but you no longer clear his room by reaching a bankroll target. Instead his skim, **the Cut**, accumulates on a cash-register counter, and when it reaches **the Payoff** he looks the other way and you move on.
 
-Also introduces a **general boss bark system**, piloted on the Foreman. If it lands, the other eight bosses get barks by adding lines to `config.ts`.
+Also introduces two per-boss systems, both piloted on the Foreman: **boss barks** (lines in `config.ts`) and **boss defeat cinematics** (a signature "you lost" moment before game over; the Foreman's is the dock door slamming shut, §8).
 
 ## 2. Decisions (2026-10-13)
 
@@ -95,7 +95,29 @@ Register **bell DING**, the counter flashes, a **"PAID IN FULL"** stamp slams ov
 ## 7. Measuring Floor 2 impact (decision 2)
 With Dev Mode: run the Foreman ~10–15 times from realistic defaults and note the bankroll you leave with. Compare against today's guaranteed $200+. If Floor 2 starts too lean, tune `payoffCents` up or add a kickback (deferred idea: "he slides you a little something").
 
-## 8. Out of scope
-- Barks for the other 8 bosses (pending this pilot).
+## 8. Boss defeat cinematics (pilot: The Foreman, "DOCK CLOSED")
+
+**Decision (2026-10-13):** losing a boss fight gets a signature "cinematic exit" before the game-over screen, so the player *feels* the loss. Built as a **per-boss system**, piloted on the Foreman (like barks), then rolled out.
+
+### The Foreman: the dock door slams
+1. **Balance due:** the register freezes and flashes **BALANCE DUE $7** (Payoff − Cut) in red, with a flat dead *thunk* (the inverse of the PAID IN FULL bell).
+2. **The door:** a corrugated steel **roll-up door** rattles down from the top over the table (~600 ms, slight ease-in like gravity) and hits bottom with a heavy metal **CLANG** + small screen shake.
+3. **Stencil:** **DOCK CLOSED** stenciled across the door; the Foreman, through it: *"Come back when you got my money."*
+4. Hold ~1.5 s, then the normal game-over flow (unlock recap / GameOverScreen).
+
+Synthesized audio (rattle = filtered noise ramp; clang = inharmonic metallic partials + low thud). `prefers-reduced-motion`: the door fades in instead of dropping; no shake.
+
+### The system
+- `BossConfig.defeatCinematic?: BossDefeatCinematicId` in `config.ts` (`'DOCK_CLOSED'` for the Foreman). A small registry maps ids → components, so each boss's moment is a self-contained component.
+- **Trigger:** a roll that ends the run (`runStatus: 'GAME_OVER'`, not a victory) during a boss fight whose boss has a `defeatCinematic`. Covers both ways to lose: last shooter gone and bankroll below the minimum bet.
+- **Timing:** like `pendingTransition`, the store holds the `GAME_OVER` status flip (`pendingDefeat`) while the cinematic plays over the table, then releases it. Safety timeout so a run can never get stuck.
+- **The Executive's Pink Slip** stays as is for now (it's an overlay on the game-over screen); folding it into this system is a follow-up.
+- **Dev Mode:** a "Defeat cinematic" preview button per boss (client-only, like the other previews).
+
+### Roll-out ideas (later, one boss at a time)
+Sarge: DISHONORABLE DISCHARGE stamp + dog tags drop · Mme. Le Prix: lipstick kiss on the screen, *"Au revoir, chéri."* · The Hierophant: wax seal EXCOMMUNICATED · The Sovereign: the tide washes over the table · The Commander: AIRLOCK cycles shut · The Emissary: static, SIGNAL LOST · The Architect: the table's blueprint tears in half.
+
+## 9. Out of scope
+- Barks and defeat cinematics for the other 8 bosses (pending the Foreman pilots).
 - Migrating the Executive onto the generic bark system.
 - A kickback/top-up on payoff (only if measurement says it's needed).

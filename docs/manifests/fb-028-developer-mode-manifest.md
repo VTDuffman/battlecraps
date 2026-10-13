@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-028 Developer Mode
 
 **Design doc:** `docs/design/fb-028-developer-mode-design.md` (decisions in §7)
-**Status:** Phase 0 shipped. Phases 1–5 **pending approval, one phase at a time.**
+**Status:** Phases 0–1 shipped. Phases 2–5 **pending approval, one phase at a time.**
 
 **Rules for every phase**
 - Each phase ends at a **🛑 APPROVAL GATE**. Nothing in the next phase starts until Mike says go.
@@ -74,7 +74,11 @@ Shipped 2026-10-12 as `8e20992`. `getBossEntryCounter()` in `packages/shared/src
 > 5. A non-dev run still does all of the above (control).
 
 ### ⚠️ Rollout step (Mike, manual)
-On Render (API service) set `DEV_MODE_ENABLED=true` and `DEV_CLERK_IDS=<your Clerk user id>`. Claude can look up your Clerk id from the `users` table by your email (read-only query) when we get here. Add the same two vars to local `apps/api/.env`.
+On Render (API service) set `DEV_MODE_ENABLED=true` and `DEV_CLERK_IDS=<your Clerk user id>`. Add the same two vars to local `apps/api/.env`.
+
+> ⚠️ **Clerk has separate Development and Production instances with different user IDs.** Local dev uses the Development instance (`pk_test` key); battlecraps.com uses Production. Get the production ID from the live site's console: `window.Clerk.user.id`. Render needs the **production** ID; local `.env` lists both.
+>
+> Done 2026-10-12: Render `DEV_CLERK_IDS=user_3CDWa7jSao5FdBfExPImBWtWNrx` (prod); local adds `user_3CAyiOrkSupfCrpZo3GRwt3et0B` (dev instance).
 
 ### Phase 1 implementation notes (2026-10-12)
 - **Migration delivery changed:** besides `drizzle/0004` (now `ADD COLUMN IF NOT EXISTS`), `server.ts` ensures the column at startup **before `listen()`**, matching the existing startup-migration pattern. This removes the deploy-order hazard (code reading `is_dev_run` can never serve against a DB without it). The prod change happens automatically when the API deploys, so **pushing to `main` is the prod-touching step.**
@@ -84,6 +88,8 @@ On Render (API service) set `DEV_MODE_ENABLED=true` and `DEV_CLERK_IDS=<your Cle
 
 ### 🛑 APPROVAL GATE: Phase 1
 Demo: you see `isDev: true` in the provision response; nobody else does. No user-visible change for playtesters.
+
+--- Implemented (`b9d253e`, deployed 2026-10-12; `isDev: true` verified on battlecraps.com) ---
 
 ---
 

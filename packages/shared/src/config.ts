@@ -697,6 +697,25 @@ export function getBossEntryCounter(markerIndex: number): number {
 }
 
 /**
+ * DISABLE_CREW (Mme. Le Prix) entry charm: picks a random filled slot among the
+ * active slots (0..unlockedSlots-1). Returns null when no active slot is filled.
+ * Used by recruit.ts (pub exit) and Developer Mode scenario creation so both
+ * start the fight identically.
+ */
+export function pickEntryCharmSlot(
+  crewSlots:     readonly ({ crewId: number } | null)[],
+  unlockedSlots: number,
+  randomBelow:   (n: number) => number,
+): number | null {
+  const filledSlots = crewSlots
+    .slice(0, unlockedSlots)
+    .map((slot, i) => (slot !== null ? i : -1))
+    .filter((i) => i >= 0);
+  if (filledSlots.length === 0) return null;
+  return filledSlots[randomBelow(filledSlots.length)] ?? null;
+}
+
+/**
  * Returns the minimum Pass Line bet (in cents) for the current boss encounter,
  * or null if the marker is not a boss fight or has no RISING_MIN_BETS rule.
  *

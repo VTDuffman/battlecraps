@@ -23,7 +23,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
-import { isBossMarker, getBossEntryCounter, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, COMP_PERK_IDS, type CompRewardType, type CrewRarity } from '@battlecraps/shared';
+import { isBossMarker, getBossEntryCounter, pickEntryCharmSlot, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, COMP_PERK_IDS, type CompRewardType, type CrewRarity } from '@battlecraps/shared';
 import { randomBelow } from '../lib/rng.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
@@ -196,13 +196,7 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         GAUNTLET[run.currentMarkerIndex]?.boss?.rule === 'DISABLE_CREW';
       let bossEntryCharmSlot: number | null = null;
       if (isEnteringDisableCrewBoss) {
-        const filledSlots = (newCrewSlots as (typeof newCrewSlots[0])[])
-          .slice(0, run.unlockedSlots as number)
-          .map((slot, i) => (slot !== null ? i : -1))
-          .filter((i): i is number => i >= 0);
-        if (filledSlots.length > 0) {
-          bossEntryCharmSlot = filledSlots[randomBelow(filledSlots.length)] ?? 0;
-        }
+        bossEntryCharmSlot = pickEntryCharmSlot(newCrewSlots, run.unlockedSlots, randomBelow);
       }
 
       // ── 5c. Lucky Charm immediate hype floor ───────────────────────────────

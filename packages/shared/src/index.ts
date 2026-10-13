@@ -12,6 +12,7 @@ export {
   getMinBet,
   isBossMarker,
   getBossEntryCounter,
+  pickEntryCharmSlot,
   getBossMinBet,
   getBaseHypeTick,
   STREAK_BASE_TICK,
@@ -94,3 +95,14 @@ export {
   handicapper, mirror,
   bookkeeper, pressureCooker, contrarian,
 } from './crew/index.js';
+// Developer Mode (FB-028) — scenario model + presets
+export type { DevScenario, DevRunState, DevScenarioPoint } from './devScenario.js';
+export {
+  EMPTY_DEV_BETS,
+  clampMarkerIndex,
+  getBossCounterRange,
+  getRealisticDefaults,
+  buildDevRunState,
+  buildTransitionEntryState,
+} from './devScenario.js';
+export { DEV_SCENARIOS } from './devScenarios.js';

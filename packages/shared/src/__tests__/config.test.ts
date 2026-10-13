@@ -118,7 +118,7 @@ describe('getMaxBet', () => {
   });
 
   it('marker 2 ($200 boss target) → max $20 (2000 cents)', () => {
-    // floor(20000 * 0.10) = 2000; Foreman has no risingMinBets, no boss floor
+    // floor(20000 * 0.10) = 2000; the Foreman raises no minimum, so no boss floor
     expect(getMaxBet(2)).toBe(2_000);
   });
 
@@ -132,31 +132,15 @@ describe('getMaxBet', () => {
     expect(getMaxBet(0, 5)).toBe(500);
   });
 
-  it('applies boss floor for RISING_MIN_BETS (Sarge, index 5)', () => {
-    // Sarge at 0 hits: bossMin = ceil(100000 * 0.04 / 100) * 100 = ceil(40) * 100 = 4000
-    // normalMax = floor(100000 * 0.10) = 10000
-    // floor = bossMin * 5 = 20000 → max(10000, 20000) = 20000
-    const bossMin0 = getBossMinBet(5, 0)!;
-    expect(bossMin0).toBe(4_000);
-    expect(getMaxBet(5, 0)).toBe(Math.max(10_000, bossMin0 * 5));
+  it('Sarge (DOUBLE_TIME, index 5) has no boss floor — the clock never raises the max', () => {
+    // normalMax = floor(100000 * 0.10) = 10000, whatever the clock counter is
+    expect(getMaxBet(5, 0)).toBe(10_000);
+    expect(getMaxBet(5, 5)).toBe(10_000);
   });
 
-  it('boss floor grows as bossPointHits increases (Sarge)', () => {
-    // New: 1 hit → bossMin = ceil(100000 * 0.06 / 100) * 100 = 6000; floor = 30000
-    // max0 = max(10000, 4000*5) = 20000; max1 = max(10000, 6000*5) = 30000
-    const max0 = getMaxBet(5, 0);
-    const max1 = getMaxBet(5, 1);
-    expect(max1).toBeGreaterThan(max0);
-  });
-
-  it('caps Sarge boss floor at capPct (20% → bossMin 20000, floor 100000)', () => {
-    // 8+ hits: clampedPct = 0.20; bossMin = ceil(100000 * 0.20 / 100)*100 = 20000
-    // floor = 20000 * 5 = 100000
-    const bossMinCapped = getBossMinBet(5, 8)!;
-    expect(bossMinCapped).toBe(20_000);
-    expect(getMaxBet(5, 8)).toBe(100_000);
-    // Same at 9+ hits
-    expect(getMaxBet(5, 9)).toBe(100_000);
+  it('applies the 5× boss floor at The Sovereign\'s HIGH TIDE (index 17)', () => {
+    const bossMin = getBossMinBet(17, 2)!;
+    expect(getMaxBet(17, 2)).toBe(Math.max(5_000_000, bossMin * 5));
   });
 
   it('out-of-bounds index falls back to last GAUNTLET entry', () => {
@@ -211,7 +195,7 @@ describe('getBossMinBet', () => {
     expect(getBossMinBet(1, 3)).toBeNull();
   });
 
-  it('returns null for DISABLE_CREW boss (no risingMinBets)', () => {
+  it('returns null for DISABLE_CREW boss', () => {
     // Marker 8 = Mme. Le Prix (DISABLE_CREW)
     expect(getBossMinBet(8, 0)).toBeNull();
   });
@@ -221,28 +205,9 @@ describe('getBossMinBet', () => {
     expect(getBossMinBet(11, 0)).toBeNull();
   });
 
-  it('Sarge (index 5): 0 hits → 4% of $1,000 = $40 (4000)', () => {
-    // ceil(100000 * 0.04 / 100) * 100 = ceil(40) * 100 = 4000
-    expect(getBossMinBet(5, 0)).toBe(4_000);
-  });
-
-  it('Sarge (index 5): 1 hit → 6% of $1,000 = $60 (6000)', () => {
-    // rawPct = 0.04 + 0.02 * 1 = 0.06
-    // rawCents = 100000 * 0.06 = 6000 (exact)
-    // Math.ceil(6000 / 100) * 100 = 6000
-    expect(getBossMinBet(5, 1)).toBe(6_000);
-  });
-
-  it('Sarge (index 5): 2 hits → 8% of $1,000 = $80 (8000)', () => {
-    // rawPct = 0.04 + 0.02 * 2 = 0.08; rawCents = 100000 * 0.08 = 8000
-    // Math.ceil(8000 / 100) * 100 = 8000
-    expect(getBossMinBet(5, 2)).toBe(8_000);
-  });
-
-  it('Sarge (index 5): hits clamped at capPct 20% = $200 (20000)', () => {
-    // 8+ hits: 0.04 + 0.02*8 = 0.20 → clamped to 0.20; 100000 * 0.20 = 20000
-    expect(getBossMinBet(5, 8)).toBe(20_000);
-    expect(getBossMinBet(5, 20)).toBe(20_000);
+  it('Sarge (DOUBLE_TIME, index 5) returns null — the clock never raises the minimum', () => {
+    expect(getBossMinBet(5, 0)).toBeNull();
+    expect(getBossMinBet(5, 5)).toBeNull();
   });
 
   it('TIDAL_SURGE boss (index 17): stage 0 LOW TIDE (bossPointHits % 4 === 0) → null', () => {
@@ -271,7 +236,7 @@ describe('getBossMinBet', () => {
     expect(getBossMinBet(17, 7)).toBe(1_667_000);
   });
 
-  it('CONVERGENCE boss (index 26) returns null (no risingMinBets)', () => {
+  it('CONVERGENCE boss (index 26) returns null', () => {
     expect(getBossMinBet(26, 0)).toBeNull();
   });
 });

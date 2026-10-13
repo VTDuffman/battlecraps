@@ -45,7 +45,7 @@ Only works for allowlisted Clerk IDs (`DEV_MODE_ENABLED` + `DEV_CLERK_IDS` on Re
 - [x] ~~`runs.pending_additive_cents` INT4~~: promoted to BIGINT at API startup + `drizzle/0006` (2026-10-13).
 - [x] ~~`boss_framework.md` stale~~: full documentation audit done 2026-10-13. PR #26 fixed mechanics (Poseidon soft-lock, Emissary double payout, Sarge repeat fine, Architect double removal, Pressure Cooker), PR #27 fixed player-facing text, and the internal-docs PR rewrote `boss_framework.md`, regenerated `floors.md` floor sections from code, and synced `crew_framework.md`, the PRD and `CLAUDE.md`.
 - [ ] **FB-029 The Covenant redesign** — the Floor 5 comp currently does nothing after it's earned. Design needed (options listed in the backlog entry).
-- [ ] **FB-030 Sarge "Double Time"** — replace Sarge's rising minimum bet (redundant with The Sovereign) with a 6-roll point clock. Spec ready for sign-off. FB-031 "Orders" is the reserve alternative.
+- [x] ~~**FB-030 Sarge "Double Time"**~~: shipped 2026-10-13 — 6-roll point clock replaces the rising minimum bet. Watch it in playtests; FB-031 "Orders" is the reserve alternative, and `rollLimit` (5 harsher / 7 gentler) is the tuning knob.
 - [ ] **KI-079** — `settleTurn` float rounding loses $1 on large bets. Small fix, low severity.
 
 **Open defects:** KI-079 (low). Everything else in `docs/testing/known-issues.md` is closed.

@@ -43,6 +43,7 @@ import {
   type Bets,
   type GamePhase,
   type RollResult,
+  type TurnContext,
   type BossRuleParams,
   type BossRuleState,
 } from '@battlecraps/shared';
@@ -204,8 +205,8 @@ interface WsTurnSettledPayload {
    * Updated when a marker is cleared; otherwise carries the user's previous best.
    */
   highestMarkerReached: number;
-  /** Non-zero when Sarge's non-compliance fine was applied this roll (cents). */
-  nonComplianceFine?: number;
+  /** Sarge's DOUBLE_TIME clock ran out: a blank on the last allowed roll became a SEVEN_OUT. */
+  clockExpired?: boolean;
   /**
    * Index of the crew slot currently enchanted by Mme. Le Prix.
    * Present only during a DISABLE_CREW boss fight.
@@ -521,25 +522,14 @@ async function rollHandler(
     });
   }
 
-  // ── Boss fight: bet-validation hook (e.g. Sarge's Rising Min-Bets rule) ──
-  // validateBet may return:
-  //   null                  → roll accepted, no penalty
-  //   string                → roll rejected (422)
-  //   { fine, message }     → roll accepted but a cents fine is applied post-settlement
-  //
-  // Come-out only: the Pass Line is locked once the point is set and boss
-  // minimums only move at come-out resolution, so re-checking on point-phase
-  // rolls would fine the same bet over and over.
-  let nonComplianceFine = 0;
+  // ── Boss fight: bet-validation hook (The Sovereign's tide minimum) ────────
+  // validateBet returns null (accept) or an error string (reject, 422).
+  // Come-out only: the Pass Line is locked once the point is set, and boss
+  // minimums only move at come-out resolution.
   if (bossHooks?.validateBet && run.phase === 'COME_OUT') {
-    const bossResult = bossHooks.validateBet(incomingBets, bossParams!, bossState);
-    if (bossResult !== null) {
-      if (typeof bossResult === 'string') {
-        return reply.status(422).send({ error: bossResult });
-      }
-      // Fine path — accept the roll; deduct the fine after settlement.
-      nonComplianceFine = bossResult.fine;
-      request.log.info({ fine: nonComplianceFine, message: bossResult.message }, '[boss] non-compliance fine queued');
+    const bossError = bossHooks.validateBet(incomingBets, bossParams!, bossState);
+    if (bossError !== null) {
+      return reply.status(422).send({ error: bossError });
     }
   }
 
@@ -647,7 +637,40 @@ async function rollHandler(
     : poseidonCtx;
 
   const cascadeResult = resolveCascade(crewSlots, preCascadeCtx, rollDice, bossHooks, bossParams, bossState);
-  const { finalContext, events, updatedCrewSlots } = cascadeResult;
+  const { finalContext: cascadeContext, events, updatedCrewSlots } = cascadeResult;
+
+  // ── DOUBLE_TIME (Sarge): the roll clock — FB-030 ─────────────────────────
+  // bossPointHits = point-phase rolls already used. If this roll is a blank on
+  // the last allowed roll, time's up: convert it to a SEVEN_OUT AFTER the
+  // cascade, so blank-roll crew (Grinder) still paid for it while crew that
+  // react to a dice Seven-Out (Lefty, Floor Walker, Lucky Charm) did not fire.
+  // Pass Line and Odds are lost and every Hardway clears; a Hardway that won on
+  // this roll still pays (its payout and stake are already in the context).
+  const isDoubleTime = activeBossRule === 'DOUBLE_TIME' && isBossMarker(run.currentMarkerIndex);
+  const doubleTimeLimit = isDoubleTime
+    ? (bossParams as Extract<BossRuleParams, { rule: 'DOUBLE_TIME' }>).rollLimit
+    : 0;
+  const clockExpired =
+    isDoubleTime &&
+    run.phase === 'POINT_ACTIVE' &&
+    cascadeContext.rollResult === 'NO_RESOLUTION' &&
+    run.bossPointHits + 1 >= doubleTimeLimit;
+  const finalContext: TurnContext = clockExpired
+    ? {
+        ...cascadeContext,
+        rollResult:   'SEVEN_OUT',
+        resolvedBets: { passLine: 0, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } },
+        // Clear any crew save flags: e.g. Lefty re-rolled a real 7 into a blank on
+        // the last roll — the clock still runs out and the shooter is still lost.
+        flags: {
+          ...cascadeContext.flags,
+          clockExpired:      true,
+          sevenOutBlocked:   false,
+          passLineProtected: false,
+          hardwayProtected:  false,
+        },
+      }
+    : cascadeContext;
 
   // ── CONVERGENCE: track the last crew slot that fired this roll ──────────────
   // Used by Targeted Demolition (step 8f / computeNextState) to identify which
@@ -847,11 +870,6 @@ async function rollHandler(
   const escrowCarried = isEscrowSevenOut ? 0 : heldThisRoll;
   const postEscrowBankroll = postFrequencyBankroll + escrowRelease;
 
-  // ── 9g. Non-compliance fine (Sarge) — deducted when passLine or odds is below the rising minimum ─
-  // Roll was allowed (not rejected) but bossResult returned a fine object.
-  // Rounds to nearest dollar; can be 0 when no fine applies this roll.
-  const postFineBankroll = postEscrowBankroll - nonComplianceFine;
-
   const rollAmplifiedProfit = payout - viggedContext.baseStakeReturned;
   const newHighestRollAmplifiedCents = Math.max(
     run.highestRollAmplifiedCents,
@@ -870,7 +888,7 @@ async function rollHandler(
   }
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
-  const nextState = computeNextState(run, viggedContext, postFineBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot);
+  const nextState = computeNextState(run, viggedContext, postEscrowBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot);
 
   // ── DISABLE_CREW: override bossPointHits with the newly selected charm slot ─
   const charmAdjustedState = nextCharmSlot !== null
@@ -891,7 +909,7 @@ async function rollHandler(
     : pipAdjustedState;
 
   // Settled bankroll for this roll, including escrow paid out on a marker clear.
-  const settledBankroll = postFineBankroll + escrowPaidOnClear;
+  const settledBankroll = postEscrowBankroll + escrowPaidOnClear;
   const bankrollDelta   = settledBankroll - run.bankrollCents;
 
   // ── CROSS_CALIBRATION: compute bossRating for socket payload ──────────────
@@ -947,6 +965,7 @@ async function rollHandler(
     } else {
       hypeResetNote = 'Seven Out — Hype resets to 1.00×';
     }
+    if (clockExpired) hypeResetNote = `Time's up! ${hypeResetNote}`;
   }
 
   const receipt = buildRollReceipt(
@@ -1129,7 +1148,7 @@ async function rollHandler(
     highestMarkerReached: (hitMarker && !isDevRun)
       ? Math.max(user.highestMarkerReached, newMarkerIndex)
       : user.highestMarkerReached,
-    ...(nonComplianceFine > 0 && { nonComplianceFine }),
+    ...(finalContext.flags.clockExpired && { clockExpired: true }),
     ...(isDisableCrewBoss && { charmedCrewSlot: persistedBossPointHits }),
     ...(charmedWouldHaveFired && { charmFired: true }),
     ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
@@ -1170,6 +1189,7 @@ async function rollHandler(
       ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
       ...(pipTermination && { pipTermination: true as const }),
       ...(finalContext.flags.crapsOutBlocked && { crapsOutBlocked: true as const }),
+      ...(finalContext.flags.clockExpired && { clockExpired: true as const }),
       ...(removedSlotIndex !== null && { removedCrewSlot: removedSlotIndex }),
     },
   });
@@ -1225,7 +1245,7 @@ function computeNextState(
   const currentMarkerIndex = run.currentMarkerIndex;
 
   // ── Boss counter (bossPointHits) — meaning depends on the active rule ─────
-  //   RISING_MIN_BETS:   Sarge's point-hit count (+1 per POINT_HIT).
+  //   DOUBLE_TIME:       Sarge's clock — point-phase rolls used (+1 per blank, 0 otherwise).
   //   TIDAL_SURGE:       tide stage — advances on every come-out resolution.
   //   CROSS_CALIBRATION: Executive's rating (0–4).
   //   DISABLE_CREW:      Le Prix's charmed slot (overridden in the roll handler).
@@ -1233,6 +1253,7 @@ function computeNextState(
   // nextBossCounter() keeps this consistent across all result branches.
   const activeBossRule     = GAUNTLET[currentMarkerIndex]?.boss?.rule ?? null;
   const isTidalSurge       = activeBossRule === 'TIDAL_SURGE';
+  const isDoubleTime       = activeBossRule === 'DOUBLE_TIME'         && isBossMarker(currentMarkerIndex);
   const isOrbitalDecay     = activeBossRule === 'ORBITAL_DECAY'       && isBossMarker(currentMarkerIndex);
   const isConvergence      = activeBossRule === 'CONVERGENCE'         && isBossMarker(currentMarkerIndex);
   const isCrossCalibration = activeBossRule === 'CROSS_CALIBRATION'   && isBossMarker(currentMarkerIndex);
@@ -1266,8 +1287,11 @@ function computeNextState(
       if (result === 'CRAPS_OUT' || result === 'SEVEN_OUT') return Math.max(0, current - 1);
       return current;
     }
-    // RISING_MIN_BETS: only increment on POINT_HIT mid-boss-fight
-    if (result === 'POINT_HIT' && isBossMarker(currentMarkerIndex)) return current + 1;
+    if (isDoubleTime) {
+      // Clock ticks on each blank point-phase roll; any other result (a new
+      // come-out, point set, or the point resolving) resets it.
+      return result === 'NO_RESOLUTION' ? current + 1 : 0;
+    }
     return current;
   };
 

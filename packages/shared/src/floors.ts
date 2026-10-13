@@ -209,7 +209,7 @@ export interface FloorConfig {
    * One sentence shown at the bottom of the floor reveal that hints at
    * the boss's mechanic without fully revealing it. Builds anticipation.
    * Should be ominous but not technically specific.
-   * Example: 'Sarge sets the floor. And the floor keeps rising.'
+   * Example: 'Sarge runs a tight room. Six rolls, soldier.'
    */
   readonly bossTeaser: string;
 
@@ -270,7 +270,7 @@ export const FLOORS: readonly FloorConfig[] = [
     bossName:   'Sarge',
     bossTitle:  'The Pit Boss',
     bossVenue:  'VFW Hall — High Limit Room',
-    bossTeaser: 'Sarge sets the floor. And the floor keeps rising.',
+    bossTeaser: 'Sarge runs on a clock. Six rolls to make your point — not one more.',
     atmosphere: 'gritty',
   },
 

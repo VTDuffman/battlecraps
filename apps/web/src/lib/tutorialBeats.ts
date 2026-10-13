@@ -227,7 +227,7 @@ export const TUTORIAL_BEATS: TutorialBeat[] = [
     id: 13,
     path: 'B',
     spotlight: 'boss-portrait',
-    salText: `Every floor has a boss. Nine of them, each one worse than the last. The Foreman takes his cut. Sarge jacks the minimums. Mme. Le Prix enchants one crew member per come-out — they sit out until the point resolves. And that's just the first three floors. Know who you're facing.`,
+    salText: `Every floor has a boss. Nine of them, each one worse than the last. The Foreman takes his cut. Sarge puts you on the clock. Mme. Le Prix enchants one crew member per come-out — they sit out until the point resolves. And that's just the first three floors. Know who you're facing.`,
     advanceMode: 'tap',
     advanceLabel: "LET'S ROLL",
   },

@@ -30,6 +30,8 @@ const ROLL_RESULT_LABELS: Record<string, string> = {
   NO_RESOLUTION: '—',
   // Client-only: a first-roll craps-out cancelled by the Poseidon's Favor comp.
   POSEIDONS_FAVOR: "POSEIDON'S FAVOR",
+  // Client-only: Sarge's Double Time clock ran out (counts as a Seven Out).
+  TIME_UP:         "TIME'S UP!",
 };
 
 const ROLL_RESULT_COLOURS: Record<string, string> = {
@@ -40,6 +42,7 @@ const ROLL_RESULT_COLOURS: Record<string, string> = {
   SEVEN_OUT:     'text-red-500',
   NO_RESOLUTION: 'text-white/30',
   POSEIDONS_FAVOR: 'text-teal-300',
+  TIME_UP:         'text-red-500',
 };
 
 // Glow color for the result popup border/background per result type
@@ -50,6 +53,7 @@ const POPUP_GLOW: Record<string, string> = {
   SEVEN_OUT: 'border-red-500 shadow-[0_0_28px_6px_rgba(239,68,68,0.4)]',
   POINT_SET: 'border-blue-400 shadow-[0_0_24px_6px_rgba(96,165,250,0.35)]',
   POSEIDONS_FAVOR: 'border-teal-400 shadow-[0_0_24px_6px_rgba(45,212,191,0.35)]',
+  TIME_UP:         'border-red-500 shadow-[0_0_28px_6px_rgba(239,68,68,0.4)]',
 };
 
 // Animation phase for the dice throw sequence
@@ -110,6 +114,7 @@ export const DiceZone: React.FC = () => {
   const lastDice            = useGameStore((s) => s.lastDice);
   const lastResult          = useGameStore((s) => s.lastRollResult);
   const lastCrapsOutBlocked = useGameStore((s) => s.lastCrapsOutBlocked);
+  const lastClockExpired    = useGameStore((s) => s.lastClockExpired);
   const lastDelta           = useGameStore((s) => s.lastDelta);
   const lastBetDelta        = useGameStore((s) => s.lastBetDelta);
   const _betDeltaKey        = useGameStore((s) => s._betDeltaKey);
@@ -355,7 +360,7 @@ export const DiceZone: React.FC = () => {
   // Minimum bet enforcement — the button is disabled and labelled with the
   // requirement until the player's Pass Line meets the floor.
   //
-  // Boss rooms: rising minimum from getBossMinBet() (Sarge's RISING_MIN_BETS rule).
+  // Boss rooms: raised minimum from getBossMinBet() (The Sovereign's tide).
   // Normal markers: flat minimum from getMinBet() (server enforces the same value).
   const bossMinBet      = isBossMarker(currentMarkerIndex)
     ? getBossMinBet(currentMarkerIndex, bossPointHits)
@@ -464,9 +469,12 @@ export const DiceZone: React.FC = () => {
   const showingDice = throwPhase === 'idle' ? (lastDice ?? displayDice) : displayDice;
   const rawPopupResult = pendingResult.current ?? lastResult;
   // A blocked craps-out arrives as NO_RESOLUTION; show it as Poseidon's save.
+  // Sarge's clock running out arrives as SEVEN_OUT; show it as TIME'S UP.
   const popupResult = rawPopupResult === 'NO_RESOLUTION' && lastCrapsOutBlocked
     ? 'POSEIDONS_FAVOR'
-    : rawPopupResult;
+    : rawPopupResult === 'SEVEN_OUT' && lastClockExpired
+      ? 'TIME_UP'
+      : rawPopupResult;
   const popupTotal  = showingDice ? showingDice[0] + showingDice[1] : 0;
 
   return (

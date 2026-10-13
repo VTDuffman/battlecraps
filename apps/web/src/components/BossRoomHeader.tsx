@@ -21,6 +21,7 @@ const RATING_COLORS = ['#ef4444', '#fbbf24', '#c8d8e8', '#4ade80', '#f5c842'] as
 export const BossRoomHeader: React.FC = () => {
   const currentMarkerIndex  = useGameStore(selectDisplayMarkerIndex);
   const bossPointHits       = useGameStore((s) => s.bossPointHits);
+  const phase               = useGameStore((s) => s.phase);
   const crewSlots           = useGameStore((s) => s.crewSlots);
   const unlockedSlots       = useGameStore((s) => s.unlockedSlots);
   const currentHype         = useGameStore((s) => s.hype);
@@ -36,13 +37,13 @@ export const BossRoomHeader: React.FC = () => {
   const theme = getFloorTheme(currentMarkerIndex);
 
   const currentMinBet = getBossMinBet(currentMarkerIndex, bossPointHits);
-  const nextMinBet    = getBossMinBet(currentMarkerIndex, bossPointHits + 1);
 
   const isTidalSurge        = boss.rule === 'TIDAL_SURGE';
   const isOrbitalDecay      = boss.rule === 'ORBITAL_DECAY';
   const isTransmissionDelay = boss.rule === 'TRANSMISSION_DELAY';
   const isConvergence       = boss.rule === 'CONVERGENCE';
   const isExecutive         = boss.rule === 'CROSS_CALIBRATION';
+  const isDoubleTime        = boss.rule === 'DOUBLE_TIME';
   const tidalParams = isTidalSurge
     ? (boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>)
     : null;
@@ -235,23 +236,31 @@ export const BossRoomHeader: React.FC = () => {
               </div>
             );
           })()
-        ) : currentMinBet !== null ? (
-          <div className="flex-none text-right">
-            <div className="font-pixel text-[7.5px] tracking-widest leading-none"
-              style={{ color: `${theme.bossStarColor}b3` }}>
-              MIN BET
-            </div>
-            <div className="font-pixel text-r-15 leading-tight"
-              style={{ color: theme.bossStarColor }}>
-              ${(currentMinBet / 100).toFixed(0)}
-            </div>
-            {nextMinBet !== null && nextMinBet > currentMinBet && (
-              <div className="font-pixel text-[7.5px] leading-none"
-                style={{ color: `${theme.bossStarColor}66` }}>
-                → ${(nextMinBet / 100).toFixed(0)} next
+        ) : isDoubleTime ? (
+          (() => {
+            // Sarge's roll clock: point-phase rolls left before time's up.
+            const limit     = boss.ruleParams.rule === 'DOUBLE_TIME' ? boss.ruleParams.rollLimit : 6;
+            const inPoint   = phase === 'POINT_ACTIVE';
+            const rollsLeft = Math.max(1, limit - bossPointHits);
+            const isLast    = inPoint && rollsLeft === 1;
+            const clockColor = isLast ? '#ef4444' : inPoint && rollsLeft <= 2 ? '#fbbf24' : theme.bossStarColor;
+            return (
+              <div className="flex-none text-right">
+                <div className="font-pixel text-[7.5px] tracking-widest leading-none"
+                  style={{ color: `${theme.bossStarColor}b3` }}>
+                  DOUBLE TIME
+                </div>
+                <div className={`font-pixel text-r-15 leading-tight${isLast ? ' animate-pulse' : ''}`}
+                  style={{ color: clockColor }}>
+                  {inPoint ? (isLast ? 'LAST ROLL' : `CLOCK ${rollsLeft}`) : `CLOCK ${limit}`}
+                </div>
+                <div className="font-pixel text-[7.5px] leading-none mt-0.5"
+                  style={{ color: `${theme.bossStarColor}66` }}>
+                  {inPoint ? 'ROLLS TO HIT THE POINT' : 'STARTS WHEN THE POINT IS SET'}
+                </div>
               </div>
-            )}
-          </div>
+            );
+          })()
         ) : null}
       </div>
 

@@ -100,7 +100,11 @@ export function getBossCounterRange(markerIndex: number, unlockedSlots: number):
     case 'CONVERGENCE':       return { min: 0, max: 5 };               // seven-outs
     case 'TIDAL_SURGE':       return { min: 0, max: 3 };               // tide stage
     case 'DISABLE_CREW':      return { min: 0, max: Math.max(0, unlockedSlots - 1) }; // charmed slot
-    case 'RISING_MIN_BETS':   return { min: 0, max: 20 };              // escalation step
+    case 'DOUBLE_TIME': {                                               // clock rolls used
+      const params = GAUNTLET[markerIndex]?.boss?.ruleParams;
+      const limit  = params?.rule === 'DOUBLE_TIME' ? params.rollLimit : 6;
+      return { min: 0, max: Math.max(0, limit - 1) };
+    }
     default:                  return null;
   }
 }

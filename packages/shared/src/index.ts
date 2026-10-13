@@ -26,7 +26,6 @@ export type {
   BossRuleType,
   BossRuleParams,
   CompRewardType,
-  RisingMinBetsParams,
   BossConfig,
   MarkerConfig,
 } from './config.js';

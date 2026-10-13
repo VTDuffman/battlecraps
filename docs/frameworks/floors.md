@@ -228,7 +228,7 @@ Mechanics are documented in full in [`boss_framework.md`](boss_framework.md), wh
 | Rule | Boss (Floor) | Effect |
 |---|---|---|
 | `EXTORTION_FEE` | The Foreman (1) | 20% tax on winning profit |
-| `RISING_MIN_BETS` | Sarge (2) | Come-out minimum rises 2% per Point Hit (4%→20%); under it = 5% fine, once per come-out |
+| `DOUBLE_TIME` | Sarge (2) | Roll clock: hit the point within 6 rolls or the 6th blank counts as a Seven-Out |
 | `DISABLE_CREW` | Mme. Le Prix (3) | One random crew member charmed per come-out, sits out until the point resolves |
 | `CROSS_CALIBRATION` | The Executive (4) | Performance rating 0–4; +15% at Exceptional; bad roll at Action Required ends the run |
 | `TRIBUTE` | The Hierophant (5) | Crew cash held one roll in escrow; 25% seized on Seven-Out |
@@ -407,18 +407,18 @@ card, docs) lives in [`boss_framework.md` § Adding a New Boss](boss_framework.m
 |---|---|
 | **Title** | The Pit Boss |
 | **Venue** | VFW Hall — High Limit Room |
-| **Teaser** | Sarge sets the floor. And the floor keeps rising. |
-| **Dread tagline** | FALL IN. |
-| **Rule** | `RISING_MIN_BETS` |
+| **Teaser** | Sarge runs on a clock. Six rolls to make your point — not one more. |
+| **Dread tagline** | DOUBLE TIME. |
+| **Rule** | `DOUBLE_TIME` |
 | **Comp reward** | `EXTRA_SHOOTER` — Member's Jacket: +1 SHOOTER at every marker for the rest of the run — they know you earned your seat. |
 | **Comp perk ID** | 1 |
 
-**Rule effect:** The come-out Pass Line minimum starts at 4% of the target ($40), rises 2% ($20) per Point Hit, holds on Seven Out, and caps at 20% ($200). Coming out under it is allowed but fined 5% of the target ($50), once per come-out.
+**Rule effect:** Once a point is set, the shooter has 6 rolls to hit it. If the 6th roll is a blank, Sarge calls TIME'S UP and it counts as a Seven-Out (bets lost, shooter lost). Crew that react to a dice Seven-Out don't trigger.
 
 **Entry lines:**
-> You want to shoot in MY hall?
-> Every point you hit, the price goes up.
-> And it never comes back down.
+> You want to shoot in MY hall? You shoot on MY clock.
+> Six rolls to make your point. Not seven. Six.
+> Dawdle and you're out, soldier.
 
 **Victory quote:** *"…not bad, soldier. Dismissed."*
 

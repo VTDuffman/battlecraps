@@ -30,16 +30,14 @@ export interface BossRuleState {
  */
 export interface BossRuleHooks {
   /**
-   * Called before the roll is accepted.
-   *   • Return null to allow the roll with no penalty.
+   * Called before a COME-OUT roll is accepted (rolls.ts skips it in the point
+   * phase — the Pass Line is locked once the point is set).
+   *   • Return null to allow the roll.
    *   • Return a string to reject the roll (server responds 422 with that string).
-   *   • Return { fine, message } to allow the roll but apply a cents fine after
-   *     settlement — the server subtracts `fine` from the post-payout bankroll.
    *
-   * Used by: RISING_MIN_BETS — fine path when passLine or odds is below the
-   * current minimum (allows rolling but deducts nonComplianceFinePct × target).
+   * Used by: TIDAL_SURGE — Pass Line below the current tide minimum is rejected.
    */
-  validateBet?(bets: Bets, params: BossRuleParams, state: BossRuleState): string | null | { fine: number; message: string };
+  validateBet?(bets: Bets, params: BossRuleParams, state: BossRuleState): string | null;
 
   /**
    * Called after classifyRoll() but before the cascade.

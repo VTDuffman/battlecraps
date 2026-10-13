@@ -194,7 +194,7 @@ export interface FloorConfig {
   /**
    * Short title describing the boss's role in the venue.
    * Shown beneath the boss name on the floor reveal screen.
-   * Example: 'Floor Commander', 'Proprietress of the Salon Privé'
+   * Example: 'The Pit Boss', 'Madame of the Salon Privé'
    */
   readonly bossTitle: string;
 
@@ -268,7 +268,7 @@ export const FLOORS: readonly FloorConfig[] = [
       'This is where runs are born — or buried.',
     ],
     bossName:   'Sarge',
-    bossTitle:  'Floor Commander',
+    bossTitle:  'The Pit Boss',
     bossVenue:  'VFW Hall — High Limit Room',
     bossTeaser: 'Sarge sets the floor. And the floor keeps rising.',
     atmosphere: 'gritty',
@@ -287,7 +287,7 @@ export const FLOORS: readonly FloorConfig[] = [
       "In the Salon Privé, she will look at one of your crew and that will be enough. They won't hear a word you say until the point resolves.",
     ],
     bossName:   'Mme. Le Prix',
-    bossTitle:  'Proprietress of the Salon Privé',
+    bossTitle:  'Madame of the Salon Privé',
     bossVenue:  'The Riverboat — Salon Privé',
     bossTeaser: "Mme. Le Prix does not silence your crew. She simply looks at one of them.",
     atmosphere: 'elegant',
@@ -306,7 +306,7 @@ export const FLOORS: readonly FloorConfig[] = [
       'Your performance is being evaluated. It always has been.',
     ],
     bossName:   'The Executive',
-    bossTitle:  'Penthouse Host',
+    bossTitle:  'CFO, High Limit Division',
     bossVenue:  'The Strip — Penthouse',
     bossTeaser: "The Executive runs a performance review. Every roll updates your rating. Slip to Action Required and roll badly — and you're terminated.",
     atmosphere: 'electric',
@@ -406,7 +406,7 @@ export const FLOORS: readonly FloorConfig[] = [
     bossName:   'The Architect',
     bossTitle:  'Designer of the Null Space',
     bossVenue:  'The Null Space — The Zero Chamber',
-    bossTeaser: 'The Architect reclaims your crew one by one. Five seven-outs and you roll alone.',
+    bossTeaser: 'The Architect reclaims your crew one by one — a seven-out at a time — until you roll alone.',
     atmosphere: 'digital',
   },
 

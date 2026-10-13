@@ -247,8 +247,8 @@ export const CrewAndBossesSection: React.FC = () => {
       {/* ── Bosses ─────────────────────────────────────────────────────────── */}
       <SectionHeader>Bosses</SectionHeader>
       <p className="font-mono text-r-14 text-white/40 py-2">
-        One boss waits at the end of each floor. Defeat them to earn a permanent
-        comp perk. Bosses are revealed as you progress.
+        One boss waits at the end of each floor. Defeat any of the first eight to
+        earn a permanent comp perk. Bosses are revealed as you progress.
       </p>
       <div className="space-y-2 mt-1">
         {[2, 5, 8, 11, 14, 17, 20, 23, 26].map((idx) => (
@@ -260,7 +260,7 @@ export const CrewAndBossesSection: React.FC = () => {
       <SectionHeader>Your Crew</SectionHeader>
       <p className="font-mono text-r-14 text-white/40 py-2">
         Recruit crew at the pub between markers. Abilities fire left-to-right
-        before every roll. Start with three slots — earn more by defeating bosses.
+        after every roll. Start with three slots — earn more by defeating bosses.
       </p>
 
       {crewRoster === null ? (

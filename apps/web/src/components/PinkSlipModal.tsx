@@ -81,9 +81,8 @@ export const PinkSlipModal: React.FC = () => {
                 Effective immediately, your employment has been terminated.
               </p>
               <p>
-                Performance metrics have fallen below acceptable thresholds on
-                three consecutive review cycles. This outcome is final and not
-                subject to appeal.
+                Your rating reached Action Required and your performance did
+                not improve. This outcome is final and not subject to appeal.
               </p>
               <p className="italic text-stone-600">
                 We wish you the best in your future endeavors.

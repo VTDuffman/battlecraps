@@ -161,11 +161,11 @@ const REWARD_LABELS: Record<string, string> = {
 
 const REWARD_SUBTEXTS: Record<string, string> = {
   EXTRA_SHOOTER:
-    '+1 SHOOTER this segment — they know you earned your seat.',
+    '+1 SHOOTER at every marker for the rest of the run — they know you earned your seat.',
   HYPE_RESET_HALF:
-    'On Seven Out, Hype resets to half its current value instead of 1.0×.',
+    'On Seven Out, you keep half your Hype above 1.0× instead of resetting.',
   BOARD_SEAT:
-    'Crew slot 4 unlocked. Visit the pub to add a fourth shooter to your roster.',
+    'Crew slot 4 unlocked. Visit the pub to add a fourth member to your crew.',
   CARGO_HOLD:
-    'Crew slot 5 unlocked. Visit the pub to fill your full five-shooter lineup.',
+    'Crew slot 5 unlocked. Visit the pub to fill out your five-member crew.',
 };

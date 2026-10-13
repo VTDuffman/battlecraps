@@ -293,7 +293,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
         "Every point you hit, the price goes up.",
         "And it never comes back down.",
       ],
-      ruleBlurb:          "The minimum pass-line bet rises with every Point Hit and holds on Seven Out. Miss the minimum and you can still roll — but you'll pay a 5% marker fine for the privilege. Odds bets must also clear the minimum, or the same fine applies.",
+      ruleBlurb:          "The minimum Pass Line bet rises with every Point Hit and holds on Seven Out. Come out under the minimum and you can still roll — but Sarge fines you 5% of the marker for the privilege.",
       victoryQuote:       "…not bad, soldier. Dismissed.",
       defeatAnnouncement: 'ENEMY NEUTRALIZED',
       // Mechanic
@@ -304,7 +304,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compReward:      'EXTRA_SHOOTER',
       compPerkId:      COMP_PERK_IDS.MEMBER_JACKET,
       compName:        "MEMBER'S JACKET",
-      compDescription: "+1 SHOOTER this segment — they know you earned your seat.",
+      compDescription: "+1 SHOOTER at every marker for the rest of the run — they know you earned your seat.",
       compFanLabel:    'JACKET',
       // Legacy
       flavorText:    "You want to play in MY hall? Ante up, soldier.",
@@ -357,7 +357,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compReward:      'HYPE_RESET_HALF',
       compPerkId:      COMP_PERK_IDS.SEA_LEGS,
       compName:        'SEA LEGS',
-      compDescription: "On Seven Out, Hype resets to 50% instead of 1.0× — safely below The Commander's High Altitude danger zone.",
+      compDescription: "On Seven Out, you keep half your Hype above 1.0× instead of resetting — 2.0× drops to 1.5×, not 1.0×.",
       compFanLabel:    'SEA LEGS',
       // Legacy
       flavorText: "On my table, the crew works backwards. Adapt.",
@@ -399,7 +399,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       defeatAnnouncement: 'EXECUTIVE OVERRIDE',
       // Mechanic
       rule:           'CROSS_CALIBRATION',
-      ruleHeaderText: 'PERFORMANCE REVIEW: STRONG — EVERY ROLL SHIFTS YOUR RATING',
+      ruleHeaderText: 'PERFORMANCE REVIEW — EVERY ROLL SHIFTS YOUR RATING',
       ruleParams:     { rule: 'CROSS_CALIBRATION' },
       // Comp
       compReward:      'BOARD_SEAT',
@@ -439,10 +439,10 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       dreadTagline:        'THE ORDER COLLECTS.',
       entryLines: [
         "You were vouched for. That person is no longer welcome.",
-        "Three centuries of tradition: your earnings are not yours until the point resolves.",
+        "Three centuries of tradition: what your crew earns is held until the next roll.",
         "Seven out, and the order takes its cut. Every time.",
       ],
-      ruleBlurb:          "Your crew's cash bonuses don't pay out immediately — they're held in escrow. Hit the point and the escrow releases in full. Seven-out and The Hierophant seizes 25% of the escrow as tribute before releasing the rest.",
+      ruleBlurb:          "Your crew's cash bonuses don't pay out on the roll they're earned — they're held in escrow and released on your next roll. Seven-out while bonuses are held and The Hierophant seizes 25% of them as tribute.",
       victoryQuote:       "…the rites acknowledge your offering. Leave before the observers decide otherwise.",
       defeatAnnouncement: 'RITES CONCLUDED',
       // Mechanic
@@ -453,7 +453,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compReward:      'THE_COVENANT',
       compPerkId:      COMP_PERK_IDS.THE_COVENANT,
       compName:        'THE COVENANT',
-      compDescription: 'Hierophant Escrow seizures on Seven Out are halved — 25% becomes 12.5%. Sarge non-compliance fines are also halved.',
+      compDescription: 'Hierophant escrow seizures on Seven Out are halved — 25% becomes 12.5%.',
       compFanLabel:    'COVENANT',
       // Legacy
       flavorText: "Three centuries of tradition. You'll respect it, or you'll fund it.",
@@ -487,7 +487,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       dreadTagline:        'THE TIDE TURNS.',
       entryLines: [
         "Three thousand years. Every empire above you has collapsed from here.",
-        "My table runs on a tide. Five rolls calm, two rolls flood.",
+        "My table runs on a tide. It turns with every come-out.",
         "You can see it coming. That was never the point.",
       ],
       ruleBlurb:          "The tide runs a four-stage cycle — LOW, EBB, HIGH, FLOW — and advances on every come-out roll. LOW TIDE is the standard table minimum. EBB and FLOW hold at 2×. High Tide demands 3×. The rhythm is visible. The rhythm is inevitable.",
@@ -505,7 +505,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compReward:      'POSEIDONS_FAVOR',
       compPerkId:      COMP_PERK_IDS.POSEIDONS_FAVOR,
       compName:        "POSEIDON'S FAVOR",
-      compDescription: "First come-out roll of each shooter can never craps-out — treated as a blank re-roll instead.",
+      compDescription: "The first roll of each shooter can never craps-out — a 2, 3 or 12 doesn't count and your Pass Line stays up.",
       compFanLabel:    'POSEIDON',
       // Legacy
       flavorText: "My kingdom has stood for three thousand years. Your run will not outlast this tide.",
@@ -644,12 +644,12 @@ export const GAUNTLET: readonly MarkerConfig[] = [
         "Every seven-out, one of them disappears. Not gone — just reclaimed.",
         "By the fifth, you'll be rolling alone. The table will still be here. Will you?",
       ],
-      ruleBlurb: "Every seven-out permanently removes one crew slot from the cascade, starting with slot 5. After five seven-outs, you roll naked craps.",
+      ruleBlurb: "Every seven-out, The Architect permanently removes one of your crew — the last one who fired. Each seven-out also cuts your remaining crew's cash bonuses by a further 15%. Lose them all and you roll naked craps.",
       victoryQuote: "…the pattern was incomplete after all. Interesting.",
       defeatAnnouncement: 'NULL SPACE COLLAPSED',
       // Mechanic
       rule:           'CONVERGENCE',
-      ruleHeaderText: 'SEVEN-OUT REMOVES A CREW SLOT — 5 SEVEN-OUTS = NAKED CRAPS',
+      ruleHeaderText: 'SEVEN-OUT REMOVES YOUR LAST-FIRED CREW — EACH ONE CUTS CREW CASH 15%',
       ruleParams:     { rule: 'CONVERGENCE' },
       // No comp — The Null Space is the end of the line
       compReward:     'NONE',

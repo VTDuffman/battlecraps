@@ -205,10 +205,19 @@ export const BossRoomHeader: React.FC = () => {
           })()
         ) : isOrbitalDecay ? (
           (() => {
+            const decay = boss.ruleParams as Extract<BossRuleParams, { rule: 'ORBITAL_DECAY' }>;
+            // Seven-out decay is tiered by the current Hype tier.
+            const nextDecay = currentHype >= 2.5 ? decay.onFireDecay
+              : currentHype >= 1.5 ? decay.heatingUpDecay
+              : decay.baseDecay;
             const hypeStr   = currentHype.toFixed(2) + '×';
-            const isBelow1  = currentHype < 1.0;
-            const isWarning = currentHype < 1.25 && currentHype >= 1.0;
-            const hypeColor = isBelow1 ? '#ef4444' : isWarning ? '#fbbf24' : '#c8d8e8';
+            // Death spiral: below 0.75× you lose a cascade slot; below 0.5× max bet is halved.
+            const inDeathSpiral  = currentHype < 0.75;
+            const isWarning = currentHype < 1.0 && !inDeathSpiral;
+            const hypeColor = inDeathSpiral ? '#ef4444' : isWarning ? '#fbbf24' : '#c8d8e8';
+            const penaltyLabel = currentHype < 0.5 ? '⚠ −1 SLOT · MAX BET ½'
+              : inDeathSpiral ? '⚠ −1 CREW SLOT'
+              : `−${nextDecay.toFixed(1)}× ON 7-OUT`;
             return (
               <div className="flex-none text-right">
                 <div className="font-pixel text-[7.5px] tracking-widest leading-none"
@@ -220,8 +229,8 @@ export const BossRoomHeader: React.FC = () => {
                   {hypeStr}
                 </div>
                 <div className="font-pixel text-[7.5px] leading-none mt-0.5"
-                  style={{ color: isBelow1 ? '#ef4444' : 'rgba(200,216,232,0.45)' }}>
-                  {isBelow1 ? '⚠ PENALTY MODE' : '−0.5× ON 7-OUT'}
+                  style={{ color: inDeathSpiral ? '#ef4444' : 'rgba(200,216,232,0.45)' }}>
+                  {penaltyLabel}
                 </div>
               </div>
             );

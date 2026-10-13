@@ -35,6 +35,7 @@ import {
   getMaxBet,
   getMinBet,
   isBossMarker,
+  getBossEntryCounter,
   getBaseHypeTick,
   OLD_PRO_ID,
   type CascadeEvent,
@@ -397,7 +398,7 @@ async function rollHandler(
         bets:                  zeroBets,
         currentMarkerIndex:    nextMkrIndex,
         consecutivePointHits:  0,
-        bossPointHits:         GAUNTLET[nextMkrIndex]?.boss?.rule === 'CROSS_CALIBRATION' ? 2 : 0,
+        bossPointHits:         getBossEntryCounter(nextMkrIndex),
         pointPhaseBlankStreak: 0,
         mechanicFreeze:        null,
         hype:                  run.hype,
@@ -635,11 +636,9 @@ async function rollHandler(
   // Uses the post-cascade rollResult so Lefty's save and Poseidon's block
   // are respected (they change the result before we check).
   //
-  // effectiveRating guards against the uninitialized-DB case: bossPointHits
-  // defaults to 0 in the DB, but the fight entry rating is 2 (Strong). Any
-  // run that reached the Executive before the initialization write ran would
-  // otherwise treat the very first roll as already at Action Required.
-  const effectiveRating = (isCrossCalibrationBoss && run.bossPointHits === 0) ? 2 : run.bossPointHits;
+  // bossPointHits is the stored rating. Every marker-entry write initializes it
+  // via getBossEntryCounter() (2 = Strong), so a stored 0 always means Action Required.
+  const effectiveRating = run.bossPointHits;
   const pipTermination = (
     isCrossCalibrationBoss &&
     effectiveRating === 0 &&
@@ -1185,8 +1184,7 @@ function computeNextState(
   const isOrbitalDecay     = activeBossRule === 'ORBITAL_DECAY'       && isBossMarker(currentMarkerIndex);
   const isConvergence      = activeBossRule === 'CONVERGENCE'         && isBossMarker(currentMarkerIndex);
   const isCrossCalibration = activeBossRule === 'CROSS_CALIBRATION'   && isBossMarker(currentMarkerIndex);
-  // Guards the same uninitialized-DB case as effectiveRating in the outer handler.
-  const effectiveBossPointHits = (isCrossCalibration && run.bossPointHits === 0) ? 2 : run.bossPointHits;
+  const effectiveBossPointHits = run.bossPointHits;
   const tidalCycleTotal = isTidalSurge && isBossMarker(currentMarkerIndex)
     ? (() => {
         const p = GAUNTLET[currentMarkerIndex]!.boss!.ruleParams as
@@ -1197,12 +1195,8 @@ function computeNextState(
 
   const nextBossCounter = (current: number, result: RollResult, hitMarker: boolean): number => {
     if (hitMarker) {
-      // When clearing a marker, check if the destination is a CROSS_CALIBRATION boss.
-      // If so, initialize the rating to 2 (Strong) instead of resetting to 0.
-      const nextIdx = currentMarkerIndex + 1;
-      const nextBossRule = GAUNTLET[nextIdx]?.boss?.rule;
-      if (nextBossRule === 'CROSS_CALIBRATION') return 2;
-      return 0;
+      // Clearing a marker: initialize the destination marker's boss counter.
+      return getBossEntryCounter(currentMarkerIndex + 1);
     }
     if (isTidalSurge) {
       if (!isBossMarker(currentMarkerIndex)) return 0;

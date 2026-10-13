@@ -23,7 +23,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
-import { isBossMarker, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, COMP_PERK_IDS, type CompRewardType, type CrewRarity } from '@battlecraps/shared';
+import { isBossMarker, getBossEntryCounter, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, COMP_PERK_IDS, type CompRewardType, type CrewRarity } from '@battlecraps/shared';
 import { randomBelow } from '../lib/rng.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
@@ -231,8 +231,11 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
           hype:          newHype,
           // DISABLE_CREW boss: preserve the entry charm in bossPointHits so the
           // cascade excludes the correct slot from the very first come-out.
-          // All other bosses always reset to 0 on segment start.
-          bossPointHits: isEnteringDisableCrewBoss ? (bossEntryCharmSlot ?? 0) : 0,
+          // Every other marker uses the shared entry value (CROSS_CALIBRATION
+          // starts at rating 2). A hardcoded 0 here reset the Executive to Action Required.
+          bossPointHits: isEnteringDisableCrewBoss
+            ? (bossEntryCharmSlot ?? 0)
+            : getBossEntryCounter(run.currentMarkerIndex),
           updatedAt:     new Date(),
         })
         .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))

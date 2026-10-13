@@ -683,6 +683,20 @@ export function isBossMarker(markerIndex: number): boolean {
 }
 
 /**
+ * Returns the initial `bossPointHits` value when a run enters the given marker.
+ * Single source of truth for every marker-entry write (marker clear, auto-collect,
+ * pub exit) so boss fights always start in the same state.
+ *
+ * CROSS_CALIBRATION (The Executive) starts at rating 2 (Strong). Every other
+ * marker starts at 0. DISABLE_CREW's entry charm slot depends on the final crew
+ * and is chosen in recruit.ts, which overrides this value.
+ */
+export function getBossEntryCounter(markerIndex: number): number {
+  if (!isBossMarker(markerIndex)) return 0;
+  return GAUNTLET[markerIndex]?.boss?.rule === 'CROSS_CALIBRATION' ? 2 : 0;
+}
+
+/**
  * Returns the minimum Pass Line bet (in cents) for the current boss encounter,
  * or null if the marker is not a boss fight or has no RISING_MIN_BETS rule.
  *

@@ -11,6 +11,7 @@ export {
   getMaxBet,
   getMinBet,
   isBossMarker,
+  getBossEntryCounter,
   getBossMinBet,
   getBaseHypeTick,
   STREAK_BASE_TICK,

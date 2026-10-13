@@ -17,6 +17,7 @@ import {
   createRun,
   rollWithDice,
   resetTestDb,
+  TEST_CLERK_ID,
 } from '../helpers/testSetup.js';
 import type { Bets } from '@battlecraps/shared';
 import { getIO } from '../../lib/io.js';
@@ -196,6 +197,38 @@ describe('CROSS_CALIBRATION — The Executive (marker 11)', () => {
     expect(status).toBe(200);
     const r = body['run'] as Record<string, unknown>;
     expect(r['bossPointHits']).toBe(3);
+  });
+
+  it('rating stays at 2 (Strong) after the pub — skipping recruit does not reset it to 0', async () => {
+    // Real path: marker 10 clear writes bossPointHits = 2 and status TRANSITION;
+    // the pub (recruit / skip) then moves the run to IDLE_TABLE for the fight.
+    const run = await createRun(userId, {
+      currentMarkerIndex: 11,
+      bankrollCents:      300_000,
+      bossPointHits:      2,
+      status:             'TRANSITION',
+    });
+
+    const response = await app.inject({
+      method:  'POST',
+      url:     `/api/v1/runs/${run.id}/recruit`,
+      headers: { 'content-type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+      payload: JSON.stringify({}),
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as Record<string, unknown>;
+    expect(body['status']).toBe('IDLE_TABLE');
+    expect(body['bossPointHits']).toBe(2);
+
+    // First bad roll in the fight drops to 1 (Below Strong) — not a PIP termination.
+    const { status, body: rollBody } = await rollWithDice(
+      app, run.id, PASS_ONLY(25_000), 1, 1,
+    );
+    expect(status).toBe(200);
+    const r = rollBody['run'] as Record<string, unknown>;
+    expect(r['status']).not.toBe('GAME_OVER');
+    expect(r['bossPointHits']).toBe(1);
   });
 
   it('rating is capped at 4 (Exceptional) — natural does not push it above 4', async () => {

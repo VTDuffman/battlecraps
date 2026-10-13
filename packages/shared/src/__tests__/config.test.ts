@@ -6,6 +6,7 @@ import {
   getMinBet,
   getBossMinBet,
   isBossMarker,
+  getBossEntryCounter,
   getCrewHireCost,
   getBaseHypeTick,
   RARITY_COST_MULTIPLIERS,
@@ -376,5 +377,25 @@ describe('Boss comp rewards — slot unlock floors', () => {
   it('ZERO_POINT does not appear in any boss comp reward', () => {
     const rewards = GAUNTLET.filter((m) => m.isBoss).map((m) => m.boss?.compReward);
     expect(rewards).not.toContain('ZERO_POINT');
+  });
+});
+
+describe('getBossEntryCounter', () => {
+  it('starts The Executive (CROSS_CALIBRATION) at rating 2 (Strong)', () => {
+    const idx = GAUNTLET.findIndex((m) => m.boss?.rule === 'CROSS_CALIBRATION');
+    expect(idx).toBeGreaterThanOrEqual(0);
+    expect(getBossEntryCounter(idx)).toBe(2);
+  });
+
+  it('returns 0 for every other marker', () => {
+    GAUNTLET.forEach((m, i) => {
+      if (m.boss?.rule === 'CROSS_CALIBRATION') return;
+      expect(getBossEntryCounter(i)).toBe(0);
+    });
+  });
+
+  it('returns 0 for out-of-range indices', () => {
+    expect(getBossEntryCounter(-1)).toBe(0);
+    expect(getBossEntryCounter(GAUNTLET.length)).toBe(0);
   });
 });

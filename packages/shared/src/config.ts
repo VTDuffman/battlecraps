@@ -103,6 +103,9 @@ export type BossRuleParams =
  */
 export type BossBarkTrigger = 'win' | 'loss' | 'progress50' | 'progress80' | 'payoff';
 
+/** FB-032: boss defeat cinematics (one component each in the web registry). */
+export type BossDefeatCinematicId = 'DOCK_CLOSED';
+
 export interface BossConfig {
   // ── Identity ──────────────────────────────────────────────────────────────
   /** NPC name shown in boss entry and victory screens. */
@@ -120,6 +123,12 @@ export interface BossConfig {
    * with no barks stays silent. Lines are short; one shows at a time.
    */
   barks?: Partial<Record<BossBarkTrigger, readonly string[]>>;
+  /**
+   * FB-032: signature "you lost" moment played over the table before the
+   * game-over screen when this boss ends the run. Optional. `id` picks the
+   * component (web DEFEAT_CINEMATICS registry); `line` is the boss's parting shot.
+   */
+  defeatCinematic?: { id: BossDefeatCinematicId; line: string };
 
   // ── Vibe copy ─────────────────────────────────────────────────────────────
   /** 1–3 word bark displayed on the dread screen before the rule briefing. */
@@ -285,6 +294,8 @@ export const GAUNTLET: readonly MarkerConfig[] = [
           "We're square. Beat it.",
         ],
       },
+      // FB-032 defeat cinematic (pilot): the loading-dock door slams shut.
+      defeatCinematic: { id: 'DOCK_CLOSED', line: "Come back when you got my money." },
     },
   },
 

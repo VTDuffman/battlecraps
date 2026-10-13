@@ -294,6 +294,109 @@ function playRegisterBellSting(ctx: AudioContext, dest: AudioNode): void {
   });
 }
 
+/** Dead register thunk — the anti-bell for BALANCE DUE (low, muffled, short) */
+function playDeadThunkSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(140, t0);
+  osc.frequency.exponentialRampToValueAtTime(70, t0 + 0.12);
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 500;
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.3, t0 + 0.008);
+  env.gain.exponentialRampToValueAtTime(0.001, t0 + 0.2);
+  osc.connect(lp);
+  lp.connect(env);
+  env.connect(dest);
+  osc.start(t0);
+  osc.stop(t0 + 0.22);
+}
+
+/** Roll-up door rattle — bandpassed noise with a fast amplitude chatter (≈650ms) */
+function playDoorRattleSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0  = ctx.currentTime;
+  const dur = 0.65;
+  const noise = ctx.createBufferSource();
+  noise.buffer = makeNoiseBuf(ctx, dur);
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(900, t0);
+  bp.frequency.linearRampToValueAtTime(600, t0 + dur);
+  bp.Q.value = 1.2;
+  // Chatter: a square LFO modulating the gain gives the slat-by-slat clatter.
+  const chatter = ctx.createGain();
+  chatter.gain.value = 0.5;
+  const lfo = ctx.createOscillator();
+  lfo.type = 'square';
+  lfo.frequency.setValueAtTime(18, t0);
+  lfo.frequency.linearRampToValueAtTime(30, t0 + dur); // speeds up as it falls
+  const lfoDepth = ctx.createGain();
+  lfoDepth.gain.value = 0.45;
+  lfo.connect(lfoDepth);
+  lfoDepth.connect(chatter.gain);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.28, t0 + 0.05);
+  env.gain.setValueAtTime(0.28, t0 + dur - 0.05);
+  env.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  noise.connect(bp);
+  bp.connect(chatter);
+  chatter.connect(env);
+  env.connect(dest);
+  noise.start(t0);
+  noise.stop(t0 + dur);
+  lfo.start(t0);
+  lfo.stop(t0 + dur);
+}
+
+/** Steel door hitting the ground — low thud + inharmonic metallic ring (≈1.2s) */
+function playDoorClangSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime;
+
+  // Thud body.
+  const thud = ctx.createOscillator();
+  thud.type = 'sine';
+  thud.frequency.setValueAtTime(90, t0);
+  thud.frequency.exponentialRampToValueAtTime(42, t0 + 0.25);
+  const thudEnv = ctx.createGain();
+  thudEnv.gain.setValueAtTime(0.0001, t0);
+  thudEnv.gain.exponentialRampToValueAtTime(0.5, t0 + 0.006);
+  thudEnv.gain.exponentialRampToValueAtTime(0.001, t0 + 0.45);
+  thud.connect(thudEnv);
+  thudEnv.connect(dest);
+  thud.start(t0);
+  thud.stop(t0 + 0.47);
+
+  // Metallic ring: inharmonic partials, the "clang".
+  [[220, 0.14], [587, 0.10], [1241, 0.07], [2093, 0.04]].forEach(([freq, peak]) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = freq ?? 220;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.exponentialRampToValueAtTime(peak ?? 0.05, t0 + 0.004);
+    env.gain.exponentialRampToValueAtTime(0.001, t0 + 1.2);
+    osc.connect(env);
+    env.connect(dest);
+    osc.start(t0);
+    osc.stop(t0 + 1.22);
+  });
+
+  // Impact grit.
+  const grit = ctx.createBufferSource();
+  grit.buffer = makeNoiseBuf(ctx, 0.12);
+  const gritEnv = ctx.createGain();
+  gritEnv.gain.setValueAtTime(0.25, t0);
+  gritEnv.gain.exponentialRampToValueAtTime(0.001, t0 + 0.12);
+  grit.connect(gritEnv);
+  gritEnv.connect(dest);
+  grit.start(t0);
+  grit.stop(t0 + 0.12);
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -326,6 +429,21 @@ export function playRegisterKaChing(): void {
 /** FB-032: The Foreman is paid off — register bell. */
 export function playRegisterBell(): void {
   playStandalone(playRegisterBellSting);
+}
+
+/** FB-032 defeat: register goes dead on BALANCE DUE. */
+export function playDeadThunk(): void {
+  playStandalone(playDeadThunkSting);
+}
+
+/** FB-032 defeat: the dock door rolls down. */
+export function playDoorRattle(): void {
+  playStandalone(playDoorRattleSting);
+}
+
+/** FB-032 defeat: the dock door slams shut. */
+export function playDoorClang(): void {
+  playStandalone(playDoorClangSting);
 }
 
 // ---------------------------------------------------------------------------

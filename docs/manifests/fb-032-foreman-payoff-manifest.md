@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-032 The Foreman: The Cut and The Payoff
 
 **Design doc:** `docs/design/fb-032-foreman-payoff-design.md`
-**Status:** Phases 1–3 done locally (not pushed). Next: Phase 4 defeat cinematics, Phase 5 Dev Mode.
+**Status:** Phases 1–4 done locally (not pushed). Next: Phase 5 Dev Mode + measurement.
 
 **Rules:** each phase ends at a 🛑 gate. Before calling a phase done: `npm run typecheck`, `npm run build`, `npm run test`, and the API integration suite (Docker `postgres-test`; recreate it after schema changes). Pushing to `main` deploys; the schema change applies at API startup.
 
@@ -53,6 +53,8 @@
 7. **Docs:** boss_framework (Foreman + the system), CLAUDE.md constraint note.
 
 🛑 **Gate:** lose to the Foreman locally (Dev Mode + forced seven-out on the last shooter). Does it *feel* like a loss?
+
+--- Implemented locally (2026-10-13): `defeatCinematic { id, line }` in config (copy stays with the boss); store `pendingDefeat` holds GAME_OVER (status kept at the pre-roll value, like `pendingTransition`), 9s safety; `components/defeat/` (registry + host + `DockClosedCinematic`); 3 synthesized sounds; Dev Panel "Defeat" preview. ---
 
 ## Phase 5: Developer Mode + measurement
 

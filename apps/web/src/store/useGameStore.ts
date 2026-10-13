@@ -32,6 +32,7 @@ import type {
   RollReceiptLine,
   CelebrationSnapshot,
   TransitionType,
+  BossDefeatCinematicId,
 } from '@battlecraps/shared';
 import { validateOddsBet, getMaxBet, getBossMinBet, getBossPayoffCents, isBossMarker, pickBossBark, GAUNTLET, MARKER_TARGETS } from '@battlecraps/shared';
 
@@ -66,6 +67,21 @@ function withBetField(bets: Bets, field: BetField, value: number): Bets {
 // ---------------------------------------------------------------------------
 
 /** FB-032: The Foreman's Cut for one roll (mirrors BossCutPayload in rolls.ts). */
+/** FB-032: a boss defeat cinematic in progress (see pendingDefeat). */
+export interface PendingDefeat {
+  /** Unique per play — keys the component so a replay restarts it. */
+  key:             number;
+  id:              BossDefeatCinematicId;
+  /** The boss's parting line (config.ts defeatCinematic.line). */
+  line:            string;
+  /** The boss marker the run ended on. */
+  markerIndex:     number;
+  /** Payoff bosses: how short the player came up (Payoff − Cut). */
+  balanceDueCents: number | null;
+  /** Dev Mode replay — finishing it never ends the run. */
+  preview:         boolean;
+}
+
 export interface BossCut {
   /** Skimmed on this roll (0 on a loss). */
   amount:  number;
@@ -790,6 +806,13 @@ export interface GameState {
   bossBark: { line: string; key: number } | null;
   /** Last bark line shown — avoids repeating it back-to-back. */
   bossBarkLastLine: string | null;
+
+  /**
+   * FB-032: a boss defeat cinematic is playing over the table. While set, the
+   * GAME_OVER status flip is held (like pendingTransition for celebrations)
+   * until finishDefeatCinematic(). preview = Dev Mode replay; never ends the run.
+   */
+  pendingDefeat: PendingDefeat | null;
 }
 
 /** FB-028: what a cinematic preview should show. */
@@ -1125,6 +1148,10 @@ export interface GameActions {
    */
   /** FB-032: dismiss the current boss bark (BossRoomHeader calls this after it animates out). */
   clearBossBark(): void;
+  /** FB-032: the defeat cinematic finished — release GAME_OVER (or end a preview). */
+  finishDefeatCinematic(): void;
+  /** FB-032 Dev Mode: play a boss's defeat cinematic without ending the run. */
+  previewDefeatCinematic(markerIndex: number): void;
   clearExecutiveBark(): void;
 
   /**
@@ -1280,6 +1307,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   payoffAt:                null,
   bossBark:                null,
   bossBarkLastLine:        null,
+  pendingDefeat:           null,
   executiveRating:         null,
   executiveBark:           null,
   pipTermination:          false,
@@ -1368,6 +1396,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastBossCut:    null,
       payoffAt:       null,
       bossBark:       null,
+      pendingDefeat:  null,
       devLastRoll:    null,
       ...initialState,
       // Always sync committedBets to the server's confirmed bet state so
@@ -1560,6 +1589,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       payoffAt:            null,
       bossBark:            null,
       bossBarkLastLine:    null,
+      pendingDefeat:       null,
       status:              null,
       phase:               null,
       bankroll:            0,
@@ -2049,6 +2079,30 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       ? (currentCrewSlots.map((slot, i) => (i === p.removedCrewSlot ? null : slot)) as StoredCrewSlots)
       : currentCrewSlots;
 
+    // ── FB-032: boss defeat cinematic — hold GAME_OVER while it plays ────────
+    // A run-ending roll (not the final-marker victory) at a boss that defines a
+    // defeatCinematic. Covers last-shooter and below-min-bet game overs alike.
+    const defeatCinematic = isBossMarker(oldMarkerIndex) ? GAUNTLET[oldMarkerIndex]?.boss?.defeatCinematic : undefined;
+    const isRunEndingLoss = p.runStatus === 'GAME_OVER' && p.newMarkerIndex < GAUNTLET.length;
+    const defeatPayoff    = getBossPayoffCents(oldMarkerIndex);
+    const pendingDefeat: PendingDefeat | null = isRunEndingLoss && defeatCinematic
+      ? {
+          key:             Date.now(),
+          id:              defeatCinematic.id,
+          line:            defeatCinematic.line,
+          markerIndex:     oldMarkerIndex,
+          balanceDueCents: defeatPayoff !== null ? Math.max(0, defeatPayoff - (p.bossCut?.total ?? 0)) : null,
+          preview:         false,
+        }
+      : null;
+    if (pendingDefeat !== null) {
+      // Safety net: never leave a finished run stuck behind a cinematic.
+      const defeatKey = pendingDefeat.key;
+      setTimeout(() => {
+        if (get().pendingDefeat?.key === defeatKey) get().finishDefeatCinematic();
+      }, 9000);
+    }
+
     // ── FB-032: generic boss barks (lines in config.ts; rules in shared bossBarks.ts) ─
     const { bossBark: oldBossBark, bossBarkLastLine, bossProgressCents: cutBefore } = get();
     const bark = pickBossBark({
@@ -2093,7 +2147,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // activeTransition (not status) to route to celebration phases.
       // Status becomes 'TRANSITION' only when clearTransition() fires,
       // after the player has clicked through all celebration phases.
-      status:               isTransition ? currentStatus : p.runStatus,
+      // FB-032: a boss defeat with a cinematic also holds GAME_OVER until
+      // finishDefeatCinematic() releases it (see pendingDefeat below).
+      status:               isTransition || pendingDefeat !== null ? currentStatus : p.runStatus,
+      pendingDefeat,
       pendingTransition:    isTransition,
       currentMarkerIndex:   p.newMarkerIndex,
       celebrationSnapshot,
@@ -2836,6 +2893,31 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   clearFeedbackSnapshot() {
     set({ feedbackContextSnapshot: null });
+  },
+
+  finishDefeatCinematic() {
+    const pending = get().pendingDefeat;
+    if (!pending) return;
+    // A preview never touches the run; a real defeat now releases GAME_OVER.
+    set(pending.preview ? { pendingDefeat: null } : { pendingDefeat: null, status: 'GAME_OVER' });
+  },
+
+  previewDefeatCinematic(markerIndex) {
+    const s = get();
+    if (s.pendingDefeat || s.activeTransition !== null || s.isRolling) return;
+    const cinematic = GAUNTLET[markerIndex]?.boss?.defeatCinematic;
+    if (!cinematic) return;
+    const payoff = getBossPayoffCents(markerIndex);
+    set({
+      pendingDefeat: {
+        key:             Date.now(),
+        id:              cinematic.id,
+        line:            cinematic.line,
+        markerIndex,
+        balanceDueCents: payoff !== null ? Math.max(100, payoff - s.bossProgressCents) : null,
+        preview:         true,
+      },
+    });
   },
 
   clearBossBark() {

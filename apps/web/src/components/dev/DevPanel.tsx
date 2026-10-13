@@ -91,6 +91,7 @@ const DevPanel: React.FC = () => {
   // Phase 5 — previews + account
   const previewTransition = useGameStore((s) => s.previewTransition);
   const previewPinkSlip   = useGameStore((s) => s.previewPinkSlip);
+  const previewDefeatCinematic = useGameStore((s) => s.previewDefeatCinematic);
   const crewRoster        = useGameStore((s) => s.crewRoster);
   const fetchCrewRoster   = useGameStore((s) => s.fetchCrewRoster);
   const applyDevUnlockChange = useGameStore((s) => s.applyDevUnlockChange);
@@ -384,6 +385,9 @@ const DevPanel: React.FC = () => {
                   <div className="flex flex-wrap gap-1">
                     <button type="button" disabled={locked} className={smallBtn} onClick={() => preview('BOSS_ENTRY', previewBoss)}>Boss entry</button>
                     <button type="button" disabled={locked} className={smallBtn} onClick={() => preview('BOSS_VICTORY', previewBoss)}>Boss victory + comp</button>
+                    <button type="button" disabled={locked || !GAUNTLET[previewBoss]?.boss?.defeatCinematic} className={smallBtn}
+                      title={GAUNTLET[previewBoss]?.boss?.defeatCinematic ? undefined : 'No defeat cinematic for this boss yet'}
+                      onClick={() => { setOpen(false); previewDefeatCinematic(previewBoss); }}>Defeat</button>
                   </div>
                   <DevRow label="Floor">
                     <select className={devSelectCls} value={previewFloor} onChange={(e) => setPreviewFloor(Number(e.target.value))}>

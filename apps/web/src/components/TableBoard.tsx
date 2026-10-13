@@ -47,6 +47,7 @@ import {
 import { BettingGrid, ChipSelector } from './BettingGrid.js';
 import { BossRoomHeader }  from './BossRoomHeader.js';
 import { CashRegister }    from './CashRegister.js';
+import { DefeatCinematicHost } from './defeat/DefeatCinematicHost.js';
 import { DiceZone }      from './DiceZone.js';
 import { CrewPortrait }  from './CrewPortrait.js';
 import { RollLog }       from './RollLog.js';
@@ -471,6 +472,9 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
 
       {/* ── Dev run badge (FB-028) ─────────────────────────────────────────── */}
       <DevRunBadge />
+
+      {/* ── Boss defeat cinematic (FB-032) — holds GAME_OVER while it plays ── */}
+      <DefeatCinematicHost />
 
       {/* ── Feedback modal ────────────────────────────────────────────────── */}
       <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />

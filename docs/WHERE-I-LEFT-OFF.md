@@ -2,60 +2,66 @@
 
 > A re-entry note for coming back after time away. Update this whenever you stop for more than a week.
 
-**Last updated:** 2026-10-12 (second pass: backlog audit, Supabase restore, local-run notes)
-**Last real dev session:** 2026-05-30 (~4.5 month break)
+**Last updated:** 2026-10-13 (after FB-028 Developer Mode + full cleanup)
+**Last real dev session:** 2026-10-13 (back from a ~4.5 month break that started 2026-05-30)
 
 ---
 
 ## State of the game
 
-BattleCraps is in **beta** and playable end to end:
+BattleCraps is in **beta**, live at battlecraps.com, playable end to end, with friends playtesting:
 
-- 9 floors × 3 markers, 9 bosses, 8 comps
-- 30 crew (15 starter + 15 unlock-gated), drag-and-drop crew rail
+- 9 floors × 3 markers, 9 bosses, 8 comps; 30 crew (15 starter + 15 unlock-gated)
 - Clerk auth, leaderboards, tutorial, release notes, feedback system, floor music
-- Health check on 2026-10-12: `npm run typecheck` clean, `npm run test` 385/385 passing
+- **Developer Mode** (FB-028), for you only: start anywhere, force dice, edit live runs, preview cinematics
+- **Everything green (2026-10-13):** typecheck + build clean, 414/414 engine tests, **87/87 API integration tests**
+- **Repo clean:** only `main` plus two intentionally kept branches (see Loose ends)
 
 ## Recent work (newest first)
 
-| Date | What | Where |
-|---|---|---|
-| 2026-05-30 → committed 2026-10-12 | **FB-027** The Executive: Cross Calibration (Performance Review rating, PIP termination, `PinkSlipModal`) | branch `feature/fb-027-executive-cross-calibration` (not yet merged to `main`) |
-| 2026-05-30 | Mme. Le Prix charm bark animation | `main` |
-| 2026-05-28 | **FB-026** Boss & comp overhaul: all 11 manifest steps (7 bosses reworked, `pending_additive_cents` migration, tide-stage UI) | `main` |
-| 2026-05-27 | **FB-025** Crew slot progression + marker target overhaul + floor music | `main` (PR #24) |
+| Date | What |
+|---|---|
+| 2026-10-13 | Cleanup: 11 merged remote branches deleted; the 6 stale integration tests fixed (Sarge fine, additive nerf, hype-before-payout, FB-025 slots) |
+| 2026-10-13 | `schema.ts` money columns → BIGINT to match prod (prod was converted 2026-05-23; Floor 9 targets reach $60M) |
+| 2026-10-12/13 | **FB-028 Developer Mode**, Phases 0–5 (see below) |
+| 2026-10-12 | Bug fix: reloading a run dropped crew slots + boss state (rail fell back to 3 slots) |
+| 2026-10-12 | Hotfix: Executive PIP termination never fired (pub reset the rating; a 0→2 guard masked it) |
+| 2026-10-12 | **FB-027** Executive Cross Calibration merged (PR #25) |
+| 2026-05-28 | **FB-026** Boss & comp overhaul; **FB-025** crew slot progression (PR #24) |
 
-Also already shipped, easy to forget: **FB-013 cinematic crew unlock** (2026-05-08, PR #17, commit labeled "FB-012"): `UnlockRecapPhase`, `UnlockModal`, guaranteed pub-draft slot for new unlocks.
+## Developer Mode cheat sheet
 
-> ⚠️ Backlog status lines drifted out of date once before. They were corrected on 2026-10-12. When in doubt, check the code, not the status line.
+Only works for allowlisted Clerk IDs (`DEV_MODE_ENABLED` + `DEV_CLERK_IDS` on Render and in `apps/api/.env`). **Clerk Dev and Prod give you different user IDs**: prod is `user_3CDWa7…` (find it with `window.Clerk.user.id` on battlecraps.com), local is `user_3CAyiO…`.
+
+- **⚙ DEV RUN** (title screen): Scenario Builder. Pick a preset or any of 27 markers; set bankroll, crew, comps, boss state. "Start at table" keeps overrides; "Arrive via transition" plays the real clear + pub.
+- **🎲 DEV** (on a dev run): queue exact dice.
+- **DEV panel** (backtick ` or right-edge tab): live edits, jump markers, force game over, inspector, **Copy as scenario** (paste into `packages/shared/src/devScenarios.ts` to make a preset), cinematic previews, account toggles (reset tutorial, grant/revoke unlocks, all of which change your real account).
+- Dev runs never touch the leaderboard, unlocks, or your stats.
 
 ## Loose ends
 
-**Housekeeping (quick wins):**
-- [ ] Open a PR for `feature/fb-027-executive-cross-calibration` → `main`, playtest Floor 4, merge
-- [x] ~~Fix stale backlog statuses~~ (done 2026-10-12: FB-013, FB-025, FB-026, FB-027 marked Implemented)
+- [ ] **PR #21 / `claude/blissful-kalam-958c69`:** an early version of the May 21 mobile text + PubScreen fixes. `main` has later versions (`9fcf486`, `bb6e8af`), so it looks superseded. Close the PR and delete the branch once you're sure.
 - [ ] Mme. Le Prix (F3) docs disagree: backlog/FB-026 says "35% additive tariff", CLAUDE.md says "enchants one random crew per come-out" (the 2026-05-30 charm commit). Playtest, pick one, update docs.
-- [ ] `.claude/worktrees/blissful-kalam-958c69` is a stale worktree reference sitting deleted-but-uncommitted. Safe to commit the removal or clean up.
-- [ ] Two unmerged stale remote branches: `claude/bankroll-cap-timing-mNJfg`, `claude/blissful-kalam-958c69`. Review, then delete.
+- [ ] `runs.pending_additive_cents` is still INT4 (max ~$21.47M). Only matters if Hierophant/Emissary escrow alone passes that, which is unlikely.
 
-**Open defects:** none. All 71 entries in `docs/testing/known-issues.md` are closed (checked 2026-10-12). KI-013/KI-014 (mobile text size) were fixed 2026-05-21 with an ad hoc font-size sweep, not the full FB-016 overhaul.
+**Open defects:** none. All entries in `docs/testing/known-issues.md` are closed.
 
 **Not built yet:**
-- FB-016 mobile-first UI overhaul: stashed on `feature/fb-016-mobile-ui` (last touched 2026-04-21, mostly design docs). The text-size bugs are already patched, so this is now a polish/readability upgrade (HD-retro typography, Roll Log bottom sheet, high-contrast panels), not a bug fix.
-- FB-017 tutorial replay & reset: nothing built (no reset endpoint, no replay button)
-- Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md`): only Lefty done (`apps/web/public/sprites/crew/lefty.png`); 29 to go
-- FB-020 3D physics dice: attempted, abandoned, stashed
+- FB-016 mobile-first UI overhaul: stashed on `feature/fb-016-mobile-ui` (kept on purpose; mostly design docs). Text-size bugs are already patched, so this is a polish upgrade.
+- FB-017 tutorial replay: the backend half exists now (`POST /dev/account/reset-tutorial` logic); needs a player-facing endpoint + replay button.
+- Crew sprite assets (spec: `docs/design/crew-sprites-tdd.md`): only Lefty done; 29 to go.
+- FB-020 3D physics dice: attempted, abandoned.
 
 ## Infrastructure gotchas
 
-- **Supabase free tier pauses after ~7 days idle.** It paused during the 2026 break; restored from the dashboard on 2026-10-12 (data intact: 17 users, 635 runs, 485 leaderboard entries). If `npm run dev` fails with `tenant/user postgres.… not found`, the project is paused. Go to supabase.com → project → Resume.
-- **Keep a backup.** Free plan has no daily snapshots. Download one from the dashboard after any long break.
-- **Local dev uses the live DB.** `apps/api/.env` `DATABASE_URL` points at Supabase, the same instance as production and playtesters. Local runs and leaderboard entries are real. Never run a migration locally unless you mean to apply it to prod. Docker Postgres (`docker-compose.yml`) is only for integration tests.
-- All 4 Drizzle migrations (`0000`–`0003`) were confirmed applied to prod on 2026-10-12.
+- **Supabase free tier pauses after ~7 days idle.** If `npm run dev` fails with `tenant/user postgres.… not found`, it's paused: supabase.com → project → Resume. Keep a backup (free plan has no snapshots).
+- **Local dev uses the live DB.** `apps/api/.env` points at Supabase, the same instance as prod and playtesters. Local runs are real (dev runs are isolated). Never run a migration locally unless you mean prod.
+- **Schema changes ship via `server.ts` startup** (`ADD COLUMN IF NOT EXISTS` etc. before `listen()`), plus a Drizzle migration file for the record. Pushing to `main` deploys (Render API, Vercel web).
+- **Integration tests** run against Docker `postgres-test` (in-memory). If a schema type change makes the setup hang, recreate it: `docker compose up -d --force-recreate --wait postgres-test`. Always set `DATABASE_URL` from `apps/api/.env.test` when running them.
 
 ## How to run locally
 
-No nvm needed (no `.nvmrc`; Node 24 works).
+No nvm needed (Node 24 works).
 
 ```bash
 npm run dev          # shared watcher + API :3001 + web :5173
@@ -64,22 +70,21 @@ npm run dev          # shared watcher + API :3001 + web :5173
 Open http://localhost:5173 and sign in with Google.
 
 ```bash
-npm run test                            # 385 engine tests (no DB needed)
-docker compose up -d postgres-test      # needed for API integration tests
+npm run test                                         # 414 engine tests (no DB)
+docker compose up -d --wait postgres-test            # then, from apps/api:
+DATABASE_URL="$(grep -E '^DATABASE_URL=' .env.test | cut -d= -f2- | tr -d '\r')" npx vitest run --config vitest.config.ts src/__tests__/integration
 ```
 
 ## Ideas on the table (not decided)
 
-**Steam release / going local.** Never written down before now. The rough shape:
+**Steam release / going local.**
+- Drop the API + Postgres; run the engine (`packages/shared`, zero-dependency) in the client. The dev scenario builder already lives in `shared`, so it ports too.
+- Wrap as a desktop app with **Electron or Tauri** (WebAssembly not needed; it's already TypeScript).
+- Replace server features with Steamworks leaderboards / achievements / Steam Cloud saves.
+- Middle ground if the web version stays: server shrinks to a "dice oracle" + replay verifier.
 
-- Drop the API + Postgres; run the engine (`packages/shared`, already zero-dependency) in the client.
-- Wrap as a desktop app with **Electron or Tauri**. WebAssembly is *not* needed since the code is already TypeScript.
-- Replace server features with Steam equivalents: Steamworks leaderboards and achievements (for unlocks), Steam Cloud saves (for persistence).
-- Middle-ground option if the web version stays: the server shrinks to a "dice oracle" (returns dice after bets lock) plus a replay verifier for leaderboard entries.
-- Biggest work items: rewriting `apps/api/src/routes/rolls.ts` logic into a client-side game loop, reworking `apps/web/src/store/useGameStore.ts` to stop depending on sockets, and moving persistence off Postgres.
+## Suggested next steps
 
-## Suggested re-entry path
-
-1. Play one full run without fixing anything. Is it still fun?
-2. Merge FB-027; settle the Mme. Le Prix docs question.
-3. Decide: polish the web beta (FB-016 readability, sprites, FB-017) **or** start the Steam/local spike.
+1. Watch playtester feedback on the new boss fights (Executive PIP now actually fires).
+2. Use Developer Mode to playtest late floors without the grind; save any repeated setup as a preset.
+3. Decide: polish the web beta (FB-016, sprites, FB-017) **or** start the Steam/local spike.

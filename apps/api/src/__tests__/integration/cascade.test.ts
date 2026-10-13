@@ -50,8 +50,9 @@ beforeEach(async () => {
 // ---------------------------------------------------------------------------
 
 describe('Big Spender (ID 7)', () => {
-  it('adds 800¢ additive (1.5× maxBet at marker 0) when a hardway bet wins', async () => {
-    // Marker 0: target=5000¢, maxBet=500¢ → additive = round(1.5*500/100)*100 = 800¢
+  it('adds 400¢ additive (0.75× maxBet at marker 0) when a hardway bet wins', async () => {
+    // Marker 0: target=5000¢, maxBet=500¢ → additive = round(0.75*500/100)*100 = round(3.75)*100 = 400¢
+    // (ADDITIVE_MULT was 1.5 before the 2026-05-22 ~50% additive nerf, commit 1e281cd)
     // Setup: POINT_ACTIVE on 6 with passLine 500 and hard6 500
     // bankroll pre-deducted: 3000 - 500 (pass) - 500 (hard6) = 2000
     const run = await createRun(userId, {
@@ -81,10 +82,10 @@ describe('Big Spender (ID 7)', () => {
     // hype seeded +0.15 for POINT_HIT (streak=0) → 1.15
     // Without Big Spender: amplifiedProfit = floor(5000*1.15/100)*100 = floor(57.5)*100 = 5700
     //   payout = 1000 (stakes) + 5700 = 6700 → bankroll = 8700
-    // With Big Spender: additives=800 → floor(5800*1.15/100)*100 = floor(66.7)*100 = 6600
-    //   payout = 1000 + 6600 = 7600 → bankroll = 2000 + 7600 = 9600
+    // With Big Spender: additives=400 → floor(5400*1.15/100)*100 = floor(62.1)*100 = 6200
+    //   payout = 1000 + 6200 = 7200 → bankroll = 2000 + 7200 = 9200
     const r = body['run'] as Record<string, unknown>;
-    expect(r['bankrollCents']).toBe(9600);
+    expect(r['bankrollCents']).toBe(9200);
   });
 
   it('does NOT fire on a natural (no hardway bet wins)', async () => {
@@ -112,8 +113,9 @@ describe('Big Spender (ID 7)', () => {
 // ---------------------------------------------------------------------------
 
 describe('Shark (ID 8)', () => {
-  it('adds 600¢ additive (1.25× maxBet at marker 0) on POINT_HIT', async () => {
-    // Marker 0: maxBet=500¢ → additive = round(1.25*500/100)*100 = Math.round(6.25)*100 = 600¢
+  it('adds 300¢ additive (0.65× maxBet at marker 0) on POINT_HIT', async () => {
+    // Marker 0: maxBet=500¢ → additive = round(0.65*500/100)*100 = Math.round(3.25)*100 = 300¢
+    // (ADDITIVE_MULT was 1.25 before the 2026-05-22 ~50% additive nerf, commit 1e281cd)
     // Setup: POINT_ACTIVE on 6, passLine 500 only
     // bankroll pre-deducted: 3000 - 500 = 2500
     const run = await createRun(userId, {
@@ -138,10 +140,10 @@ describe('Shark (ID 8)', () => {
 
     // hype seeded +0.15 for POINT_HIT (streak=0) → 1.15
     // Without Shark: floor(500*1.15/100)*100 = floor(5.75)*100 = 500, payout = 1000, bankroll = 3500
-    // With Shark: additives=600 → floor(1100*1.15/100)*100 = floor(12.65)*100 = 1200
-    //   payout = 500 (stake) + 1200 = 1700, bankroll = 2500+1700 = 4200
+    // With Shark: additives=300 → floor(800*1.15/100)*100 = floor(9.2)*100 = 900
+    //   payout = 500 (stake) + 900 = 1400, bankroll = 2500+1400 = 3900
     const r = body['run'] as Record<string, unknown>;
-    expect(r['bankrollCents']).toBe(4200);
+    expect(r['bankrollCents']).toBe(3900);
   });
 });
 

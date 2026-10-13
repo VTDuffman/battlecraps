@@ -9,7 +9,7 @@
 - Commit per step; push at the end of each approved phase.
 - Anything that touches **production** (DB migration, Render env vars) is called out with ⚠️ and requires an explicit yes at that moment.
 
-**Known pre-existing test failures (not caused by this work):** 6 API integration tests fail on `main` as of 2026-10-12 (Sarge min-bet ×2, Executive Exceptional bonus, Big Spender, Shark, recruit slot placement). They appear to be stale expectations from FB-025/026 balance changes (e.g. not accounting for the hype tick before payout). Track separately; don't let them mask new failures. Compare against this baseline.
+**Known pre-existing test failures (resolved 2026-10-13: suite is 87/87 green):** 6 API integration tests fail on `main` as of 2026-10-12 (Sarge min-bet ×2, Executive Exceptional bonus, Big Spender, Shark, recruit slot placement). They appear to be stale expectations from FB-025/026 balance changes (e.g. not accounting for the hype tick before payout). Track separately; don't let them mask new failures. Compare against this baseline.
 
 ---
 

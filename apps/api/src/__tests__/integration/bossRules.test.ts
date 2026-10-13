@@ -48,59 +48,41 @@ beforeEach(async () => {
 // ---------------------------------------------------------------------------
 // RISING_MIN_BETS (Sarge — marker index 5, target = 100_000¢ = $1,000)
 //
-// Formula: bossMinBet = Math.ceil(targetCents * rawPct / 100) * 100
-//   bossPointHits=0: rawPct=0.05 → ceil(100_000*0.05/100)*100 = ceil(50)*100 = 5000¢
-//   bossPointHits=1: rawPct=0.07 → ceil(100_000*0.07/100)*100
-//     100_000 * 0.07 = 7000.0000000006661 (float) → ceil(70.00000000000066) = 71 → 7100¢
+// Since FB-026 an under-minimum pass line is NOT rejected: the roll proceeds and
+// a non-compliance fine (5% of target = 5_000¢) is deducted from the bankroll.
+//
+// Formula: bossMin = Math.ceil(targetCents * pct / 100) * 100, pct = 0.04 + 0.02 × bossPointHits
+//   bossPointHits=0: 4% → 4_000¢      bossPointHits=1: 6% → 6_000¢
+//
+// Tests roll craps (1+1) on the come-out so the pass line simply loses:
+//   bankroll after = start − bet − fine   (no payout / hype math involved)
 // ---------------------------------------------------------------------------
 
 describe('RISING_MIN_BETS — Sarge (marker 5)', () => {
-  // Each test sets the run up AT marker index 5 with a bankroll well above
-  // 5000¢ minimum but far enough below the 100_000¢ target to avoid auto-clear.
+  const FINE = 5_000;
 
-  it('at bossPointHits=0: accepts 5000¢ bet and rejects 4900¢', async () => {
+  async function crapsOutAtSarge(bossPointHits: number, bet: number): Promise<number> {
     const run = await createRun(userId, {
       currentMarkerIndex: 5,
-      bankrollCents:      20_000, // well below 100_000 target
-      bossPointHits:      0,
+      bankrollCents:      20_000, // well below the 100_000 target (no auto-clear)
+      bossPointHits,
     });
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(bet), 1, 1);
+    expect(status, JSON.stringify(body)).toBe(200);
+    return (body['run'] as Record<string, unknown>)['bankrollCents'] as number;
+  }
 
-    // 5000¢ = the minimum at 0 hits → should be accepted
-    const okResult = await rollWithDice(app, run.id, PASS_ONLY(5000), 3, 4); // natural
-    expect(okResult.status).toBe(200);
+  it('at bossPointHits=0: a 4_000¢ pass line meets the minimum — no fine', async () => {
+    expect(await crapsOutAtSarge(0, 4_000)).toBe(20_000 - 4_000);
   });
 
-  it('at bossPointHits=0: rejects 4900¢ (below boss min of 5000¢)', async () => {
-    const run = await createRun(userId, {
-      currentMarkerIndex: 5,
-      bankrollCents:      20_000,
-      bossPointHits:      0,
-    });
-
-    const result = await rollWithDice(app, run.id, PASS_ONLY(4900), 3, 4);
-    expect(result.status).toBe(422);
+  it('at bossPointHits=0: 3_900¢ is accepted but fined 5_000¢', async () => {
+    expect(await crapsOutAtSarge(0, 3_900)).toBe(20_000 - 3_900 - FINE);
   });
 
-  it('at bossPointHits=1: boss min is 7100¢ (not 7000¢) due to float precision', async () => {
-    // 100_000 * 0.07 = 7000.000…0666 in IEEE-754 → ceil(70.000…0066) = 71 → 7100¢
-    const run = await createRun(userId, {
-      currentMarkerIndex: 5,
-      bankrollCents:      50_000,
-      bossPointHits:      1,
-    });
-
-    // 7000¢ is below the 7100¢ boss minimum → rejected
-    const bad = await rollWithDice(app, run.id, PASS_ONLY(7000), 3, 4);
-    expect(bad.status).toBe(422);
-
-    // Need a fresh run after the rejection consumed no state
-    const run2 = await createRun(userId, {
-      currentMarkerIndex: 5,
-      bankrollCents:      50_000,
-      bossPointHits:      1,
-    });
-    const good = await rollWithDice(app, run2.id, PASS_ONLY(7100), 3, 4);
-    expect(good.status).toBe(200);
+  it('at bossPointHits=1: the minimum rises to 6_000¢ (5_900¢ fined, 6_000¢ not)', async () => {
+    expect(await crapsOutAtSarge(1, 5_900)).toBe(20_000 - 5_900 - FINE);
+    expect(await crapsOutAtSarge(1, 6_000)).toBe(20_000 - 6_000);
   });
 });
 
@@ -355,10 +337,11 @@ describe('CROSS_CALIBRATION — The Executive (marker 11)', () => {
   });
 
   it('at index 4 (Exceptional), the payout includes a 1.15× gross profit bonus', async () => {
-    // passLine=25_000¢, NATURAL: raw profit=25_000¢
-    // bonus = Math.round(25_000 * 0.15 / 100) * 100 = 3_800¢
-    // payout = 25_000 (stake) + 25_000 (profit) + 3_800 (bonus) = 53_800¢
-    // newBankroll = 300_000 − 25_000 (betDelta) + 53_800 = 328_800¢
+    // passLine=25_000¢, NATURAL. The natural's +0.10 hype tick applies before
+    // payout, so amplified profit = 25_000 × 1.10 = 27_500¢.
+    // bonus = Math.round(27_500 * 0.15 / 100) * 100 = Math.round(41.25) * 100 = 4_100¢
+    // payout = 25_000 (stake) + 27_500 (profit) + 4_100 (bonus) = 56_600¢
+    // newBankroll = 300_000 − 25_000 (betDelta) + 56_600 = 331_600¢
     const run = await createRun(userId, {
       currentMarkerIndex: 11,
       bankrollCents:      300_000,
@@ -372,7 +355,7 @@ describe('CROSS_CALIBRATION — The Executive (marker 11)', () => {
 
     expect(status).toBe(200);
     const r = body['run'] as Record<string, unknown>;
-    expect(r['bankrollCents']).toBe(328_800);
+    expect(r['bankrollCents']).toBe(331_600);
   });
 
   it('turn:settled payload includes bossRating with { index, changed, direction }', async () => {

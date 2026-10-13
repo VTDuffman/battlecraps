@@ -113,7 +113,9 @@ describe('Starter crew (IDs 16-30)', () => {
 
 describe('Slot placement', () => {
   it('places crew in the specified slot index', async () => {
-    const run = await createTransitionRun({ bankrollCents: 50_000 });
+    // Slot 3 (the 4th slot) only exists once it's unlocked (FB-025: runs start
+    // with 3 active slots; Board Seat / Cargo Hold add the 4th and 5th).
+    const run = await createTransitionRun({ bankrollCents: 50_000, unlockedSlots: 5 });
 
     const { status, body } = await recruitCrew(app, run.id, STARTER_CREW_ID, 3);
 
@@ -124,6 +126,15 @@ describe('Slot placement', () => {
     expect(crewSlots[1]).toBeNull();
     expect(crewSlots[2]).toBeNull();
     expect(crewSlots[4]).toBeNull();
+  });
+
+  it('rejects a slot that is not yet unlocked (400)', async () => {
+    const run = await createTransitionRun({ bankrollCents: 50_000 }); // default 3 slots
+
+    const { status, body } = await recruitCrew(app, run.id, STARTER_CREW_ID, 3);
+
+    expect(status).toBe(400);
+    expect(body['error']).toBe('Slot not yet unlocked.');
   });
 });
 

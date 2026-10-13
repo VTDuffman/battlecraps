@@ -7,7 +7,7 @@
 // CLANG, shake, "DOCK CLOSED" stenciled across it, the Foreman's parting shot.
 //
 // Timeline (ms): 0 balance due + thunk → 900 door drops (rattle) → 1550 impact
-// (clang, shake, stencil) → 1850 line → 3700 onFinish (game over continues).
+// (clang, shake, stencil) → 1850 line → 5500 onFinish (game over continues).
 // Reduced motion: the door fades in; no shake.
 // =============================================================================
 
@@ -19,7 +19,7 @@ import type { DefeatCinematicProps } from './registry.js';
 const DROP_AT   = 900;
 const IMPACT_AT = 1550;
 const LINE_AT   = 1850;
-const FINISH_AT = 3700;
+const FINISH_AT = 5500; // ~3.6s to sit with the closed door + the line
 
 type Step = 'balance' | 'dropping' | 'landed' | 'line';
 

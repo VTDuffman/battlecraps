@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-028 Developer Mode
 
 **Design doc:** `docs/design/fb-028-developer-mode-design.md` (decisions in §7)
-**Status:** Phases 0–2 shipped. Phases 3–5 **pending approval, one phase at a time.**
+**Status:** Phases 0–3 shipped. Phases 4–5 **pending approval, one phase at a time.**
 
 **Rules for every phase**
 - Each phase ends at a **🛑 APPROVAL GATE**. Nothing in the next phase starts until Mike says go.
@@ -186,6 +186,8 @@ Demo: from the title screen, start "Executive one roll from PIP", lose one roll,
 - Tests: 4 integration tests (honoured for dev on dev run; ignored on a real run, for non-devs, and with the kill switch off). Note for future tests: a bankroll at/above the marker target triggers the auto-clear path, which returns placeholder dice.
 
 ### 🛑 APPROVAL GATE: Phase 3
+
+--- Implemented (`dfb0c2e`; verified locally by Mike 2026-10-12) ---
 
 ---
 

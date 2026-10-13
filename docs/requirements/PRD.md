@@ -146,7 +146,7 @@ Displayed in the Roll Log UI component (see Section 6).
 
 | Floor | Venue | Marker Targets | Boss | Boss Rule | Comp Reward |
 |---|---|---|---|---|---|
-| 1 | The Loading Dock | $50 / $100 / $200 | The Foreman | 20% tax on winning profit | The Vig: crew cash bonuses +20% |
+| 1 | The Loading Dock | $50 / $100 / $25 Payoff | The Foreman | Skims 20% of winning profit (the Cut); clear by paying off $25 | The Vig: crew cash bonuses +20% |
 | 2 | VFW Hall | $300 / $500 / $1k | Sarge | Double Time: hit the point within 6 rolls or it's a Seven-Out | Member's Jacket: +1 shooter every marker |
 | 3 | The Riverboat | $1.5k / $2k / $4k | Mme. Le Prix | One crew charmed per come-out | Sea Legs: keep half the Hype above 1.0x on Seven Out |
 | 4 | The Strip | $5k / $7.5k / $15k | The Executive | Performance Review rating; PIP termination | Board Seat: 4th crew slot |

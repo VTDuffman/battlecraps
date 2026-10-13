@@ -75,6 +75,7 @@ interface RunStateData {
   unlockedSlots?:        3 | 4 | 5;
   bossPointHits?:        number;
   consecutivePointHits?: number;
+  bossProgressCents?:    number;
 }
 
 interface CreateRunResponse {
@@ -251,6 +252,7 @@ const AuthenticatedApp: React.FC = () => {
             ...(data.unlockedSlots !== undefined && { unlockedSlots: data.unlockedSlots }),
             ...(data.bossPointHits !== undefined && { bossPointHits: data.bossPointHits }),
             ...(data.consecutivePointHits !== undefined && { consecutivePointHits: data.consecutivePointHits }),
+            ...(data.bossProgressCents !== undefined && { bossProgressCents: data.bossProgressCents }),
           });
           setLoading(false);
           return;
@@ -297,6 +299,7 @@ const AuthenticatedApp: React.FC = () => {
         ...(data.run.unlockedSlots !== undefined && { unlockedSlots: data.run.unlockedSlots }),
         ...(data.run.bossPointHits !== undefined && { bossPointHits: data.run.bossPointHits }),
         ...(data.run.consecutivePointHits !== undefined && { consecutivePointHits: data.run.consecutivePointHits }),
+        ...(data.run.bossProgressCents !== undefined && { bossProgressCents: data.run.bossProgressCents }),
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

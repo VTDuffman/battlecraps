@@ -143,15 +143,17 @@ Every marker-entry write uses `getBossEntryCounter(markerIndex)` (2 for The Exec
 
 ### The Foreman — Floor 1
 
-**Rule:** `EXTORTION_FEE` | **Target:** $200 | **Index:** 2
+**Rule:** `EXTORTION_FEE` | **Payoff:** $25 (the marker's $200 target still sets bet limits / hire costs / additive scaling, but never clears it) | **Index:** 2
 
-Every winning payout is taxed 20% — the Foreman takes his cut before the money hits your stack.
+**"The Cut" and "The Payoff" (FB-032).** The Foreman skims 20% off every winning payout: his **Cut**. The Cut accumulates on a cash register in the boss header; when it reaches the **Payoff**, he looks the other way and the marker clears through the normal celebration → pub. **The Payoff is the only way out:** bankroll never clears this marker. Losses don't reduce the Cut, so it can't push you backwards. Losing all shooters short of the Payoff is game over.
 
-**Implementation note:** `modifyPayout` taxes the profit portion only (`payoutCents − baseStakeReturned`), rounded to the nearest dollar. Losing rolls are untaxed.
+**Implementation note:** `modifyPayout` taxes the profit portion only (`payoutCents − baseStakeReturned`), rounded to the nearest dollar; losing rolls are untaxed. `rolls.ts` adds each roll's skim (pre-tax − post-tax payout) to `runs.boss_progress_cents` and passes `payoffReached` to `computeNextState`, whose single `clearsMarker()` check uses the Cut for payoff markers (`getBossPayoffCents()`) and bankroll everywhere else. The pre-roll auto-clear uses the same rule. Every roll emits `bossCut { amount, total, payoff, paidOff }`; the client's `CashRegister` rolls the digits, plays a ka-ching, and on the Payoff stamps PAID IN FULL with a register bell (the celebration is held `PAYOFF_HOLD_MS` for it). The Cut resets to 0 on every marker entry.
 
 ```typescript
-ruleParams: { rule: 'EXTORTION_FEE', taxPct: 0.20 }
+ruleParams: { rule: 'EXTORTION_FEE', taxPct: 0.20, payoffCents: 2_500 }
 ```
+
+The $25 appears in `ruleBlurb` / `ruleHeaderText` / `entryLines`; update them if `payoffCents` changes.
 
 **Comp:** The Vig — crew cash bonuses (`additives`) × 1.2, applied post-cascade in `rolls.ts`.
 
@@ -369,7 +371,9 @@ TypeScript narrows the type inside each hook file via the `rule` discriminant. T
 
 | Scenario | Expected |
 |---|---|
-| Foreman fight, winning roll | Profit taxed 20%; net payout visible in roll log |
+| Foreman fight, winning roll | Profit taxed 20%; skim added to the Cut (register rolls up, ka-ching) |
+| Foreman fight, bankroll ≥ $200 | Nothing happens — no ADVANCE, no clear |
+| Foreman fight, Cut reaches $25 | PAID IN FULL stamp + bell, then marker clear → pub; Cut resets |
 | Sarge fight, blank on the 6th point-phase roll | SEVEN_OUT with `clockExpired`; shooter lost; bets lost; dice show TIME'S UP! |
 | Sarge fight, Point Hit on the 6th roll | Normal win; clock resets |
 | Sarge fight, blank before the limit | Clock ticks (`bossPointHits` +1); header counts down |

@@ -11,7 +11,8 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getBossMinBet, GAUNTLET, isBossMarker, type BossRuleParams } from '@battlecraps/shared';
+import { getBossMinBet, getBossPayoffCents, GAUNTLET, isBossMarker, type BossRuleParams } from '@battlecraps/shared';
+import { CashRegister } from './CashRegister.js';
 import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 import { getFloorTheme } from '../lib/floorThemes.js';
 import { SevenSegmentDisplay } from './SevenSegmentDisplay.js';
@@ -45,6 +46,7 @@ export const BossRoomHeader: React.FC = () => {
   const isConvergence       = boss.rule === 'CONVERGENCE';
   const isExecutive         = boss.rule === 'CROSS_CALIBRATION';
   const isDoubleTime        = boss.rule === 'DOUBLE_TIME';
+  const payoffCents         = getBossPayoffCents(currentMarkerIndex); // FB-032: The Foreman
   const tidalParams = isTidalSurge
     ? (boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>)
     : null;
@@ -119,7 +121,9 @@ export const BossRoomHeader: React.FC = () => {
         </div>
 
         {/* Right: tide state / min-bet / rule indicator */}
-        {isExecutive ? (
+        {payoffCents !== null ? (
+          <CashRegister payoffCents={payoffCents} />
+        ) : isExecutive ? (
           (() => {
             const ratingIndex   = executiveRating;
             const label         = ratingIndex !== null ? (RATING_LABELS[ratingIndex] ?? 'STRONG') : null;

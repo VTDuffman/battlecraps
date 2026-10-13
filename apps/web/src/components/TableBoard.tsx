@@ -31,7 +31,7 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
-import { MARKER_TARGETS, getMaxBet, isBossMarker } from '@battlecraps/shared';
+import { MARKER_TARGETS, getMaxBet, isBossMarker, getBossPayoffCents } from '@battlecraps/shared';
 import { HowToPlayScreen } from './tutorial/HowToPlayScreen.js';
 import { FeedbackModal }   from './FeedbackModal.js';
 import { DevRunBadge }     from './DevRunBadge.js';
@@ -615,7 +615,8 @@ const GameStatus: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
 
   const markerTarget  = MARKER_TARGETS[displayMarkerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
   const isCleared     = displayMarkerIndex !== currentMarkerIndex;
-  const targetMet     = !isCleared && bankroll >= markerTarget;
+  // FB-032: a payoff marker (The Foreman) never clears on bankroll — no ADVANCE.
+  const targetMet     = !isCleared && bankroll >= markerTarget && getBossPayoffCents(displayMarkerIndex) === null;
 
   // Brief scale-pop on the thermometer when the hype particle arrives (~600ms after roll).
   const [impactActive, setImpactActive] = useState(false);
@@ -866,11 +867,16 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
   liveMarkerIndex,
   targetMet,
 }) => {
-  const target      = MARKER_TARGETS[markerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
+  // FB-032: at a payoff marker (The Foreman) the bar tracks his Cut toward the
+  // Payoff instead of bankroll toward the target (bankroll can't clear it).
+  const bossProgressCents = useGameStore((s) => s.bossProgressCents);
+  const payoff      = getBossPayoffCents(markerIndex);
+  const target      = payoff ?? MARKER_TARGETS[markerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
+  const current     = payoff !== null ? bossProgressCents : bankroll;
   const isBoss      = isBossMarker(markerIndex);
   const isCleared   = markerIndex !== liveMarkerIndex;
-  const progress    = isCleared ? 1 : Math.min(bankroll / target, 1);
-  const label       = isBoss ? '★ BOSS' : `MARKER ${markerIndex + 1}`;
+  const progress    = isCleared ? 1 : Math.min(current / target, 1);
+  const label       = payoff !== null ? '★ THE CUT' : isBoss ? '★ BOSS' : `MARKER ${markerIndex + 1}`;
   const pct         = Math.round(progress * 100);
   const theme       = useFloorTheme();
   const isNullSpace = getFloorIndex(markerIndex) === 8;
@@ -888,7 +894,7 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
           className={`font-pixel transition-all duration-300 ${targetMet ? 'text-r-9' : 'text-r-7'}`}
           style={{ color: isNullSpace ? 'rgba(0,0,0,0.40)' : 'rgba(255,255,255,0.30)' }}
         >
-          ${Math.round(bankroll / 100).toLocaleString('en-US')} / ${Math.round(target / 100).toLocaleString('en-US')}
+          ${Math.round(current / 100).toLocaleString('en-US')} / ${Math.round(target / 100).toLocaleString('en-US')}
         </span>
       </div>
 

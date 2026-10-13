@@ -228,15 +228,16 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       dreadTagline:        'PAY UP.',
       entryLines: [
         "You're blocking my dock.",
-        "I don't care who you are or how good you shoot.",
-        "Twenty percent off the top. Every time. Non-negotiable.",
+        "Twenty percent off the top of every win. That's my cut.",
+        "Cut hits twenty-five bucks, I don't see nothin'. Capisce?",
       ],
-      ruleBlurb:          "20% tax on every winning payout. The Foreman always gets his cut.",
-      victoryQuote:       "…you got lucky. Don't let me catch you around here again.",
-      defeatAnnouncement: 'DOCK CLEARED',
+      // FB-032: copy states the $25 Payoff — keep it in step with payoffCents below.
+      ruleBlurb:          "The Foreman skims 20% off every winning payout — his Cut. When his Cut adds up to the $25 Payoff, he looks the other way and you're through. Losses don't count against you.",
+      victoryQuote:       "Pleasure doing business. I didn't see nothin'.",
+      defeatAnnouncement: 'PAID IN FULL',
       // Mechanic
       rule:           'EXTORTION_FEE',
-      ruleHeaderText: 'THE FOREMAN TAKES 20% OF ALL WINNING PAYOUTS',
+      ruleHeaderText: 'PAY HIM OFF — HIS 20% CUT OF EVERY WIN ADDS UP TO THE $25 PAYOFF',
       ruleParams:     { rule: 'EXTORTION_FEE', taxPct: 0.20, payoffCents: 2_500 },
       // Comp
       compReward:      'THE_VIG',
@@ -245,7 +246,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compDescription: "You took over the corner. Crew cash abilities pay out 20% more.",
       compFanLabel:    'THE VIG',
       // Legacy
-      flavorText: "You're blocking my dock. Clear out or pay up.",
+      flavorText: "Twenty percent off the top. Pay me off and I don't see nothin'.",
     },
   },
 

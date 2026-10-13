@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-032 The Foreman: The Cut and The Payoff
 
 **Design doc:** `docs/design/fb-032-foreman-payoff-design.md`
-**Status:** Phase 1 done locally (not pushed). Phase 2 next.
+**Status:** Phases 1–2 done locally (not pushed). Awaiting local playtest.
 
 **Rules:** each phase ends at a 🛑 gate. Before calling a phase done: `npm run typecheck`, `npm run build`, `npm run test`, and the API integration suite (Docker `postgres-test`; recreate it after schema changes). Pushing to `main` deploys; the schema change applies at API startup.
 
@@ -29,6 +29,8 @@
 6. **Copy:** Foreman `ruleBlurb`, `ruleHeaderText`, `entryLines`, `dreadTagline`, `flavorText`; Sal's boss line in `tutorialBeats.ts`; `floors.ts` if it mentions the tax; `boss_framework.md`, PRD, CLAUDE.md.
 
 🛑 **Gate:** play the fight locally via Dev Mode.
+
+--- Implemented locally (2026-10-13): `MarkerProgress` keeps its bar but tracks the Cut at payoff markers ("★ THE CUT $X / $25") rather than hiding; the celebration hand-off timers get `PAYOFF_HOLD_MS` (1600) after a Payoff so the stamp lands first. The Payoff closing line arrives with Phase 3 barks. ---
 
 ## Phase 3: Boss barks (pilot on the Foreman)
 

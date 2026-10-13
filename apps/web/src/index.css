@@ -752,3 +752,24 @@
   .animate-boss-reveal-2,
   .animate-boss-reveal-3  { animation: boss-reveal-rise 300ms ease-out both; }
 }
+
+/* ── The Foreman: register flash + PAID IN FULL stamp (FB-032) ───────────── */
+@keyframes payoff-stamp {
+  0%   { transform: scale(2.6) rotate(-14deg); opacity: 0; }
+  22%  { transform: scale(0.92) rotate(-2deg); opacity: 1; }
+  32%  { transform: scale(1.04) rotate(0deg); }
+  40%  { transform: scale(1)    rotate(0deg); }
+  85%  { transform: scale(1)    rotate(0deg); opacity: 1; }
+  100% { transform: scale(1.02) rotate(0deg); opacity: 0; }
+}
+@keyframes register-flash {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.8); }
+}
+.animate-payoff-stamp   { animation: payoff-stamp 1600ms cubic-bezier(0.2, 0.9, 0.3, 1.15) both; }
+.animate-register-flash { animation: register-flash 400ms ease-in-out 3; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-payoff-stamp   { animation: boss-reveal-rise 300ms ease-out both; }
+  .animate-register-flash { animation: none; }
+}

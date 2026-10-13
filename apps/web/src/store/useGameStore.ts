@@ -33,7 +33,7 @@ import type {
   CelebrationSnapshot,
   TransitionType,
 } from '@battlecraps/shared';
-import { validateOddsBet, getMaxBet, getBossMinBet, isBossMarker, GAUNTLET, MARKER_TARGETS } from '@battlecraps/shared';
+import { validateOddsBet, getMaxBet, getBossMinBet, getBossPayoffCents, isBossMarker, GAUNTLET, MARKER_TARGETS } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // Bet field type — identifies a single wager within the Bets structure
@@ -64,6 +64,18 @@ function withBetField(bets: Bets, field: BetField, value: number): Bets {
 // Feedback context snapshot — deep copy captured just before disconnect so
 // the FeedbackModal can include rich game context even after state is cleared.
 // ---------------------------------------------------------------------------
+
+/** FB-032: The Foreman's Cut for one roll (mirrors BossCutPayload in rolls.ts). */
+export interface BossCut {
+  /** Skimmed on this roll (0 on a loss). */
+  amount:  number;
+  /** Running Cut after this roll. */
+  total:   number;
+  /** The Payoff that clears the room. */
+  payoff:  number;
+  /** This roll reached the Payoff (marker cleared). */
+  paidOff: boolean;
+}
 
 export interface FeedbackContextSnapshot {
   runId:               string | null;
@@ -226,6 +238,8 @@ interface TurnSettledPayload {
   crapsOutBlocked?:        boolean;
   /** The Architect (CONVERGENCE): crew slot index permanently removed by this seven-out. */
   removedCrewSlot?:        number;
+  /** FB-032: The Foreman's Cut on this roll (payoff fights only). */
+  bossCut?:                BossCut;
 }
 
 // ---------------------------------------------------------------------------
@@ -757,6 +771,17 @@ export interface GameState {
    * clearTransition() can restore them and skip every real side effect.
    */
   devPreview: { snapshot: Partial<GameState> } | null;
+
+  // ── The Foreman: the Cut and the Payoff (FB-032) ──────────────────────────
+
+  /** Running Cut toward the Payoff (cents). 0 outside payoff fights. */
+  bossProgressCents: number;
+  /** The latest roll's Cut (drives the register's ka-ching / stamp). Null when none. */
+  lastBossCut: BossCut | null;
+  /** Increments on every roll that adds to the Cut — keys the ka-ching animation. */
+  _cutKey: number;
+  /** Date.now() when the Payoff was reached; holds the celebration for the PAID IN FULL stamp. */
+  payoffAt: number | null;
 }
 
 /** FB-028: what a cinematic preview should show. */
@@ -791,6 +816,7 @@ export interface DevRunPayload {
   consecutivePointHits:  number;
   compPerkIds:           number[];
   pendingAdditiveCents:  number;
+  bossProgressCents:     number;
   isDevRun:              boolean;
 }
 
@@ -1116,6 +1142,16 @@ function buildSlotIds(n: number): string[] {
 }
 
 /**
+ * FB-032: extra ms to hold the marker-clear celebration after paying off The
+ * Foreman, so the register's PAID IN FULL stamp (CashRegister.tsx) can land
+ * first. 0 when the Payoff wasn't just reached.
+ */
+const PAYOFF_HOLD_MS = 1600;
+function payoffHoldMs(payoffAt: number | null): number {
+  return payoffAt !== null && Date.now() - payoffAt < 5000 ? PAYOFF_HOLD_MS : 0;
+}
+
+/**
  * Derives boss display state from the stored bossPointHits when a run is
  * (re)hydrated. Only applies at the table during a boss fight; the pub
  * (TRANSITION) recomputes these on exit.
@@ -1228,6 +1264,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   devLastRunPayload:       null,
   devLastRoll:             null,
   devPreview:              null,
+  bossProgressCents:       0,
+  lastBossCut:             null,
+  _cutKey:                 0,
+  payoffAt:                null,
   executiveRating:         null,
   executiveBark:           null,
   pipTermination:          false,
@@ -1312,6 +1352,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       isDevRun:       false,
       devDiceQueue:   [],
       devPreview:     null,
+      bossProgressCents: 0,
+      lastBossCut:    null,
+      payoffAt:       null,
       devLastRoll:    null,
       ...initialState,
       // Always sync committedBets to the server's confirmed bet state so
@@ -1499,6 +1542,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       isDevRun:            false,
       devDiceQueue:        [],
       devPreview:          null,
+      bossProgressCents:   0,
+      lastBossCut:         null,
+      payoffAt:            null,
       status:              null,
       phase:               null,
       bankroll:            0,
@@ -1637,7 +1683,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       if (pending <= 0) return state; // nothing to undo above the committed floor
       const newBankroll  = state.bankroll + pending;
       const markerTarget = MARKER_TARGETS[state.currentMarkerIndex];
-      if (!state.isRolling && markerTarget !== undefined && newBankroll >= markerTarget) {
+      // FB-032: payoff markers never auto-collect on bankroll.
+      if (!state.isRolling && markerTarget !== undefined && newBankroll >= markerTarget && getBossPayoffCents(state.currentMarkerIndex) === null) {
         shouldAutoCollect = true;
       }
       return {
@@ -1751,7 +1798,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         if (!get().pendingTransition) return;
         const { celebrationSnapshot: snap } = get();
         set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
-      }, 1000);
+      }, 1000 + payoffHoldMs(get().payoffAt));
     }
   },
 
@@ -2029,6 +2076,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       executiveBark:         newExecutiveBark,
       pipTermination:        newPipTermination,
       crewSlots:             newCrewSlots,
+      // FB-032: The Foreman's Cut. On the paying-off roll the register keeps the
+      // final total (≥ Payoff) through the PAID IN FULL stamp.
+      bossProgressCents:     p.bossCut ? p.bossCut.total : 0,
+      lastBossCut:           p.bossCut ?? null,
+      _cutKey:               p.bossCut && p.bossCut.amount > 0 ? get()._cutKey + 1 : get()._cutKey,
+      payoffAt:              p.bossCut?.paidOff === true ? Date.now() : get().payoffAt,
       payoutPops,
       _popsKey:             hasPops ? _popsKey + 1 : _popsKey,
       // Flush buffered cascade events at the reveal moment — portrait
@@ -2064,7 +2117,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
             if (!get().pendingTransition) return;
             const { celebrationSnapshot: snap } = get();
             set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
-          }, 1000);
+          }, 1000 + payoffHoldMs(get().payoffAt));
         }
         // else: dequeueEvent() handles it when the last bark completes.
         // Safety net covers cascade_duration + 1500ms savor + buffer.
@@ -2215,7 +2268,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         if (!get().pendingTransition) return;
         const { celebrationSnapshot: snap } = get();
         set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
-      }, 1000);
+      }, 1000 + payoffHoldMs(get().payoffAt));
     }
   },
 
@@ -2292,6 +2345,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           crapsOutBlocked?: boolean;
           clockExpired?: boolean;
           removedCrewSlot?: number;
+          bossCut?: BossCut;
         };
       };
 
@@ -2358,6 +2412,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ...(data.roll.crapsOutBlocked === true      && { crapsOutBlocked: true as const              }),
         ...(data.roll.clockExpired    === true      && { clockExpired:    true as const              }),
         ...(data.roll.removedCrewSlot !== undefined && { removedCrewSlot: data.roll.removedCrewSlot  }),
+        ...(data.roll.bossCut         !== undefined && { bossCut:         data.roll.bossCut          }),
       };
 
       const isLeftySave = settlement.originalDice !== undefined;
@@ -2690,6 +2745,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       unlockedSlots:        payload.unlockedSlots,
       bossPointHits:        payload.bossPointHits,
       consecutivePointHits: payload.consecutivePointHits,
+      bossProgressCents:    payload.bossProgressCents ?? 0,
       isDevRun:             payload.isDevRun,
     };
 

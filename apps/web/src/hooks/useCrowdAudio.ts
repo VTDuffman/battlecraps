@@ -240,13 +240,66 @@ function playBossImpactSting(ctx: AudioContext, dest: AudioNode): void {
   noise.stop(t0 + 0.25);
 }
 
+/** Cash-register ka-ching: drawer click + two bright bell partials (≈350ms) */
+function playKaChingSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime;
+
+  // "Ka" — short highpassed noise click (the mechanism).
+  const click = ctx.createBufferSource();
+  click.buffer = makeNoiseBuf(ctx, 0.04);
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 2500;
+  const clickEnv = ctx.createGain();
+  clickEnv.gain.setValueAtTime(0.25, t0);
+  clickEnv.gain.exponentialRampToValueAtTime(0.001, t0 + 0.04);
+  click.connect(hp);
+  hp.connect(clickEnv);
+  clickEnv.connect(dest);
+  click.start(t0);
+  click.stop(t0 + 0.05);
+
+  // "Ching" — two inharmonic partials a beat later, like a small bell.
+  const tc = t0 + 0.06;
+  [2093, 3322].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, tc);
+    env.gain.exponentialRampToValueAtTime(i === 0 ? 0.16 : 0.08, tc + 0.008);
+    env.gain.exponentialRampToValueAtTime(0.001, tc + 0.3);
+    osc.connect(env);
+    env.connect(dest);
+    osc.start(tc);
+    osc.stop(tc + 0.32);
+  });
+}
+
+/** Register bell DING for the Payoff — bright fundamental + harmonics, long ring (≈1.4s) */
+function playRegisterBellSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime;
+  [[1568, 0.22], [3136, 0.09], [4705, 0.05]].forEach(([freq, peak]) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq ?? 1568;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.exponentialRampToValueAtTime(peak ?? 0.1, t0 + 0.006);
+    env.gain.exponentialRampToValueAtTime(0.001, t0 + 1.4);
+    osc.connect(env);
+    env.connect(dest);
+    osc.start(t0);
+    osc.stop(t0 + 1.42);
+  });
+}
+
 /**
- * Plays the boss-entry impact sting. Exported standalone (not via the hook)
- * because the boss-entry cinematic runs while TableBoard — which mounts
- * useCrowdAudio — is unmounted. Shares the module-level AudioContext and
- * master volume; silent when muted.
+ * Runs a sting on the shared module-level AudioContext + master volume.
+ * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
+ * which mounts the hook, is unmounted). Silent when muted.
  */
-export function playBossImpact(): void {
+function playStandalone(sting: (ctx: AudioContext, dest: AudioNode) => void): void {
   const vol = _initSfxVolume();
   if (vol === 0) return;
   if (!globalAudioCtx) {
@@ -257,7 +310,22 @@ export function playBossImpact(): void {
   }
   const ctx = globalAudioCtx;
   if (ctx.state === 'suspended') void ctx.resume();
-  playBossImpactSting(ctx, masterGain ?? ctx.destination);
+  sting(ctx, masterGain ?? ctx.destination);
+}
+
+/** Boss-entry impact sting (BossEntryDreadPhase). */
+export function playBossImpact(): void {
+  playStandalone(playBossImpactSting);
+}
+
+/** FB-032: The Foreman skims a roll — ka-ching. */
+export function playRegisterKaChing(): void {
+  playStandalone(playKaChingSting);
+}
+
+/** FB-032: The Foreman is paid off — register bell. */
+export function playRegisterBell(): void {
+  playStandalone(playRegisterBellSting);
 }
 
 // ---------------------------------------------------------------------------

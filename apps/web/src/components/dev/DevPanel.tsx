@@ -93,6 +93,7 @@ const DevPanel: React.FC = () => {
   const previewPinkSlip   = useGameStore((s) => s.previewPinkSlip);
   const crewRoster        = useGameStore((s) => s.crewRoster);
   const fetchCrewRoster   = useGameStore((s) => s.fetchCrewRoster);
+  const applyDevUnlockChange = useGameStore((s) => s.applyDevUnlockChange);
   const [previewBoss,     setPreviewBoss]     = useState(BOSS_MARKERS[0] ?? 2);
   const [previewFloor,    setPreviewFloor]    = useState(2);
   const [previewUnlocks,  setPreviewUnlocks]  = useState<number[]>([1, 13]);
@@ -151,12 +152,12 @@ const DevPanel: React.FC = () => {
     previewTransition(type, { markerIndex, ...(unlockCrewIds && { unlockCrewIds }) });
   };
 
-  const accountCall = async (label: string, path: string, body: Record<string, unknown>) => {
+  const accountCall = async (label: string, path: string, body: Record<string, unknown>, onSuccess?: () => void) => {
     setPending(true);
     setMessage(null);
     try {
       await devFetch<Record<string, unknown>>('POST', path, body);
-      await fetchCrewRoster();
+      if (onSuccess) onSuccess(); else await fetchCrewRoster();
       setMessage({ kind: 'ok', text: label });
     } catch (err) {
       setMessage({ kind: 'err', text: err instanceof Error ? err.message : String(err) });
@@ -165,10 +166,29 @@ const DevPanel: React.FC = () => {
     }
   };
 
-  const applyUnlocks = () => accountCall(
-    `Unlocks updated (+${unlockDiff.grant.length} / −${unlockDiff.revoke.length})${queueCinematic && unlockDiff.grant.length > 0 ? ' — cinematic queued for your next transition' : ''}`,
+  const applyUnlocks = () => {
+    const { grant, revoke } = unlockDiff;
+    const celebrate = queueCinematic && grant.length > 0;
+    return accountCall(
+      `Unlocks updated (+${grant.length} / −${revoke.length})${celebrate ? ' — unlock reveal playing; it also appears in the end-of-run recap' : ''}`,
+      '/dev/account/unlocks',
+      { grant, revoke, queueCinematic },
+      () => {
+        // Same client update the real unlocks:granted socket event makes.
+        applyDevUnlockChange({ granted: grant, revoked: revoke, queueCinematic });
+        if (celebrate) setOpen(false); // get out of the way of the UnlockModal
+      },
+    );
+  };
+
+  const clearPendingUnlocks = () => accountCall(
+    'Pending unlock cinematics cleared',
     '/dev/account/unlocks',
-    { grant: unlockDiff.grant, revoke: unlockDiff.revoke, queueCinematic },
+    { resetUnacknowledged: true },
+    () => {
+      useGameStore.setState({ unacknowledgedUnlocks: [], unlockModalReady: false });
+      void fetchCrewRoster();
+    },
   );
 
   // Refresh the inspector snapshot whenever the panel opens (no store merge,
@@ -411,7 +431,7 @@ const DevPanel: React.FC = () => {
                     {confirmAccount === 'pending' ? (
                       <>
                         <button type="button" className={`${smallBtn} border-red-500 text-red-300`}
-                          onClick={() => { setConfirmAccount(null); void accountCall('Pending unlock cinematics cleared', '/dev/account/unlocks', { resetUnacknowledged: true }); }}>
+                          onClick={() => { setConfirmAccount(null); void clearPendingUnlocks(); }}>
                           Confirm clear
                         </button>
                         <button type="button" className={smallBtn} onClick={() => setConfirmAccount(null)}>Cancel</button>

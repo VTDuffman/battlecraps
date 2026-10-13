@@ -931,6 +931,13 @@ export interface GameActions {
   previewPinkSlip(): void;
 
   /**
+   * FB-028: mirror a dev account unlock change into client state the same way
+   * the real `unlocks:granted` socket event does, so a queued unlock cinematic
+   * actually plays (UnlockModal now, UnlockRecapPhase at run end).
+   */
+  applyDevUnlockChange(change: { granted: number[]; revoked: number[]; queueCinematic: boolean }): void;
+
+  /**
    * Inject the Clerk getToken function from the React auth context.
    * Called by App.tsx after the user signs in. Pass null on sign-out.
    */
@@ -2620,6 +2627,22 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   previewPinkSlip() {
     set({ pipTermination: true });
+  },
+
+  applyDevUnlockChange({ granted, revoked, queueCinematic }) {
+    const drop = (ids: number[]) => ids.filter((id) => !revoked.includes(id));
+    set((state) => {
+      const queued = queueCinematic ? granted : [];
+      const settlementComplete = !state.isRolling && state.pendingSettlement === null;
+      return {
+        unlockedCrewIds:       drop([...new Set([...state.unlockedCrewIds, ...granted])]),
+        unacknowledgedUnlocks: drop([...new Set([...state.unacknowledgedUnlocks, ...queued])]),
+        crewUnlockedThisRun:   drop([...new Set([...state.crewUnlockedThisRun, ...queued])]),
+        crewRoster:            null,
+        unlockModalReady:      queued.length > 0 ? (settlementComplete || state.unlockModalReady) : state.unlockModalReady,
+      };
+    });
+    void get().fetchCrewRoster();
   },
 
   applyDevRunPayload(payload, { reconnect }) {

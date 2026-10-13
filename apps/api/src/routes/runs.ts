@@ -10,7 +10,7 @@ import type { FastifyInstance } from 'fastify';
 import { eq, inArray } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, crewDefinitions } from '../db/schema.js';
-import type { StoredCrewSlots, UserRow } from '../db/schema.js';
+import type { RunRow, StoredCrewSlots, UserRow } from '../db/schema.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
 
@@ -74,6 +74,36 @@ interface CreateRunResponse {
   };
 }
 
+/**
+ * Full run state as returned by GET /runs/:id. Shared with the Developer Mode
+ * routes (FB-028) so an edited dev run re-hydrates through the same shape.
+ */
+export async function buildRunStatePayload(run: RunRow, userRow: UserRow) {
+  const unacknowledgedUnlocks = await fetchUnacknowledgedUnlocks(userRow.unacknowledgedUnlockIds);
+  return {
+    bankroll:              run.bankrollCents,
+    shooters:              run.shooters,
+    hype:                  run.hype,
+    phase:                 run.phase,
+    status:                run.status,
+    point:                 run.currentPoint ?? null,
+    crewSlots:             run.crewSlots,
+    currentMarkerIndex:    run.currentMarkerIndex,
+    bets:                  run.bets,
+    maxBankrollCents:      userRow.maxBankrollCents,
+    unlockedCrewIds:       userRow.unlockedCrewIds,
+    tutorialCompleted:     userRow.tutorialCompleted,
+    unacknowledgedUnlocks,
+    highestMarkerReached:  userRow.highestMarkerReached,
+    unlockedSlots:         run.unlockedSlots as 3 | 4 | 5,
+    bossPointHits:         run.bossPointHits,
+    consecutivePointHits:  run.consecutivePointHits,
+    compPerkIds:           run.compPerkIds,
+    pendingAdditiveCents:  run.pendingAdditiveCents,
+    isDevRun:              run.isDevRun,
+  };
+}
+
 export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
   // ── GET /runs/:id — lightweight run state fetch ───────────────────────────
   app.get<{ Params: { id: string } }>(
@@ -91,29 +121,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
       if (!run) return reply.status(404).send({ error: 'Not found' });
       if (run.userId !== userId) return reply.status(403).send({ error: 'Forbidden' });
 
-      const userRow = run.user as UserRow;
-      const unacknowledgedUnlocks = await fetchUnacknowledgedUnlocks(userRow.unacknowledgedUnlockIds);
-
-      return reply.send({
-        bankroll:              run.bankrollCents,
-        shooters:              run.shooters,
-        hype:                  run.hype,
-        phase:                 run.phase,
-        status:                run.status,
-        point:                 run.currentPoint ?? null,
-        crewSlots:             run.crewSlots,
-        currentMarkerIndex:    run.currentMarkerIndex,
-        bets:                  run.bets,
-        maxBankrollCents:      userRow.maxBankrollCents,
-        unlockedCrewIds:       userRow.unlockedCrewIds,
-        tutorialCompleted:     userRow.tutorialCompleted,
-        unacknowledgedUnlocks,
-        highestMarkerReached:  userRow.highestMarkerReached,
-        unlockedSlots:         run.unlockedSlots as 3 | 4 | 5,
-        bossPointHits:         run.bossPointHits,
-        consecutivePointHits:  run.consecutivePointHits,
-        isDevRun:              run.isDevRun,
-      });
+      return reply.send(await buildRunStatePayload(run, run.user as UserRow));
     },
   );
 

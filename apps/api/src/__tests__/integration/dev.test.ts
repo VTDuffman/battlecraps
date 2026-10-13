@@ -406,3 +406,130 @@ describe('forced dice (cheat_dice) after the tutorial', () => {
     expect(await allForced(run.id)).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Live edits (Phase 4) — PATCH / jump / force
+// ---------------------------------------------------------------------------
+
+describe('live dev-run edits', () => {
+  const NO_BETS = { passLine: 0, odds: 0, hardways: NO_HARDWAYS };
+
+  async function call(method: 'PATCH' | 'POST', url: string, payload: Record<string, unknown>) {
+    const res = await app.inject({
+      method,
+      url,
+      headers: { 'content-type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+      payload: JSON.stringify(payload),
+    });
+    return { status: res.statusCode, body: res.json() as Record<string, unknown> };
+  }
+  const patch = (runId: string, body: Record<string, unknown>) => call('PATCH', `/api/v1/dev/runs/${runId}`, body);
+  const jump  = (runId: string, body: Record<string, unknown>) => call('POST', `/api/v1/dev/runs/${runId}/jump`, body);
+  const force = (runId: string) => call('POST', `/api/v1/dev/runs/${runId}/force`, { action: 'GAME_OVER' });
+
+  async function getRun(runId: string) {
+    const row = await db.query.runs.findFirst({ where: eq(runs.id, runId) });
+    if (!row) throw new Error('run missing');
+    return row;
+  }
+
+  beforeEach(() => setDevEnv('true', TEST_CLERK_ID));
+
+  it('PATCH edits money, hype and shooters on a dev run', async () => {
+    const run = await createRun(userId, { isDevRun: true, currentMarkerIndex: 4 });
+    const { status, body } = await patch(run.id, { bankrollCents: 123_400, hype: 2.5, shooters: 2 });
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect(body['bankroll']).toBe(123_400);
+    expect(body['hype']).toBeCloseTo(2.5);
+    expect(body['shooters']).toBe(2);
+  });
+
+  it('PATCH never touches a real run (409)', async () => {
+    const run = await createRun(userId, { bankrollCents: 3000 });
+    const { status } = await patch(run.id, { bankrollCents: 999_999 });
+    expect(status).toBe(409);
+    expect((await getRun(run.id)).bankrollCents).toBe(3000);
+  });
+
+  it('PATCH 404s for another user\'s dev run and for non-devs', async () => {
+    const [other] = await db
+      .insert(users)
+      .values({ clerkId: 'test_other_user', username: 'other_player', email: 'other@battlecraps.test', updatedAt: new Date() })
+      .onConflictDoUpdate({ target: users.clerkId, set: { updatedAt: new Date() } })
+      .returning();
+    const othersRun = await createRun(other!.id, { isDevRun: true });
+    expect((await patch(othersRun.id, { bankrollCents: 1 })).status).toBe(404);
+
+    const mine = await createRun(userId, { isDevRun: true });
+    setDevEnv('true', 'user_someone_else');
+    expect((await patch(mine.id, { bankrollCents: 1 })).status).toBe(404);
+  });
+
+  it('PATCH clamps the boss counter to the boss\'s range, and 422s off a boss marker', async () => {
+    const exec = await createRun(userId, { isDevRun: true, currentMarkerIndex: 11, bossPointHits: 2 });
+    const { status, body } = await patch(exec.id, { bossCounter: 9 });
+    expect(status).toBe(200);
+    expect(body['bossPointHits']).toBe(4);
+
+    const plain = await createRun(userId, { isDevRun: true, currentMarkerIndex: 4 });
+    expect((await patch(plain.id, { bossCounter: 1 })).status).toBe(422);
+  });
+
+  it('PATCH clearBets refunds odds/hardways and keeps the pass line once a point is set', async () => {
+    const run = await createRun(userId, {
+      isDevRun:      true,
+      bankrollCents: 10_000,
+      status:        'POINT_ACTIVE',
+      phase:         'POINT_ACTIVE',
+      currentPoint:  6,
+      bets:          { passLine: 500, odds: 1000, hardways: { hard4: 0, hard6: 200, hard8: 0, hard10: 0 } },
+    });
+    const { status, body } = await patch(run.id, { clearBets: true });
+    expect(status).toBe(200);
+    expect(body['bankroll']).toBe(11_200);
+    expect(body['bets']).toEqual({ passLine: 500, odds: 0, hardways: NO_HARDWAYS });
+  });
+
+  it('jump (transition) into the Executive keeps the run id and plays the real clear + pub', async () => {
+    const run = await createRun(userId, {
+      isDevRun:  true,
+      crewSlots: [{ crewId: 16, cooldownState: 0 }, null, null, null, null],
+    });
+    const { status, body } = await jump(run.id, { markerIndex: 11 });
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect(body['currentMarkerIndex']).toBe(10);
+
+    const clear = await rollWithDice(app, run.id, NO_BETS, 3, 4);
+    expect(clear.status, JSON.stringify(clear.body)).toBe(200);
+    expect((await getRun(run.id)).status).toBe('TRANSITION');
+
+    const pub = await app.inject({
+      method:  'POST',
+      url:     `/api/v1/runs/${run.id}/recruit`,
+      headers: { 'content-type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+      payload: JSON.stringify({}),
+    });
+    expect(pub.statusCode, pub.body).toBe(200);
+    const after = await getRun(run.id);
+    expect(after.currentMarkerIndex).toBe(11);
+    expect(after.bossPointHits).toBe(2);
+    expect((after.crewSlots as ({ crewId: number } | null)[])[0]?.crewId).toBe(16); // crew carried
+  });
+
+  it('jump (table) lands directly on the marker', async () => {
+    const run = await createRun(userId, { isDevRun: true });
+    const { status, body } = await jump(run.id, { markerIndex: 20, entry: 'table' });
+    expect(status).toBe(200);
+    expect(body['currentMarkerIndex']).toBe(20);
+    expect(body['unlockedSlots']).toBe(4);
+  });
+
+  it('force GAME_OVER ends the run, after which edits are refused', async () => {
+    const run = await createRun(userId, { isDevRun: true });
+    const { status, body } = await force(run.id);
+    expect(status).toBe(200);
+    expect(body['status']).toBe('GAME_OVER');
+    expect((await patch(run.id, { bankrollCents: 1 })).status).toBe(409);
+    expect((await force((await createRun(userId)).id)).status).toBe(409); // real run
+  });
+});

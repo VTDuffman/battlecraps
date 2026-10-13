@@ -1726,7 +1726,7 @@ For comparison: a 5-roll clock times out 16–24% of points, a 7-roll clock 8–
 | `entryLines` | "You want to shoot in MY hall? You shoot on MY clock." / "Six rolls to make your point. Not seven. Six." / "Dawdle and you're out, soldier." |
 | `ruleBlurb` | "Once your point is set, you have 6 rolls to hit it. Run out the clock and Sarge calls it — the 6th blank roll counts as a Seven-Out." |
 | `ruleHeaderText` | `HIT YOUR POINT IN 6 ROLLS — OR IT'S A SEVEN-OUT` |
-| Header badge | `CLOCK 6` counting down to `CLOCK 1` during the point; `LAST ROLL` warning on the 6th; idle on the come-out |
+| Header badge | "DOUBLE TIME" + a two-digit seven-segment digital clock (`SevenSegmentDisplay`) counting rolls left, `06` → `01`. Gold while running, red for the last two rolls, blinking on the last; dimmed on the come-out. *(Originally `CLOCK 6` text; restyled after playtest.)* |
 | Dice popup on timeout | `TIME'S UP!` |
 | `victoryQuote` / `defeatAnnouncement` | Keep: "…not bad, soldier. Dismissed." / `ENEMY NEUTRALIZED` |
 | Comp | **Keep Member's Jacket** (+1 shooter at every marker) — still on-theme |

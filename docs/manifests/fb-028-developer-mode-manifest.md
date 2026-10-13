@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-028 Developer Mode
 
 **Design doc:** `docs/design/fb-028-developer-mode-design.md` (decisions in §7)
-**Status:** Phases 0–3 shipped. Phases 4–5 **pending approval, one phase at a time.**
+**Status:** Phases 0–4 shipped. Phase 5 **pending approval, one phase at a time.**
 
 **Rules for every phase**
 - Each phase ends at a **🛑 APPROVAL GATE**. Nothing in the next phase starts until Mike says go.
@@ -223,6 +223,8 @@ Demo: from the title screen, start "Executive one roll from PIP", lose one roll,
 - Tests: 8 integration tests (31 in `dev.test.ts`).
 
 ### 🛑 APPROVAL GATE: Phase 4
+
+--- Implemented (`df219d5`, `83eb649`, `aef30a0`; verified locally by Mike 2026-10-12) ---
 
 ---
 

@@ -94,9 +94,17 @@ export const CashRegister: React.FC<{
   const minDigits = String(Math.floor(payoffCents / 100)).length;
 
   return (
-    <div className="relative flex-none flex items-center gap-1.5" aria-live="polite">
+    <div className={`relative flex-none flex items-center ${large ? 'gap-2.5' : 'gap-1.5'}`} aria-live="polite">
+      {large && <span className="leading-none" style={{ fontSize: '26px' }} aria-hidden="true">💵</span>}
       {/* Label sits left of the counter, on the same line. */}
-      <div className={`font-pixel tracking-widest leading-none ${large ? 'text-r-11' : 'text-[7.5px]'}`} style={{ color: 'rgba(124,252,154,0.70)' }}>
+      <div
+        className="font-pixel tracking-widest leading-none"
+        style={{
+          fontSize:   large ? 'clamp(14px, 4.2vw, 18px)' : '7.5px',
+          color:      large ? REGISTER_GREEN : 'rgba(124,252,154,0.70)',
+          textShadow: large ? `0 0 6px ${REGISTER_GREEN}66` : undefined,
+        }}
+      >
         THE CUT
       </div>
       <div
@@ -115,6 +123,7 @@ export const CashRegister: React.FC<{
         <RollingDollars cents={total} minDigits={minDigits} />
         <span className="opacity-60" style={{ fontSize: large ? '14px' : '10px' }}>/ ${Math.floor(payoffCents / 100)}</span>
       </div>
+      {large && <span className="leading-none" style={{ fontSize: '26px' }} aria-hidden="true">💵</span>}
 
       {pop && (
         <div

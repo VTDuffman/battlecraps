@@ -1672,3 +1672,138 @@ Give the Floor 5 comp an effect that matters on Floors 6–9 (Sovereign tide min
 - New effect implemented with integration tests, reachable on Floors 6–9.
 - `compDescription` (config.ts), `COMP_DEFS` (CompCard.tsx), `boss_framework.md`, `floors.md`, `PRD.md`, `CLAUDE.md` updated together.
 
+---
+
+## FB-030 — Sarge Redesign: "Double Time" (roll clock)
+
+**Type:** Game design / boss mechanic
+**Area:** `packages/shared/src/config.ts` (Floor 2 boss), `packages/shared/src/bossRules/`, `apps/api/src/routes/rolls.ts`, `apps/web/src/components/BossRoomHeader.tsx`, `apps/web/src/components/DiceZone.tsx`
+**Status:** Selected — ready for design sign-off, then implementation
+**Source:** Playtest feedback, 2026-10-13
+**Alternative:** FB-031 ("Orders") — kept in reserve if Double Time doesn't play well
+
+### Problem
+
+Sarge's `RISING_MIN_BETS` (come-out minimum rises with every Point Hit, fine if you come out under it) is redundant with The Sovereign's `TIDAL_SURGE`, which also pressures the minimum bet — and does it better (visible, rhythmic tide). Sarge needs a mechanic no other boss owns. Unclaimed territory: **time and pace**.
+
+### Solution — "Double Time"
+
+Every point phase in Sarge's fight runs on a **roll clock**. Once a point is set, the shooter has **6 rolls** to hit it. If the 6th point-phase roll doesn't resolve the point, Sarge calls **"TIME'S UP!"** and the roll counts as a **Seven-Out**.
+
+- **Clock starts** on the first roll *after* the point is set (the point-setting roll doesn't count).
+- **Clock resets** whenever the point resolves (Point Hit or Seven-Out); come-out rolls never tick it.
+- **A real Seven-Out before the clock expires** is just a normal Seven-Out.
+- **Time's up** — the 6th roll was a blank (`NO_RESOLUTION`). After the cascade (so blank-roll crew such as the Grinder still pay for that roll), the result is converted to `SEVEN_OUT` and handled exactly like one:
+  - Pass Line and Odds are lost; all Hardway bets clear.
+  - The shooter is lost, and Hype resets (Sea Legs applies).
+- **Tunable:** `rollLimit` (default 6) in `ruleParams`.
+
+**Odds** (chance of winning a point / chance of timing out):
+
+| Point | Normal | With 6-roll clock | Times out |
+|---|---|---|---|
+| 4 / 10 | 33.3% | 27.4% | 17.8% |
+| 5 / 9 | 40.0% | 34.3% | 14.2% |
+| 6 / 8 | 45.5% | 40.4% | 11.2% |
+
+For comparison: a 5-roll clock times out 16–24% of points, a 7-roll clock 8–13%. 6 is a noticeable squeeze for an early floor without being brutal.
+
+**Why it works at Floor 2:**
+- Dead simple to understand, and a countdown is very readable on a phone.
+- Distinct from every other boss.
+- It directly counters the "slow" crew (Grinder, Pressure Cooker), so it asks the player to rethink their crew for one fight.
+
+### Player-facing copy (draft)
+
+| Field | Draft |
+|---|---|
+| `dreadTagline` | `DOUBLE TIME.` |
+| `entryLines` | "You want to shoot in MY hall? You shoot on MY clock." / "Six rolls to make your point. Not seven. Six." / "Dawdle and you're out, soldier." |
+| `ruleBlurb` | "Once your point is set, you have 6 rolls to hit it. Run out the clock and Sarge calls it — the 6th blank roll counts as a Seven-Out." |
+| `ruleHeaderText` | `HIT YOUR POINT IN 6 ROLLS — OR IT'S A SEVEN-OUT` |
+| Header badge | `CLOCK 6` counting down to `CLOCK 1` during the point; `LAST ROLL` warning on the 6th; idle on the come-out |
+| Dice popup on timeout | `TIME'S UP!` |
+| `victoryQuote` / `defeatAnnouncement` | Keep: "…not bad, soldier. Dismissed." / `ENEMY NEUTRALIZED` |
+| Comp | **Keep Member's Jacket** (+1 shooter at every marker) — still on-theme |
+
+Also update: `floors.ts` Floor 2 `bossTeaser` and intro line 2; Sal's tutorial line ("Sarge jacks the minimums" → "Sarge puts you on the clock"); `CompCard`/help text if they mention minimums.
+
+### Implementation notes
+
+- **New rule type** `DOUBLE_TIME` with `ruleParams: { rule: 'DOUBLE_TIME', rollLimit: 6 }`. The hook object is empty; the logic is inline in `rolls.ts`, following the existing Executive/Commander pattern.
+- **Counter:** reuse `bossPointHits` (DB `boss_roll_count`) as "point-phase rolls used":
+  - +1 on each `NO_RESOLUTION`.
+  - Reset to 0 on POINT_SET, POINT_HIT and SEVEN_OUT.
+  - Entry value 0 via `getBossEntryCounter`.
+- **Timeout:** in the roll handler, after `resolveCascade`, if `isDoubleTime && finalContext.rollResult === 'NO_RESOLUTION' && bossPointHits + 1 >= rollLimit`, rebuild the context as a SEVEN_OUT:
+  - Recompute base payouts with `calculateBasePayouts(dice, 'SEVEN_OUT', …)` so all bets resolve as lost.
+  - Set `flags.clockExpired`, and emit `clockExpired: true` in the roll response and in `turn:settled`.
+- **Crew interactions (recommended — confirm at sign-off):** the timeout is applied after the cascade, so crew that react to a dice Seven-Out do **not** trigger on a timeout:
+  - Lefty: there are no dice to re-roll.
+  - Floor Walker: no refund.
+  - Lucky Charm: no +1.0 Hype.
+  - Mirror: the roll didn't total 7.
+
+  This keeps "beat the clock" meaningful. The alternative (letting Floor Walker refund) is a one-line change if playtests feel harsh.
+- **Remove Sarge's old rule:**
+  - Code: `RISING_MIN_BETS` and `risingMinBets.ts`; the legacy `RisingMinBetsParams` / `boss.risingMinBets`; the Sarge branch of `getBossMinBet`.
+  - Keep `getMaxBet`'s 5×-boss-minimum floor — the Sovereign still uses it.
+  - Header: the generic MIN BET branch in `BossRoomHeader`.
+  - The `nonComplianceFine` path in `rolls.ts` and the `{ fine }` variant of `validateBet` (no other rule uses them).
+  - Tests and dev scenarios that reference Sarge's min bet.
+- **Deploy:** a run that's mid-Sarge-fight at deploy time will read its old point-hit count as clock rolls used. Either accept it (beta, rare) or reset `boss_roll_count` to 0 for runs at marker index 5 in the startup migration.
+
+### Acceptance
+
+- Integration tests (`bossRules.test.ts`):
+  - A blank on roll 6 → SEVEN_OUT with a shooter lost and bets lost.
+  - A Point Hit on roll 6 → a normal win.
+  - A real Seven-Out on roll 3 → a normal Seven-Out, and the clock resets.
+  - Come-out rolls don't tick the clock.
+  - The Grinder still pays on the timed-out roll.
+- Header countdown and `TIME'S UP!` popup verified in the browser.
+- All copy updated per the `CLAUDE.md` copy map: `config.ts`, `floors.ts`, `CompCard`, help, tutorial, `boss_framework.md`, `floors.md`, PRD, `CLAUDE.md`.
+
+---
+
+## FB-031 — Sarge Alternative: "Orders" (drill-sergeant commands)
+
+**Type:** Game design / boss mechanic
+**Area:** `packages/shared/src/config.ts` (Floor 2 boss), `apps/api/src/routes/rolls.ts`, `apps/web/src/components/BossRoomHeader.tsx`
+**Status:** Deferred — reserve option if FB-030 "Double Time" doesn't play well
+**Source:** Sarge redesign brainstorm, 2026-10-13
+
+### Concept
+
+Before each come-out, Sarge barks an **order** shown in the boss header. Follow it and you earn a **commendation**; disobey and you get a **demerit**. **Three demerits cost a shooter** ("Discharged."). It's the only boss built on *player choices* rather than dice luck, and it teaches the bets new players skip (Odds, Hardways).
+
+### Draft orders
+
+| Order | Complied when | Checked |
+|---|---|---|
+| "Back your line with Odds." | Odds ≥ 1× Pass Line at any point during the point phase | When the point resolves |
+| "Put a Hardway up." | Any Hardway bet on the table during the point phase | When the point resolves |
+| "Max bet, soldier." | Come-out Pass Line = table max | Come-out roll |
+| "At ease. Minimum bet." | Come-out Pass Line = table minimum | Come-out roll |
+
+- Orders are drawn with the server RNG, never the same twice in a row.
+- A come-out that doesn't set a point (Natural / Craps Out) only checks come-out orders. A point-phase order carries over to the next come-out.
+
+### Rewards & penalties (starting values)
+
+- **Commendation:** +0.2× Hype.
+- **Demerit:** 3 demerits = 1 shooter lost. The counter resets on marker clear and is shown as pips in the header.
+
+### Implementation sketch
+
+- Rule `ORDERS`. Current order index and demerit count stored in `bossPointHits` (packed) or a small new JSONB column.
+- Order chosen after each come-out resolution, mirroring Le Prix's charm reselection.
+- Compliance checked in `rolls.ts` against `incomingBets`, and on point resolution against the bets held during the point.
+- Header shows the current order text plus demerit pips. The dice popup shows `COMMENDED` / `DEMERIT`.
+
+### Open questions
+
+- Should a commendation also pay cash at higher difficulty? Should a fourth order type exist (e.g. "Take your Odds down")?
+- Is a shooter loss too harsh at Floor 2? Alternative penalty: a 5%-of-target fine (reuses Sarge's old fine plumbing).
+- Possible blend with FB-030: disobeying an order puts that point on the roll clock.
+

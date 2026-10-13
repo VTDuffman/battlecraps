@@ -153,7 +153,7 @@ This project uses strict TypeScript. Whenever you write or modify TypeScript cod
 ## Docs Structure
 
 ```
-docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–029), tutorial-user-journey.md,
+docs/requirements/    # PRD.md (full game spec), feature-backlog.md (FB-001–031), tutorial-user-journey.md,
                       #   vibe-ideas.md, floor-aesthetics.md
 docs/frameworks/      # crew_framework.md (30 crew — 15 Starter + 15 unlock-gated), floors.md, boss_framework.md,
                       #   floor-addition-checklist.md (canonical update checklist — use this when adding any new floor)

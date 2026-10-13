@@ -68,7 +68,7 @@ const ABILITY_DESCRIPTIONS: Record<number, string> = {
   12: '33% chance each roll: +0.5× Hype or −0.25× Hype (no Hype floor).',
   13: 'Copies the ability of the last crew member that fired.',
   14: 'Raises the table bet ceiling from 10% to 15% of the marker target.',
-  15: 'Adds +1.0× Hype on the first Seven Out per shooter; that shooter always starts at ≥2.0× Hype.',
+  15: 'Adds +1.0× Hype on the first Seven Out per shooter — carried over to give the next shooter a head start.',
   // ── IDs 16–30: Starter roster ──────────────────────────────────────────
   16: 'Adds +0.20× Hype whenever a 6 appears on either die.',
   19: 'Adds +0.2× Hype whenever this roll\'s total is higher than the last.',
@@ -108,7 +108,7 @@ const CREW_ADDITIVE_TRIGGERS: Record<number, string> = {
   24: 'on every come-out roll',
   25: 'on every blank point-phase roll',
   28: 'on every 3rd roll of the shooter',
-  29: 'after 5 consecutive blank rolls (also +0.5× Hype)',
+  29: 'on every 5th blank point-phase roll in a row (also +0.5× Hype)',
   30: "when this roll's total is lower than the last",
 };
 

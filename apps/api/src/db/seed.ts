@@ -73,7 +73,7 @@ const RARITY: Record<number, string> = {
 
 const BRIEF_DESCRIPTIONS: Record<number, string> = {
   1:  'Re-rolls a Seven Out once per shooter.',
-  2:  'On any paired roll, nudges both dice ±1 to land on the active point.',
+  2:  'On a paired roll in the point phase, nudges both dice one pip toward the point — sometimes right onto it.',
   3:  'Once per shooter: lock a die to any face for up to 4 rolls.',
   4:  'Active Hardway bets survive a soft-number hit — and earn a floor-scaled bonus when they do.',
   5:  'On Seven Out, refunds your Pass Line bet — except on the final shooter.',
@@ -111,7 +111,7 @@ const BRIEF_DESCRIPTIONS: Record<number, string> = {
 
 const DETAILED_DESCRIPTIONS: Record<number, string> = {
   1:  'When the shooter rolls a Seven Out, Lefty steps in with a second chance. The dice are re-rolled — if the new roll isn\'t a 7, the shooter lives and play continues. Any Hype or bonuses already built up in the cascade carry through. One use per shooter.',
-  2:  'Whenever both dice show the same face, the Physics Prof shifts each die by one pip toward the active point, turning a near-miss into a Point Hit. Because the dice stay paired after the shift, any active Hardway bet also pays out. Fires on every paired roll; no cooldown.',
+  2:  'During the point phase, whenever both dice show the same face, the Physics Prof shifts each die one pip toward the point. When the point is exactly one step away — a pair of 3s with the point on 8, say — that turns a near-miss into a Point Hit, and because the dice stay paired, a matching Hardway bet pays too. Does nothing on the come-out or when you\'ve already hit the point; no cooldown.',
   3:  'Tap the Mechanic to choose a die face (1–6). That value is held on one die for the next 4 rolls or until the shooter sevens out. The lock is applied before any other crew fires, so the rest of your crew sees it. One use per shooter.',
   4:  'When a roll hits a hardway total (4, 6, 8, or 10) with unmatched dice — a soft result that would normally wipe your Hardway bet — the Mathlete cancels that loss and keeps the bet alive. When the save fires, a floor-scaled bonus is also added to the payout pool — the Mathlete rewards the near-miss. Doesn\'t protect against a Seven Out, and doesn\'t interfere with hardway wins. Fires every qualifying roll; no cooldown.',
   5:  'When any shooter except the last sevens out, the Floor Walker gets your Pass Line stake back instead of losing it. Your Odds bet is not covered. Protection is used once per shooter and resets when a new shooter takes the table.',
@@ -130,15 +130,15 @@ const DETAILED_DESCRIPTIONS: Record<number, string> = {
   18: 'When dice land on adjacent values — [1,2], [2,3], [3,4], [4,5], or [5,6] in either order — the Close Call adds a floor-scaled bonus to the payout pool. So close to a pair. Fires on roughly 1 in 4 rolls regardless of outcome or phase.',
   19: 'When the dice climb — any roll whose total beats the previous roll\'s total — the Momentum adds +0.2 Hype. The table reads the dice like a scoreboard. Fires on roughly 45% of rolls after the first of a shooter. Partners with The Echo and The Contrarian to cover nearly every roll with distinct rewards.',
   20: 'When the total matches the previous roll exactly, the Echo fires a +0.4 Hype burst — bigger than most Hype crew because repetition is rarer. Fires roughly 17% of rolls. Works alongside Momentum and Contrarian to cover almost every roll of a shooter with different rewards.',
-  21: 'When the come-out craps out (2, 3, or 12), the Silver Lining adds +0.4 Hype as consolation. CRAPS_OUT is currently the only outcome where no crew fires at all. The Silver Lining makes the worst come-out result build toward something — turning grief into momentum for the next roll.',
+  21: 'When the come-out craps out (2, 3, or 12), the Silver Lining adds +0.4 Hype as consolation. The worst come-out result now builds toward something — turning grief into momentum for the next roll. Fires on every Craps Out; no cooldown.',
   22: 'When both dice land on odd values (1, 3, or 5), the Odd Couple adds +0.2 Hype. Fires on 25% of all rolls regardless of phase or outcome. Pairs with The Even Keel to cover 50% of rolls between them — Hype on odd rolls, cash on even ones.',
   23: 'When both dice land on even values (2, 4, or 6), the Even Keel adds a floor-scaled bonus to the payout pool. Smooth and steady — fires on 25% of rolls. Partners with The Odd Couple to cover half of all rolls: Even Keel provides cash income while Odd Couple builds Hype.',
   24: 'Every time a come-out roll happens — Natural, Craps Out, or Point Set — the Doorman adds a floor-scaled bonus to the payout pool. The Doorman means every new come-out earns something, making the transition between shooters feel productive.',
-  25: 'Every point-phase roll that doesn\'t resolve — no Point Hit, no Seven Out — the Grinder adds a floor-scaled bonus to the payout pool. At 65–70% of point-phase roll frequency, the Grinder turns the longest stretches of waiting into the most consistent earners.',
-  26: 'Every time the come-out establishes a point, the Handicapper adds Hype scaled to difficulty: Point 6 or 8 gives +0.1 Hype, Point 5 or 9 gives +0.2, and Points 4 or 10 give +0.3. POINT_SET is currently ignored by every crew member. The Handicapper makes hard points feel like an opportunity instead of a threat.',
+  25: 'Every point-phase roll that doesn\'t resolve — no Point Hit, no Seven Out — the Grinder adds a floor-scaled bonus to the payout pool. Most point-phase rolls are blanks, so the Grinder turns the longest stretches of waiting into steady income.',
+  26: 'Every time the come-out establishes a point, the Handicapper adds Hype scaled to difficulty: Point 6 or 8 gives +0.1 Hype, Point 5 or 9 gives +0.2, and Points 4 or 10 give +0.3. The Handicapper makes hard points feel like an opportunity instead of a threat.',
   27: 'Opposite faces of a real die always sum to 7. When the dice show that balance — Natural on come-out or Seven Out in point phase — the Mirror banks +0.2 Hype regardless. Seven Outs are still costly, but you carry Hype into the next shooter. Naturals get an extra Hype bump on top of the win.',
-  28: 'Every third roll — regardless of outcome, phase, or dice values — the Bookkeeper adds a floor-scaled bonus to the payout pool. The predictability is the design: players count rolls out loud. "One, two, THREE." This is the most deliberately Pavlovian crew member in the set. Counter resets per shooter.',
-  29: 'Every fifth consecutive NO_RESOLUTION roll in the point phase triggers a release: +0.5 Hype and a floor-scaled cash bonus. Long point phases feel like purgatory without this — the Pressure Cooker makes players actively want them. Each blank roll builds pressure; every five rolls it releases. Counter resets on any resolution.',
+  28: 'Every third roll — regardless of outcome, phase, or dice values — the Bookkeeper adds a floor-scaled bonus to the payout pool. You can count it out loud: "One, two, THREE." The count resets when a new shooter steps up.',
+  29: 'Every fifth blank roll in a row during the point phase — no Point Hit, no Seven Out — triggers a release: +0.5 Hype and a floor-scaled cash bonus. Each blank roll builds pressure; every five it releases, so long point phases become something to root for. The count resets whenever the point resolves.',
   30: 'When the dice fall — any roll whose total is below the previous roll\'s total — the Contrarian adds a floor-scaled bonus to the payout pool. Going down? Bank some cash. Different reward from The Momentum (Hype on ascent) and The Echo (big Hype on repeat) — together the three cover nearly every roll of a shooter with distinct rewards.',
 };
 
@@ -182,12 +182,12 @@ const UNLOCK_DESCRIPTIONS: Record<number, string> = {
   7:  'Win 3 Hardway bets in a single run.',
   8:  'Accumulate 40 total Point Hits across all runs.',
   9:  'Reach a bankroll of $20,000 in a single run.',
-  10: 'Roll a Natural (7 or 11) on your very first come-out roll.',
+  10: 'Roll a Natural (7 or 11) while on the first or second marker of a run.',
   11: 'Hit the point 3 consecutive times within a single shooter\'s run.',
   12: 'See Hype reach 3.0× in any single run.',
   13: 'Have 4 or more distinct crew bonuses activate in a single cascade.',
-  14: 'Clear all 9 Gauntlet markers in a single run (win the game once).',
-  15: 'Clear all 3 markers of any Gauntlet floor with only 1 crew member in your slots the entire time.',
+  14: 'Clear all 27 Gauntlet markers and defeat The Architect in a single run (win the game once).',
+  15: 'Clear all 3 markers of any Gauntlet floor with only 1 crew member in your slots each time you clear.',
 };
 
 // ---------------------------------------------------------------------------

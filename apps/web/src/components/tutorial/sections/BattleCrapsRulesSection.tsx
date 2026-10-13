@@ -136,9 +136,9 @@ export const BattleCrapsRulesSection: React.FC = () => {
       {/* ── Shooter Lives ──────────────────────────────────────────────────── */}
       <SectionHeader>Shooter Lives</SectionHeader>
       <p className="text-white/50 leading-relaxed py-2">
-        You start each run with <span className="text-amber-300">5 shooter lives</span>.
-        Each Seven Out costs one. Reach zero and the run ends.
-        Certain boss comp perks can add lives back.
+        You get <span className="text-amber-300">5 shooter lives</span> at every marker.
+        Each Seven Out costs one. Run out before you hit the marker target and the run ends.
+        Sarge's comp, the Member's Jacket, adds a sixth.
       </p>
 
       {/* ── Marker System ─────────────────────────────────────────────────── */}
@@ -160,7 +160,8 @@ export const BattleCrapsRulesSection: React.FC = () => {
       <p className="text-white/50 leading-relaxed py-2">
         Every consecutive point hit by the current shooter increases your Hype
         multiplier. It boosts the profit portion of every winning payout. Hype resets
-        at the start of every new marker — it's built fresh on each floor, not carried forward.
+        at the start of every new marker — it's built fresh each time, not carried forward.
+        Some crew, comps and bosses change how it resets on a Seven Out.
       </p>
       <div className="space-y-0.5">
         <Row label="Starting Hype"       value="1.00×" />
@@ -175,10 +176,10 @@ export const BattleCrapsRulesSection: React.FC = () => {
       <div className="mt-2 border border-amber-900/40 rounded bg-amber-950/20 p-3">
         <div className="font-pixel text-r-11 text-amber-300 mb-1">PAYOUT FORMULA</div>
         <div className="text-white/60 leading-relaxed">
-          Final payout = stake returned + ⌈ gross profit × Hype ⌉
+          Final payout = stake returned + ⌊ (gross profit + crew bonuses) × Hype × crew multipliers ⌋
         </div>
         <div className="text-white/30 text-r-12 mt-1">
-          Example: $100 Pass Line wins $100 base. At 1.5× Hype, profit is $150 (not $100).
+          Example: $100 Pass Line wins $100 base. At 1.5× Hype, profit is $150 (not $100). Rounded down to the dollar.
         </div>
       </div>
 

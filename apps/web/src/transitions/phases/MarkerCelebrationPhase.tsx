@@ -155,7 +155,7 @@ export const MarkerCelebrationPhase: React.FC<PhaseComponentProps> = ({ onAdvanc
         className="font-mono text-[13.5px] text-center max-w-xs leading-relaxed px-8"
         style={{ color: `${theme.accentPrimary}cc` }}
       >
-        A new shooter and 5 fresh lives await.
+        Your shooter lives are refilled.
         Head to the pub to hire your next crew member.
       </p>
 

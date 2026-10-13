@@ -47,7 +47,7 @@ export const COMP_DEFS: CompDef[] = [
     threshold:   9,
     name:        'Sea Legs',
     icon:        '⚓',
-    effect:      'Hype resets to 50% on Seven Out instead of 1.0×. Earned by defeating Mme. Le Prix.',
+    effect:      'On Seven Out, keep half your Hype above 1.0× instead of resetting. Earned by defeating Mme. Le Prix.',
     accentColor: '#0d9488',  // teal — Riverboat floor
   },
   {
@@ -55,7 +55,7 @@ export const COMP_DEFS: CompDef[] = [
     threshold:   12,
     name:        'Board Seat',
     icon:        '🪑',
-    effect:      'Crew slot 4 unlocked. Add a fourth shooter to your team. The Executive reward.',
+    effect:      'Crew slot 4 unlocked. Add a fourth member to your crew. The Executive reward.',
     accentColor: '#f5c842',  // gold — The Strip floor
   },
   {
@@ -63,7 +63,7 @@ export const COMP_DEFS: CompDef[] = [
     threshold:   15,
     name:        'The Covenant',
     icon:        '🩸',
-    effect:      'Direct bankroll drains reduced by 50%. The Hierophant reward.',
+    effect:      'Hierophant escrow seizures halved (25% → 12.5%). The Hierophant reward.',
     accentColor: '#9a6e28',  // aged amber gold — The Lodge floor
   },
   {
@@ -71,7 +71,7 @@ export const COMP_DEFS: CompDef[] = [
     threshold:   18,
     name:        "Poseidon's Favor",
     icon:        '🔱',
-    effect:      "First come-out of each segment cannot craps-out. The Sovereign's reward.",
+    effect:      "Each shooter's first roll can't craps-out — it just doesn't count. The Sovereign's reward.",
     accentColor: '#009070',  // aquamarine — Atlantis floor
   },
   {
@@ -79,7 +79,7 @@ export const COMP_DEFS: CompDef[] = [
     threshold:   21,
     name:        'Cargo Hold',
     icon:        '📦',
-    effect:      'Crew slot 5 unlocked. Your full five-shooter lineup is open. The Commander reward.',
+    effect:      'Crew slot 5 unlocked. Your full five-member crew is open. The Commander reward.',
     accentColor: '#8098b0',  // steel blue — The Station floor
   },
   {

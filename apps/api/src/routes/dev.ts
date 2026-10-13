@@ -376,6 +376,7 @@ export async function devPlugin(app: FastifyInstance): Promise<void> {
           pointPhaseBlankStreak: 0,
           previousRollTotal:     null,
           mechanicFreeze:        null,
+          pubDraft:              null,   // a jump may land on a new Pub — draft fresh
           updatedAt:             new Date(),
         })
         .where(and(eq(runs.id, run.id), eq(runs.updatedAt, run.updatedAt)))

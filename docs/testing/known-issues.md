@@ -1898,3 +1898,33 @@ Emissary fight (marker 23), Pass Line 25,000,000¢ on point 6, hype 1.0, roll 4+
 **High-Level Fix:**
 Round the product before flooring (e.g. `Math.floor(Math.round(boostedProfit × finalMultiplier) / 100) × 100`), or do the multiply in integer basis points. Update the integration test expectation when fixed.
 
+---
+
+## KI-080 — Refreshing the Pub re-rolled the crew on offer
+
+**Area:** `apps/api/src/routes/pubDraft.ts`
+**Severity:** High (exploit)
+**Status:** Fixed (2026-10-13)
+**Source:** Playtester report, 2026-10-13
+
+**Issue:**
+`GET /runs/:id/pub-draft` generated a new random draft on every call, by design ("subsequent calls return a fresh random draft"). Refreshing the page and choosing Continue Run re-rolled the offer, so players could fish for the crew they wanted.
+
+**Fix applied:**
+The draft is generated once per Pub visit and saved on the run (`runs.pub_draft` jsonb, `{ crewIds, guaranteedIds }`). Later fetches return the saved draft. The first save is conditional (`WHERE pub_draft IS NULL`), so simultaneous first loads agree. A guaranteed unlock that lands after the draft was saved is appended to it. The draft is cleared on leaving the Pub (recruit or skip) and on a dev jump.
+
+---
+
+## KI-081 — Recruit accepted crew that weren't offered
+
+**Area:** `apps/api/src/routes/recruit.ts`
+**Severity:** Medium (exploit via direct API calls)
+**Status:** Fixed (2026-10-13)
+**Source:** Found while investigating KI-080
+
+**Issue:**
+`POST /runs/:id/recruit` only checked that the crew member was a Starter or unlocked. It never checked the Pub draft or the floor's rarity gate, so a request crafted outside the UI could hire any owned crew — e.g. a Legendary on Floor 1.
+
+**Fix applied:**
+Hiring now requires the crew member to be in the saved draft (403 "wasn't offered at this Pub"). It returns 409 if no draft has been loaded yet. The draft is the single authority for what can be hired, since it already applies unlocks, the rarity gate and guaranteed unlocks.
+

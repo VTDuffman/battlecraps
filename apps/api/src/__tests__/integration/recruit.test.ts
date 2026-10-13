@@ -13,12 +13,13 @@ vi.mock('../../lib/io.js', () => ({
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/client.js';
-import { users } from '../../db/schema.js';
+import { users, runs } from '../../db/schema.js';
 import {
   buildTestApp,
   createTestUser,
   createRun,
   recruitCrew,
+  getPubDraft,
   resetTestDb,
   TEST_CLERK_ID,
 } from '../helpers/testSetup.js';
@@ -54,11 +55,16 @@ beforeEach(async () => {
 // Helper — put a run in TRANSITION status (already past marker 0)
 // ---------------------------------------------------------------------------
 
+// The Pub draft is saved on the run; hiring is only allowed from it. By default
+// the tests offer the crew they hire.
+const OFFERED = { crewIds: [STARTER_CREW_ID, UNLOCK_CREW_ID, LUCKY_CHARM_ID], guaranteedIds: [] as number[] };
+
 async function createTransitionRun(overrides = {}) {
   return createRun(userId, {
     status:             'TRANSITION',
     currentMarkerIndex: 1, // just cleared marker 0 → marker 1 is next
     bankrollCents:      5000,
+    pubDraft:           OFFERED,
     ...overrides,
   });
 }
@@ -68,12 +74,13 @@ async function createTransitionRun(overrides = {}) {
 // ---------------------------------------------------------------------------
 
 describe('Unlock gating', () => {
-  it('rejects recruit of unlock-gated crew (ID 1) without unlock condition', async () => {
-    const run = await createTransitionRun();
+  it('rejects recruit of unlock-gated crew (ID 1) that was not offered', async () => {
+    // A locked crew member never appears in a draft, so it can't be hired.
+    const run = await createTransitionRun({ pubDraft: { crewIds: [STARTER_CREW_ID], guaranteedIds: [] } });
     const { status, body } = await recruitCrew(app, run.id, UNLOCK_CREW_ID, 0);
 
     expect(status).toBe(403);
-    expect((body['error'] as string)).toMatch(/not been unlocked/i);
+    expect((body['error'] as string)).toMatch(/wasn't offered/i);
   });
 
   it('accepts recruit of unlock-gated crew when user has it in unlockedCrewIds', async () => {
@@ -231,3 +238,70 @@ describe('State guard', () => {
     expect(status).toBe(409);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Pub draft is fixed for the visit — refreshing must not re-roll it, and
+// hiring is only allowed from what was offered.
+// ---------------------------------------------------------------------------
+
+describe('Pub draft persistence', () => {
+  it('returns the same crew on every fetch during one Pub visit (no refresh re-roll)', async () => {
+    const run = await createTransitionRun({ pubDraft: null });
+    const first  = await getPubDraft(app, run.id);
+    const second = await getPubDraft(app, run.id);
+    const third  = await getPubDraft(app, run.id);
+
+    expect(first.status).toBe(200);
+    expect(first.draft.length).toBe(3); // Floor 1 offers 3
+    const ids = first.draft.map((c) => c.id);
+    expect(second.draft.map((c) => c.id)).toEqual(ids);
+    expect(third.draft.map((c) => c.id)).toEqual(ids);
+  });
+
+  it('rejects hiring a crew member who was not offered', async () => {
+    const run = await createTransitionRun({ pubDraft: null, bankrollCents: 50_000 });
+    const { draft } = await getPubDraft(app, run.id);
+    const offered = new Set(draft.map((c) => c.id));
+    const notOffered = [16, 17, 18, 19, 20, 21, 22].find((id) => !offered.has(id))!;
+
+    const { status, body } = await recruitCrew(app, run.id, notOffered, 0);
+    expect(status).toBe(403);
+    expect(body['error']).toMatch(/wasn't offered/i);
+  });
+
+  it('allows hiring from the draft and clears it when leaving the Pub', async () => {
+    const run = await createTransitionRun({ pubDraft: null, bankrollCents: 50_000 });
+    const { draft } = await getPubDraft(app, run.id);
+    const pick = draft[0]!.id;
+
+    const { status } = await recruitCrew(app, run.id, pick, 0);
+    expect(status).toBe(200);
+
+    const after = await db.query.runs.findFirst({ where: eq(runs.id, run.id) });
+    expect(after?.pubDraft).toBeNull();
+  });
+
+  it('rejects hiring when no draft has been generated (client must load the Pub)', async () => {
+    const run = await createTransitionRun({ pubDraft: null, bankrollCents: 50_000 });
+    const { status } = await recruitCrew(app, run.id, STARTER_CREW_ID, 0);
+    expect(status).toBe(409);
+  });
+
+  it('adds a crew member unlocked after the draft was saved, keeping the rest', async () => {
+    const run = await createTransitionRun({ pubDraft: null, bankrollCents: 50_000 });
+    const first = await getPubDraft(app, run.id);
+
+    // The unlock lands after the draft was generated (fire-and-forget evaluateUnlocks).
+    await db.update(users).set({ unlockedCrewIds: [UNLOCK_CREW_ID] }).where(eq(users.clerkId, TEST_CLERK_ID));
+    await db.update(runs).set({ guaranteedPubDraftIds: [UNLOCK_CREW_ID] }).where(eq(runs.id, run.id));
+
+    const second = await getPubDraft(app, run.id);
+    const ids = second.draft.map((c) => c.id);
+    expect(ids).toEqual([...first.draft.map((c) => c.id), UNLOCK_CREW_ID]);
+    expect(second.draft.find((c) => c.id === UNLOCK_CREW_ID)?.isGuaranteed).toBe(true);
+
+    const { status } = await recruitCrew(app, run.id, UNLOCK_CREW_ID, 0);
+    expect(status).toBe(200);
+  });
+});
+

@@ -163,12 +163,17 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         if (!crewDef) {
           return reply.status(422).send({ error: `Unknown crew ID ${crewId}.` });
         }
-        const isAvailable =
-          crewDef.isStarterRoster ||
-          (user.unlockedCrewIds ?? []).includes(crewId!);
-        if (!isAvailable) {
+        // Only crew offered in this Pub visit's saved draft can be hired. The
+        // draft already respects unlocks, the floor's rarity gate and
+        // guaranteed unlocks (pubDraft.ts), so it is the single authority.
+        if (!run.pubDraft) {
+          return reply.status(409).send({
+            error: 'The Pub draft has not been loaded yet. Reload the Pub and try again.',
+          });
+        }
+        if (!run.pubDraft.crewIds.includes(crewId!)) {
           return reply.status(403).send({
-            error: `Crew member ${crewId} has not been unlocked yet.`,
+            error: `Crew member ${crewId} wasn't offered at this Pub.`,
           });
         }
         const clearedIndex  = run.currentMarkerIndex - 1;
@@ -221,6 +226,8 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
           // Fresh shooter allotment for next segment, plus any boss comp bonus.
           // Member's Jacket: +1 Shooter on top of the standard 5.
           shooters:      5 + compShooterBonus,
+          // Leaving the Pub: the next Pub visit generates a fresh draft.
+          pubDraft:      null,
           crewSlots:     newCrewSlots,
           hype:          newHype,
           // DISABLE_CREW boss: preserve the entry charm in bossPointHits so the

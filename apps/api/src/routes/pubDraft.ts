@@ -10,8 +10,13 @@
 //     and the draft expands to max(3, guaranteed.length) if needed.
 //   - Remaining slots are filled randomly from the player's available roster
 //     (Starter OR unlocked), excluding guaranteed IDs already in the draft.
-//   - guaranteedPubDraftIds is cleared on the run row after generation so
-//     subsequent calls return a fresh random draft (idempotent re-fetch safe).
+//   - The draft is generated ONCE per Pub visit and saved on the run
+//     (runs.pub_draft). Later fetches return the saved draft, so refreshing
+//     the page can't re-roll it. recruit.ts only accepts crew from it and
+//     clears it when the player leaves the Pub.
+//   - guaranteedPubDraftIds is cleared once folded into the saved draft. A
+//     guaranteed unlock that lands after the draft was saved (evaluateUnlocks
+//     is fire-and-forget) is appended to the saved draft on the next fetch.
 //   - Random pool is rarity-gated by floor: up to Uncommon on F1–F2, Rare on
 //     F3–F4, Epic on F5–F6, Legendary on F7–F9. Guaranteed crew bypass this gate.
 //
@@ -21,9 +26,9 @@
 // =============================================================================
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { runs, crewDefinitions } from '../db/schema.js';
+import { runs, crewDefinitions, type StoredPubDraft } from '../db/schema.js';
 import { GAUNTLET, getCrewHireCost, type CrewRarity } from '@battlecraps/shared';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
@@ -158,7 +163,31 @@ export async function pubDraftPlugin(app: FastifyInstance): Promise<void> {
           (RARITY_TIER[c.rarity] ?? 99) <= maxRarityTier,
       );
 
-      // ── 6. Build draft ───────────────────────────────────────────────────────
+      // ── 6. Saved draft: return it (plus any late guaranteed unlocks) ────────
+      const byId = new Map(allCrew.map((c) => [c.id, c]));
+      const toResponse = (saved: StoredPubDraft): PubDraftEntry[] =>
+        saved.crewIds
+          .map((id) => byId.get(id))
+          .filter((c): c is NonNullable<typeof c> => c !== undefined)
+          .map((c) => ({ ...toDraftEntry(c, clearedTarget), isGuaranteed: saved.guaranteedIds.includes(c.id) }));
+
+      if (run.pubDraft) {
+        const late = guaranteedCrew.map((c) => c.id).filter((id) => !run.pubDraft!.crewIds.includes(id));
+        if (late.length === 0 && guaranteedIds.size === 0) {
+          return reply.send({ draft: toResponse(run.pubDraft) });
+        }
+        const merged: StoredPubDraft = {
+          crewIds:       [...run.pubDraft.crewIds, ...late],
+          guaranteedIds: [...run.pubDraft.guaranteedIds, ...late],
+        };
+        await db
+          .update(runs)
+          .set({ pubDraft: merged, guaranteedPubDraftIds: [] })
+          .where(eq(runs.id, runId));
+        return reply.send({ draft: toResponse(merged) });
+      }
+
+      // ── 7. Build a new draft ─────────────────────────────────────────────────
       // 3 options during F1 (clearedIndex 0–2), 2 options from F2 onwards.
       // Guaranteed crew always expand the draft if they exceed the normal size.
       const normalDraftSize = clearedIndex <= 2 ? 3 : 2;
@@ -166,20 +195,25 @@ export async function pubDraftPlugin(app: FastifyInstance): Promise<void> {
       const fillCount    = Math.max(0, draftSize - guaranteedCrew.length);
       const randomFill   = shuffle(poolCrew).slice(0, fillCount);
 
-      const draft: PubDraftEntry[] = [
-        ...guaranteedCrew.map(c => ({ ...toDraftEntry(c, clearedTarget), isGuaranteed: true })),
-        ...randomFill.map(c   => ({ ...toDraftEntry(c, clearedTarget), isGuaranteed: false })),
-      ];
+      const newDraft: StoredPubDraft = {
+        crewIds:       [...guaranteedCrew.map((c) => c.id), ...randomFill.map((c) => c.id)],
+        guaranteedIds: guaranteedCrew.map((c) => c.id),
+      };
 
-      // ── 7. Clear guaranteedPubDraftIds on the run ────────────────────────────
-      if (guaranteedIds.size > 0) {
-        await db
-          .update(runs)
-          .set({ guaranteedPubDraftIds: [] })
-          .where(eq(runs.id, runId));
-      }
+      // ── 8. Save it (first writer wins) and clear guaranteedPubDraftIds ───────
+      // Conditional on pub_draft IS NULL so two simultaneous first loads can't
+      // save different drafts; the loser returns the winner's draft.
+      const saved = await db
+        .update(runs)
+        .set({ pubDraft: newDraft, guaranteedPubDraftIds: [] })
+        .where(and(eq(runs.id, runId), isNull(runs.pubDraft)))
+        .returning({ pubDraft: runs.pubDraft });
 
-      return reply.send({ draft });
+      const draft = saved[0]?.pubDraft
+        ?? (await db.query.runs.findFirst({ where: eq(runs.id, runId) }))?.pubDraft
+        ?? newDraft;
+
+      return reply.send({ draft: toResponse(draft) });
     },
   );
 }

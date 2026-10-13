@@ -77,6 +77,13 @@ export interface StoredCrewSlot {
  * A null element means that slot is empty (no crew assigned).
  * Always exactly 5 elements matching the 5 physical slots.
  */
+/** Saved Pub draft: crew offered at this Pub visit, in display order. */
+export interface StoredPubDraft {
+  crewIds:       number[];
+  /** Subset of crewIds that were guaranteed (newly unlocked this run). */
+  guaranteedIds: number[];
+}
+
 export type StoredCrewSlots = [
   StoredCrewSlot | null,
   StoredCrewSlot | null,
@@ -411,6 +418,14 @@ export const runs = pgTable(
      * Cleared after the Pub draft is generated.
      */
     guaranteedPubDraftIds: integer('guaranteed_pub_draft_ids').array().notNull().default(sql`'{}'::integer[]`),
+
+    /**
+     * The Pub draft offered at the current TRANSITION, saved the first time
+     * GET /runs/:id/pub-draft runs so refreshing can't re-roll it. Hiring is
+     * only accepted for crew in `crewIds`. NULL until generated; cleared when
+     * the player leaves the Pub (recruit or skip).
+     */
+    pubDraft: jsonb('pub_draft').$type<StoredPubDraft | null>(),
 
     /**
      * Crew IDs unlocked during this specific run (as opposed to all-time

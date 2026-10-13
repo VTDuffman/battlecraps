@@ -650,7 +650,7 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | **Brief Description** | Adds Hype when a point is set — more for harder points. |
 | **Detailed Description** | Every time the come-out establishes a point, the Handicapper adds Hype scaled to difficulty: Point 6 or 8 gives +0.1 Hype, Point 5 or 9 gives +0.2, and Points 4 or 10 give +0.3. The Handicapper makes hard points feel like an opportunity instead of a threat. |
 
-**Design Intent:** Trigger on `ctx.rollResult === 'POINT_SET'`. Scale Hype delta on `ctx.activePoint`: {4,10} → 0.3, {5,9} → 0.2, {6,8} → 0.1. Frequency: 24/36 ≈ 67% of come-out rolls.
+**Design Intent:** Trigger on `ctx.rollResult === 'POINT_SET'`. Scale Hype delta on the new point — `ctx.diceTotal` (`ctx.activePoint` is still null on the point-setting roll): {4,10} → 0.3, {5,9} → 0.2, {6,8} → 0.1. Frequency: 24/36 ≈ 67% of come-out rolls.
 
 ---
 

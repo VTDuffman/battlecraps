@@ -1243,49 +1243,49 @@ describe('Handicapper (ID 26)', () => {
   });
 
   it('fires on POINT_SET with point 4 → +0.3 hype', () => {
-    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: 4, hype: 1.0 });
+    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [1, 3], diceTotal: 4, hype: 1.0 });
     const result = handicapper.execute(ctx, neverCalledRng);
     expect(result.context.hype).toBeCloseTo(1.3, 4);
   });
 
   it('fires on POINT_SET with point 10 → +0.3 hype', () => {
-    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: 10, hype: 1.0 });
+    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [4, 6], diceTotal: 10, hype: 1.0 });
     const result = handicapper.execute(ctx, neverCalledRng);
     expect(result.context.hype).toBeCloseTo(1.3, 4);
   });
 
   it('fires on POINT_SET with point 5 → +0.2 hype', () => {
-    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: 5, hype: 1.0 });
+    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [2, 3], diceTotal: 5, hype: 1.0 });
     const result = handicapper.execute(ctx, neverCalledRng);
     expect(result.context.hype).toBeCloseTo(1.2, 4);
   });
 
   it('fires on POINT_SET with point 9 → +0.2 hype', () => {
-    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: 9, hype: 1.0 });
+    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [4, 5], diceTotal: 9, hype: 1.0 });
     const result = handicapper.execute(ctx, neverCalledRng);
     expect(result.context.hype).toBeCloseTo(1.2, 4);
   });
 
   it('fires on POINT_SET with point 6 → +0.1 hype', () => {
-    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: 6, hype: 1.0 });
+    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [2, 4], diceTotal: 6, hype: 1.0 });
     const result = handicapper.execute(ctx, neverCalledRng);
     expect(result.context.hype).toBeCloseTo(1.1, 4);
   });
 
   it('fires on POINT_SET with point 8 → +0.1 hype', () => {
-    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: 8, hype: 1.0 });
+    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [3, 5], diceTotal: 8, hype: 1.0 });
     const result = handicapper.execute(ctx, neverCalledRng);
     expect(result.context.hype).toBeCloseTo(1.1, 4);
   });
 
   it('stacks on elevated hype', () => {
-    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: 4, hype: 1.5 });
+    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [1, 3], diceTotal: 4, hype: 1.5 });
     const result = handicapper.execute(ctx, neverCalledRng);
     expect(result.context.hype).toBeCloseTo(1.8, 4);
   });
 
   it('newCooldown is 0', () => {
-    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: 8, hype: 1.0 });
+    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [3, 5], diceTotal: 8, hype: 1.0 });
     const result = handicapper.execute(ctx, neverCalledRng);
     expect(result.newCooldown).toBe(0);
   });

@@ -9,8 +9,9 @@
 //              Points 6 or 8   → +0.1 Hype
 // Cooldown:    none
 //
-// ctx.activePoint is set by resolveRoll() before the cascade fires on POINT_SET,
-// so it always reflects the newly established point.
+// On POINT_SET the run is still in COME_OUT, so resolveRoll() leaves
+// ctx.activePoint null — the new point is the dice total. (Reading activePoint
+// here meant the Handicapper never fired in real play.)
 // Frequency: 24/36 ≈ 67% of come-out rolls.
 // =============================================================================
 
@@ -26,14 +27,17 @@ export const handicapper: CrewMember = {
   rarity:           'Starter',
 
   execute(ctx: TurnContext, _rollDice: RollDiceFn): ExecuteResult {
-    if (ctx.rollResult !== 'POINT_SET' || ctx.activePoint === null) {
+    if (ctx.rollResult !== 'POINT_SET') {
       return { context: ctx, newCooldown: 0 };
     }
 
+    // The point being set is this roll's total (4, 5, 6, 8, 9 or 10).
+    const point = ctx.diceTotal;
+
     let hypeDelta: number;
-    if (ctx.activePoint === 4 || ctx.activePoint === 10) {
+    if (point === 4 || point === 10) {
       hypeDelta = 0.3;
-    } else if (ctx.activePoint === 5 || ctx.activePoint === 9) {
+    } else if (point === 5 || point === 9) {
       hypeDelta = 0.2;
     } else {
       // Points 6 or 8

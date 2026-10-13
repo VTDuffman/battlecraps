@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-028 Developer Mode
 
 **Design doc:** `docs/design/fb-028-developer-mode-design.md` (decisions in §7)
-**Status:** Phases 0–1 shipped. Phases 2–5 **pending approval, one phase at a time.**
+**Status:** Phases 0–2 shipped. Phases 3–5 **pending approval, one phase at a time.**
 
 **Rules for every phase**
 - Each phase ends at a **🛑 APPROVAL GATE**. Nothing in the next phase starts until Mike says go.
@@ -152,6 +152,8 @@ Demo: you see `isDev: true` in the provision response; nobody else does. No user
 
 ### 🛑 APPROVAL GATE: Phase 2
 Demo: from the title screen, start "Executive one roll from PIP", lose one roll, see the Pink Slip. Under a minute.
+
+--- Implemented (`00dcadd`, `b0e5bb4`, `bb4074f`; verified locally by Mike 2026-10-12) ---
 
 ---
 

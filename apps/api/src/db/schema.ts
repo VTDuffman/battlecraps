@@ -484,6 +484,13 @@ export const runs = pgTable(
      * Migration: server.ts startup block (peak_bankroll_cents)
      */
     peakBankrollCents: integer('peak_bankroll_cents').notNull().default(0),
+
+    /**
+     * FB-028: true for runs created via Developer Mode. Dev runs are excluded
+     * from the leaderboard, unlock evaluation, and user stats
+     * (maxBankrollCents, highestMarkerReached).
+     */
+    isDevRun: boolean('is_dev_run').notNull().default(false),
   },
   (t) => ({
     userIdIdx: index('runs_user_id_idx').on(t.userId),

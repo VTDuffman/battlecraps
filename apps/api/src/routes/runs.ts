@@ -66,6 +66,8 @@ interface CreateRunResponse {
     highestMarkerReached: number;
     /** Number of active crew slots (3, 4, or 5) — FB-025 crew slot progression. */
     unlockedSlots: 3 | 4 | 5;
+    /** FB-028: true for Developer Mode runs. */
+    isDevRun: boolean;
   };
 }
 
@@ -105,6 +107,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
         unacknowledgedUnlocks,
         highestMarkerReached:  userRow.highestMarkerReached,
         unlockedSlots:         run.unlockedSlots as 3 | 4 | 5,
+        isDevRun:              run.isDevRun,
       });
     },
   );
@@ -161,6 +164,7 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
           unacknowledgedUnlocks,
           highestMarkerReached:  user.highestMarkerReached,
           unlockedSlots:         run.unlockedSlots as 3 | 4 | 5,
+          isDevRun:              run.isDevRun,
         },
       };
 

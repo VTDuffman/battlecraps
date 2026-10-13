@@ -270,6 +270,14 @@ await db.execute(sql`
 `);
 app.log.info('[migrate] unlocked_slots ensured');
 
+// FB-028: is_dev_run — flags Developer Mode runs (excluded from leaderboard,
+// unlocks, and user stats). Runs before listen() so code that reads the column
+// never serves against a DB that lacks it. Mirrors drizzle/0004 (IF NOT EXISTS).
+await db.execute(sql`
+  ALTER TABLE runs ADD COLUMN IF NOT EXISTS is_dev_run boolean NOT NULL DEFAULT false
+`);
+app.log.info('[migrate] is_dev_run ensured');
+
 // ---------------------------------------------------------------------------
 // Start listening
 // ---------------------------------------------------------------------------

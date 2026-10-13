@@ -71,6 +71,7 @@ interface RunStateData {
   tutorialCompleted?:    boolean;
   unacknowledgedUnlocks?: UnacknowledgedUnlockData[];
   highestMarkerReached?: number;
+  isDevRun?:             boolean;
 }
 
 interface CreateRunResponse {
@@ -86,6 +87,7 @@ const AuthenticatedApp: React.FC = () => {
   const { user }     = useUser();
   const { getToken } = useAuth();
   const connectToRun = useGameStore((s) => s.connectToRun);
+  const setIsDev     = useGameStore((s) => s.setIsDev);
   const disconnect   = useGameStore((s) => s.disconnect);
   const setGetToken  = useGameStore((s) => s.setGetToken);
   const displayMarkerIndex = useGameStore(selectDisplayMarkerIndex);
@@ -150,7 +152,8 @@ const AuthenticatedApp: React.FC = () => {
           }),
         });
         if (!res.ok) return;
-        const data = (await res.json()) as { aliasChosen?: boolean; tutorialCompleted?: boolean };
+        const data = (await res.json()) as { aliasChosen?: boolean; tutorialCompleted?: boolean; isDev?: boolean };
+        setIsDev(data.isDev === true);
         if (data.aliasChosen === false)       setAliasChosen(false);
         if (data.tutorialCompleted === false) setTutorialCompleted(false);
       } catch { /* non-critical */ }
@@ -197,7 +200,8 @@ const AuthenticatedApp: React.FC = () => {
         throw new Error(`Provision failed: ${provRes.status} ${provRes.statusText}`);
       }
 
-      const provData = (await provRes.json()) as { userId: string; tutorialCompleted?: boolean; aliasChosen?: boolean };
+      const provData = (await provRes.json()) as { userId: string; tutorialCompleted?: boolean; aliasChosen?: boolean; isDev?: boolean };
+      setIsDev(provData.isDev === true);
       if (provData.tutorialCompleted === false) {
         setTutorialCompleted(false);
       }
@@ -240,6 +244,7 @@ const AuthenticatedApp: React.FC = () => {
               unacknowledgedUnlocks: data.unacknowledgedUnlocks.map((u) => u.id),
             }),
             highestMarkerReached:  data.highestMarkerReached ?? 0,
+            isDevRun:              data.isDevRun === true,
           });
           setLoading(false);
           return;
@@ -282,6 +287,7 @@ const AuthenticatedApp: React.FC = () => {
           unacknowledgedUnlocks: data.run.unacknowledgedUnlocks.map((u) => u.id),
         }),
         highestMarkerReached:  data.run.highestMarkerReached ?? 0,
+        isDevRun:              data.run.isDevRun === true,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -290,7 +296,7 @@ const AuthenticatedApp: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, connectToRun, getToken]);
+  }, [user, connectToRun, getToken, setIsDev]);
 
   // Called by AliasPickerModal on successful alias submission. Resumes any
   // bootstrap that was halted waiting for the alias to be chosen.

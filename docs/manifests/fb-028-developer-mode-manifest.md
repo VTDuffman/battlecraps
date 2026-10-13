@@ -76,6 +76,12 @@ Shipped 2026-10-12 as `8e20992`. `getBossEntryCounter()` in `packages/shared/src
 ### ⚠️ Rollout step (Mike, manual)
 On Render (API service) set `DEV_MODE_ENABLED=true` and `DEV_CLERK_IDS=<your Clerk user id>`. Claude can look up your Clerk id from the `users` table by your email (read-only query) when we get here. Add the same two vars to local `apps/api/.env`.
 
+### Phase 1 implementation notes (2026-10-12)
+- **Migration delivery changed:** besides `drizzle/0004` (now `ADD COLUMN IF NOT EXISTS`), `server.ts` ensures the column at startup **before `listen()`**, matching the existing startup-migration pattern. This removes the deploy-order hazard (code reading `is_dev_run` can never serve against a DB without it). The prod change happens automatically when the API deploys, so **pushing to `main` is the prod-touching step.**
+- **Feedback tagging:** done client-side (`FeedbackContextSnapshot.isDevRun`) instead of a server-side run lookup. Simpler, and only dev runs can set it to true.
+- **Defense in depth:** `submitLeaderboardEntry()` and `evaluateUnlocks()` also early-return for dev runs.
+- Test app (`testSetup.ts`) now registers `authPlugin`. `dev.test.ts`: 11 tests, each isolation test paired with a real-run control.
+
 ### 🛑 APPROVAL GATE: Phase 1
 Demo: you see `isDev: true` in the provision response; nobody else does. No user-visible change for playtesters.
 

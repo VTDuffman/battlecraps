@@ -15,6 +15,7 @@ import { eq }                   from 'drizzle-orm';
 import { db }                   from '../db/client.js';
 import { users, leaderboardEntries } from '../db/schema.js';
 import { requireClerkAuth }     from '../lib/clerkAuth.js';
+import { isDevClerkId }         from '../lib/devAuth.js';
 
 // Postgres error code for unique constraint violations (23505).
 const PG_UNIQUE_VIOLATION = '23505';
@@ -30,6 +31,8 @@ interface ProvisionResponse {
   userId:            string;
   tutorialCompleted: boolean;
   aliasChosen:       boolean;
+  /** FB-028: true only for allowlisted developers. Cosmetic — server re-checks every dev request. */
+  isDev:             boolean;
 }
 
 export async function authPlugin(app: FastifyInstance): Promise<void> {
@@ -79,6 +82,7 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
           userId:            existing.id,
           tutorialCompleted: existing.tutorialCompleted,
           aliasChosen:       existing.aliasChosen,
+          isDev:             isDevClerkId(clerkId),
         };
         return reply.send(body);
       }
@@ -133,6 +137,7 @@ export async function authPlugin(app: FastifyInstance): Promise<void> {
         userId:            user.id,
         tutorialCompleted: user.tutorialCompleted,
         aliasChosen:       user.aliasChosen,
+        isDev:             isDevClerkId(clerkId),
       };
       return reply.status(201).send(body);
     },

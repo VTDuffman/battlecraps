@@ -279,6 +279,10 @@ async function rollHandler(
     return reply.status(403).send({ error: 'Forbidden.' });
   }
 
+  // FB-028: dev runs skip every side effect that outlives the run
+  // (leaderboard, unlocks, users.maxBankrollCents / highestMarkerReached).
+  const isDevRun = run.isDevRun === true;
+
   // ── 3. State guard ────────────────────────────────────────────────────────
   // Only allow rolling when the run is waiting for a roll.
   if (run.status !== 'IDLE_TABLE' && run.status !== 'POINT_ACTIVE') {
@@ -315,9 +319,11 @@ async function rollHandler(
       return reply.status(409).send({ error: 'Conflict: run was modified by another request. Please retry.' });
     }
 
-    void submitLeaderboardEntry(user as UserRow, stuckRun[0]).catch((err: unknown) => {
-      request.log.error({ err }, '[leaderboard] submission error (stuck-state)');
-    });
+    if (!isDevRun) {
+      void submitLeaderboardEntry(user as UserRow, stuckRun[0]).catch((err: unknown) => {
+        request.log.error({ err }, '[leaderboard] submission error (stuck-state)');
+      });
+    }
 
     const stuckIO = getIO();
     const stuckPayload: WsTurnSettledPayload = {
@@ -413,7 +419,7 @@ async function rollHandler(
       return reply.status(409).send({ error: 'Conflict: run was modified by another request. Please retry.' });
     }
 
-    if (nextStatus === 'GAME_OVER') {
+    if (nextStatus === 'GAME_OVER' && !isDevRun) {
       void submitLeaderboardEntry(user as UserRow, autoRun[0]).catch((err: unknown) => {
         request.log.error({ err }, '[leaderboard] submission error (auto-clear)');
       });
@@ -978,22 +984,24 @@ async function rollHandler(
   }
 
   // ── 12b. Unlock evaluation (fire-and-forget) ──────────────────────────────
-  void evaluateUnlocks(
-    userId,
-    user as UserRow,
-    finalContext,
-    nextState,
-    persistedRun,
-    events,
-    runId,
-  ).catch((err: unknown) => {
-    request.log.error({ err }, '[unlocks] evaluation error');
-  });
+  if (!isDevRun) {
+    void evaluateUnlocks(
+      userId,
+      user as UserRow,
+      finalContext,
+      nextState,
+      persistedRun,
+      events,
+      runId,
+    ).catch((err: unknown) => {
+      request.log.error({ err }, '[unlocks] evaluation error');
+    });
+  }
 
   // ── 12c. Leaderboard submission (fire-and-forget) ─────────────────────────
   // submitLeaderboardEntry is idempotent via ON CONFLICT (run_id) DO NOTHING.
   // Uses finalNextState.status so PIP termination (CROSS_CALIBRATION) is captured.
-  if (finalNextState.status === 'GAME_OVER') {
+  if (finalNextState.status === 'GAME_OVER' && !isDevRun) {
     void submitLeaderboardEntry(user as UserRow, persistedRun).catch((err: unknown) => {
       request.log.error({ err }, '[leaderboard] submission error');
     });
@@ -1004,13 +1012,15 @@ async function rollHandler(
   // when newBankroll actually exceeds the stored max. On most rolls this is a
   // no-op (0 rows matched). Fire-and-forget so it doesn't add latency to the
   // hot path; the client also tracks this locally for immediate display.
-  void db
-    .update(users)
-    .set({ maxBankrollCents: postFineBankroll })
-    .where(and(eq(users.id, userId), lt(users.maxBankrollCents, postFineBankroll)))
-    .catch((err: unknown) => {
-      request.log.error({ err }, '[roll] Failed to update maxBankrollCents');
-    });
+  if (!isDevRun) {
+    void db
+      .update(users)
+      .set({ maxBankrollCents: postFineBankroll })
+      .where(and(eq(users.id, userId), lt(users.maxBankrollCents, postFineBankroll)))
+      .catch((err: unknown) => {
+        request.log.error({ err }, '[roll] Failed to update maxBankrollCents');
+      });
+  }
 
   void db
     .update(runs)
@@ -1020,7 +1030,7 @@ async function rollHandler(
       request.log.error({ err }, '[roll] Failed to update peakBankrollCents');
     });
 
-  if (hitMarker && newMarkerIndex > user.highestMarkerReached) {
+  if (hitMarker && newMarkerIndex > user.highestMarkerReached && !isDevRun) {
     void db
       .update(users)
       .set({ highestMarkerReached: newMarkerIndex })
@@ -1079,7 +1089,7 @@ async function rollHandler(
     ...(finalContext.flags.sevenOutBlocked && { originalDice: dice }),
     ...(finalContext.flags.nudgedFrom !== undefined && { nudgedFrom: finalContext.flags.nudgedFrom }),
     ...(finalContext.flags.crapsOutBlocked && { crapsOutBlocked: true }),
-    highestMarkerReached: hitMarker
+    highestMarkerReached: (hitMarker && !isDevRun)
       ? Math.max(user.highestMarkerReached, newMarkerIndex)
       : user.highestMarkerReached,
     ...(nonComplianceFine > 0 && { nonComplianceFine }),
@@ -1094,7 +1104,7 @@ async function rollHandler(
   return reply.status(200).send({
     run: {
       ...persistedRun,
-      highestMarkerReached: hitMarker
+      highestMarkerReached: (hitMarker && !isDevRun)
         ? Math.max(user.highestMarkerReached, newMarkerIndex)
         : user.highestMarkerReached,
     },

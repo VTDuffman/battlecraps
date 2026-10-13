@@ -34,6 +34,7 @@ import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortabl
 import { MARKER_TARGETS, getMaxBet, isBossMarker } from '@battlecraps/shared';
 import { HowToPlayScreen } from './tutorial/HowToPlayScreen.js';
 import { FeedbackModal }   from './FeedbackModal.js';
+import { DevRunBadge }     from './DevRunBadge.js';
 import {
   useGameStore,
   selectActiveSlot,
@@ -466,6 +467,9 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
           <HowToPlayScreen onBack={() => setShowHowToPlay(false)} />
         </div>
       )}
+
+      {/* ── Dev run badge (FB-028) ─────────────────────────────────────────── */}
+      <DevRunBadge />
 
       {/* ── Feedback modal ────────────────────────────────────────────────── */}
       <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />

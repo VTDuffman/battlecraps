@@ -74,6 +74,9 @@ export async function evaluateUnlocks(
   cascadeEvents: CascadeEvent[],
   runId:         string,
 ): Promise<void> {
+  // FB-028: dev runs never grant unlocks (caller also skips; defense in depth).
+  if (persistedRun.isDevRun) return;
+
   const { rollResult, dice, diceTotal, flags, baseHardwaysPayout, hype } = finalCtx;
   const existingCounters = persistedRun.perRunUnlockCounters;
   const unlockProgress   = user.unlockProgress;

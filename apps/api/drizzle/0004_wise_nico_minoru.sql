@@ -1,0 +1,1 @@
+ALTER TABLE "runs" ADD COLUMN IF NOT EXISTS "is_dev_run" boolean DEFAULT false NOT NULL;

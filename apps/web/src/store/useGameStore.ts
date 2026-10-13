@@ -67,6 +67,8 @@ function withBetField(bets: Bets, field: BetField, value: number): Bets {
 
 export interface FeedbackContextSnapshot {
   runId:               string | null;
+  /** FB-028: lets feedback triage separate dev-run reports from playtester reports. */
+  isDevRun:            boolean;
   currentMarkerIndex:  number;
   bankroll:            number;
   hype:                number;
@@ -719,6 +721,17 @@ export interface GameState {
    * final pink-slip termination). The GameOverScreen reads this to show the Pink Slip.
    */
   pipTermination: boolean;
+
+  // ── Developer Mode (FB-028) ───────────────────────────────────────────────
+
+  /**
+   * True when /auth/provision reports this user is an allowlisted developer.
+   * Cosmetic only — gates dev UI. The server re-checks every dev request.
+   */
+  isDev: boolean;
+
+  /** True when the connected run was created via Developer Mode. */
+  isDevRun: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -835,6 +848,9 @@ export interface GameActions {
    * Pass null to clear without rolling.
    */
   setTutorialCheatDice(dice: [number, number] | null): void;
+
+  /** FB-028: set from the /auth/provision response. */
+  setIsDev(isDev: boolean): void;
 
   /**
    * Inject the Clerk getToken function from the React auth context.
@@ -1090,6 +1106,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   unlockedSlots:     3,
   slotIds:           buildSlotIds(3),
   feedbackContextSnapshot: null,
+  isDev:                   false,
+  isDevRun:                false,
   executiveRating:         null,
   executiveBark:           null,
   pipTermination:          false,
@@ -1168,6 +1186,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // previous run. initialState.bets (present when reloading an existing
       // run via /runs/:id) will override this via the spread below.
       bets:           DEFAULT_BETS,
+      // FB-028: real run unless initialState says otherwise.
+      isDevRun:       false,
       ...initialState,
       // Always sync committedBets to the server's confirmed bet state so
       // that right-click undo has the correct floor when reconnecting.
@@ -1346,6 +1366,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
     set({
       runId:               null,
+      isDevRun:            false,
       status:              null,
       phase:               null,
       bankroll:            0,
@@ -2418,15 +2439,20 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({ tutorialCheatDice: dice });
   },
 
+  setIsDev(isDev) {
+    set({ isDev });
+  },
+
   markCompsAnimated(count) {
     set({ seenCompCount: count });
   },
 
   snapshotForFeedback() {
-    const { runId, currentMarkerIndex, bankroll, hype, crewSlots, rollHistory } = get();
+    const { runId, currentMarkerIndex, bankroll, hype, crewSlots, rollHistory, isDevRun } = get();
     set({
       feedbackContextSnapshot: {
         runId,
+        isDevRun,
         currentMarkerIndex,
         bankroll,
         hype,

@@ -124,6 +124,9 @@ export async function submitLeaderboardEntry(
   user:         UserRow,
   persistedRun: RunRow,
 ): Promise<void> {
+  // FB-028: callers already skip dev runs; this is defense in depth.
+  if (persistedRun.isDevRun) return;
+
   const crewIds = (persistedRun.crewSlots as ({ crewId: number } | null)[])
     .map((slot) => slot?.crewId ?? null);
 

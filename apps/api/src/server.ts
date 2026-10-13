@@ -296,6 +296,14 @@ await db.execute(sql`
 `);
 app.log.info('[migrate] pending_additive_cents bigint ensured');
 
+// Saved Pub draft — generated once per Pub visit so refreshing can't re-roll
+// the crew on offer (playtest report, 2026-10-13). NULL = not generated yet.
+// Mirrors drizzle/0007.
+await db.execute(sql`
+  ALTER TABLE runs ADD COLUMN IF NOT EXISTS pub_draft jsonb
+`);
+app.log.info('[migrate] pub_draft ensured');
+
 // ---------------------------------------------------------------------------
 // Start listening
 // ---------------------------------------------------------------------------

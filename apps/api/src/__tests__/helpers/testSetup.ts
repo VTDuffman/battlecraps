@@ -18,6 +18,7 @@ import { users, runs, leaderboardEntries, feedbackSubmissions, type StoredCrewSl
 import { rollsPlugin }      from '../../routes/rolls.js';
 import { bootstrapPlugin }  from '../../routes/runs.js';
 import { recruitPlugin }    from '../../routes/recruit.js';
+import { pubDraftPlugin }   from '../../routes/pubDraft.js';
 import { leaderboardPlugin } from '../../routes/leaderboard.js';
 import { authPlugin }       from '../../routes/auth.js';
 import { devPlugin, devAccountPlugin } from '../../routes/dev.js';
@@ -47,6 +48,7 @@ export async function buildTestApp(): Promise<FastifyInstance> {
   await app.register(rollsPlugin,      { prefix: '/api/v1' });
   await app.register(bootstrapPlugin,  { prefix: '/api/v1' });
   await app.register(recruitPlugin,    { prefix: '/api/v1' });
+  await app.register(pubDraftPlugin,   { prefix: '/api/v1' });
   await app.register(leaderboardPlugin, { prefix: '/api/v1' });
   await app.register(authPlugin,       { prefix: '/api/v1' });
   await app.register(devPlugin,        { prefix: '/api/v1' });
@@ -160,6 +162,20 @@ export async function recruitCrew(
     payload: JSON.stringify({ crewId, slotIndex }),
   });
   return { status: response.statusCode, body: response.json() as Record<string, unknown> };
+}
+
+// ---------------------------------------------------------------------------
+// getPubDraft — GET /api/v1/runs/:id/pub-draft
+// ---------------------------------------------------------------------------
+
+export async function getPubDraft(app: FastifyInstance, runId: string) {
+  const response = await app.inject({
+    method:  'GET',
+    url:     `/api/v1/runs/${runId}/pub-draft`,
+    headers: { 'x-test-user-id': TEST_CLERK_ID },
+  });
+  const body = response.json() as { draft?: Array<{ id: number; isGuaranteed: boolean }>; error?: string };
+  return { status: response.statusCode, draft: body.draft ?? [], body };
 }
 
 // ---------------------------------------------------------------------------

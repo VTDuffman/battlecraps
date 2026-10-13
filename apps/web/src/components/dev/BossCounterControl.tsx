@@ -78,10 +78,10 @@ export const BossCounterControl: React.FC<BossCounterControlProps> = ({
           </select>
         </DevRow>
       );
-    case 'RISING_MIN_BETS':
+    case 'DOUBLE_TIME':
       return (
-        <DevRow label="Escalation step" hint="min bet rises each point hit">
-          <input type="number" min={range?.min ?? 0} max={range?.max ?? 20} className={devInputCls}
+        <DevRow label="Clock rolls used" hint="point-phase rolls used; the last one times out">
+          <input type="number" min={range?.min ?? 0} max={range?.max ?? 5} className={devInputCls}
             value={value} onChange={(e) => onCounter(Number(e.target.value))} />
         </DevRow>
       );

@@ -46,7 +46,7 @@ export function getCrewHireCost(rarity: CrewRarity, clearedMarkerTargetCents: nu
 /** The mechanical modifier a boss applies during their High Limit Room fight. */
 export type BossRuleType =
   | 'EXTORTION_FEE'          // Floor 1 — The Foreman: 20% tax on all winning payouts
-  | 'RISING_MIN_BETS'        // Floor 2 — Sarge: minimum Pass Line bet rises each Point Hit
+  | 'DOUBLE_TIME'            // Floor 2 — Sarge: hit the point within rollLimit rolls or it's a Seven-Out (FB-030)
   | 'DISABLE_CREW'           // Floor 3 — Mme. Le Prix: one crew member enchanted per come-out
   | 'CROSS_CALIBRATION'      // Floor 4 — The Executive: performance review rating tracks roll outcomes
   | 'TRIBUTE'                // Floor 5 — The Hierophant: crew additives held in escrow; 25% seized on 7-out
@@ -69,29 +69,14 @@ export type CompRewardType =
   | 'NONE';           // Floor 9 — No comp awarded; The Null Space is the end of the line
 
 /**
- * Tunable parameters for the RISING_MIN_BETS boss rule.
- * All percentages are expressed as fractions of the marker's target (0.05 = 5%).
- * @deprecated Superseded by BossRuleParams. Retained while BossEntryModal still
- *   reads boss.risingMinBets directly. Removed in Part 7 once UI is migrated.
- */
-export interface RisingMinBetsParams {
-  /** Fraction of the marker target that becomes the min-bet on the very first roll. */
-  startPct: number;
-  /** Added to startPct after each Point Hit (min-bet holds on Seven Out — does not reset). */
-  incrementPct: number;
-  /** The min-bet never exceeds this fraction of the target, no matter how many rolls. */
-  capPct: number;
-}
-
-/**
  * Discriminated union of per-rule tunable parameters.
- * TypeScript narrows inside each hook file so Sarge's startPct can never be
+ * TypeScript narrows inside each hook file so Sarge's rollLimit can never be
  * accidentally accessed on The Executive's config. Add a new union member here
  * when a new boss rule type is introduced — no other shared types need changing.
  */
 export type BossRuleParams =
   | { rule: 'EXTORTION_FEE';      taxPct: number }
-  | { rule: 'RISING_MIN_BETS';    startPct: number; incrementPct: number; capPct: number; nonComplianceFinePct: number }
+  | { rule: 'DOUBLE_TIME';        rollLimit: number }
   | { rule: 'DISABLE_CREW' }
   | { rule: 'CROSS_CALIBRATION' }
   | { rule: 'TRIBUTE';            escrowSeizurePct: number }
@@ -158,12 +143,6 @@ export interface BossConfig {
    *   BossEntryModal still reads boss.flavorText. Removed in Part 7.
    */
   flavorText: string;
-  /**
-   * Parameters for RISING_MIN_BETS — read by BossEntryModal and getBossMinBet().
-   * @deprecated Superseded by ruleParams. Retained while BossEntryModal and
-   *   getBossMinBet() still reference this field directly. Removed in Part 7.
-   */
-  risingMinBets?: RisingMinBetsParams;
 }
 
 /** Complete configuration for a single gauntlet marker. */
@@ -287,19 +266,19 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       name:  'Sarge',
       title: 'The Pit Boss',
       // Vibe
-      dreadTagline:        'FALL IN.',
+      dreadTagline:        'DOUBLE TIME.',
       entryLines: [
-        "You want to shoot in MY hall?",
-        "Every point you hit, the price goes up.",
-        "And it never comes back down.",
+        "You want to shoot in MY hall? You shoot on MY clock.",
+        "Six rolls to make your point. Not seven. Six.",
+        "Dawdle and you're out, soldier.",
       ],
-      ruleBlurb:          "The minimum Pass Line bet rises with every Point Hit and holds on Seven Out. Come out under the minimum and you can still roll — but Sarge fines you 5% of the marker for the privilege.",
+      ruleBlurb:          "Once your point is set, you have 6 rolls to hit it. Run out the clock and Sarge calls it — the 6th blank roll counts as a Seven-Out.",
       victoryQuote:       "…not bad, soldier. Dismissed.",
       defeatAnnouncement: 'ENEMY NEUTRALIZED',
       // Mechanic
-      rule:           'RISING_MIN_BETS',
-      ruleHeaderText: 'MIN BET RISES EACH POINT — SKIP IT AND PAY A 5% MARKER FINE',
-      ruleParams:     { rule: 'RISING_MIN_BETS', startPct: 0.04, incrementPct: 0.02, capPct: 0.20, nonComplianceFinePct: 0.05 },
+      rule:           'DOUBLE_TIME',
+      ruleHeaderText: 'HIT YOUR POINT IN 6 ROLLS — OR IT\'S A SEVEN-OUT',
+      ruleParams:     { rule: 'DOUBLE_TIME', rollLimit: 6 },
       // Comp
       compReward:      'EXTRA_SHOOTER',
       compPerkId:      COMP_PERK_IDS.MEMBER_JACKET,
@@ -307,12 +286,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compDescription: "+1 SHOOTER at every marker for the rest of the run — they know you earned your seat.",
       compFanLabel:    'JACKET',
       // Legacy
-      flavorText:    "You want to play in MY hall? Ante up, soldier.",
-      risingMinBets: {
-        startPct:     0.04,
-        incrementPct: 0.02,
-        capPct:       0.20,
-      },
+      flavorText: "You shoot on MY clock, soldier. Six rolls.",
     },
   },
 
@@ -716,28 +690,19 @@ export function pickEntryCharmSlot(
 }
 
 /**
- * Returns the minimum Pass Line bet (in cents) for the current boss encounter,
- * or null if the marker is not a boss fight or has no RISING_MIN_BETS rule.
+ * Returns the boss-raised minimum Pass Line bet (in cents) for the current boss
+ * encounter, or null when no boss minimum applies.
  *
- * Formula:
- *   minBet = targetCents × clamp(startPct + incrementPct × bossPointHits, 0, capPct)
- *   Result is rounded up to the nearest dollar (100 cents).
+ * Only TIDAL_SURGE (The Sovereign) raises the minimum: EBB/FLOW 2×, HIGH TIDE 3×
+ * the regular table minimum, snapped to $5. LOW TIDE returns null.
  *
- * Design note — "Hold on Seven Out, Rise on Point Hit":
- *   bossPointHits only increments when the player hits the point (POINT_HIT without
- *   clearing the marker). All other outcomes — NATURAL, CRAPS_OUT, POINT_SET,
- *   SEVEN_OUT, NO_RESOLUTION — leave the counter unchanged. The min-bet holds at
- *   its current level on Seven Out so Sarge never lets the pressure drop.
- *   Counter resets to 0 on any marker clear (TRANSITION).
- *
- * @param markerIndex  0-based index into GAUNTLET.
- * @param bossPointHits Point hits scored so far this boss segment (0 = first approach).
+ * @param markerIndex   0-based index into GAUNTLET.
+ * @param bossPointHits The boss counter (tide stage for TIDAL_SURGE).
  */
 export function getBossMinBet(markerIndex: number, bossPointHits: number): number | null {
   const config = GAUNTLET[markerIndex];
   if (!config?.isBoss || !config.boss) return null;
 
-  const { targetCents } = config;
   const boss = config.boss;
 
   if (boss.rule === 'TIDAL_SURGE') {
@@ -748,30 +713,21 @@ export function getBossMinBet(markerIndex: number, bossPointHits: number): numbe
     return Math.round(getMinBet(markerIndex) * multiplier / 500) * 500;
   }
 
-  if (!boss.risingMinBets) return null;
-
-  const { startPct, incrementPct, capPct } = boss.risingMinBets;
-
-  const rawPct     = startPct + incrementPct * bossPointHits;
-  const clampedPct = Math.min(rawPct, capPct);
-  const rawCents   = targetCents * clampedPct;
-
-  // Round up to the nearest dollar to keep bet amounts clean.
-  return Math.ceil(rawCents / 100) * 100;
+  return null;
 }
 
 /**
  * Maximum single bet (pass line or individual hardway) for a given marker.
  *
- * Normally set at 10 % of the current marker target. In boss rooms that use
- * RISING_MIN_BETS (e.g. Sarge), the table max is dynamically floored at
+ * Normally set at 10 % of the current marker target. When a boss raises the
+ * minimum (The Sovereign's tide), the table max is dynamically floored at
  * 5 × the current boss minimum so the player always has room to place the
  * minimum pass-line bet and back it with full 5× odds on a 6 or 8.
  *
  * @param currentMarkerIndex  The marker the player is currently chasing (0-based).
- * @param bossPointHits       Point hits scored so far this boss segment (required
- *                            for boss markers to compute the dynamic floor; pass 0
- *                            when unknown — safe default, never over-restricts).
+ * @param bossPointHits       The boss counter (required for boss markers to compute
+ *                            the dynamic floor; pass 0 when unknown — safe default,
+ *                            never over-restricts).
  * @param ceilingPct          Fraction of the marker target to use as the normal max.
  *                            Defaults to 0.10 (10%). Pass 0.15 when The Old Pro is active.
  * @returns Maximum bet in cents.

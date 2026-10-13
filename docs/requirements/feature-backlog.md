@@ -1678,8 +1678,13 @@ Give the Floor 5 comp an effect that matters on Floors 6–9 (Sovereign tide min
 
 **Type:** Game design / boss mechanic
 **Area:** `packages/shared/src/config.ts` (Floor 2 boss), `packages/shared/src/bossRules/`, `apps/api/src/routes/rolls.ts`, `apps/web/src/components/BossRoomHeader.tsx`, `apps/web/src/components/DiceZone.tsx`
-**Status:** Selected — ready for design sign-off, then implementation
+**Status:** Implemented (2026-10-13)
 **Source:** Playtest feedback, 2026-10-13
+**Decisions (signed off 2026-10-13):**
+1. Crew that trigger on a Seven-Out (Lefty, Floor Walker, Lucky Charm) do **not** trigger on a timeout.
+2. The comp stays: Member's Jacket.
+3. Runs that are mid-Sarge-fight at deploy are accepted as-is (no counter reset).
+
 **Alternative:** FB-031 ("Orders") — kept in reserve if Double Time doesn't play well
 
 ### Problem
@@ -1729,6 +1734,9 @@ For comparison: a 5-roll clock times out 16–24% of points, a 7-roll clock 8–
 Also update: `floors.ts` Floor 2 `bossTeaser` and intro line 2; Sal's tutorial line ("Sarge jacks the minimums" → "Sarge puts you on the clock"); `CompCard`/help text if they mention minimums.
 
 ### Implementation notes
+
+*As built:* matches the notes below. One addition: the timeout also clears crew save flags (`sevenOutBlocked`, `passLineProtected`, `hardwayProtected`), so a Lefty re-roll of a real 7 into a blank on the last roll doesn't rescue the shooter. The `{ fine }` variant of `validateBet` was removed; the hook now only rejects.
+
 
 - **New rule type** `DOUBLE_TIME` with `ruleParams: { rule: 'DOUBLE_TIME', rollLimit: 6 }`. The hook object is empty; the logic is inline in `rolls.ts`, following the existing Executive/Commander pattern.
 - **Counter:** reuse `bossPointHits` (DB `boss_roll_count`) as "point-phase rolls used":

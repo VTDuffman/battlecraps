@@ -79,7 +79,8 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
   {
     name:        'Architect — 4 seven-outs, one crew left',
     markerIndex: ARCHITECT,
-    crew:        STARTER_CREW,
+    // Each seven-out removes one crew member, so 4 seven-outs leaves 1 of 5.
+    crew:        [16, null, null, null, null],
     bossCounter: 4,
   },
   {

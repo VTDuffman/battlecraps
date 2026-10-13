@@ -12,7 +12,7 @@ import type { BossRuleType } from '../config.js';
 import type { BossRuleHooks } from './types.js';
 
 import { extortionFeeHooks }   from './extortionFee.js';
-import { risingMinBetsHooks }  from './risingMinBets.js';
+import { doubleTimeHooks }     from './doubleTime.js';
 import { disableCrewHooks }    from './disableCrew.js';
 import { tributeHooks }        from './tribute.js';
 import { tidalSurgeHooks }     from './tidalSurge.js';
@@ -22,7 +22,7 @@ import { convergenceHooks }           from './convergence.js';
 
 export const BOSS_RULE_HOOKS: Record<BossRuleType, BossRuleHooks> = {
   EXTORTION_FEE:           extortionFeeHooks,
-  RISING_MIN_BETS:         risingMinBetsHooks,
+  DOUBLE_TIME:             doubleTimeHooks,
   DISABLE_CREW:            disableCrewHooks,
   CROSS_CALIBRATION:       firstContactProtocolHooks,  // placeholder — logic is inline in rolls.ts
   TRIBUTE:                 tributeHooks,

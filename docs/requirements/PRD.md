@@ -38,8 +38,8 @@ Odds: True-odds betting allowed behind the Point (4/10 @ 2:1; 5/9 @ 3:2; 6/8 @ 6
 Hardways: Bets on 4, 6, 8, 10 appearing as pairs. Payouts: Hard 4/10 @ 7:1; Hard 6/8 @ 9:1. Hardway bets are cleared on a Seven Out or when the matching number rolls "soft" (non-paired). High-payout triggers for Crew abilities.
 
 Bet Constraints:
-- Maximum bet per type: 10% of the current Marker target (15% with The Old Pro). In Sarge and Sovereign boss fights the max is floored at 5× the boss minimum; The Commander's death spiral halves it. Placing a chip that would exceed the maximum tops the bet out at the maximum rather than rejecting the click.
-- Minimum come-out Pass Line bet: ~1/6 of the table max, snapped to $5, never below $5 (`getMinBet`). Bosses can raise it (Sarge, The Sovereign).
+- Maximum bet per type: 10% of the current Marker target (15% with The Old Pro). In The Sovereign's fight the max is floored at 5× the tide minimum; The Commander's death spiral halves it. Placing a chip that would exceed the maximum tops the bet out at the maximum rather than rejecting the click.
+- Minimum come-out Pass Line bet: ~1/6 of the table max, snapped to $5, never below $5 (`getMinBet`). The Sovereign's tide raises it during that fight.
 - Bets are deducted from bankroll at placement; losses require no further deduction at resolution.
 - Odds bets are only valid while a point is active.
 
@@ -147,7 +147,7 @@ Displayed in the Roll Log UI component (see Section 6).
 | Floor | Venue | Marker Targets | Boss | Boss Rule | Comp Reward |
 |---|---|---|---|---|---|
 | 1 | The Loading Dock | $50 / $100 / $200 | The Foreman | 20% tax on winning profit | The Vig: crew cash bonuses +20% |
-| 2 | VFW Hall | $300 / $500 / $1k | Sarge | Rising min bet (4%→20%); under it = 5% fine | Member's Jacket: +1 shooter every marker |
+| 2 | VFW Hall | $300 / $500 / $1k | Sarge | Double Time: hit the point within 6 rolls or it's a Seven-Out | Member's Jacket: +1 shooter every marker |
 | 3 | The Riverboat | $1.5k / $2k / $4k | Mme. Le Prix | One crew charmed per come-out | Sea Legs: keep half the Hype above 1.0x on Seven Out |
 | 4 | The Strip | $5k / $7.5k / $15k | The Executive | Performance Review rating; PIP termination | Board Seat: 4th crew slot |
 | 5 | The Lodge | $30k / $50k / $100k | The Hierophant | Crew cash held one roll; 25% seized on Seven Out | The Covenant: halves that seizure (redesign pending, FB-029) |
@@ -156,17 +156,15 @@ Displayed in the Roll Log UI component (see Section 6).
 | 8 | The Signal | $5M / $7.5M / $15M | The Emissary | Crew cash held one roll; evaporates on Seven Out | The Frequency: Naturals pay 3% of target |
 | 9 | The Null Space | $20M / $30M / $60M | The Architect | Seven Out removes the last crew to fire | None (victory) |
 
-5.1.1 Rising Min-Bets Mechanics (Sarge — Floor 2 Boss)
+5.1.1 Double Time Mechanics (Sarge — Floor 2 Boss) — FB-030
 
-The come-out Pass Line minimum starts at 4% of the marker target and rises by 2% per Point Hit scored during the fight, capped at 20%.
+Once a point is set, the shooter has 6 point-phase rolls (`rollLimit`) to hit it. The clock starts on the first roll after the point-setting roll; come-out rolls never tick it.
 
-Formula: minBet = targetCents × min(0.04 + 0.02 × bossPointHits, 0.20), rounded up to the nearest dollar.
+Time's up: if the 6th point-phase roll is a blank (no Point Hit, no 7), it counts as a Seven-Out — Pass Line and Odds lost, all Hardways cleared (a Hardway that won on that roll still pays), shooter lost, Hype reset.
 
-Escalation trigger: the counter (bossPointHits) increments ONLY on a POINT_HIT that does not clear the marker. All other outcomes leave it unchanged; the min-bet HOLDS on a Seven Out.
+Crew interactions: the timeout is applied after the crew cascade. Crew that pay on blank rolls (the Grinder) still pay; crew that react to a dice Seven-Out (Lefty, Floor Walker, Lucky Charm) do not trigger.
 
-Non-compliance: coming out under the minimum is allowed but fined 5% of the target, once per come-out (no further fines during that point phase).
-
-Example ($1,000 target): Roll 1 = $40 min. Hit the point twice → $80 min. Hit it again → $100 min. Seven Out → still $100. Cap reached at 8 Point Hits → $200 max thereafter.
+Odds with a 6-roll clock: points time out 18% (4/10), 14% (5/9) and 11% (6/8) of the time.
 
 5.2 The Crew (30)
 

@@ -202,8 +202,8 @@ interface TurnSettledPayload {
   nudgedFrom?:             [number, number];
   /** Highest gauntlet marker index the player has ever reached, updated when a marker clears. */
   highestMarkerReached:    number;
-  /** Non-zero when Sarge's non-compliance fine was deducted this roll (cents). */
-  nonComplianceFine?:      number;
+  /** Sarge's DOUBLE_TIME clock ran out — a blank on the last allowed roll became a SEVEN_OUT. */
+  clockExpired?:           boolean;
   /**
    * Index of the crew slot currently enchanted by Mme. Le Prix.
    * Present only during a DISABLE_CREW boss fight (mid-fight updates).
@@ -283,9 +283,9 @@ export interface GameState {
   currentMarkerIndex: number;
 
   /**
-   * Point hits scored so far in the current boss fight segment.
-   * 0 outside boss fights. Drives getBossMinBet() for the RISING_MIN_BETS rule.
-   * Synced from the server via turn:settled and recruit responses.
+   * Per-boss-fight counter; meaning depends on the boss rule (Sarge: clock rolls
+   * used, Sovereign: tide stage — drives getBossMinBet(), Executive: rating, …).
+   * 0 outside boss fights. Synced from the server via turn:settled and recruit responses.
    */
   bossPointHits: number;
 
@@ -327,6 +327,8 @@ export interface GameState {
   lastRollResult: RollResult | null;
   /** True when the last roll was a craps-out cancelled by Poseidon's Favor. */
   lastCrapsOutBlocked: boolean;
+  /** True when the last roll was Sarge's DOUBLE_TIME clock running out. */
+  lastClockExpired: boolean;
   lastDelta:      number | null;        // signed cents — net bankroll change after roll
 
   /**
@@ -1161,6 +1163,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   lastDice:       null,
   lastRollResult: null,
   lastCrapsOutBlocked: false,
+  lastClockExpired: false,
   lastDelta:      null,
   dreadDice:      null,
   nudgeDice:      null,
@@ -1272,6 +1275,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastDice:          null,
       lastRollResult:    null,
       lastCrapsOutBlocked: false,
+      lastClockExpired: false,
       lastDelta:         null,
       dreadDice:         null,
       nudgeDice:         null,
@@ -1420,6 +1424,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
                              : payload.dice,
           lastRollResult:    payload.rollResult,
           lastCrapsOutBlocked: payload.crapsOutBlocked === true,
+          lastClockExpired:    payload.clockExpired === true,
           dreadDice:         isLeftySave ? payload.originalDice! : null,
           nudgeDice:         isNudge     ? payload.nudgedFrom!   : null,
           pendingSettlement: payload,
@@ -1510,6 +1515,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastDice:            null,
       lastRollResult:      null,
       lastCrapsOutBlocked: false,
+      lastClockExpired: false,
       lastDelta:           null,
       dreadDice:           null,
       nudgeDice:           null,
@@ -1791,6 +1797,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           lastDice:       cur.nudgedFrom !== undefined ? cur.nudgedFrom : cur.dice,
           lastRollResult: cur.rollResult,
           lastCrapsOutBlocked: cur.crapsOutBlocked === true,
+          lastClockExpired:    cur.clockExpired === true,
           dreadDice:      null,
           // Increment to tell DiceZone to start a full re-throw animation.
           // applyPendingSettlement() will be called by onLandEnd after that throw.
@@ -1823,13 +1830,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         get().applyPendingSettlement();
       }, 1000);
       return;
-    }
-
-    // ── Non-compliance fine notification (Sarge) ─────────────────────────────
-    // Warn the player that a fine was deducted this roll. This is the minimum
-    // notification; a dedicated HUD indicator can be wired to this log line.
-    if ((p.nonComplianceFine ?? 0) > 0) {
-      console.warn(`[Sarge] Non-compliance fine applied: $${(p.nonComplianceFine! / 100).toFixed(2)}`);
     }
 
     // ── Charm slot update (Mme. Le Prix — DISABLE_CREW boss) ─────────────────
@@ -2290,6 +2290,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           bossRating?: { index: number; changed: boolean; direction: 'up' | 'down' | null };
           pipTermination?: boolean;
           crapsOutBlocked?: boolean;
+          clockExpired?: boolean;
           removedCrewSlot?: number;
         };
       };
@@ -2355,6 +2356,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ...(data.roll.bossRating      !== undefined && { bossRating:      data.roll.bossRating      }),
         ...(data.roll.pipTermination  === true      && { pipTermination:  true as const              }),
         ...(data.roll.crapsOutBlocked === true      && { crapsOutBlocked: true as const              }),
+        ...(data.roll.clockExpired    === true      && { clockExpired:    true as const              }),
         ...(data.roll.removedCrewSlot !== undefined && { removedCrewSlot: data.roll.removedCrewSlot  }),
       };
 
@@ -2368,6 +2370,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
                            : settlement.dice,
         lastRollResult:    settlement.rollResult,
         lastCrapsOutBlocked: settlement.crapsOutBlocked === true,
+        lastClockExpired:    settlement.clockExpired === true,
         dreadDice:         isLeftySave ? settlement.originalDice! : null,
         nudgeDice:         isNudge     ? settlement.nudgedFrom!   : null,
         pendingSettlement: settlement,
@@ -2455,6 +2458,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastDice:       null,
       lastRollResult: null,
       lastCrapsOutBlocked: false,
+      lastClockExpired: false,
       lastDelta:      null,
       cascadeQueue:   [],
       // Pub is always outside any boss fight — clear any lingering charm state.

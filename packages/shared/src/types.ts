@@ -149,6 +149,12 @@ export interface TurnContextFlags {
   crapsOutBlocked?: boolean;
 
   /**
+   * Set when Sarge's DOUBLE_TIME clock expired: the point-phase roll was a blank
+   * on the last allowed roll and was converted to a SEVEN_OUT after the cascade.
+   */
+  clockExpired?: boolean;
+
+  /**
    * @deprecated — FIRST_CONTACT_PROTOCOL retired in FB-026. Never set from FB-026 onwards.
    * Previously told computeNextState to return IDLE_TABLE/COME_OUT when FCP converted
    * a COME_OUT NATURAL to NO_RESOLUTION. Kept in the type for forward-compatibility only.
@@ -568,15 +574,13 @@ export interface GameState {
   ];
 
   /**
-   * Point hits scored so far within the current boss fight segment.
-   * 0 when not in a boss fight, or at the start of one before any Point Hit.
-   *
-   * Increments ONLY on POINT_HIT (without clearing the marker).
-   * All other outcomes — NATURAL, CRAPS_OUT, POINT_SET, SEVEN_OUT, NO_RESOLUTION —
-   * leave this counter unchanged (min-bet holds at its current level).
-   * Resets to 0 on any marker clear (TRANSITION or final GAME_OVER).
-   *
-   * Used by getBossMinBet() to compute the current minimum Pass Line bet.
+   * Per-boss-fight counter (DB `boss_roll_count`). Its meaning depends on the rule:
+   *   DOUBLE_TIME (Sarge):       point-phase rolls used against the clock.
+   *   DISABLE_CREW (Le Prix):    charmed slot index.
+   *   CROSS_CALIBRATION:         Executive rating 0–4.
+   *   TIDAL_SURGE (Sovereign):   tide stage (drives getBossMinBet()).
+   *   CONVERGENCE (Architect):   seven-out count.
+   * Every marker entry sets it via getBossEntryCounter(). 0 outside boss fights.
    */
   bossPointHits: number;
 

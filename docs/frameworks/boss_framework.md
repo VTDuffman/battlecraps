@@ -13,7 +13,7 @@ There are nine bosses across the 9-floor gauntlet:
 | Index | Floor | Target | Boss | Rule |
 |---|---|---|---|---|
 | 2  | 1 — The Loading Dock | $200 | The Foreman | `EXTORTION_FEE` |
-| 5  | 2 — VFW Hall | $1,000 | Sarge | `RISING_MIN_BETS` |
+| 5  | 2 — VFW Hall | $1,000 | Sarge | `DOUBLE_TIME` |
 | 8  | 3 — Riverboat | $4,000 | Mme. Le Prix | `DISABLE_CREW` |
 | 11 | 4 — The Strip | $15,000 | The Executive | `CROSS_CALIBRATION` |
 | 14 | 5 — The Lodge | $100,000 | The Hierophant | `TRIBUTE` |
@@ -64,10 +64,8 @@ Boss rules mirror the crew `execute()` pattern. Each rule type has its own hook 
 
 ```typescript
 export interface BossRuleHooks {
-  // Called pre-roll, on the COME-OUT only (rolls.ts). null = allow;
-  // string = reject (422); { fine, message } = allow but deduct `fine` after settlement.
-  validateBet?(bets: Bets, params: BossRuleParams, state: BossRuleState):
-    string | null | { fine: number; message: string };
+  // Called pre-roll, on the COME-OUT only (rolls.ts). null = allow; string = reject (422).
+  validateBet?(bets: Bets, params: BossRuleParams, state: BossRuleState): string | null;
 
   // Post-classify, pre-cascade. Currently unused by any rule.
   modifyOutcome?(ctx: TurnContext, params: BossRuleParams, state: BossRuleState): TurnContext;
@@ -95,7 +93,7 @@ export interface BossRuleState {
 | File | Rule | Hook(s) used | Behavior |
 |---|---|---|---|
 | `extortionFee.ts` | `EXTORTION_FEE` | `modifyPayout` | Deducts `round(profit × taxPct)` (to the dollar) from winning payouts |
-| `risingMinBets.ts` | `RISING_MIN_BETS` | `validateBet` | Come-out Pass Line below the rising minimum → `{ fine }` (5% of target) |
+| `doubleTime.ts` | `DOUBLE_TIME` | *(none)* | Roll clock inline in `rolls.ts`: a blank on the last allowed point-phase roll becomes a SEVEN_OUT |
 | `disableCrew.ts` | `DISABLE_CREW` | `modifyCascadeOrder` | Every slot except the charmed one (`bossPointHits`) |
 | `tidalSurge.ts` | `TIDAL_SURGE` | `validateBet` | Come-out Pass Line below the current tide minimum → rejected (422) |
 | `tribute.ts` | `TRIBUTE` | *(none)* | Escrow + seizure inline in `rolls.ts` |
@@ -107,7 +105,7 @@ export interface BossRuleState {
 
 | Rule | Counter meaning | Changes on |
 |---|---|---|
-| `RISING_MIN_BETS` | Point hits this fight | +1 on POINT_HIT |
+| `DOUBLE_TIME` | Point-phase rolls used against the clock | +1 on each blank; reset to 0 by any other result |
 | `DISABLE_CREW` | Charmed slot index | Reselected after each come-out resolution |
 | `CROSS_CALIBRATION` | Performance rating 0–4 (enters at 2) | ±1 per Natural/Point Hit vs Craps Out/Seven-Out |
 | `TIDAL_SURGE` | Tide stage (mod 4) | +1 on each come-out resolution (Natural, Craps Out, Point Hit, Seven-Out) |
@@ -118,7 +116,7 @@ Every marker-entry write uses `getBossEntryCounter(markerIndex)` (2 for The Exec
 ### Server execution order (`apps/api/src/routes/rolls.ts`)
 
 ```
-1.  Bet validation      table max (10%, Old Pro 15%; floored at 5× a Sarge/Sovereign boss min;
+1.  Bet validation      table max (10%, Old Pro 15%; floored at 5× the Sovereign's tide min;
                         halved by the Commander's death spiral below 0.5× hype), regular min,
                         then bossHooks.validateBet() — come-out only
 2.  Dice                server RNG (or tutorial/dev forced dice)
@@ -128,14 +126,15 @@ Every marker-entry write uses `getBossEntryCounter(markerIndex)` (2 for The Exec
 6.  modifyOutcome()     (unused)
 7.  Poseidon's Favor    shooter's first-roll CRAPS_OUT → NO_RESOLUTION, Pass Line kept
 8.  resolveCascade()    bossHooks.modifyCascadeOrder() (Le Prix)
+8b. Sarge's clock       DOUBLE_TIME: blank on the last allowed roll → SEVEN_OUT (clockExpired)
 9.  Boss bookkeeping    Executive PIP check; Le Prix charm reselection
 10. Additive pipeline   The Vig ×1.2 → Architect load-bearing ×0.85^N → escrow hold (Hierophant/Emissary)
 11. settleTurn()        then bossHooks.modifyPayout() (Foreman), then Executive +15% at Exceptional
-12. Bankroll extras     The Frequency bonus → escrow release/seizure → Sarge fine
+12. Bankroll extras     The Frequency bonus → escrow release/seizure
 13. computeNextState()  boss counters, Commander decay / Sea Legs, Architect demolition,
                         Pressure Cooker streak; escrow held on a marker-clearing roll is paid out
 14. Persist + emit      `turn:settled` (bossRating, charmFired, pipTermination,
-                        crapsOutBlocked, removedCrewSlot …)
+                        crapsOutBlocked, clockExpired, removedCrewSlot …)
 ```
 
 ---
@@ -160,20 +159,28 @@ ruleParams: { rule: 'EXTORTION_FEE', taxPct: 0.20 }
 
 ### Sarge — Floor 2
 
-**Rule:** `RISING_MIN_BETS` | **Target:** $1,000 | **Index:** 5
+**Rule:** `DOUBLE_TIME` | **Target:** $1,000 | **Index:** 5 | **Spec:** FB-030
 
-The minimum Pass Line bet starts at 4% of the target ($40) and rises 2% ($20) per Point Hit, capped at 20% ($200). It holds on Seven Out.
+**"Double Time" — the roll clock.** Once a point is set, the shooter has `rollLimit` (6) point-phase rolls to hit it. If the 6th roll is a blank, Sarge calls **"TIME'S UP!"** and it counts as a Seven-Out:
+- Pass Line and Odds are lost, and all Hardways clear (a Hardway that won on that roll still pays).
+- The shooter is lost, and Hype resets (Sea Legs applies).
 
-Coming out **under** the minimum is allowed but fined 5% of the target ($50), once per come-out — `validateBet` only runs on come-out rolls, so a locked non-compliant Pass Line is not re-fined during the point phase. The table max is floored at 5× the current minimum so the minimum plus full odds always fits.
+The clock starts on the first roll after the point is set; come-out rolls never tick it. A real Seven-Out or a Point Hit resolves the point normally and resets the clock.
 
-| Event | Effect on min bet |
-|---|---|
-| Point Hit | +$20 (rises) |
-| Seven Out | No change (holds) |
-| Marker clear | Resets |
+**Implementation note:** no hook logic.
+- **Counter:** `bossPointHits` counts point-phase rolls used — +1 on each `NO_RESOLUTION`, reset to 0 by every other result.
+- **The timeout:** in `rolls.ts`, after `resolveCascade`, a `NO_RESOLUTION` with `bossPointHits + 1 >= rollLimit` is rebuilt as `SEVEN_OUT`. All bets go to zero in `resolvedBets`, and the crew save flags (`sevenOutBlocked`, `passLineProtected`, `hardwayProtected`) are cleared.
+- **Why after the cascade:**
+  - Blank-roll crew (the Grinder) still pay for that roll.
+  - Crew that react to a dice Seven-Out don't trigger: Lefty, Floor Walker, Lucky Charm. If Lefty re-rolls a real 7 into a blank on the last roll, time is still up.
+- **Client:** `clockExpired: true` is sent in the roll response and `turn:settled`. The dice show `TIME'S UP!`, and the header counts down (`CLOCK 6` → `LAST ROLL`).
+
+**Odds:** a 6-roll clock times out 18% (4/10), 14% (5/9) and 11% (6/8) of points.
+
+**History:** until FB-030 (2026-10-13) Sarge used `RISING_MIN_BETS` — a come-out minimum rising 2% per Point Hit, with a 5% fine for coming out under it. Replaced because it overlapped The Sovereign's tide. FB-031 ("Orders") is the reserve alternative.
 
 ```typescript
-ruleParams: { rule: 'RISING_MIN_BETS', startPct: 0.04, incrementPct: 0.02, capPct: 0.20, nonComplianceFinePct: 0.05 }
+ruleParams: { rule: 'DOUBLE_TIME', rollLimit: 6 }
 ```
 
 **Comp:** Member's Jacket — +1 shooter (6 instead of 5) at every marker for the rest of the run. `recruit.ts` checks `run.compPerkIds` at every pub exit.
@@ -326,7 +333,7 @@ ruleParams: { rule: 'CONVERGENCE' }
 ```typescript
 export type BossRuleParams =
   | { rule: 'EXTORTION_FEE';      taxPct: number }
-  | { rule: 'RISING_MIN_BETS';    startPct: number; incrementPct: number; capPct: number; nonComplianceFinePct: number }
+  | { rule: 'DOUBLE_TIME';        rollLimit: number }
   | { rule: 'DISABLE_CREW' }
   | { rule: 'CROSS_CALIBRATION' }
   | { rule: 'TRIBUTE';            escrowSeizurePct: number }
@@ -337,7 +344,7 @@ export type BossRuleParams =
   | { rule: 'CONVERGENCE' };
 ```
 
-TypeScript narrows the type inside each hook file via the `rule` discriminant. This prevents cross-boss param access bugs (e.g. accidentally reading Sarge's `startPct` when the active boss is The Hierophant).
+TypeScript narrows the type inside each hook file via the `rule` discriminant. This prevents cross-boss param access bugs (e.g. accidentally reading Sarge's `rollLimit` when the active boss is The Hierophant).
 
 ---
 
@@ -363,10 +370,11 @@ TypeScript narrows the type inside each hook file via the `rule` discriminant. T
 | Scenario | Expected |
 |---|---|
 | Foreman fight, winning roll | Profit taxed 20%; net payout visible in roll log |
-| Sarge fight, come-out at the minimum | No fine (min $40 at 0 point hits, $60 at 1) |
-| Sarge fight, come-out under the minimum | Roll proceeds; $50 (5% of target) fined once |
-| Sarge fight, point phase after a non-compliant come-out | No further fine |
-| Sarge fight, capped | Min bet $200; no further increase |
+| Sarge fight, blank on the 6th point-phase roll | SEVEN_OUT with `clockExpired`; shooter lost; bets lost; dice show TIME'S UP! |
+| Sarge fight, Point Hit on the 6th roll | Normal win; clock resets |
+| Sarge fight, blank before the limit | Clock ticks (`bossPointHits` +1); header counts down |
+| Sarge fight, real Seven-Out / come-out rolls | Normal; come-out never ticks the clock |
+| Sarge fight, timeout with Grinder / Floor Walker / Lefty | Grinder pays; Floor Walker doesn't refund; Lefty doesn't save |
 | Mme. Le Prix fight | Exactly one filled slot charmed per come-out (❤️); that crew produces no events; all others fire normally |
 | Mme. Le Prix fight, charmed crew would have fired | `charmFired: true` in `turn:settled`; "OOH LA LA!" bark plays |
 | Mme. Le Prix fight, come-out resolves | `charmedCrewSlot` moves to a newly selected filled slot |

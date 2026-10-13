@@ -292,15 +292,13 @@ export const runs = pgTable(
     consecutivePointHits: smallint('consecutive_point_hits').notNull().default(0),
 
     /**
-     * Point hits scored so far within the current boss fight segment.
-     * 0 when not in a boss fight, or at the start of one before any Point Hit.
-     *
-     * Increments ONLY on POINT_HIT (without clearing the marker) — all other
-     * roll outcomes (NATURAL, CRAPS_OUT, POINT_SET, SEVEN_OUT, NO_RESOLUTION)
-     * leave this counter unchanged. The min-bet therefore holds on Seven Out.
-     * Resets to 0 on any marker clear (TRANSITION) or GAME_OVER.
-     *
-     * Drives getBossMinBet() which enforces the RISING_MIN_BETS rule for Sarge.
+     * Per-boss-fight counter (`bossPointHits` in code). Meaning depends on the rule:
+     *   DOUBLE_TIME (Sarge):     point-phase rolls used against the clock.
+     *   DISABLE_CREW (Le Prix):  charmed slot index.
+     *   CROSS_CALIBRATION:       Executive rating 0–4 (enters at 2).
+     *   TIDAL_SURGE (Sovereign): tide stage — drives getBossMinBet().
+     *   CONVERGENCE (Architect): seven-out count.
+     * Set on every marker entry via getBossEntryCounter(); 0 outside boss fights.
      */
     bossPointHits: smallint('boss_roll_count').notNull().default(0),
 

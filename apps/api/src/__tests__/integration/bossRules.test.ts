@@ -4,6 +4,14 @@
 
 import { vi, describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
+// Crew re-rolls (Lefty) use the server RNG, not cheat_dice. Pin them to a blank
+// (2+3) so the Double Time / Lefty interaction is deterministic. randomBelow
+// (Le Prix's charm selection) keeps its real implementation.
+vi.mock('../../lib/rng.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../lib/rng.js')>()),
+  rollDice: vi.fn((): [number, number] => [2, 3]),
+}));
+
 vi.mock('../../lib/io.js', () => ({
   getIO:   vi.fn(() => ({ to: vi.fn(() => ({ emit: vi.fn() })) })),
   initIO:  vi.fn(),
@@ -46,43 +54,112 @@ beforeEach(async () => {
 });
 
 // ---------------------------------------------------------------------------
-// RISING_MIN_BETS (Sarge — marker index 5, target = 100_000¢ = $1,000)
+// DOUBLE_TIME (Sarge — marker index 5, target = 100_000¢ = $1,000) — FB-030
 //
-// Since FB-026 an under-minimum pass line is NOT rejected: the roll proceeds and
-// a non-compliance fine (5% of target = 5_000¢) is deducted from the bankroll.
-//
-// Formula: bossMin = Math.ceil(targetCents * pct / 100) * 100, pct = 0.04 + 0.02 × bossPointHits
-//   bossPointHits=0: 4% → 4_000¢      bossPointHits=1: 6% → 6_000¢
-//
-// Tests roll craps (1+1) on the come-out so the pass line simply loses:
-//   bankroll after = start − bet − fine   (no payout / hype math involved)
+// Once a point is set the shooter has rollLimit (6) point-phase rolls to hit it.
+// bossPointHits = point-phase rolls used. If the 6th roll is a blank, it is
+// converted to a SEVEN_OUT after the cascade ("TIME'S UP"): Pass Line + Odds
+// lost, all Hardways clear, shooter lost. Crew that react to a dice Seven-Out
+// (Lefty, Floor Walker, Lucky Charm) do NOT trigger on a timeout.
 // ---------------------------------------------------------------------------
 
-describe('RISING_MIN_BETS — Sarge (marker 5)', () => {
-  const FINE = 5_000;
+describe('DOUBLE_TIME — Sarge (marker 5)', () => {
+  const PASS = PASS_ONLY(2_000);
 
-  async function crapsOutAtSarge(bossPointHits: number, bet: number): Promise<number> {
+  async function sargePoint(overrides: Record<string, unknown>, d1: number, d2: number, bets: Bets = PASS) {
     const run = await createRun(userId, {
       currentMarkerIndex: 5,
-      bankrollCents:      20_000, // well below the 100_000 target (no auto-clear)
-      bossPointHits,
+      bankrollCents:      50_000,
+      status:             'POINT_ACTIVE',
+      phase:              'POINT_ACTIVE',
+      currentPoint:       6,
+      bets,
+      ...overrides,
     });
-    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(bet), 1, 1);
+    const { status, body } = await rollWithDice(app, run.id, bets, d1, d2);
     expect(status, JSON.stringify(body)).toBe(200);
-    return (body['run'] as Record<string, unknown>)['bankrollCents'] as number;
+    return { roll: body['roll'] as Record<string, unknown>, run: body['run'] as Record<string, unknown> };
   }
 
-  it('at bossPointHits=0: a 4_000¢ pass line meets the minimum — no fine', async () => {
-    expect(await crapsOutAtSarge(0, 4_000)).toBe(20_000 - 4_000);
+  it('a blank on the 6th point-phase roll is a Seven-Out ("TIME\'S UP")', async () => {
+    const { roll, run } = await sargePoint({ bossPointHits: 5 }, 2, 3); // 5 → blank on point 6
+    expect(roll['rollResult']).toBe('SEVEN_OUT');
+    expect(roll['clockExpired']).toBe(true);
+    expect(run['shooters']).toBe(4);
+    expect(run['phase']).toBe('COME_OUT');
+    expect((run['bets'] as Bets).passLine).toBe(0);
+    expect(run['bankrollCents']).toBe(50_000); // pass line was already deducted; nothing returned
+    expect(run['bossPointHits']).toBe(0);
   });
 
-  it('at bossPointHits=0: 3_900¢ is accepted but fined 5_000¢', async () => {
-    expect(await crapsOutAtSarge(0, 3_900)).toBe(20_000 - 3_900 - FINE);
+  it('hitting the point on the 6th roll wins normally', async () => {
+    const { roll, run } = await sargePoint({ bossPointHits: 5 }, 4, 2);
+    expect(roll['rollResult']).toBe('POINT_HIT');
+    expect(roll['clockExpired']).toBeUndefined();
+    expect(run['shooters']).toBe(5);
+    // stake 2_000 + floor(2_000 × 1.15) = 4_300
+    expect(run['bankrollCents']).toBe(54_300);
+    expect(run['bossPointHits']).toBe(0);
   });
 
-  it('at bossPointHits=1: the minimum rises to 6_000¢ (5_900¢ fined, 6_000¢ not)', async () => {
-    expect(await crapsOutAtSarge(1, 5_900)).toBe(20_000 - 5_900 - FINE);
-    expect(await crapsOutAtSarge(1, 6_000)).toBe(20_000 - 6_000);
+  it('a blank before the limit just ticks the clock', async () => {
+    const { roll, run } = await sargePoint({ bossPointHits: 2 }, 2, 3);
+    expect(roll['rollResult']).toBe('NO_RESOLUTION');
+    expect(run['bossPointHits']).toBe(3);
+    expect(run['phase']).toBe('POINT_ACTIVE');
+  });
+
+  it('a real Seven-Out before the limit is normal and resets the clock', async () => {
+    const { roll, run } = await sargePoint({ bossPointHits: 2 }, 3, 4);
+    expect(roll['rollResult']).toBe('SEVEN_OUT');
+    expect(roll['clockExpired']).toBeUndefined();
+    expect(run['bossPointHits']).toBe(0);
+  });
+
+  it('come-out rolls do not tick the clock', async () => {
+    const run = await createRun(userId, { currentMarkerIndex: 5, bankrollCents: 50_000, bossPointHits: 0 });
+    const setPoint = await rollWithDice(app, run.id, PASS, 4, 2);
+    expect((setPoint.body['roll'] as Record<string, unknown>)['rollResult']).toBe('POINT_SET');
+    expect((setPoint.body['run'] as Record<string, unknown>)['bossPointHits']).toBe(0);
+  });
+
+  it('blank-roll crew (Grinder) still pay on the timed-out roll', async () => {
+    // Max bet 10_000¢ → Grinder 0.15× = 1_500¢, Hype 1.0 → +1_500¢.
+    const { roll, run } = await sargePoint(
+      { bossPointHits: 5, crewSlots: [{ crewId: 25, cooldownState: 0 }, null, null, null, null] }, 2, 3);
+    expect(roll['rollResult']).toBe('SEVEN_OUT');
+    expect(run['bankrollCents']).toBe(51_500);
+  });
+
+  it('Floor Walker does not refund and Lefty does not re-roll on a timeout', async () => {
+    const { roll, run } = await sargePoint({
+      bossPointHits: 5,
+      crewSlots: [{ crewId: 5, cooldownState: 0 }, { crewId: 1, cooldownState: 0 }, null, null, null],
+    }, 2, 3);
+    expect(roll['rollResult']).toBe('SEVEN_OUT');
+    expect(roll['cascadeEvents']).toEqual([]);
+    expect(run['shooters']).toBe(4);
+    expect(run['bankrollCents']).toBe(50_000);
+  });
+
+  it('Lefty re-rolling a real 7 into a blank on the last roll does not save the shooter', async () => {
+    // Dice 3+4 = 7 → Lefty re-rolls (RNG pinned to 2+3 above) into a blank on point 6;
+    // the clock is on its last roll, so time's up and the shooter is still lost.
+    const { roll, run } = await sargePoint(
+      { bossPointHits: 5, crewSlots: [{ crewId: 1, cooldownState: 0 }, null, null, null, null] }, 3, 4);
+    expect(roll['rollResult']).toBe('SEVEN_OUT');
+    expect(roll['clockExpired']).toBe(true);
+    expect(run['shooters']).toBe(4);
+  });
+
+  it('a Hardway that wins on the timed-out roll still pays; the rest clear', async () => {
+    const bets: Bets = { passLine: 2_000, odds: 0, hardways: { hard4: 0, hard6: 1_000, hard8: 0, hard10: 1_000 } };
+    // Point 8, roll 3+3 = Hard 6 (9:1) — a blank on the point, so time's up.
+    const { roll, run } = await sargePoint({ bossPointHits: 5, currentPoint: 8 }, 3, 3, bets);
+    expect(roll['rollResult']).toBe('SEVEN_OUT');
+    // Hard 6 stake 1_000 + 9_000 profit returned; Pass Line and Hard 10 lost.
+    expect(run['bankrollCents']).toBe(60_000);
+    expect(run['bets']).toEqual({ passLine: 0, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } });
   });
 });
 
@@ -383,32 +460,6 @@ describe('CROSS_CALIBRATION — The Executive (marker 11)', () => {
       changed:   true,
       direction: 'up',
     });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// RISING_MIN_BETS — the fine is charged once, on the come-out
-//
-// A non-compliant pass line placed on the come-out must not be fined again on
-// every point-phase roll (the pass line is locked; the player can't fix it).
-// ---------------------------------------------------------------------------
-
-describe('RISING_MIN_BETS — fine applies on the come-out only', () => {
-  it('a point-phase roll with an under-minimum pass line is not fined again', async () => {
-    const run = await createRun(userId, {
-      currentMarkerIndex: 5,
-      bankrollCents:      20_000,
-      bossPointHits:      0,
-      status:             'POINT_ACTIVE',
-      phase:              'POINT_ACTIVE',
-      currentPoint:       6,
-      bets:               PASS_ONLY(3_900), // below the 4_000¢ minimum
-    });
-
-    // 2+3 = 5 → NO_RESOLUTION on point 6. No payout, so the bankroll only moves by a fine.
-    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(3_900), 2, 3);
-    expect(status, JSON.stringify(body)).toBe(200);
-    expect((body['run'] as Record<string, unknown>)['bankrollCents']).toBe(20_000);
   });
 });
 

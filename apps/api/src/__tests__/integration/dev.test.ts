@@ -653,3 +653,21 @@ describe('Floor 9 bankrolls beyond the old INTEGER ceiling', () => {
     expect(typeof run['bankrollCents']).toBe('number');    // bigint mode 'number', not string
   });
 });
+
+describe('escrow beyond the old INTEGER ceiling', () => {
+  beforeEach(() => setDevEnv('true', TEST_CLERK_ID));
+
+  it('stores and returns a Hierophant escrow above $21.47M', async () => {
+    const res = await app.inject({
+      method:  'POST',
+      url:     '/api/v1/dev/runs',
+      headers: { 'content-type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+      payload: JSON.stringify({ markerIndex: 14, pendingAdditiveCents: 3_000_000_000 }),
+    });
+    expect(res.statusCode, res.body).toBe(201);
+    const runId = (res.json() as Record<string, unknown>)['runId'] as string;
+    const row = await db.query.runs.findFirst({ where: eq(runs.id, runId) });
+    expect(row?.pendingAdditiveCents).toBe(3_000_000_000);
+    expect(typeof row?.pendingAdditiveCents).toBe('number');
+  });
+});

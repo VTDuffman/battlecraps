@@ -159,7 +159,9 @@ After all edits run:
 ---
 
 ## Step 2 — The Tariff: Mme. Le Prix (F3)
-[IMPLEMENTED - 05/28/2026]
+[IMPLEMENTED - 05/28/2026] · **[SUPERSEDED - 05/30/2026]**
+
+> ⚠️ **Historical.** The Tariff was replaced two days later by **The Enchantment** (commit `eca480e`): one random crew member sits out the cascade each come-out. The live rule is documented in `docs/frameworks/boss_framework.md` → Mme. Le Prix. Kept below as the implementation record only.
 
 **Goal:** Replace the full crew disable (returning [] from modifyCascadeOrder) with a 35%
 additive tax. Crew still fire and animate normally; their cash bonuses are reduced by 35%

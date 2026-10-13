@@ -1603,7 +1603,7 @@ Redesign 6 of 9 bosses to counter additive strategies directly. All changes are 
 | Boss | Floor | Old Mechanic | New Mechanic |
 |---|---|---|---|
 | **The Sovereign** | F6 | 5-roll calm / 2-roll surge (15% target flood) | Four-stage per-come-out tide cycle: LOW (1×) → EBB (2×) → HIGH (3×) → FLOW (2×) |
-| **Mme. Le Prix** | F3 | Crew fully disabled | 35% additive tariff — crew still fires, but additives taxed; multipliers and hype exempt |
+| **Mme. Le Prix** | F3 | Crew fully disabled | **The Enchantment** — one random crew member sits out the cascade each come-out (through the point phase), reselected on resolution. *(Shipped first as a 35% additive tariff; replaced 2026-05-30.)* |
 | **The Executive** | F4 | Roll a 4 = instant loss | Three-strike system: 1st 4 = −20% bankroll; 2nd = −40%; 3rd = game over |
 | **The Hierophant** | F5 | 15% bankroll tribute seized on 7-out | Additive escrow — crew bonuses held, 25% seized on 7-out (rest released) |
 | **The Commander** | F7 | Flat 0.5× hype decay per 7-out (no floor) | Tier-scaled decay + death spiral: normal decay + extra punishment below 0.75× hype |

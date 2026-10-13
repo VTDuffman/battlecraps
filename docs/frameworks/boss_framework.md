@@ -174,9 +174,15 @@ ruleParams: { rule: 'RISING_MIN_BETS', startPct: 0.04, incrementPct: 0.02, capPc
 
 **Rule:** `DISABLE_CREW` | **Target:** $4,000 | **Index:** 8
 
-The entire crew cascade is suppressed for the duration of the fight. Crew portraits remain visible but produce no events, no barks, and no cooldown ticks. Players must reach $4,000 on pure craps mechanics alone.
+**"The Enchantment."** Before each come-out roll, Mme. Le Prix enchants one randomly selected crew member, who sits out the cascade. The charm persists through any point phase and lifts on resolution (Natural, Craps Out, Point Hit or Seven-Out), when a new filled slot is chosen for the next come-out. Every other crew member fires normally.
 
-**Implementation note:** `modifyCascadeOrder` returns `[]`. The `for (const i of slotOrder)` loop in `resolveCascade()` simply never executes.
+**Entry charm:** chosen when the player leaves the pub (`recruit.ts`) via shared `pickEntryCharmSlot()`, so it reflects the crew that will actually play the fight. The client holds it in `pendingBossEntryCharm` and reveals the ❤️ after the boss-entry cinematic.
+
+**"OOH LA LA!" bark:** when the charmed crew member's ability *would* have fired on a roll, `turn:settled` carries `charmFired: true` and the client plays the bark.
+
+**Implementation note:** `modifyCascadeOrder` returns every active slot except the charmed one. The charmed slot index (0-based) is stored in `bossPointHits`; `rolls.ts` reselects it with the server RNG after each come-out resolution and emits it as `charmedCrewSlot`.
+
+**History:** originally a full crew shutdown (`modifyCascadeOrder` → `[]`); briefly a 35% additive tax ("The Tariff", FB-026 Step 2); replaced by The Enchantment on 2026-05-30.
 
 **Comp:** Sea Legs — On Seven Out, Hype resets to 50% instead of 1.0×.
 
@@ -337,7 +343,9 @@ TypeScript narrows the type inside each hook file via the `rule` discriminant. T
 | Sarge fight, 0 point hits | Min bet $40; `validateBet` rejects passLine < 4000 |
 | Sarge fight, 1 point hit | Min bet $60; holds if next roll is Seven Out |
 | Sarge fight, capped | Min bet $200; no further increase |
-| Mme. Le Prix fight | No crew events in roll log; no barks; cooldowns unchanged |
+| Mme. Le Prix fight | Exactly one filled slot charmed per come-out (❤️); that crew produces no events; all others fire normally |
+| Mme. Le Prix fight, charmed crew would have fired | `charmFired: true` in `turn:settled`; "OOH LA LA!" bark plays |
+| Mme. Le Prix fight, come-out resolves | `charmedCrewSlot` moves to a newly selected filled slot |
 | Executive fight, Natural or Point Hit | `bossPointHits` increments (capped at 4); `bossRating.direction = 'up'` in `turn:settled` |
 | Executive fight, Craps Out or Seven-Out above rating 0 | `bossPointHits` decrements; `bossRating.direction = 'down'`; no GAME_OVER |
 | Executive fight, rating already at 0, bad roll | PIP fires: run transitions to GAME_OVER; `pipTermination: true` in `turn:settled` |

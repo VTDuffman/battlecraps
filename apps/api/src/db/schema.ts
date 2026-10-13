@@ -249,7 +249,7 @@ export const runs = pgTable(
      * and applied to the gross profit calculation at settlement time.
      * Reset to 0 after every roll settlement (win or loss).
      */
-    pendingAdditiveCents: integer('pending_additive_cents').notNull().default(0),
+    pendingAdditiveCents: bigint('pending_additive_cents', { mode: 'number' }).notNull().default(0),
 
     // ── Shooter lives ──────────────────────────────────────────────────────
 

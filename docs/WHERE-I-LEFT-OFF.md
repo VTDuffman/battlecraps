@@ -41,8 +41,9 @@ Only works for allowlisted Clerk IDs (`DEV_MODE_ENABLED` + `DEV_CLERK_IDS` on Re
 ## Loose ends
 
 - [x] ~~PR #21 / `claude/blissful-kalam-958c69`~~: closed as superseded and branch deleted (2026-10-13).
-- [ ] Mme. Le Prix (F3) docs disagree: backlog/FB-026 says "35% additive tariff", CLAUDE.md says "enchants one random crew per come-out" (the 2026-05-30 charm commit). Playtest, pick one, update docs.
-- [ ] `runs.pending_additive_cents` is still INT4 (max ~$21.47M). Only matters if Hierophant/Emissary escrow alone passes that, which is unlikely.
+- [x] ~~Mme. Le Prix docs mismatch~~: code is **The Enchantment** (one crew sits out each come-out; commit `eca480e`). Backlog, boss framework, PRD and the FB-026 manifest now say so (2026-10-13). In-game text was already correct.
+- [x] ~~`runs.pending_additive_cents` INT4~~: promoted to BIGINT at API startup + `drizzle/0006` (2026-10-13).
+- [ ] `docs/frameworks/boss_framework.md` is stale beyond Le Prix (e.g. Sarge checklist says underbets are rejected, they're fined; Hierophant says 15% bankroll tribute, it's 25% escrow; Emissary listed as `FIRST_CONTACT_PROTOCOL`, it's `TRANSMISSION_DELAY`). Worth a full audit against `config.ts` / `bossRules/`.
 
 **Open defects:** none. All entries in `docs/testing/known-issues.md` are closed.
 

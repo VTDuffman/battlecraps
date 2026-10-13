@@ -281,6 +281,21 @@ await db.execute(sql`
 `);
 app.log.info('[migrate] is_dev_run ensured');
 
+// pending_additive_cents → BIGINT (Hierophant escrow / Emissary buffer can
+// scale with Floor 8–9 targets). Matches the other money columns, promoted
+// 2026-05-23. Mirrors drizzle/0006. Only alters when still INTEGER, so later
+// restarts don't take the table lock again.
+await db.execute(sql`
+  DO $$
+  BEGIN
+    IF (SELECT data_type FROM information_schema.columns
+        WHERE table_name = 'runs' AND column_name = 'pending_additive_cents') = 'integer' THEN
+      ALTER TABLE runs ALTER COLUMN pending_additive_cents TYPE bigint;
+    END IF;
+  END $$
+`);
+app.log.info('[migrate] pending_additive_cents bigint ensured');
+
 // ---------------------------------------------------------------------------
 // Start listening
 // ---------------------------------------------------------------------------

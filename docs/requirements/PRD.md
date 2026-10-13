@@ -171,7 +171,7 @@ $1.5k / $2.5k / $4k
 
 Mme. Le Prix
 
-Disables Crew Clockwise
+Enchants one crew per come-out (sits out the cascade)
 
 Sea Legs: Hype resets 50%
 

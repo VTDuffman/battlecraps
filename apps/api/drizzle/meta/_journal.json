@@ -43,6 +43,13 @@
       "when": 1791864521187,
       "tag": "0005_funny_hiroim",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791896026618,
+      "tag": "0006_outgoing_hydra",
+      "breakpoints": true
     }
   ]
 }

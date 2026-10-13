@@ -303,3 +303,41 @@ describe("Poseidon's Favor (comp)", () => {
     expect((r2['bets'] as Record<string, unknown>)['passLine']).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Handicapper — Hype on POINT_SET, scaled by the point's difficulty
+//
+// On the point-setting roll the run is still in COME_OUT, so resolveRoll leaves
+// ctx.activePoint null. The Handicapper must read the new point from the dice.
+// ---------------------------------------------------------------------------
+
+describe('Handicapper (ID 26)', () => {
+  const PASS = { passLine: 500, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } };
+
+  async function setPoint(d1: number, d2: number): Promise<{ hype: number; slots: number[] }> {
+    const run = await createRun(userId, { crewSlots: [slot(26), null, null, null, null] });
+    const { status, body } = await rollWithDice(app, run.id, PASS, d1, d2);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const roll = body['roll'] as Record<string, unknown>;
+    expect(roll['rollResult']).toBe('POINT_SET');
+    const events = roll['cascadeEvents'] as Array<{ slotIndex: number }>;
+    return {
+      hype:  (body['run'] as Record<string, unknown>)['hype'] as number,
+      slots: events.map((e) => e.slotIndex),
+    };
+  }
+
+  it('point 4 → +0.3 Hype', async () => {
+    const r = await setPoint(1, 3);
+    expect(r.slots).toContain(0);
+    expect(r.hype).toBeCloseTo(1.3, 4);
+  });
+
+  it('point 9 → +0.2 Hype', async () => {
+    expect((await setPoint(4, 5)).hype).toBeCloseTo(1.2, 4);
+  });
+
+  it('point 8 → +0.1 Hype', async () => {
+    expect((await setPoint(5, 3)).hype).toBeCloseTo(1.1, 4);
+  });
+});

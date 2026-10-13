@@ -1624,3 +1624,21 @@ Redesign 6 of 9 bosses to counter additive strategies directly. All changes are 
 - **The Frequency (F8):** No description change needed — naturals that resolve through The Emissary's delay still trigger the 3% bonus normally
 
 
+
+---
+
+## FB-028 — Developer Mode
+
+**Type:** Developer tooling
+**Area:** `apps/api/src/routes/dev.ts` (new), `apps/api/src/lib/devAuth.ts` (new), `packages/shared/src/devScenario.ts` (new), `apps/web/src/components/dev/` (new)
+**Status:** Designed. Phase 0 hotfix shipped (2026-10-12); Phases 1–5 pending approval
+**Design:** `docs/design/fb-028-developer-mode-design.md`
+**Manifest:** `docs/manifests/fb-028-developer-mode-manifest.md`
+
+### Problem
+
+Testing late-game content (bosses, comps, bug repros) requires replaying the gauntlet to reach the right state. This repetition was a major burnout factor near the end of beta.
+
+### Solution
+
+A developer-only mode, bound to Mike's Clerk login via a server-side allowlist, that can create any game state instantly: Scenario Builder (any marker, bankroll, shooters, hype, crew, comps, boss state), forced dice, a live in-game dev panel, saved scenarios, and cinematic previews. Dev runs are flagged (`runs.is_dev_run`) and never touch the leaderboard, unlocks, or account stats.

@@ -155,7 +155,7 @@ ruleParams: { rule: 'EXTORTION_FEE', taxPct: 0.20, payoffCents: 2_500 }
 
 The $25 appears in `ruleBlurb` / `ruleHeaderText` / `entryLines`; update them if `payoffCents` changes.
 
-**Barks (FB-032 pilot):** lines in `config.ts` `barks` (win / loss / progress50 / progress80 / payoff); rules in shared `bossBarks.ts`; shown under the boss name.
+**Barks (FB-032 pilot):** lines in `config.ts` `barks` (win / loss / progress50 / progress80 / payoff); rules in shared `bossBarks.ts`; flash in at the boss name and float down-right across the table while fading (`BossBarkFloat`).
 
 **Comp:** The Vig — crew cash bonuses (`additives`) × 1.2, applied post-cascade in `rolls.ts`.
 

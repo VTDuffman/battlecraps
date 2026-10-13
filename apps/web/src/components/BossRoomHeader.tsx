@@ -12,6 +12,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getBossMinBet, GAUNTLET, isBossMarker, type BossRuleParams } from '@battlecraps/shared';
+import { BossBarkFloat } from './BossBarkFloat.js';
 import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 import { getFloorTheme } from '../lib/floorThemes.js';
 import { SevenSegmentDisplay } from './SevenSegmentDisplay.js';
@@ -28,7 +29,6 @@ export const BossRoomHeader: React.FC = () => {
   const currentHype         = useGameStore((s) => s.hype);
   const executiveRating  = useGameStore((s) => s.executiveRating);
   const executiveBark    = useGameStore((s) => s.executiveBark);
-  const bossBark         = useGameStore((s) => s.bossBark);
 
   if (!isBossMarker(currentMarkerIndex)) return null;
 
@@ -116,23 +116,8 @@ export const BossRoomHeader: React.FC = () => {
                 </motion.div>
               )}
             </AnimatePresence>
-            {/* FB-032: generic boss bark (lines in config.ts `barks`) */}
-            <AnimatePresence>
-              {bossBark !== null && (
-                <motion.div
-                  key={bossBark.key}
-                  initial={{ scale: 0.85, opacity: 0, y: -4 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.9, opacity: 0, transition: { duration: 0.2 } }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 14 }}
-                  className="mt-1 font-pixel text-[8px] leading-snug italic"
-                  style={{ color: '#e2e8f0', maxWidth: '180px' }}
-                  role="status"
-                >
-                  "{bossBark.line}"
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* FB-032: generic boss bark — flashes here, then floats down-right */}
+            <BossBarkFloat />
           </div>
         </div>
 

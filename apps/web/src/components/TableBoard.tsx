@@ -550,19 +550,14 @@ const AudioVolumeButton: React.FC<AudioVolumeButtonProps> = ({
         {children}
       </button>
 
-      {/* Tooltip label — shown when slider is NOT visible */}
-      {!showSlider && (
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-1.5 py-0.5 rounded bg-black/90 border border-white/10 font-pixel text-r-7 text-gold whitespace-nowrap pointer-events-none z-50">
-          {label}
-        </div>
-      )}
-
-      {/* Vertical volume slider panel — drops below the button, does not reflow HUD */}
+      {/* Vertical volume slider panel — drops below the button on hover, does not
+          reflow HUD. The label is its title (no always-visible label: it used to
+          sit over the boss header). */}
       {showSlider && (
         <div
           className="absolute top-full left-1/2 -translate-x-1/2 mt-1 flex flex-col items-center z-50"
           style={{
-            width:         28,
+            minWidth:      28,
             paddingTop:    4,
             paddingBottom: 4,
             background:    'rgba(0,0,0,0.85)',
@@ -570,6 +565,9 @@ const AudioVolumeButton: React.FC<AudioVolumeButtonProps> = ({
             borderRadius:  4,
           }}
         >
+          <div className="font-pixel text-r-7 text-gold whitespace-nowrap px-1 pb-1 pointer-events-none">
+            {label}
+          </div>
           <input
             type="range"
             min={0}

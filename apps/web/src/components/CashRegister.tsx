@@ -88,12 +88,13 @@ export const CashRegister: React.FC<{ payoffCents: number }> = ({ payoffCents })
   const minDigits = String(Math.floor(payoffCents / 100)).length;
 
   return (
-    <div className="relative flex-none text-right" aria-live="polite">
+    <div className="relative flex-none flex items-center gap-1.5" aria-live="polite">
+      {/* Label sits left of the counter so it never collides with the HUD buttons above. */}
       <div className="font-pixel text-[7.5px] tracking-widest leading-none" style={{ color: 'rgba(124,252,154,0.65)' }}>
         THE CUT
       </div>
       <div
-        className={`mt-0.5 inline-flex items-baseline gap-1 rounded px-1.5 py-0.5 font-mono font-bold leading-none${paidOff ? ' animate-register-flash' : ''}`}
+        className={`inline-flex items-baseline gap-1 rounded px-1.5 py-0.5 font-mono font-bold leading-none${paidOff ? ' animate-register-flash' : ''}`}
         style={{
           fontSize:   '16px',
           color:      REGISTER_GREEN,

@@ -28,6 +28,8 @@ const ROLL_RESULT_LABELS: Record<string, string> = {
   POINT_HIT:     'POINT HIT!',
   SEVEN_OUT:     'SEVEN OUT',
   NO_RESOLUTION: '—',
+  // Client-only: a first-roll craps-out cancelled by the Poseidon's Favor comp.
+  POSEIDONS_FAVOR: "POSEIDON'S FAVOR",
 };
 
 const ROLL_RESULT_COLOURS: Record<string, string> = {
@@ -37,6 +39,7 @@ const ROLL_RESULT_COLOURS: Record<string, string> = {
   POINT_HIT:     'text-gold-bright',
   SEVEN_OUT:     'text-red-500',
   NO_RESOLUTION: 'text-white/30',
+  POSEIDONS_FAVOR: 'text-teal-300',
 };
 
 // Glow color for the result popup border/background per result type
@@ -46,6 +49,7 @@ const POPUP_GLOW: Record<string, string> = {
   CRAPS_OUT: 'border-red-500 shadow-[0_0_28px_6px_rgba(239,68,68,0.4)]',
   SEVEN_OUT: 'border-red-500 shadow-[0_0_28px_6px_rgba(239,68,68,0.4)]',
   POINT_SET: 'border-blue-400 shadow-[0_0_24px_6px_rgba(96,165,250,0.35)]',
+  POSEIDONS_FAVOR: 'border-teal-400 shadow-[0_0_24px_6px_rgba(45,212,191,0.35)]',
 };
 
 // Animation phase for the dice throw sequence
@@ -105,6 +109,7 @@ export const DiceZone: React.FC = () => {
   const bets                = useGameStore((s) => s.bets);
   const lastDice            = useGameStore((s) => s.lastDice);
   const lastResult          = useGameStore((s) => s.lastRollResult);
+  const lastCrapsOutBlocked = useGameStore((s) => s.lastCrapsOutBlocked);
   const lastDelta           = useGameStore((s) => s.lastDelta);
   const lastBetDelta        = useGameStore((s) => s.lastBetDelta);
   const _betDeltaKey        = useGameStore((s) => s._betDeltaKey);
@@ -457,7 +462,11 @@ export const DiceZone: React.FC = () => {
   }
 
   const showingDice = throwPhase === 'idle' ? (lastDice ?? displayDice) : displayDice;
-  const popupResult = pendingResult.current ?? lastResult;
+  const rawPopupResult = pendingResult.current ?? lastResult;
+  // A blocked craps-out arrives as NO_RESOLUTION; show it as Poseidon's save.
+  const popupResult = rawPopupResult === 'NO_RESOLUTION' && lastCrapsOutBlocked
+    ? 'POSEIDONS_FAVOR'
+    : rawPopupResult;
   const popupTotal  = showingDice ? showingDice[0] + showingDice[1] : 0;
 
   return (

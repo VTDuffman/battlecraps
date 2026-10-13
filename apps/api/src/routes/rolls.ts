@@ -192,6 +192,8 @@ interface WsTurnSettledPayload {
    * craps-out animation and let the come-out phase continue.
    */
   crapsOutBlocked?: boolean;
+  /** CONVERGENCE (The Architect): crew slot index permanently removed by this seven-out. */
+  removedCrewSlot?: number;
   /**
    * @deprecated — FIRST_CONTACT_PROTOCOL retired in FB-026. Never emitted from FB-026 onwards.
    * Previously signalled that a come-out natural was suppressed by FCP.
@@ -524,8 +526,12 @@ async function rollHandler(
   //   null                  → roll accepted, no penalty
   //   string                → roll rejected (422)
   //   { fine, message }     → roll accepted but a cents fine is applied post-settlement
+  //
+  // Come-out only: the Pass Line is locked once the point is set and boss
+  // minimums only move at come-out resolution, so re-checking on point-phase
+  // rolls would fine the same bet over and over.
   let nonComplianceFine = 0;
-  if (bossHooks?.validateBet) {
+  if (bossHooks?.validateBet && run.phase === 'COME_OUT') {
     const bossResult = bossHooks.validateBet(incomingBets, bossParams!, bossState);
     if (bossResult !== null) {
       if (typeof bossResult === 'string') {
@@ -588,11 +594,19 @@ async function rollHandler(
   // stack on top of the already-seeded excitement.
   //   POINT_HIT  → getBaseHypeTick(consecutivePointHits): 0.15→0.20→0.25→0.30 (streak-based)
   //   NATURAL    → +0.10
-  //   CRAPS_OUT  → −0.05 (floored at 1.0)
+  //   CRAPS_OUT  → −0.05 (floored at 1.0) — skipped when Poseidon's Favor blocks it
+  //
+  // POSEIDONS_FAVOR: the shooter's first-roll craps-out doesn't count. Decided
+  // here, before the hype tick, so a blocked roll costs no Hype.
+  const hasPoseidonsFavor = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.POSEIDONS_FAVOR);
+  const poseidonBlocksCrapsOut =
+    hasPoseidonsFavor &&
+    run.shooterRollCount === 0 &&
+    initialCtx.rollResult === 'CRAPS_OUT';
   const baseHypeTick =
     initialCtx.rollResult === 'POINT_HIT'   ? getBaseHypeTick(run.consecutivePointHits)
     : initialCtx.rollResult === 'NATURAL'   ?  0.10
-    : initialCtx.rollResult === 'CRAPS_OUT' ? -0.05
+    : initialCtx.rollResult === 'CRAPS_OUT' && !poseidonBlocksCrapsOut ? -0.05
     : 0;
   const seededHype = Math.max(
     1.0,
@@ -608,18 +622,17 @@ async function rollHandler(
     : seededCtx;
 
   // ── 7d. POSEIDONS_FAVOR — block craps-out on first shooter roll ───────────────
-  // Fires after classifyRoll() and boss modifyOutcome() but BEFORE the cascade so
-  // crew never see a CRAPS_OUT that was suppressed by this comp.
-  const hasPoseidonsFavor = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.POSEIDONS_FAVOR);
-  const poseidonCtx = (
-    hasPoseidonsFavor &&
-    run.shooterRollCount === 0 &&
-    outcomeCtx.rollResult === 'CRAPS_OUT'
-  ) ? {
-    ...outcomeCtx,
-    rollResult: 'NO_RESOLUTION' as const,
-    flags: { ...outcomeCtx.flags, crapsOutBlocked: true },
-  } : outcomeCtx;
+  // Applied BEFORE the cascade so crew never see the suppressed CRAPS_OUT. The
+  // roll doesn't count: the Pass Line stays on the table (no stake lost) and
+  // computeNextState keeps the shooter on the come-out (crapsOutBlocked flag).
+  const poseidonCtx = poseidonBlocksCrapsOut && outcomeCtx.rollResult === 'CRAPS_OUT'
+    ? {
+        ...outcomeCtx,
+        rollResult:   'NO_RESOLUTION' as const,
+        resolvedBets: { ...outcomeCtx.resolvedBets, passLine: outcomeCtx.bets.passLine },
+        flags:        { ...outcomeCtx.flags, crapsOutBlocked: true },
+      }
+    : outcomeCtx;
 
   // ── 8. Run the Clockwise Cascade ───────────────────────────────────────────
   //
@@ -806,35 +819,38 @@ async function rollHandler(
     : 0;
   const postFrequencyBankroll = tributedBankroll + frequencyBonus;
 
-  // ── 9f. TRANSMISSION_DELAY — release or evaporate pending additives ────────
-  // Previous roll's crew additives (held as pendingAdditiveCents) are released now.
-  // On 7-out: 100% evaporation — the escrow vanishes with the shooter.
-  // All other results: full release to the bankroll.
-  const isTdSevenOut    = isTransmissionDelay && finalContext.rollResult === 'SEVEN_OUT';
-  const tdEscrowRelease = isTdSevenOut ? 0 : (isTransmissionDelay ? run.pendingAdditiveCents : 0);
-  const postTdBankroll  = postFrequencyBankroll + tdEscrowRelease;
-
-  // ── 9e. TRIBUTE (Hierophant Escrow) — release previous roll's escrow ───────
-  // On every roll: release last roll's pendingAdditiveCents to the bankroll.
-  // On 7-out: The Hierophant seizes escrowSeizurePct before release.
-  // THE_COVENANT halves the seizure.
-  const isTributeSevenOut = isHierophantEscrow && finalContext.rollResult === 'SEVEN_OUT';
-  const seizurePct = isTributeSevenOut
-    ? (() => {
-        const p = GAUNTLET[run.currentMarkerIndex]!.boss!.ruleParams as
-          Extract<BossRuleParams, { rule: 'TRIBUTE' }>;
-        return hasTheCovenant ? p.escrowSeizurePct * 0.5 : p.escrowSeizurePct;
-      })()
+  // ── 9e/9f. Crew-bonus escrow (Hierophant TRIBUTE / Emissary TRANSMISSION_DELAY) ─
+  // Each roll releases the PREVIOUS roll's held bonuses (pendingAdditiveCents)
+  // and holds this roll's (escrowHeld / tdEscrowHeld) for the next roll.
+  // On a 7-out the whole escrow — previous AND this roll's — settles now:
+  //   Emissary:   100% evaporates.
+  //   Hierophant: escrowSeizurePct is seized (halved by THE_COVENANT), the rest paid.
+  // Hierophant and TD are mutually exclusive (different floors).
+  const isEscrowSevenOut  = finalContext.rollResult === 'SEVEN_OUT';
+  const heldThisRoll      = isTransmissionDelay ? tdEscrowHeld : escrowHeld;
+  const escrowOnTable     = run.pendingAdditiveCents + (isEscrowSevenOut ? heldThisRoll : 0);
+  const seizurePct = isEscrowSevenOut
+    ? isTransmissionDelay
+      ? 1
+      : isHierophantEscrow
+        ? (() => {
+            const p = GAUNTLET[run.currentMarkerIndex]!.boss!.ruleParams as
+              Extract<BossRuleParams, { rule: 'TRIBUTE' }>;
+            return hasTheCovenant ? p.escrowSeizurePct * 0.5 : p.escrowSeizurePct;
+          })()
+        : 0
     : 0;
-  const escrowRelease = Math.floor(run.pendingAdditiveCents * (1 - seizurePct) / 100) * 100;
-  const postEscrowBankroll = postTdBankroll + escrowRelease;
+  // Released unconditionally so a stray pending balance is never stranded
+  // (outside these two fights seizurePct is 0 and nothing new is held).
+  const escrowRelease = Math.floor(escrowOnTable * (1 - seizurePct) / 100) * 100;
+  // Carried to the next roll — nothing carries past a 7-out.
+  const escrowCarried = isEscrowSevenOut ? 0 : heldThisRoll;
+  const postEscrowBankroll = postFrequencyBankroll + escrowRelease;
 
   // ── 9g. Non-compliance fine (Sarge) — deducted when passLine or odds is below the rising minimum ─
   // Roll was allowed (not rejected) but bossResult returned a fine object.
   // Rounds to nearest dollar; can be 0 when no fine applies this roll.
   const postFineBankroll = postEscrowBankroll - nonComplianceFine;
-
-  const bankrollDelta = postFineBankroll - run.bankrollCents;
 
   const rollAmplifiedProfit = payout - viggedContext.baseStakeReturned;
   const newHighestRollAmplifiedCents = Math.max(
@@ -861,9 +877,22 @@ async function rollHandler(
     ? { ...nextState, bossPointHits: nextCharmSlot }
     : nextState;
   // ── CROSS_CALIBRATION: PIP termination overrides status to GAME_OVER ──────
-  const finalNextState = pipTermination
+  const pipAdjustedState = pipTermination
     ? { ...charmAdjustedState, status: 'GAME_OVER' as const }
     : charmAdjustedState;
+
+  // ── Escrow: a roll that clears the marker pays out what it just held ──────
+  // The next marker has no escrow rule, so held bonuses would otherwise be lost.
+  const escrowPaidOnClear =
+    pipAdjustedState.currentMarkerIndex > run.currentMarkerIndex ? escrowCarried : 0;
+  const pendingAdditiveToPersist = escrowCarried - escrowPaidOnClear;
+  const finalNextState = escrowPaidOnClear > 0
+    ? { ...pipAdjustedState, bankrollCents: pipAdjustedState.bankrollCents + escrowPaidOnClear }
+    : pipAdjustedState;
+
+  // Settled bankroll for this roll, including escrow paid out on a marker clear.
+  const settledBankroll = postFineBankroll + escrowPaidOnClear;
+  const bankrollDelta   = settledBankroll - run.bankrollCents;
 
   // ── CROSS_CALIBRATION: compute bossRating for socket payload ──────────────
   // Emitted on every roll in the boss fight. `changed` and `direction` tell the
@@ -977,7 +1006,7 @@ async function rollHandler(
       shooterRollCount:      finalNextState.shooterRollCount,
       pointPhaseBlankStreak: finalNextState.pointPhaseBlankStreak,
       highestRollAmplifiedCents: newHighestRollAmplifiedCents,
-      pendingAdditiveCents: isTransmissionDelay ? tdEscrowHeld : (isHierophantEscrow ? escrowHeld : 0),
+      pendingAdditiveCents: pendingAdditiveToPersist,
       updatedAt:             new Date(),
     })
     .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
@@ -1022,8 +1051,8 @@ async function rollHandler(
   if (!isDevRun) {
     void db
       .update(users)
-      .set({ maxBankrollCents: postFineBankroll })
-      .where(and(eq(users.id, userId), lt(users.maxBankrollCents, postFineBankroll)))
+      .set({ maxBankrollCents: settledBankroll })
+      .where(and(eq(users.id, userId), lt(users.maxBankrollCents, settledBankroll)))
       .catch((err: unknown) => {
         request.log.error({ err }, '[roll] Failed to update maxBankrollCents');
       });
@@ -1031,8 +1060,8 @@ async function rollHandler(
 
   void db
     .update(runs)
-    .set({ peakBankrollCents: postFineBankroll })
-    .where(and(eq(runs.id, runId), lt(runs.peakBankrollCents, postFineBankroll)))
+    .set({ peakBankrollCents: settledBankroll })
+    .where(and(eq(runs.id, runId), lt(runs.peakBankrollCents, settledBankroll)))
     .catch((err: unknown) => {
       request.log.error({ err }, '[roll] Failed to update peakBankrollCents');
     });
@@ -1096,6 +1125,7 @@ async function rollHandler(
     ...(finalContext.flags.sevenOutBlocked && { originalDice: dice }),
     ...(finalContext.flags.nudgedFrom !== undefined && { nudgedFrom: finalContext.flags.nudgedFrom }),
     ...(finalContext.flags.crapsOutBlocked && { crapsOutBlocked: true }),
+    ...(removedSlotIndex !== null && { removedCrewSlot: removedSlotIndex }),
     highestMarkerReached: (hitMarker && !isDevRun)
       ? Math.max(user.highestMarkerReached, newMarkerIndex)
       : user.highestMarkerReached,
@@ -1139,6 +1169,8 @@ async function rollHandler(
       ...(charmedWouldHaveFired && { charmFired: true }),
       ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
       ...(pipTermination && { pipTermination: true as const }),
+      ...(finalContext.flags.crapsOutBlocked && { crapsOutBlocked: true as const }),
+      ...(removedSlotIndex !== null && { removedCrewSlot: removedSlotIndex }),
     },
   });
 }
@@ -1443,12 +1475,17 @@ function computeNextState(
 
       // ── CONVERGENCE: Targeted Demolition — determine which slot to remove ──
       // The most recently triggered slot (last CascadeEvent.slotIndex) takes the
-      // hit. If no crew fired this roll, fall back to the highest-numbered active
-      // slot still in play: max(0, unlockedSlots - 1 - bossPointHits).
+      // hit. If no crew fired this roll, fall back to the highest occupied active
+      // slot. null when the player has no crew left to remove.
+      const highestOccupiedSlot = (() => {
+        const stored = run.crewSlots as StoredCrewSlots;
+        for (let i = Math.min(run.unlockedSlots, stored.length) - 1; i >= 0; i--) {
+          if (stored[i] != null) return i;
+        }
+        return null;
+      })();
       const convergenceDemolitionTarget = (isConvergence && !markerCleared)
-        ? (lastTriggeredSlot !== null && lastTriggeredSlot !== undefined
-          ? lastTriggeredSlot
-          : Math.max(0, run.unlockedSlots - 1 - run.bossPointHits))
+        ? (lastTriggeredSlot ?? highestOccupiedSlot)
         : null;
 
       return {
@@ -1519,6 +1556,27 @@ function computeNextState(
         };
       }
 
+      // Poseidon's Favor blocked a come-out craps-out: the roll doesn't count,
+      // so the shooter stays on the come-out with the Pass Line still up.
+      if (flags.crapsOutBlocked) {
+        return {
+          status:               'IDLE_TABLE',
+          phase:                'COME_OUT',
+          bankrollCents:        newBankroll,
+          shooters:             run.shooters,
+          currentPoint:         null,
+          hype:                 finalCtx.hype,
+          bets:                 clearedBets,
+          currentMarkerIndex,
+          consecutivePointHits:  run.consecutivePointHits,
+          bossPointHits:         nextBossCounter(effectiveBossPointHits, rollResult, false),
+          previousRollTotal:     finalCtx.diceTotal,
+          shooterRollCount:      run.shooterRollCount + 1,
+          pointPhaseBlankStreak: 0,
+          removedSlotIndex:      null,
+        };
+      }
+
       return {
         status:               'POINT_ACTIVE',
         phase:                'POINT_ACTIVE',
@@ -1532,7 +1590,9 @@ function computeNextState(
         bossPointHits:         nextBossCounter(effectiveBossPointHits, rollResult, false),
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
-        pointPhaseBlankStreak: run.pointPhaseBlankStreak + 1,
+        // The Pressure Cooker fires on the 5th blank in a row (4 prior blanks);
+        // reset the count then so it fires again on blanks 10, 15, …
+        pointPhaseBlankStreak: run.pointPhaseBlankStreak >= 4 ? 0 : run.pointPhaseBlankStreak + 1,
         removedSlotIndex:      null,
       };
     }

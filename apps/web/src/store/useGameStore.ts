@@ -222,6 +222,10 @@ interface TurnSettledPayload {
   bossRating?:             { index: number; changed: boolean; direction: 'up' | 'down' | null };
   /** True when The Executive fires the final termination (pip termination / game over). */
   pipTermination?:         boolean;
+  /** True when Poseidon's Favor cancelled the shooter's first-roll craps-out (rollResult is NO_RESOLUTION). */
+  crapsOutBlocked?:        boolean;
+  /** The Architect (CONVERGENCE): crew slot index permanently removed by this seven-out. */
+  removedCrewSlot?:        number;
 }
 
 // ---------------------------------------------------------------------------
@@ -321,6 +325,8 @@ export interface GameState {
   // ── Last roll result ──────────────────────────────────────────────────────
   lastDice:       [number, number] | null;
   lastRollResult: RollResult | null;
+  /** True when the last roll was a craps-out cancelled by Poseidon's Favor. */
+  lastCrapsOutBlocked: boolean;
   lastDelta:      number | null;        // signed cents — net bankroll change after roll
 
   /**
@@ -1154,6 +1160,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   mechanicFreeze:      null,
   lastDice:       null,
   lastRollResult: null,
+  lastCrapsOutBlocked: false,
   lastDelta:      null,
   dreadDice:      null,
   nudgeDice:      null,
@@ -1264,6 +1271,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // first so any missing key in initialState doesn't leave stale data.
       lastDice:          null,
       lastRollResult:    null,
+      lastCrapsOutBlocked: false,
       lastDelta:         null,
       dreadDice:         null,
       nudgeDice:         null,
@@ -1411,6 +1419,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
                              : isNudge   ? payload.nudgedFrom!
                              : payload.dice,
           lastRollResult:    payload.rollResult,
+          lastCrapsOutBlocked: payload.crapsOutBlocked === true,
           dreadDice:         isLeftySave ? payload.originalDice! : null,
           nudgeDice:         isNudge     ? payload.nudgedFrom!   : null,
           pendingSettlement: payload,
@@ -1500,6 +1509,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       mechanicFreeze:      null,
       lastDice:            null,
       lastRollResult:      null,
+      lastCrapsOutBlocked: false,
       lastDelta:           null,
       dreadDice:           null,
       nudgeDice:           null,
@@ -1780,6 +1790,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           // Land on pre-nudge dice when the Prof also fired; otherwise final dice.
           lastDice:       cur.nudgedFrom !== undefined ? cur.nudgedFrom : cur.dice,
           lastRollResult: cur.rollResult,
+          lastCrapsOutBlocked: cur.crapsOutBlocked === true,
           dreadDice:      null,
           // Increment to tell DiceZone to start a full re-throw animation.
           // applyPendingSettlement() will be called by onLandEnd after that throw.
@@ -1970,6 +1981,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
     const newPipTermination = p.pipTermination === true ? true : get().pipTermination;
 
+    // The Architect removed a crew member on this seven-out — clear it from the rail.
+    const currentCrewSlots = get().crewSlots;
+    const newCrewSlots = p.removedCrewSlot !== undefined
+      ? (currentCrewSlots.map((slot, i) => (i === p.removedCrewSlot ? null : slot)) as StoredCrewSlots)
+      : currentCrewSlots;
+
     set({
       bankroll:             p.newBankroll,
       bets:                 p.newBets,
@@ -2011,6 +2028,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       executiveRating:       newExecutiveRating,
       executiveBark:         newExecutiveBark,
       pipTermination:        newPipTermination,
+      crewSlots:             newCrewSlots,
       payoutPops,
       _popsKey:             hasPops ? _popsKey + 1 : _popsKey,
       // Flush buffered cascade events at the reveal moment — portrait
@@ -2271,6 +2289,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           charmFired?: boolean;
           bossRating?: { index: number; changed: boolean; direction: 'up' | 'down' | null };
           pipTermination?: boolean;
+          crapsOutBlocked?: boolean;
+          removedCrewSlot?: number;
         };
       };
 
@@ -2334,6 +2354,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ...(data.roll.charmFired      === true      && { charmFired:      true                      }),
         ...(data.roll.bossRating      !== undefined && { bossRating:      data.roll.bossRating      }),
         ...(data.roll.pipTermination  === true      && { pipTermination:  true as const              }),
+        ...(data.roll.crapsOutBlocked === true      && { crapsOutBlocked: true as const              }),
+        ...(data.roll.removedCrewSlot !== undefined && { removedCrewSlot: data.roll.removedCrewSlot  }),
       };
 
       const isLeftySave = settlement.originalDice !== undefined;
@@ -2345,6 +2367,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
                            : isNudge   ? settlement.nudgedFrom!
                            : settlement.dice,
         lastRollResult:    settlement.rollResult,
+        lastCrapsOutBlocked: settlement.crapsOutBlocked === true,
         dreadDice:         isLeftySave ? settlement.originalDice! : null,
         nudgeDice:         isNudge     ? settlement.nudgedFrom!   : null,
         pendingSettlement: settlement,
@@ -2431,6 +2454,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // Clear last-roll display so the table starts fresh
       lastDice:       null,
       lastRollResult: null,
+      lastCrapsOutBlocked: false,
       lastDelta:      null,
       cascadeQueue:   [],
       // Pub is always outside any boss fight — clear any lingering charm state.

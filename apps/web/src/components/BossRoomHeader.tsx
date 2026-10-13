@@ -21,6 +21,8 @@ const RATING_COLORS = ['#ef4444', '#fbbf24', '#c8d8e8', '#4ade80', '#f5c842'] as
 export const BossRoomHeader: React.FC = () => {
   const currentMarkerIndex  = useGameStore(selectDisplayMarkerIndex);
   const bossPointHits       = useGameStore((s) => s.bossPointHits);
+  const crewSlots           = useGameStore((s) => s.crewSlots);
+  const unlockedSlots       = useGameStore((s) => s.unlockedSlots);
   const currentHype         = useGameStore((s) => s.hype);
   const executiveRating  = useGameStore((s) => s.executiveRating);
   const executiveBark    = useGameStore((s) => s.executiveBark);
@@ -181,7 +183,8 @@ export const BossRoomHeader: React.FC = () => {
           </div>
         ) : isConvergence ? (
           (() => {
-            const activeCrewCount = Math.max(0, 5 - bossPointHits);
+            // Each seven-out permanently removes one crew member, so count who's left.
+            const activeCrewCount = crewSlots.slice(0, unlockedSlots).filter((c) => c !== null).length;
             const isNaked         = activeCrewCount === 0;
             return (
               <div className="flex-none text-right">
@@ -191,7 +194,7 @@ export const BossRoomHeader: React.FC = () => {
                 </div>
                 <div className="font-pixel text-r-15 leading-tight"
                   style={{ color: isNaked ? '#ef4444' : '#39ff14' }}>
-                  {isNaked ? '⌀ NAKED CRAPS' : `${activeCrewCount}/5 CREW`}
+                  {isNaked ? '⌀ NAKED CRAPS' : `${activeCrewCount} CREW LEFT`}
                 </div>
                 <div className="font-pixel text-[7.5px] leading-none mt-0.5"
                   style={{ color: isNaked ? '#ef4444' : 'rgba(57,255,20,0.45)' }}>

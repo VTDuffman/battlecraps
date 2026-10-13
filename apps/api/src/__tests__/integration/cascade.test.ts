@@ -237,3 +237,69 @@ describe('Lucky Charm (ID 15)', () => {
     expect(r['hype']).toBeCloseTo(1.0, 4);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Pressure Cooker — releases on every 5th consecutive blank point-phase roll
+// ---------------------------------------------------------------------------
+
+describe('Pressure Cooker (ID 29)', () => {
+  it('fires on the 5th blank in a row and resets its count (so the 10th fires too)', async () => {
+    // Marker 0: max bet 500¢ → additive = round(0.75 × 500 / 100) × 100 = 400¢.
+    const run = await createRun(userId, {
+      bankrollCents:         2500,
+      status:                'POINT_ACTIVE',
+      phase:                 'POINT_ACTIVE',
+      currentPoint:          6,
+      bets: { passLine: 500, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } },
+      crewSlots:             [slot(29), null, null, null, null],
+      pointPhaseBlankStreak: 4,
+    });
+
+    // 2+3 = 5 → NO_RESOLUTION (5th blank in a row).
+    const { status, body } = await rollWithDice(
+      app, run.id,
+      { passLine: 500, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } },
+      2, 3,
+    );
+    expect(status).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    // Hype 1.0 + 0.5 = 1.5 → floor(400 × 1.5) = 600¢ paid.
+    expect(r['bankrollCents']).toBe(3100);
+    expect(r['pointPhaseBlankStreak']).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Poseidon's Favor (comp perk 6) — the shooter's first-roll craps-out doesn't count
+// ---------------------------------------------------------------------------
+
+describe("Poseidon's Favor (comp)", () => {
+  const PASS = { passLine: 500, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } };
+
+  it('blocks a first-roll craps-out: bet stays up, still the come-out, no Hype loss', async () => {
+    const run = await createRun(userId, {
+      bankrollCents:    3000,
+      hype:             1.5,
+      compPerkIds:      [6],
+      shooterRollCount: 0,
+    });
+
+    const first = await rollWithDice(app, run.id, PASS, 1, 1);
+    expect(first.status, JSON.stringify(first.body)).toBe(200);
+    const r1 = first.body['run'] as Record<string, unknown>;
+    expect(r1['status']).toBe('IDLE_TABLE');
+    expect(r1['phase']).toBe('COME_OUT');
+    expect(r1['currentPoint']).toBeNull();
+    expect((r1['bets'] as Record<string, unknown>)['passLine']).toBe(500);
+    expect(r1['bankrollCents']).toBe(2500);
+    expect(r1['hype']).toBe(1.5);
+
+    // Second roll is no longer the shooter's first — a craps-out now counts.
+    const second = await rollWithDice(app, run.id, PASS, 1, 1);
+    expect(second.status, JSON.stringify(second.body)).toBe(200);
+    expect((second.body['roll'] as Record<string, unknown>)['rollResult']).toBe('CRAPS_OUT');
+    const r2 = second.body['run'] as Record<string, unknown>;
+    expect(r2['bankrollCents']).toBe(2500);
+    expect((r2['bets'] as Record<string, unknown>)['passLine']).toBe(0);
+  });
+});

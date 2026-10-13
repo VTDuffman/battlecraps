@@ -385,3 +385,156 @@ describe('CROSS_CALIBRATION — The Executive (marker 11)', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// RISING_MIN_BETS — the fine is charged once, on the come-out
+//
+// A non-compliant pass line placed on the come-out must not be fined again on
+// every point-phase roll (the pass line is locked; the player can't fix it).
+// ---------------------------------------------------------------------------
+
+describe('RISING_MIN_BETS — fine applies on the come-out only', () => {
+  it('a point-phase roll with an under-minimum pass line is not fined again', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: 5,
+      bankrollCents:      20_000,
+      bossPointHits:      0,
+      status:             'POINT_ACTIVE',
+      phase:              'POINT_ACTIVE',
+      currentPoint:       6,
+      bets:               PASS_ONLY(3_900), // below the 4_000¢ minimum
+    });
+
+    // 2+3 = 5 → NO_RESOLUTION on point 6. No payout, so the bankroll only moves by a fine.
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(3_900), 2, 3);
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect((body['run'] as Record<string, unknown>)['bankrollCents']).toBe(20_000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Crew-bonus escrow — TRIBUTE (Hierophant, marker 14) and TRANSMISSION_DELAY
+// (Emissary, marker 23).
+//
+// "Ace" McGee (ID 17) adds 0.40× max bet whenever a 1 shows; The Shark (ID 8)
+// adds 0.65× max bet on a point hit. Under both bosses those bonuses are held
+// in escrow (pendingAdditiveCents) instead of paying out on the roll.
+// ---------------------------------------------------------------------------
+
+describe('Crew-bonus escrow', () => {
+  const ACE   = { crewId: 17, cooldownState: 0 };
+  const SHARK = { crewId: 8,  cooldownState: 0 };
+
+  it('Hierophant: a seven-out seizes 25% of ALL escrow, including bonuses earned on that roll', async () => {
+    // Marker 14: target 10_000_000¢ → max bet 1_000_000¢ → Ace = 400_000¢. Min bet 166_500¢.
+    const run = await createRun(userId, {
+      currentMarkerIndex:   14,
+      bankrollCents:        2_000_000,
+      status:               'POINT_ACTIVE',
+      phase:                'POINT_ACTIVE',
+      currentPoint:         6,
+      bets:                 PASS_ONLY(166_500),
+      crewSlots:            [ACE, null, null, null, null],
+      pendingAdditiveCents: 100_000,
+    });
+
+    // 1+6 = 7 → SEVEN_OUT; Ace fires on the 1 (400_000¢ held this roll).
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(166_500), 1, 6);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    // (100_000 + 400_000) × 0.75 = 375_000 released now; nothing carried forward.
+    expect(r['bankrollCents']).toBe(2_375_000);
+    expect(r['pendingAdditiveCents']).toBe(0);
+  });
+
+  it('Emissary: a seven-out evaporates ALL escrow, including bonuses earned on that roll', async () => {
+    // Marker 23: target 1_500_000_000¢ → max bet 150_000_000¢. Min bet 25_000_000¢.
+    const run = await createRun(userId, {
+      currentMarkerIndex:   23,
+      bankrollCents:        200_000_000,
+      status:               'POINT_ACTIVE',
+      phase:                'POINT_ACTIVE',
+      currentPoint:         6,
+      bets:                 PASS_ONLY(25_000_000),
+      crewSlots:            [ACE, null, null, null, null],
+      pendingAdditiveCents: 10_000_000,
+    });
+
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(25_000_000), 1, 6);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['bankrollCents']).toBe(200_000_000);
+    expect(r['pendingAdditiveCents']).toBe(0);
+  });
+
+  it('Emissary: bonuses held on the roll that clears the marker are paid out', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: 23,
+      bankrollCents:      1_450_000_000,
+      status:             'POINT_ACTIVE',
+      phase:              'POINT_ACTIVE',
+      currentPoint:       6,
+      bets:               PASS_ONLY(25_000_000),
+      crewSlots:          [SHARK, null, null, null, null],
+    });
+
+    // 4+2 = 6 → POINT_HIT. Pass pays stake 25M + floor(25M × 1.15) = 53_750_000 → 1_503_750_000,
+    // which clears the 1_500_000_000 target. Shark's 97_500_000 held this roll must be paid too.
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(25_000_000), 4, 2);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['status']).toBe('TRANSITION');
+    // (1_503_749_900, not …750_000: settleTurn loses $1 to float rounding on 25M × 1.15 — tracked separately.)
+    expect(r['bankrollCents']).toBe(1_601_249_900);
+    expect(r['pendingAdditiveCents']).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CONVERGENCE — The Architect (marker 26)
+//
+// Each seven-out removes ONE crew member: the last one that fired, or the
+// highest occupied slot if nobody fired. The cascade window does not shrink.
+// ---------------------------------------------------------------------------
+
+describe('CONVERGENCE — The Architect (marker 26)', () => {
+  const ACE     = { crewId: 17, cooldownState: 0 };
+  const LOOKOUT = { crewId: 16, cooldownState: 0 };
+
+  it('crew in slot 5 still fires after a seven-out (no shrinking window)', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: 26,
+      bankrollCents:      500_000_000,
+      unlockedSlots:      5,
+      bossPointHits:      1, // one seven-out already happened
+      crewSlots:          [ACE, null, null, null, LOOKOUT],
+    });
+
+    // 6+5 = 11 → NATURAL; The Lookout (slot index 4) fires on the 6.
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(100_000_000), 6, 5);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const events = (body['roll'] as Record<string, unknown>)['cascadeEvents'] as Array<{ slotIndex: number }>;
+    expect(events.map((e) => e.slotIndex)).toContain(4);
+  });
+
+  it('when nobody fires on the seven-out, the highest occupied slot is removed', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: 26,
+      bankrollCents:      500_000_000,
+      unlockedSlots:      5,
+      bossPointHits:      0,
+      status:             'POINT_ACTIVE',
+      phase:              'POINT_ACTIVE',
+      currentPoint:       6,
+      bets:               PASS_ONLY(100_000_000),
+      crewSlots:          [ACE, LOOKOUT, null, null, null],
+    });
+
+    // 3+4 = 7 → SEVEN_OUT; no 1 and no 6, so neither crew fires.
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(100_000_000), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const slots = (body['run'] as Record<string, unknown>)['crewSlots'] as Array<{ crewId: number } | null>;
+    expect(slots[0]?.crewId).toBe(17);
+    expect(slots[1]).toBeNull();
+  });
+});

@@ -328,6 +328,8 @@ const DevPanel: React.FC = () => {
                         onCounter={(v) => { if (v !== null) void patch('Boss state set', { bossCounter: v }); }}
                         escrowDollars={payload.pendingAdditiveCents / 100}
                         onEscrow={(d) => void patch('Escrow set', { pendingAdditiveCents: Math.max(0, Math.round(d * 100)) })}
+                        cutDollars={payload.bossProgressCents / 100}
+                        onCut={(d) => void patch('Cut set', { bossProgressCents: Math.round(d * 100) })}
                         onHype={(h) => void patch('Hype set', { hype: h })}
                       />
                     </fieldset>

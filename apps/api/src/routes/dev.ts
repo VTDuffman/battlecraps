@@ -24,6 +24,7 @@ import {
   buildDevRunState,
   buildTransitionEntryState,
   getBossCounterRange,
+  getBossPayoffCents,
   EMPTY_DEV_BETS,
   type Bets,
   isBossMarker,
@@ -68,6 +69,7 @@ const scenarioSchema = z.object({
   compPerkIds:          z.array(z.number().int().positive()).max(16).optional(),
   bossCounter:          z.number().int().min(0).max(20).optional(),
   pendingAdditiveCents: cents.optional(),
+  bossProgressCents:    cents.optional(),
   entry:                z.enum(['table', 'transition']).optional(),
   ignoreUnlocks:        z.boolean().optional(),
 });
@@ -112,6 +114,7 @@ const patchSchema = z.object({
   consecutivePointHits: z.number().int().min(0).max(20).optional(),
   bossCounter:          z.number().int().min(0).max(20).optional(),
   pendingAdditiveCents: cents.optional(),
+  bossProgressCents:    cents.optional(),
   unlockedSlots:        z.union([z.literal(3), z.literal(4), z.literal(5)]).optional(),
   compPerkIds:          z.array(z.number().int().positive()).max(16).optional(),
   crew:                 z.array(z.number().int().positive().nullable()).max(5).optional(),
@@ -199,6 +202,7 @@ export async function devPlugin(app: FastifyInstance): Promise<void> {
           currentPoint:         state.currentPoint,
           bankrollCents:        state.bankrollCents,
           pendingAdditiveCents: state.pendingAdditiveCents,
+          bossProgressCents:    state.bossProgressCents,
           shooters:             state.shooters,
           currentMarkerIndex:   state.currentMarkerIndex,
           floor:                state.floor,
@@ -283,6 +287,15 @@ export async function devPlugin(app: FastifyInstance): Promise<void> {
       if (patch.hype                 !== undefined) updates.hype                 = patch.hype;
       if (patch.consecutivePointHits !== undefined) updates.consecutivePointHits = patch.consecutivePointHits;
       if (patch.pendingAdditiveCents !== undefined) updates.pendingAdditiveCents = patch.pendingAdditiveCents;
+
+      // FB-032: The Foreman's Cut so far. At/over the Payoff, the next roll
+      // request clears the room via the pre-roll check.
+      if (patch.bossProgressCents !== undefined) {
+        if (getBossPayoffCents(run.currentMarkerIndex) === null) {
+          return reply.status(422).send({ error: 'This marker has no Payoff to track.' });
+        }
+        updates.bossProgressCents = patch.bossProgressCents;
+      }
       if (patch.compPerkIds          !== undefined) updates.compPerkIds          = [...new Set(patch.compPerkIds)];
 
       if (patch.bossCounter !== undefined) {

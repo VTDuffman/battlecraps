@@ -38,10 +38,14 @@ interface BossCounterControlProps {
   onHype:         (hype: number) => void;
   /** Builder only: offer "Random filled slot" for Le Prix. */
   allowRandomCharm?: boolean;
+  /** FB-032 (The Foreman): Cut so far in dollars, and its setter. */
+  cutDollars?:    number;
+  onCut?:         (dollars: number) => void;
 }
 
 export const BossCounterControl: React.FC<BossCounterControlProps> = ({
   markerIndex, unlockedSlots, counter, onCounter, escrowDollars, onEscrow, onHype, allowRandomCharm = false,
+  cutDollars = 0, onCut,
 }) => {
   const boss = GAUNTLET[markerIndex]?.boss;
   if (!isBossMarker(markerIndex) || !boss) return null;
@@ -104,6 +108,19 @@ export const BossCounterControl: React.FC<BossCounterControlProps> = ({
           </div>
         </DevRow>
       );
+    case 'EXTORTION_FEE': {
+      const payoffDollars = boss.ruleParams.rule === 'EXTORTION_FEE' ? boss.ruleParams.payoffCents / 100 : 25;
+      return (
+        <DevRow label="Cut so far ($)" hint={`Payoff is $${payoffDollars}`}>
+          <span className="flex gap-1">
+            <input type="number" min={0} className={`${devInputCls} w-20`} value={cutDollars}
+              onChange={(e) => onCut?.(Math.max(0, Number(e.target.value)))} />
+            <button type="button" onClick={() => onCut?.(Math.max(0, payoffDollars - 2))}
+              className="border border-white/20 rounded px-2 py-1 text-xs text-white/80" title="One win from the Payoff">−$2</button>
+          </span>
+        </DevRow>
+      );
+    }
     default:
       return <p className="text-xs text-white/50">No boss state to set for {boss.name}.</p>;
   }

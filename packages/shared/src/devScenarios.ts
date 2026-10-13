@@ -36,9 +36,28 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     crew:          [],
   },
   {
-    name:        'Foreman — mid-bankroll',
-    markerIndex: FOREMAN,
-    crew:        STARTER_CREW,
+    name:          'Foreman — fresh fight',
+    markerIndex:   FOREMAN,
+    crew:          STARTER_CREW,
+    bankrollCents: 10_000, // a typical arrival after clearing the $100 marker
+  },
+  {
+    // Any win at the $20 max bet skims ≥ $2 → crosses the $25 Payoff → PAID IN FULL.
+    name:              'Foreman — one win from the Payoff',
+    markerIndex:       FOREMAN,
+    crew:              STARTER_CREW,
+    bankrollCents:     10_000,
+    bossProgressCents: 2_300,
+  },
+  {
+    // Last shooter, point on, short of the Payoff: a seven-out slams the dock door.
+    name:              'Foreman — last shooter, short of the Payoff',
+    markerIndex:       FOREMAN,
+    crew:              STARTER_CREW,
+    bankrollCents:     10_000,
+    shooters:          1,
+    point:             6,
+    bossProgressCents: 1_800,
   },
   {
     name:        'Le Prix — charm on a full crew',

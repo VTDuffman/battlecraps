@@ -12,7 +12,7 @@
 // of the marker target. Every field can be overridden.
 // =============================================================================
 
-import { GAUNTLET, MARKER_TARGETS, COMP_PERK_IDS, getBossEntryCounter, getMinBet, isBossMarker } from './config.js';
+import { GAUNTLET, MARKER_TARGETS, COMP_PERK_IDS, getBossEntryCounter, getBossPayoffCents, getMinBet, isBossMarker } from './config.js';
 import type { Bets, GamePhase } from './types.js';
 
 export type DevScenarioPoint = 4 | 5 | 6 | 8 | 9 | 10;
@@ -36,6 +36,8 @@ export interface DevScenario {
   bossCounter?:          number;
   /** Hierophant escrow / Emissary transmission buffer, in cents. */
   pendingAdditiveCents?: number;
+  /** FB-032: The Foreman's Cut so far, in cents (payoff markers only; ignored elsewhere). */
+  bossProgressCents?:    number;
   /**
    * 'table'      — start directly at the marker. Entry cinematics (marker intro,
    *                floor reveal, boss entry) still play.
@@ -65,6 +67,7 @@ export interface DevRunState {
   compPerkIds:          number[];
   bossPointHits:        number;
   pendingAdditiveCents: number;
+  bossProgressCents:    number;
 }
 
 export const EMPTY_DEV_BETS: Bets = {
@@ -148,6 +151,7 @@ export function getRealisticDefaults(markerIndex: number): Required<Omit<DevScen
     compPerkIds,
     bossCounter:          getBossEntryCounter(idx),
     pendingAdditiveCents: 0,
+    bossProgressCents:    0,
     entry:                'table',
   };
 }
@@ -191,6 +195,7 @@ export function buildDevRunState(scenario: DevScenario): DevRunState {
     compPerkIds:          [...new Set(scenario.compPerkIds ?? defaults.compPerkIds)],
     bossPointHits:        clampBossCounter(idx, unlockedSlots, scenario.bossCounter ?? defaults.bossCounter),
     pendingAdditiveCents: Math.max(0, Math.round(scenario.pendingAdditiveCents ?? 0)),
+    bossProgressCents:    getBossPayoffCents(idx) !== null ? Math.max(0, Math.round(scenario.bossProgressCents ?? 0)) : 0,
   };
 }
 
@@ -223,5 +228,6 @@ export function buildTransitionEntryState(scenario: DevScenario): DevRunState | 
     compPerkIds:          [...new Set(scenario.compPerkIds ?? prevDefaults.compPerkIds)],
     bossPointHits:        getBossEntryCounter(prevIdx),
     consecutivePointHits: 0,
+    bossProgressCents:    0,
   };
 }

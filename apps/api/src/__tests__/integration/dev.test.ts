@@ -671,3 +671,51 @@ describe('escrow beyond the old INTEGER ceiling', () => {
     expect(typeof row?.pendingAdditiveCents).toBe('number');
   });
 });
+
+// ---------------------------------------------------------------------------
+// FB-032: The Foreman's Cut in Dev Mode
+// ---------------------------------------------------------------------------
+
+describe('dev controls for the Foreman Cut', () => {
+  async function devPost(url: string, payload: Record<string, unknown>, method: 'POST' | 'PATCH' = 'POST') {
+    const res = await app.inject({
+      method, url,
+      headers: { 'content-type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+      payload: JSON.stringify(payload),
+    });
+    return { status: res.statusCode, body: res.json() as Record<string, unknown> };
+  }
+
+  beforeEach(() => setDevEnv('true', TEST_CLERK_ID));
+
+  it('the "one win from the Payoff" preset clears on its next win', async () => {
+    const preset = DEV_SCENARIOS.find((p) => p.name === 'Foreman — one win from the Payoff');
+    expect(preset).toBeDefined();
+    const created = await devPost('/api/v1/dev/runs', preset as unknown as Record<string, unknown>);
+    expect(created.status, JSON.stringify(created.body)).toBe(201);
+    expect((created.body['run'] as Record<string, unknown>)['bossProgressCents']).toBe(2_300);
+
+    const runId = created.body['runId'] as string;
+    const roll = await rollWithDice(app, runId, { passLine: 2_000, odds: 0, hardways: NO_HARDWAYS }, 3, 4);
+    expect(roll.status, JSON.stringify(roll.body)).toBe(200);
+    const r = roll.body['run'] as Record<string, unknown>;
+    expect(r['status']).toBe('TRANSITION');
+    expect(r['currentMarkerIndex']).toBe(3);
+  });
+
+  it('PATCH sets the Cut at the Foreman, and 422s anywhere else', async () => {
+    const foreman = await createRun(userId, { isDevRun: true, currentMarkerIndex: 2 });
+    const ok = await devPost(`/api/v1/dev/runs/${foreman.id}`, { bossProgressCents: 1_200 }, 'PATCH');
+    expect(ok.status).toBe(200);
+    expect(ok.body['bossProgressCents']).toBe(1_200);
+
+    const other = await createRun(userId, { isDevRun: true, currentMarkerIndex: 4 });
+    expect((await devPost(`/api/v1/dev/runs/${other.id}`, { bossProgressCents: 1_200 }, 'PATCH')).status).toBe(422);
+  });
+
+  it('a starting Cut is ignored off a payoff marker', async () => {
+    const created = await devPost('/api/v1/dev/runs', { markerIndex: 4, bossProgressCents: 5_000 });
+    expect(created.status).toBe(201);
+    expect((created.body['run'] as Record<string, unknown>)['bossProgressCents']).toBe(0);
+  });
+});

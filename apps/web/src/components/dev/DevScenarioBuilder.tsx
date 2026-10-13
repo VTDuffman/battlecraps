@@ -47,6 +47,7 @@ interface FormState {
   entry:           'table' | 'transition';
   bankroll:        number;   // dollars
   escrow:          number;   // dollars
+  cut:             number;   // dollars — FB-032 Foreman Cut so far
   shooters:        number;
   hype:            number;
   point:           DevScenarioPoint | null;
@@ -66,6 +67,7 @@ function formFromMarker(markerIndex: number, keep?: Pick<FormState, 'crew' | 'ig
     entry:         d.entry,
     bankroll:      d.bankrollCents / 100,
     escrow:        0,
+    cut:           0,
     shooters:      d.shooters,
     hype:          d.hype,
     point:         null,
@@ -88,6 +90,7 @@ function formFromPreset(preset: DevScenario): FormState {
     entry:         preset.entry ?? base.entry,
     bankroll:      preset.bankrollCents !== undefined ? preset.bankrollCents / 100 : base.bankroll,
     escrow:        (preset.pendingAdditiveCents ?? 0) / 100,
+    cut:           (preset.bossProgressCents ?? 0) / 100,
     shooters:      preset.shooters ?? base.shooters,
     hype:          preset.hype ?? base.hype,
     point:         preset.point ?? null,
@@ -114,6 +117,7 @@ function toScenario(f: FormState): DevScenario {
   };
   if (f.presetName)          scenario.name = f.presetName;
   if (f.escrow > 0)          scenario.pendingAdditiveCents = Math.round(f.escrow * 100);
+  if (f.cut > 0)             scenario.bossProgressCents = Math.round(f.cut * 100);
   if (f.bossCounter !== null) scenario.bossCounter = f.bossCounter;
   if (f.point !== null) {
     scenario.point = f.point;
@@ -256,6 +260,8 @@ const DevScenarioBuilder: React.FC<DevScenarioBuilderProps> = ({ onClose, onCrea
       onCounter={(v) => set('bossCounter', v)}
       escrowDollars={form.escrow}
       onEscrow={(d) => set('escrow', d)}
+      cutDollars={form.cut}
+      onCut={(d) => set('cut', d)}
       onHype={(h) => set('hype', h)}
       allowRandomCharm
     />

@@ -743,6 +743,20 @@ export interface GameState {
   devLastRunPayload: DevRunPayload | null;
   /** FB-028 inspector: last raw roll HTTP response on a dev run. */
   devLastRoll: unknown;
+
+  /**
+   * FB-028 cinematic preview in progress. Holds the fields the preview faked so
+   * clearTransition() can restore them and skip every real side effect.
+   */
+  devPreview: { snapshot: Partial<GameState> } | null;
+}
+
+/** FB-028: what a cinematic preview should show. */
+export interface DevPreviewOptions {
+  /** Marker the cinematic is about (boss entry / floor reveal / clear). */
+  markerIndex:    number;
+  /** Crew ids for the unlock recap (GAME_OVER / VICTORY / BOSS_VICTORY). */
+  unlockCrewIds?: number[];
 }
 
 /**
@@ -904,6 +918,17 @@ export interface GameActions {
    *   entry cinematics and transition detection run as on a fresh load.
    */
   applyDevRunPayload(payload: DevRunPayload, opts: { reconnect: boolean }): void;
+
+  /**
+   * FB-028: play a transition sequence with sample data. Client-only — never
+   * calls the API. When the sequence ends, clearTransition() restores the faked
+   * fields and skips its normal side effects (pub entry, new run, title flag,
+   * Le Prix charm). No-op while another transition or roll is in flight.
+   */
+  previewTransition(type: TransitionType, opts: DevPreviewOptions): void;
+
+  /** FB-028: show the Pink Slip modal (dismissing it clears the flag). */
+  previewPinkSlip(): void;
 
   /**
    * Inject the Clerk getToken function from the React auth context.
@@ -1185,6 +1210,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   devDiceQueue:            [],
   devLastRunPayload:       null,
   devLastRoll:             null,
+  devPreview:              null,
   executiveRating:         null,
   executiveBark:           null,
   pipTermination:          false,
@@ -1266,6 +1292,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // FB-028: real run unless initialState says otherwise.
       isDevRun:       false,
       devDiceQueue:   [],
+      devPreview:     null,
       devLastRoll:    null,
       ...initialState,
       // Always sync committedBets to the server's confirmed bet state so
@@ -1450,6 +1477,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       runId:               null,
       isDevRun:            false,
       devDiceQueue:        [],
+      devPreview:          null,
       status:              null,
       phase:               null,
       bankroll:            0,
@@ -2053,6 +2081,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   clearTransition(type) {
+    // FB-028: a dev preview restores what it faked and skips every side effect.
+    const preview = get().devPreview;
+    if (preview) {
+      set({ ...preview.snapshot, devPreview: null, activeTransition: null, transitionPhaseIndex: 0 });
+      return;
+    }
+
     if (type === 'MARKER_CLEAR' || type === 'BOSS_VICTORY') {
       // Celebration complete — hand off to the pub screen.
       // Now safe to expose the new marker state: celebrationSnapshot is cleared.
@@ -2549,6 +2584,42 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   clearDevDice() {
     set({ devDiceQueue: [] });
+  },
+
+  previewTransition(type, opts) {
+    const s = get();
+    if (s.activeTransition !== null || s.pendingTransition || s.isRolling || s.isAutoCollecting || s.devPreview) return;
+
+    const markerIndex = Math.min(Math.max(0, opts.markerIndex), GAUNTLET.length - 1);
+    const target      = MARKER_TARGETS[markerIndex] ?? 0;
+
+    const snapshot: Partial<GameState> = {
+      currentMarkerIndex:  s.currentMarkerIndex,
+      celebrationSnapshot: s.celebrationSnapshot,
+      crewUnlockedThisRun: s.crewUnlockedThisRun,
+    };
+
+    const fakeCelebration: CelebrationSnapshot = {
+      markerIndex,
+      targetCents:    target,
+      floorId:        GAUNTLET[markerIndex]?.floor ?? 1,
+      bankrollBefore: Math.round(target * 0.9),
+      bankrollAfter:  Math.round(target * 1.15),
+      isBossVictory:  isBossMarker(markerIndex),
+    };
+
+    set({
+      devPreview:           { snapshot },
+      currentMarkerIndex:   markerIndex,
+      celebrationSnapshot:  fakeCelebration,
+      crewUnlockedThisRun:  opts.unlockCrewIds ?? [],
+      activeTransition:     type,
+      transitionPhaseIndex: 0,
+    });
+  },
+
+  previewPinkSlip() {
+    set({ pipTermination: true });
   },
 
   applyDevRunPayload(payload, { reconnect }) {

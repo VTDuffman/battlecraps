@@ -533,3 +533,80 @@ describe('live dev-run edits', () => {
     expect((await force((await createRun(userId)).id)).status).toBe(409); // real run
   });
 });
+
+// ---------------------------------------------------------------------------
+// Account toggles (Phase 5) — real-account changes, dev only
+// ---------------------------------------------------------------------------
+
+describe('dev account routes', () => {
+  async function post(url: string, payload: Record<string, unknown>) {
+    const res = await app.inject({
+      method:  'POST',
+      url,
+      headers: { 'content-type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+      payload: JSON.stringify(payload),
+    });
+    return { status: res.statusCode, body: res.json() as Record<string, unknown> };
+  }
+
+  beforeEach(async () => {
+    setDevEnv('true', TEST_CLERK_ID);
+    await db.update(users)
+      .set({ unacknowledgedUnlockIds: [], tutorialCompleted: true })
+      .where(eq(users.id, userId));
+  });
+
+  afterEach(async () => {
+    await db.update(users)
+      .set({ unacknowledgedUnlockIds: [], tutorialCompleted: false })
+      .where(eq(users.id, userId));
+  });
+
+  it('both routes 404 for non-devs', async () => {
+    setDevEnv('true', 'user_someone_else');
+    expect((await post('/api/v1/dev/account/reset-tutorial', {})).status).toBe(404);
+    expect((await post('/api/v1/dev/account/unlocks', { grant: [1] })).status).toBe(404);
+    expect((await getUser()).unlockedCrewIds).not.toContain(1);
+  });
+
+  it('reset-tutorial sets tutorialCompleted to false', async () => {
+    const { status, body } = await post('/api/v1/dev/account/reset-tutorial', {});
+    expect(status).toBe(200);
+    expect(body['tutorialCompleted']).toBe(false);
+    expect((await getUser()).tutorialCompleted).toBe(false);
+  });
+
+  it('grant adds unlocks and (optionally) queues the unlock cinematic', async () => {
+    const { status, body } = await post('/api/v1/dev/account/unlocks', { grant: [1, 13], queueCinematic: true });
+    expect(status, JSON.stringify(body)).toBe(200);
+    const user = await getUser();
+    expect(user.unlockedCrewIds).toEqual(expect.arrayContaining([1, 13]));
+    expect(user.unacknowledgedUnlockIds).toEqual(expect.arrayContaining([1, 13]));
+  });
+
+  it('revoke removes unlocks and clears their progress so they can be re-earned', async () => {
+    await db.update(users)
+      .set({ unlockedCrewIds: [1, 5], unlockProgress: { 5: 8, 8: 12 } })
+      .where(eq(users.id, userId));
+    const { status } = await post('/api/v1/dev/account/unlocks', { revoke: [5] });
+    expect(status).toBe(200);
+    const user = await getUser();
+    expect(user.unlockedCrewIds).toEqual([1]);
+    const progress = user.unlockProgress as Record<string, number>;
+    expect(progress['5']).toBeUndefined();
+    expect(progress['8']).toBe(12); // untouched
+  });
+
+  it('starter crew cannot be granted or revoked (422)', async () => {
+    const { status, body } = await post('/api/v1/dev/account/unlocks', { grant: [16] });
+    expect(status).toBe(422);
+    expect(body['invalidCrewIds']).toEqual([16]);
+  });
+
+  it('resetUnacknowledged empties the pending cinematic queue', async () => {
+    await db.update(users).set({ unacknowledgedUnlockIds: [2, 3] }).where(eq(users.id, userId));
+    const { status, body } = await post('/api/v1/dev/account/unlocks', { resetUnacknowledged: true });
+    expect(status).toBe(200);
+    expect(body['unacknowledgedUnlockIds']).toEqual([]);
+  });
+});

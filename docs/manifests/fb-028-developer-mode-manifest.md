@@ -243,6 +243,14 @@ Demo: from the title screen, start "Executive one roll from PIP", lose one roll,
 ### Step 5.3: Tests
 > Integration: both routes 404 for non-devs; unlock grant/revoke round-trips.
 
+### Phase 5 implementation notes (2026-10-12)
+- **Investigation (Step 5.1):** phases read very little: `currentMarkerIndex` (boss entry / dread, floor reveal + confirm, marker intro), `celebrationSnapshot` (marker celebration, boss victory + comp), `crewUnlockedThisRun` + `crewRoster` (unlock recap), real `bankroll` / `maxBankrollCents` (victory recap / sendoff, fine to keep). The hazard is `clearTransition()`: MARKER_CLEAR / BOSS_VICTORY move the run into the pub, VICTORY sets `victoryComplete` (starts a new run), TITLE writes `bc_title_shown`, BOSS_ENTRY applies the pending Le Prix charm.
+- **`previewTransition(type, { markerIndex, unlockCrewIds })`** snapshots those three fields into `devPreview`, fakes them, and sets `activeTransition`. `clearTransition()` checks `devPreview` first: restore + return, skipping every side effect. Client-only; no API call. Reset on connect/disconnect.
+- **Pink Slip** is a modal, not a transition: `previewPinkSlip()` sets `pipTermination`; dismissing clears it.
+- **Account routes** in a separate `devAccountPlugin`: `POST /dev/account/reset-tutorial`, `POST /dev/account/unlocks { grant, revoke, queueCinematic, resetUnacknowledged }`. Only unlock-gated crew (non-Starter) accepted. **Revoke also clears that crew's `unlockProgress`** so it can be re-earned. `queueCinematic` pushes newly granted ids into `unacknowledgedUnlockIds` to test the unlock cinematic.
+- Panel: **Preview cinematics** (boss entry, boss victory + comp, floor reveal, marker intro, marker clear, unlock recap, victory sequence, title, Pink Slip) and **Account** (reset tutorial, clear pending unlock cinematics, crew unlock checklist with grant/revoke diff), each account action behind an inline confirm.
+- Tests: 6 integration tests (37 in `dev.test.ts`).
+
 ### 🛑 APPROVAL GATE: Phase 5 → mark FB-028 Implemented in backlog + CLAUDE.md.
 
 ---

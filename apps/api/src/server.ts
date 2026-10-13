@@ -27,7 +27,7 @@ import { reorderPlugin }     from './routes/reorder.js';
 import { feedbackPlugin }    from './routes/feedback.js';
 import { unlockAckPlugin }   from './routes/unlockAck.js';
 import { pubDraftPlugin }    from './routes/pubDraft.js';
-import { devPlugin }        from './routes/dev.js';
+import { devPlugin, devAccountPlugin } from './routes/dev.js';
 
 const PORT = Number(process.env['PORT'] ?? 3001);
 
@@ -79,6 +79,7 @@ await app.register(feedbackPlugin,   { prefix: '/api/v1' });
 await app.register(unlockAckPlugin,  { prefix: '/api/v1' });
 await app.register(pubDraftPlugin,   { prefix: '/api/v1' });
 await app.register(devPlugin,        { prefix: '/api/v1' });
+await app.register(devAccountPlugin, { prefix: '/api/v1' });
 
 // Health check — Render health check path (healthCheckPath: /health in render.yaml).
 // Returns 200 so Render considers the deployment healthy and stops the redeploy loop.

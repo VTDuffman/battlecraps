@@ -1,15 +1,16 @@
 // =============================================================================
-// BATTLECRAPS — LIVE DEV PANEL (FB-028 Phase 4)
+// BATTLECRAPS — LIVE DEV PANEL (FB-028 Phases 4–5)
 // apps/web/src/components/dev/DevPanel.tsx
 //
 // Slide-out drawer on dev runs: edit run state mid-game, jump markers, force a
-// game over, inspect raw state, and copy the current state as a DevScenario.
+// game over, preview any cinematic, change account unlocks / tutorial (Phase 5),
+// inspect raw state, and copy the current state as a DevScenario.
 // Toggle with the backtick key (`) or the DEV tab. Locked while a roll or
 // cascade is in flight. Every change goes through the dev routes (server
 // re-checks the allowlist and refuses real runs), then re-hydrates the store.
 // =============================================================================
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   GAUNTLET,
@@ -17,12 +18,16 @@ import {
   getBossCounterRange,
   type DevScenario,
   type DevScenarioPoint,
+  type TransitionType,
 } from '@battlecraps/shared';
 import { useGameStore, selectIsCascading, type DevRunPayload } from '../../store/useGameStore.js';
 import { BossCounterControl, DevRow, devInputCls, devSelectCls } from './BossCounterControl.js';
 
 const API_BASE = (import.meta.env['VITE_API_URL'] as string | undefined) ?? '';
 const MAGENTA  = '#d0208a';
+
+const BOSS_MARKERS  = GAUNTLET.map((m, i) => (m.isBoss ? i : -1)).filter((i) => i >= 0);
+const FLOOR_NUMBERS = [...new Set(GAUNTLET.map((m) => m.floor))];
 
 function markerLabel(i: number): string {
   const m = GAUNTLET[i];
@@ -83,6 +88,28 @@ const DevPanel: React.FC = () => {
   const [jumpEntry,  setJumpEntry]  = useState<'transition' | 'table'>('transition');
   const [confirmEnd, setConfirmEnd] = useState(false);
 
+  // Phase 5 — previews + account
+  const previewTransition = useGameStore((s) => s.previewTransition);
+  const previewPinkSlip   = useGameStore((s) => s.previewPinkSlip);
+  const crewRoster        = useGameStore((s) => s.crewRoster);
+  const fetchCrewRoster   = useGameStore((s) => s.fetchCrewRoster);
+  const [previewBoss,     setPreviewBoss]     = useState(BOSS_MARKERS[0] ?? 2);
+  const [previewFloor,    setPreviewFloor]    = useState(2);
+  const [previewUnlocks,  setPreviewUnlocks]  = useState<number[]>([1, 13]);
+  const [unlockDraft,     setUnlockDraft]     = useState<number[]>([]);
+  const [queueCinematic,  setQueueCinematic]  = useState(false);
+  const [confirmAccount,  setConfirmAccount]  = useState<'tutorial' | 'pending' | 'unlocks' | null>(null);
+
+  const gatedCrew = useMemo(
+    () => (crewRoster ?? []).filter((c) => c.rarity !== 'Starter').sort((a, b) => a.id - b.id),
+    [crewRoster],
+  );
+  const unlockedNow = useMemo(() => gatedCrew.filter((c) => c.isAvailable).map((c) => c.id), [gatedCrew]);
+  const unlockDiff  = useMemo(() => ({
+    grant:  unlockDraft.filter((id) => !unlockedNow.includes(id)),
+    revoke: unlockedNow.filter((id) => !unlockDraft.includes(id)),
+  }), [unlockDraft, unlockedNow]);
+
   const locked = isRolling || isAutoCollecting || isCascading || pending;
 
   // ── Toggle with backtick (ignored while typing in a field) ──────────────
@@ -98,7 +125,7 @@ const DevPanel: React.FC = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const devFetch = useCallback(async (method: 'GET' | 'PATCH' | 'POST', path: string, body?: unknown): Promise<DevRunPayload> => {
+  const devFetch = useCallback(async <T = DevRunPayload,>(method: 'GET' | 'PATCH' | 'POST', path: string, body?: unknown): Promise<T> => {
     const token = await getToken?.();
     const res = await fetch(`${API_BASE}/api/v1${path}`, {
       method,
@@ -108,10 +135,41 @@ const DevPanel: React.FC = () => {
       },
       ...(body !== undefined && { body: JSON.stringify(body) }),
     });
-    const json = (await res.json().catch(() => ({}))) as DevRunPayload & { error?: string };
+    const json = (await res.json().catch(() => ({}))) as T & { error?: string };
     if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
     return json;
   }, [getToken]);
+
+  // Roster for the unlock pickers; draft mirrors what the account has now.
+  useEffect(() => {
+    if (open && crewRoster === null) void fetchCrewRoster();
+  }, [open, crewRoster, fetchCrewRoster]);
+  useEffect(() => { setUnlockDraft(unlockedNow); }, [unlockedNow]);
+
+  const preview = (type: TransitionType, markerIndex: number, unlockCrewIds?: number[]) => {
+    setOpen(false);
+    previewTransition(type, { markerIndex, ...(unlockCrewIds && { unlockCrewIds }) });
+  };
+
+  const accountCall = async (label: string, path: string, body: Record<string, unknown>) => {
+    setPending(true);
+    setMessage(null);
+    try {
+      await devFetch<Record<string, unknown>>('POST', path, body);
+      await fetchCrewRoster();
+      setMessage({ kind: 'ok', text: label });
+    } catch (err) {
+      setMessage({ kind: 'err', text: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const applyUnlocks = () => accountCall(
+    `Unlocks updated (+${unlockDiff.grant.length} / −${unlockDiff.revoke.length})${queueCinematic && unlockDiff.grant.length > 0 ? ' — cinematic queued for your next transition' : ''}`,
+    '/dev/account/unlocks',
+    { grant: unlockDiff.grant, revoke: unlockDiff.revoke, queueCinematic },
+  );
 
   // Refresh the inspector snapshot whenever the panel opens (no store merge,
   // so bets placed but not yet rolled are left alone).
@@ -294,6 +352,110 @@ const DevPanel: React.FC = () => {
                       <button type="button" disabled={locked} className={smallBtn} onClick={() => setConfirmEnd(true)}>Force game over</button>
                     )}
                   </div>
+                </Section>
+
+                <Section title="PREVIEW CINEMATICS">
+                  <p className="text-[10px] text-white/40">Plays with sample data; nothing is saved and the run is untouched.</p>
+                  <DevRow label="Boss">
+                    <select className={devSelectCls} value={previewBoss} onChange={(e) => setPreviewBoss(Number(e.target.value))}>
+                      {BOSS_MARKERS.map((i) => <option key={i} value={i}>{GAUNTLET[i]?.boss?.name ?? i}</option>)}
+                    </select>
+                  </DevRow>
+                  <div className="flex flex-wrap gap-1">
+                    <button type="button" disabled={locked} className={smallBtn} onClick={() => preview('BOSS_ENTRY', previewBoss)}>Boss entry</button>
+                    <button type="button" disabled={locked} className={smallBtn} onClick={() => preview('BOSS_VICTORY', previewBoss)}>Boss victory + comp</button>
+                  </div>
+                  <DevRow label="Floor">
+                    <select className={devSelectCls} value={previewFloor} onChange={(e) => setPreviewFloor(Number(e.target.value))}>
+                      {FLOOR_NUMBERS.map((f) => <option key={f} value={f}>Floor {f} · {GAUNTLET[(f - 1) * 3]?.venue ?? ''}</option>)}
+                    </select>
+                  </DevRow>
+                  <div className="flex flex-wrap gap-1">
+                    <button type="button" disabled={locked} className={smallBtn} onClick={() => preview('FLOOR_REVEAL', (previewFloor - 1) * 3)}>Floor reveal</button>
+                    <button type="button" disabled={locked} className={smallBtn} onClick={() => preview('MARKER_INTRO', (previewFloor - 1) * 3)}>Marker intro</button>
+                    <button type="button" disabled={locked} className={smallBtn} onClick={() => preview('MARKER_CLEAR', (previewFloor - 1) * 3)}>Marker clear</button>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    <button type="button" disabled={locked} className={smallBtn} onClick={() => preview('GAME_OVER', payload.currentMarkerIndex, previewUnlocks)}>Unlock recap</button>
+                    <button type="button" disabled={locked} className={smallBtn} onClick={() => preview('VICTORY', GAUNTLET.length - 1, previewUnlocks)}>Victory sequence</button>
+                    <button type="button" disabled={locked} className={smallBtn} onClick={() => preview('TITLE', 0)}>Title screen</button>
+                    <button type="button" disabled={locked} className={smallBtn} onClick={() => { setOpen(false); previewPinkSlip(); }}>Pink Slip</button>
+                  </div>
+                  <details className="text-[11px]">
+                    <summary className="cursor-pointer text-white/70">Unlock recap crew ({previewUnlocks.length})</summary>
+                    <div className="mt-1 grid grid-cols-2 gap-x-2">
+                      {gatedCrew.map((c) => (
+                        <label key={c.id} className="flex items-center gap-1 text-white/80">
+                          <input type="checkbox" checked={previewUnlocks.includes(c.id)}
+                            onChange={() => setPreviewUnlocks((u) => u.includes(c.id) ? u.filter((x) => x !== c.id) : [...u, c.id])} />
+                          {c.name}
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+                </Section>
+
+                <Section title="ACCOUNT · CHANGES YOUR REAL ACCOUNT">
+                  <div className="flex flex-wrap gap-1">
+                    {confirmAccount === 'tutorial' ? (
+                      <>
+                        <button type="button" className={`${smallBtn} border-red-500 text-red-300`}
+                          onClick={() => { setConfirmAccount(null); void accountCall('Tutorial reset — go to the title screen and start a new run to replay it', '/dev/account/reset-tutorial', {}); }}>
+                          Confirm reset tutorial
+                        </button>
+                        <button type="button" className={smallBtn} onClick={() => setConfirmAccount(null)}>Cancel</button>
+                      </>
+                    ) : (
+                      <button type="button" disabled={pending} className={smallBtn} onClick={() => setConfirmAccount('tutorial')}>Reset tutorial</button>
+                    )}
+                    {confirmAccount === 'pending' ? (
+                      <>
+                        <button type="button" className={`${smallBtn} border-red-500 text-red-300`}
+                          onClick={() => { setConfirmAccount(null); void accountCall('Pending unlock cinematics cleared', '/dev/account/unlocks', { resetUnacknowledged: true }); }}>
+                          Confirm clear
+                        </button>
+                        <button type="button" className={smallBtn} onClick={() => setConfirmAccount(null)}>Cancel</button>
+                      </>
+                    ) : (
+                      <button type="button" disabled={pending} className={smallBtn} onClick={() => setConfirmAccount('pending')}>Clear pending unlock cinematics</button>
+                    )}
+                  </div>
+                  <details className="text-[11px]">
+                    <summary className="cursor-pointer text-white/70">Crew unlocks ({unlockDraft.length}/{gatedCrew.length})</summary>
+                    {crewRoster === null ? <p className="mt-1 text-white/40">Loading roster…</p> : (
+                      <div className="mt-1 space-y-2">
+                        <div className="grid grid-cols-2 gap-x-2">
+                          {gatedCrew.map((c) => (
+                            <label key={c.id} className="flex items-center gap-1 text-white/80">
+                              <input type="checkbox" checked={unlockDraft.includes(c.id)}
+                                onChange={() => setUnlockDraft((u) => u.includes(c.id) ? u.filter((x) => x !== c.id) : [...u, c.id])} />
+                              {c.name}
+                            </label>
+                          ))}
+                        </div>
+                        <label className="flex items-center gap-1 text-white/70">
+                          <input type="checkbox" checked={queueCinematic} onChange={(e) => setQueueCinematic(e.target.checked)} />
+                          Queue unlock cinematic for newly granted crew
+                        </label>
+                        <div className="flex gap-1">
+                          <button type="button" className={smallBtn} onClick={() => setUnlockDraft(gatedCrew.map((c) => c.id))}>All</button>
+                          <button type="button" className={smallBtn} onClick={() => setUnlockDraft([])}>None</button>
+                          {confirmAccount === 'unlocks' ? (
+                            <>
+                              <button type="button" className={`${smallBtn} border-red-500 text-red-300`} onClick={() => { setConfirmAccount(null); void applyUnlocks(); }}>
+                                Confirm {unlockDiff.grant.length} grant / {unlockDiff.revoke.length} revoke
+                              </button>
+                              <button type="button" className={smallBtn} onClick={() => setConfirmAccount(null)}>Cancel</button>
+                            </>
+                          ) : (
+                            <button type="button" disabled={pending || (unlockDiff.grant.length === 0 && unlockDiff.revoke.length === 0)} className={smallBtn}
+                              onClick={() => setConfirmAccount('unlocks')}>Apply</button>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-white/40">Revoking also clears that crew's unlock progress so it can be re-earned.</p>
+                      </div>
+                    )}
+                  </details>
                 </Section>
 
                 <Section title="INSPECTOR">

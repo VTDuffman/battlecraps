@@ -6,6 +6,8 @@
 // PATCH /api/v1/dev/runs/:id        — edit fields on a live dev run
 // POST  /api/v1/dev/runs/:id/jump   — move a dev run to another marker
 // POST  /api/v1/dev/runs/:id/force  — force an outcome (GAME_OVER)
+// POST  /api/v1/dev/account/reset-tutorial — tutorialCompleted = false (real account)
+// POST  /api/v1/dev/account/unlocks        — grant / revoke crew unlocks (real account)
 //
 // Real runs can never be edited: every :id route 409s unless is_dev_run.
 //
@@ -30,7 +32,7 @@ import {
   type DevScenario,
 } from '@battlecraps/shared';
 import { db } from '../db/client.js';
-import { runs, crewDefinitions, type RunRow, type StoredCrewSlots, type UserRow } from '../db/schema.js';
+import { runs, users, crewDefinitions, type RunRow, type StoredCrewSlots, type UserRow } from '../db/schema.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { requireDevUser } from '../lib/devAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
@@ -118,6 +120,13 @@ const patchSchema = z.object({
 const jumpSchema = z.object({
   markerIndex: z.number().int().min(0).max(GAUNTLET.length - 1),
   entry:       z.enum(['table', 'transition']).default('transition'),
+}).strict();
+
+const unlocksSchema = z.object({
+  grant:               z.array(z.number().int().positive()).max(30).optional(),
+  revoke:              z.array(z.number().int().positive()).max(30).optional(),
+  queueCinematic:      z.boolean().optional(),
+  resetUnacknowledged: z.boolean().optional(),
 }).strict();
 
 const forceSchema = z.object({
@@ -401,6 +410,92 @@ export async function devPlugin(app: FastifyInstance): Promise<void> {
 
       req.log.info({ runId: row.id, action: parsed.data.action }, '[dev] forced outcome');
       return reply.send(await buildRunStatePayload(row, user));
+    },
+  );
+}
+
+/**
+ * Account routes (FB-028 Phase 5). These change the developer's REAL account
+ * (the only account requireDevUser lets through); the UI confirms each action.
+ */
+export async function devAccountPlugin(app: FastifyInstance): Promise<void> {
+  const accountState = (u: UserRow) => ({
+    tutorialCompleted:       u.tutorialCompleted,
+    unlockedCrewIds:         u.unlockedCrewIds,
+    unacknowledgedUnlockIds: u.unacknowledgedUnlockIds,
+  });
+
+  // ── POST /dev/account/reset-tutorial ─────────────────────────────────────
+  // Shared foundation for FB-017 (player-facing tutorial replay).
+  app.post(
+    '/dev/account/reset-tutorial',
+    { preHandler: [requireClerkAuth, requireDevUser] },
+    async (req, reply) => {
+      const user = await resolveUserByClerkId(req.clerkId);
+      if (!user) return reply.status(401).send({ error: 'User not found — please re-sign in.' });
+
+      const [updated] = await db
+        .update(users)
+        .set({ tutorialCompleted: false, updatedAt: new Date() })
+        .where(eq(users.id, user.id))
+        .returning();
+      if (!updated) return reply.status(500).send({ error: 'Update failed.' });
+
+      req.log.info({ userId: user.id }, '[dev] tutorial reset');
+      return reply.send(accountState(updated));
+    },
+  );
+
+  // ── POST /dev/account/unlocks ────────────────────────────────────────────
+  // grant: add crew to unlockedCrewIds (queueCinematic also queues the unlock
+  //        cinematic via unacknowledgedUnlockIds).
+  // revoke: remove crew AND clear their unlock progress so they can be re-earned.
+  // resetUnacknowledged: empty the pending-cinematic queue.
+  app.post(
+    '/dev/account/unlocks',
+    { preHandler: [requireClerkAuth, requireDevUser] },
+    async (req, reply) => {
+      const user = await resolveUserByClerkId(req.clerkId);
+      if (!user) return reply.status(401).send({ error: 'User not found — please re-sign in.' });
+
+      const parsed = unlocksSchema.safeParse(req.body);
+      if (!parsed.success) return reply.status(400).send({ error: 'Invalid request.', issues: parsed.error.issues });
+      const { grant = [], revoke = [], queueCinematic = false, resetUnacknowledged = false } = parsed.data;
+
+      // Only unlock-gated crew can be granted/revoked (starters are always available).
+      const ids = [...new Set([...grant, ...revoke])];
+      if (ids.length > 0) {
+        const defs = await db
+          .select({ id: crewDefinitions.id, isStarterRoster: crewDefinitions.isStarterRoster })
+          .from(crewDefinitions)
+          .where(inArray(crewDefinitions.id, ids));
+        const gated = new Set(defs.filter((d) => !d.isStarterRoster).map((d) => d.id));
+        const invalid = ids.filter((id) => !gated.has(id));
+        if (invalid.length > 0) {
+          return reply.status(422).send({ error: 'Only unlock-gated crew can be granted or revoked.', invalidCrewIds: invalid });
+        }
+      }
+
+      const revokeSet = new Set(revoke);
+      const newlyGranted = grant.filter((id) => !user.unlockedCrewIds.includes(id) && !revokeSet.has(id));
+      const unlockedCrewIds = [...new Set([...user.unlockedCrewIds, ...grant])].filter((id) => !revokeSet.has(id));
+
+      let unacknowledgedUnlockIds = resetUnacknowledged ? [] : user.unacknowledgedUnlockIds;
+      unacknowledgedUnlockIds = unacknowledgedUnlockIds.filter((id) => !revokeSet.has(id));
+      if (queueCinematic) unacknowledgedUnlockIds = [...new Set([...unacknowledgedUnlockIds, ...newlyGranted])];
+
+      const unlockProgress = { ...user.unlockProgress };
+      for (const id of revoke) delete unlockProgress[id];
+
+      const [updated] = await db
+        .update(users)
+        .set({ unlockedCrewIds, unacknowledgedUnlockIds, unlockProgress, updatedAt: new Date() })
+        .where(eq(users.id, user.id))
+        .returning();
+      if (!updated) return reply.status(500).send({ error: 'Update failed.' });
+
+      req.log.info({ userId: user.id, grant, revoke, queueCinematic, resetUnacknowledged }, '[dev] unlocks changed');
+      return reply.send(accountState(updated));
     },
   );
 }

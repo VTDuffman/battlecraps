@@ -20,7 +20,7 @@ import { bootstrapPlugin }  from '../../routes/runs.js';
 import { recruitPlugin }    from '../../routes/recruit.js';
 import { leaderboardPlugin } from '../../routes/leaderboard.js';
 import { authPlugin }       from '../../routes/auth.js';
-import { devPlugin }        from '../../routes/dev.js';
+import { devPlugin, devAccountPlugin } from '../../routes/dev.js';
 import type { Bets } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
@@ -50,6 +50,7 @@ export async function buildTestApp(): Promise<FastifyInstance> {
   await app.register(leaderboardPlugin, { prefix: '/api/v1' });
   await app.register(authPlugin,       { prefix: '/api/v1' });
   await app.register(devPlugin,        { prefix: '/api/v1' });
+  await app.register(devAccountPlugin, { prefix: '/api/v1' });
   await app.ready();
   return app;
 }

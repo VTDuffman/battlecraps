@@ -213,6 +213,15 @@ Demo: from the title screen, start "Executive one roll from PIP", lose one roll,
 ### Step 4.4: Tests
 > Integration: PATCH rejected for real runs and other users' runs; clamps out-of-range boss counters; jump into marker 11 + skip recruit → rating 2.
 
+### Phase 4 implementation notes (2026-10-12)
+- **Two re-hydration modes** (`applyDevRunPayload`): in-place merge for edits (no cinematic replay; Le Prix charm goes straight to `charmedCrewSlot`), full `connectToRun` for jump / game over so entry cinematics + transition detection run. A merge resets bets placed-but-not-rolled to the server's committed bets.
+- **Jump "with cinematics"** lands one marker early at target; the player taps the existing **✓ TARGET MET — ADVANCE** button to run the real clear → celebration → pub. Not auto-triggered (keeps the auto-collect path untouched). **Clear this marker** = PATCH bankroll to target, same button.
+- **Dice control stays its own 🎲 DEV widget** rather than being embedded in the drawer, so it's reachable without opening the panel.
+- Crew editing is supported by `PATCH` but not exposed in the panel UI (use the Scenario Builder); easy to add if needed.
+- Per-boss control extracted to `BossCounterControl.tsx`, shared with the Scenario Builder.
+- `buildRunStatePayload()` in `runs.ts` now backs `GET /runs/:id` and every dev route; adds `compPerkIds` + `pendingAdditiveCents` (used by Copy as scenario).
+- Tests: 8 integration tests (31 in `dev.test.ts`).
+
 ### 🛑 APPROVAL GATE: Phase 4
 
 ---

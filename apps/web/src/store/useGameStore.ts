@@ -738,6 +738,38 @@ export interface GameState {
    * as cheat_dice on dev runs only. Cleared on connect / disconnect.
    */
   devDiceQueue: [number, number][];
+
+  /** FB-028 inspector: last full run payload from a dev route / GET /runs/:id. */
+  devLastRunPayload: DevRunPayload | null;
+  /** FB-028 inspector: last raw roll HTTP response on a dev run. */
+  devLastRoll: unknown;
+}
+
+/**
+ * FB-028: run state as returned by GET /runs/:id and the dev routes
+ * (mirrors buildRunStatePayload in apps/api/src/routes/runs.ts).
+ */
+export interface DevRunPayload {
+  bankroll:              number;
+  shooters:              number;
+  hype:                  number;
+  phase:                 GamePhase;
+  status:                RunStatus;
+  point:                 number | null;
+  crewSlots:             StoredCrewSlots;
+  currentMarkerIndex:    number;
+  bets:                  Bets;
+  maxBankrollCents:      number;
+  unlockedCrewIds:       number[];
+  tutorialCompleted:     boolean;
+  unacknowledgedUnlocks: { id: number }[];
+  highestMarkerReached:  number;
+  unlockedSlots:         3 | 4 | 5;
+  bossPointHits:         number;
+  consecutivePointHits:  number;
+  compPerkIds:           number[];
+  pendingAdditiveCents:  number;
+  isDevRun:              boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -864,6 +896,14 @@ export interface GameActions {
   removeDevDice(index: number): void;
   /** FB-028: empty the dev dice queue. */
   clearDevDice(): void;
+
+  /**
+   * FB-028: apply a run payload returned by a dev route.
+   * - reconnect: false — merge data fields in place (no cinematics replay).
+   * - reconnect: true  — full connectToRun (marker change / game over), so
+   *   entry cinematics and transition detection run as on a fresh load.
+   */
+  applyDevRunPayload(payload: DevRunPayload, opts: { reconnect: boolean }): void;
 
   /**
    * Inject the Clerk getToken function from the React auth context.
@@ -1143,6 +1183,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   isDev:                   false,
   isDevRun:                false,
   devDiceQueue:            [],
+  devLastRunPayload:       null,
+  devLastRoll:             null,
   executiveRating:         null,
   executiveBark:           null,
   pipTermination:          false,
@@ -1224,6 +1266,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // FB-028: real run unless initialState says otherwise.
       isDevRun:       false,
       devDiceQueue:   [],
+      devLastRoll:    null,
       ...initialState,
       // Always sync committedBets to the server's confirmed bet state so
       // that right-click undo has the correct floor when reconnecting.
@@ -2189,6 +2232,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         };
       };
 
+      // FB-028: keep the raw response for the dev panel inspector.
+      if (get().isDevRun) set({ devLastRoll: data });
+
       // ── Auto-clear: bankroll already met the marker target before this roll ─
       // The server skipped the full dice pipeline and advanced the run directly.
       // Build a synthetic settlement and apply it immediately; the dice animation
@@ -2503,6 +2549,50 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   clearDevDice() {
     set({ devDiceQueue: [] });
+  },
+
+  applyDevRunPayload(payload, { reconnect }) {
+    const { runId } = get();
+    if (!runId) return;
+
+    const runState: Partial<GameState> = {
+      bankroll:             payload.bankroll,
+      shooters:             payload.shooters,
+      hype:                 payload.hype,
+      phase:                payload.phase,
+      status:               payload.status,
+      point:                payload.point,
+      crewSlots:            payload.crewSlots,
+      currentMarkerIndex:   payload.currentMarkerIndex,
+      bets:                 payload.bets,
+      unlockedSlots:        payload.unlockedSlots,
+      bossPointHits:        payload.bossPointHits,
+      consecutivePointHits: payload.consecutivePointHits,
+      isDevRun:             payload.isDevRun,
+    };
+
+    if (reconnect) {
+      get().connectToRun(runId, {
+        ...runState,
+        maxBankrollCents:      payload.maxBankrollCents,
+        highestMarkerReached:  payload.highestMarkerReached,
+        unacknowledgedUnlocks: payload.unacknowledgedUnlocks.map((u) => u.id),
+      });
+      set({ devLastRunPayload: payload });
+      return;
+    }
+
+    // In-place merge. Boss displays update immediately (no entry cinematic
+    // pending), so Le Prix's charm goes straight to charmedCrewSlot.
+    const display = bossDisplayFromCounter(runState);
+    set({
+      ...runState,
+      committedBets:   payload.bets,
+      slotIds:         buildSlotIds(payload.unlockedSlots),
+      ...('executiveRating' in display && { executiveRating: display.executiveRating }),
+      ...('pendingBossEntryCharm' in display && { charmedCrewSlot: display.pendingBossEntryCharm ?? null }),
+      devLastRunPayload: payload,
+    });
   },
 
   markCompsAnimated(count) {

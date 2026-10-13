@@ -17,20 +17,19 @@ import {
   MARKER_TARGETS,
   DEV_SCENARIOS,
   getRealisticDefaults,
-  getBossCounterRange,
   isBossMarker,
   type DevScenario,
   type DevScenarioPoint,
 } from '@battlecraps/shared';
 import { useGameStore } from '../../store/useGameStore.js';
 import type { CrewRosterEntry } from '../../store/useGameStore.js';
+import { BossCounterControl, DevRow, devInputCls, devSelectCls } from './BossCounterControl.js';
 
 const API_BASE  = (import.meta.env['VITE_API_URL'] as string | undefined) ?? '';
 const LS_RUN_ID = 'bc_run_id';
 
 const MAGENTA = '#d0208a';
 const POINTS: readonly DevScenarioPoint[] = [4, 5, 6, 8, 9, 10];
-const RATING_LABELS = ['Action Required', 'Below Strong', 'Strong', 'Very Strong', 'Exceptional'];
 
 /** Perk comps (slot comps are expressed through unlockedSlots instead). */
 const PERK_COMPS = GAUNTLET
@@ -145,18 +144,9 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
   </fieldset>
 );
 
-const Row: React.FC<{ label: string; children: React.ReactNode; hint?: string }> = ({ label, children, hint }) => (
-  <label className="flex items-center justify-between gap-3 text-sm">
-    <span className="text-white/70 shrink-0">
-      {label}
-      {hint && <span className="block text-[10px] text-white/40">{hint}</span>}
-    </span>
-    {children}
-  </label>
-);
-
-const inputCls  = 'bg-black border border-white/20 rounded px-2 py-1 text-white text-sm w-36 text-right';
-const selectCls = 'bg-black border border-white/20 rounded px-2 py-1 text-white text-sm max-w-[14rem]';
+const Row       = DevRow;
+const inputCls  = devInputCls;
+const selectCls = devSelectCls;
 
 // ---------------------------------------------------------------------------
 // Component
@@ -207,7 +197,6 @@ const DevScenarioBuilder: React.FC<DevScenarioBuilderProps> = ({ onClose, onCrea
   const marker      = GAUNTLET[form.markerIndex];
   const boss        = marker?.boss;
   const isBoss      = isBossMarker(form.markerIndex);
-  const counterRange = getBossCounterRange(form.markerIndex, form.unlockedSlots);
   const entryDefault = getRealisticDefaults(form.markerIndex).bossCounter;
 
   // ── Actions ─────────────────────────────────────────────────────────────
@@ -258,80 +247,20 @@ const DevScenarioBuilder: React.FC<DevScenarioBuilderProps> = ({ onClose, onCrea
     }
   };
 
-  // ── Boss control (per rule) ─────────────────────────────────────────────
-  const bossControl = (() => {
-    if (!isBoss || !boss) return null;
-    const value = form.bossCounter ?? entryDefault;
-    switch (boss.rule) {
-      case 'CROSS_CALIBRATION':
-        return (
-          <Row label="Rating">
-            <select className={selectCls} value={value} onChange={(e) => set('bossCounter', Number(e.target.value))}>
-              {RATING_LABELS.map((l, i) => <option key={l} value={i}>{i} · {l}</option>)}
-            </select>
-          </Row>
-        );
-      case 'CONVERGENCE':
-        return (
-          <Row label="Seven-outs so far" hint="each removes a crew slot">
-            <select className={selectCls} value={value} onChange={(e) => set('bossCounter', Number(e.target.value))}>
-              {[0, 1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </Row>
-        );
-      case 'TIDAL_SURGE': {
-        const labels = boss.ruleParams.rule === 'TIDAL_SURGE' ? boss.ruleParams.stageLabels : ['LOW', 'EBB', 'HIGH', 'FLOW'];
-        return (
-          <Row label="Tide stage">
-            <select className={selectCls} value={value} onChange={(e) => set('bossCounter', Number(e.target.value))}>
-              {labels.map((l, i) => <option key={l} value={i}>{l}</option>)}
-            </select>
-          </Row>
-        );
-      }
-      case 'DISABLE_CREW':
-        return (
-          <Row label="Charmed slot">
-            <select
-              className={selectCls}
-              value={form.bossCounter ?? ''}
-              onChange={(e) => set('bossCounter', e.target.value === '' ? null : Number(e.target.value))}
-            >
-              <option value="">Random filled slot</option>
-              {Array.from({ length: form.unlockedSlots }, (_, i) => <option key={i} value={i}>Slot {i + 1}</option>)}
-            </select>
-          </Row>
-        );
-      case 'RISING_MIN_BETS':
-        return (
-          <Row label="Escalation step" hint="min bet rises each point hit">
-            <input type="number" min={counterRange?.min ?? 0} max={counterRange?.max ?? 20} className={inputCls}
-              value={value} onChange={(e) => set('bossCounter', Number(e.target.value))} />
-          </Row>
-        );
-      case 'TRIBUTE':
-      case 'TRANSMISSION_DELAY':
-        return (
-          <Row label={boss.rule === 'TRIBUTE' ? 'Escrow held ($)' : 'Buffered additive ($)'}>
-            <input type="number" min={0} className={inputCls} value={form.escrow}
-              onChange={(e) => set('escrow', Number(e.target.value))} />
-          </Row>
-        );
-      case 'ORBITAL_DECAY':
-        return (
-          <Row label="Hype presets" hint="death spiral below 0.75×">
-            <div className="flex gap-1">
-              {[1.0, 0.8, 0.7].map((h) => (
-                <button key={h} type="button" onClick={() => set('hype', h)}
-                  className="border border-white/20 rounded px-2 py-1 text-xs text-white/80">{h.toFixed(2)}×</button>
-              ))}
-            </div>
-          </Row>
-        );
-      default:
-        return <p className="text-xs text-white/50">No boss state to set for {boss.name}.</p>;
-    }
-  })();
+  // ── Boss control (per rule) — shared with the live Dev Panel ─────────────
+  const bossControl = isBoss ? (
+    <BossCounterControl
+      markerIndex={form.markerIndex}
+      unlockedSlots={form.unlockedSlots}
+      counter={boss?.rule === 'DISABLE_CREW' ? form.bossCounter : (form.bossCounter ?? entryDefault)}
+      onCounter={(v) => set('bossCounter', v)}
+      escrowDollars={form.escrow}
+      onEscrow={(d) => set('escrow', d)}
+      onHype={(h) => set('hype', h)}
+      allowRandomCharm
+    />
+  ) : null;
+
 
   // ── Render ──────────────────────────────────────────────────────────────
   const modal = (

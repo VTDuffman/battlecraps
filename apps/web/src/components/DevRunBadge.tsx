@@ -4,7 +4,7 @@
 //
 // Persistent marker shown on Developer Mode runs so a dev run is never mistaken
 // for a real one in screenshots, recordings, or feedback. Also mounts the
-// dev-only table overlays (dice control), lazy-loaded so players never download
+// dev-only table overlays (dice control, live dev panel), lazy-loaded so players never download
 // them. Renders nothing for real runs. Badge sits top-center so it never
 // collides with the left/right HUD rows.
 // =============================================================================
@@ -13,6 +13,7 @@ import React, { Suspense, lazy } from 'react';
 import { useGameStore } from '../store/useGameStore.js';
 
 const DevDiceControl = lazy(() => import('./dev/DevDiceControl.js'));
+const DevPanel       = lazy(() => import('./dev/DevPanel.js'));
 
 export const DevRunBadge: React.FC = () => {
   const isDevRun = useGameStore((s) => s.isDevRun);
@@ -31,6 +32,7 @@ export const DevRunBadge: React.FC = () => {
       </div>
       <Suspense fallback={null}>
         <DevDiceControl />
+        <DevPanel />
       </Suspense>
     </>
   );

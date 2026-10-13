@@ -76,7 +76,7 @@ const DevDiceControl: React.FC = () => {
   const panel = (
     <div className="fixed bottom-20 right-3 z-[150] font-mono text-white select-none">
       {open ? (
-        <div className="w-64 rounded-lg border bg-[#0b0b10]/95 shadow-2xl p-3 space-y-2" style={{ borderColor: MAGENTA }}>
+        <div className="w-64 rounded-lg border shadow-2xl p-3 space-y-2 backdrop-blur-md" style={{ borderColor: MAGENTA, backgroundColor: 'rgba(11, 11, 16, 0.88)' }}>
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold tracking-widest" style={{ color: MAGENTA }}>DEV DICE</span>
             <button type="button" className="text-white/60 hover:text-white" onClick={() => setOpen(false)} aria-label="Collapse">▾</button>

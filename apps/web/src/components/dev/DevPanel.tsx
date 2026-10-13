@@ -178,8 +178,8 @@ const DevPanel: React.FC = () => {
       )}
 
       {open && (
-        <aside className="fixed inset-y-0 right-0 z-[160] w-[min(22rem,100vw)] overflow-y-auto border-l bg-[#0b0b10]/97 font-mono text-white shadow-2xl"
-          style={{ borderColor: MAGENTA }}>
+        <aside className="fixed inset-y-0 right-0 z-[160] w-[min(22rem,100vw)] overflow-y-auto border-l font-mono text-white shadow-2xl backdrop-blur-md"
+          style={{ borderColor: MAGENTA, backgroundColor: 'rgba(11, 11, 16, 0.88)' }}>
           <div className="sticky top-0 flex items-center justify-between border-b border-white/10 bg-[#0b0b10] px-4 py-3">
             <h2 className="text-sm font-bold tracking-widest" style={{ color: MAGENTA }}>DEV PANEL</h2>
             <button type="button" onClick={() => setOpen(false)} className="text-lg leading-none text-white/60 hover:text-white" aria-label="Close">✕</button>

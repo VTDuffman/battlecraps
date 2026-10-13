@@ -25,7 +25,7 @@ interface UnacknowledgedUnlock {
   detailedDescription: string | null;
 }
 
-async function fetchUnacknowledgedUnlocks(ids: number[]): Promise<UnacknowledgedUnlock[]> {
+export async function fetchUnacknowledgedUnlocks(ids: number[]): Promise<UnacknowledgedUnlock[]> {
   if (ids.length === 0) return [];
   const defs = await db.select().from(crewDefinitions).where(inArray(crewDefinitions.id, ids));
   const defMap = new Map(defs.map(d => [d.id, d]));
@@ -66,6 +66,9 @@ interface CreateRunResponse {
     highestMarkerReached: number;
     /** Number of active crew slots (3, 4, or 5) — FB-025 crew slot progression. */
     unlockedSlots: 3 | 4 | 5;
+    /** Boss counter (meaning depends on the boss rule) — hydrates boss displays on load. */
+    bossPointHits: number;
+    consecutivePointHits: number;
     /** FB-028: true for Developer Mode runs. */
     isDevRun: boolean;
   };
@@ -107,6 +110,8 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
         unacknowledgedUnlocks,
         highestMarkerReached:  userRow.highestMarkerReached,
         unlockedSlots:         run.unlockedSlots as 3 | 4 | 5,
+        bossPointHits:         run.bossPointHits,
+        consecutivePointHits:  run.consecutivePointHits,
         isDevRun:              run.isDevRun,
       });
     },
@@ -164,6 +169,8 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
           unacknowledgedUnlocks,
           highestMarkerReached:  user.highestMarkerReached,
           unlockedSlots:         run.unlockedSlots as 3 | 4 | 5,
+          bossPointHits:         run.bossPointHits,
+          consecutivePointHits:  run.consecutivePointHits,
           isDevRun:              run.isDevRun,
         },
       };

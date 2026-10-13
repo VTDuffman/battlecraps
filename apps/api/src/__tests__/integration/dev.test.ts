@@ -18,7 +18,7 @@ vi.mock('../../lib/io.js', () => ({
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db/client.js';
-import { leaderboardEntries, users } from '../../db/schema.js';
+import { leaderboardEntries, runs, users } from '../../db/schema.js';
 import { isDevClerkId } from '../../lib/devAuth.js';
 import {
   buildTestApp,
@@ -227,5 +227,119 @@ describe('dev runs skip persistent side effects', () => {
     user = await getUser();
     expect(user.highestMarkerReached).toBe(1);
     expect(user.maxBankrollCents).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /dev/runs — Scenario Builder (Phase 2)
+// ---------------------------------------------------------------------------
+
+describe('POST /dev/runs', () => {
+  const NO_BETS = { passLine: 0, odds: 0, hardways: NO_HARDWAYS };
+
+  async function createDevRun(scenario: Record<string, unknown>) {
+    const res = await app.inject({
+      method:  'POST',
+      url:     '/api/v1/dev/runs',
+      headers: { 'content-type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+      payload: JSON.stringify(scenario),
+    });
+    return { status: res.statusCode, body: res.json() as Record<string, unknown> };
+  }
+
+  async function getRun(runId: string) {
+    const row = await db.query.runs.findFirst({ where: eq(runs.id, runId) });
+    if (!row) throw new Error('run missing');
+    return row;
+  }
+
+  it('404s for a non-allowlisted user (route not discoverable)', async () => {
+    setDevEnv('true', 'user_someone_else');
+    const { status } = await createDevRun({ markerIndex: 11 });
+    expect(status).toBe(404);
+  });
+
+  it('404s when the kill switch is off', async () => {
+    setDevEnv(undefined, TEST_CLERK_ID);
+    const { status } = await createDevRun({ markerIndex: 11 });
+    expect(status).toBe(404);
+  });
+
+  it('creates a dev run at the requested marker with the requested state', async () => {
+    setDevEnv('true', TEST_CLERK_ID);
+    const { status, body } = await createDevRun({
+      markerIndex: 11, bankrollCents: 500_000, hype: 1.75, shooters: 3, bossCounter: 0, crew: [16, 17],
+    });
+    expect(status, JSON.stringify(body)).toBe(201);
+    const run = await getRun(body['runId'] as string);
+    expect(run.isDevRun).toBe(true);
+    expect(run.currentMarkerIndex).toBe(11);
+    expect(run.bankrollCents).toBe(500_000);
+    expect(run.hype).toBeCloseTo(1.75);
+    expect(run.shooters).toBe(3);
+    expect(run.bossPointHits).toBe(0);
+    expect((run.crewSlots as ({ crewId: number } | null)[]).map((s) => s?.crewId ?? null))
+      .toEqual([16, 17, null, null, null]);
+    expect((body['run'] as Record<string, unknown>)['isDevRun']).toBe(true);
+  });
+
+  it('rejects locked crew (422) unless ignoreUnlocks is set', async () => {
+    setDevEnv('true', TEST_CLERK_ID);
+    const locked = await createDevRun({ markerIndex: 0, crew: [1] }); // Lefty: unlock-gated
+    expect(locked.status).toBe(422);
+    expect(locked.body['lockedCrewIds']).toEqual([1]);
+
+    const ignored = await createDevRun({ markerIndex: 0, crew: [1], ignoreUnlocks: true });
+    expect(ignored.status, JSON.stringify(ignored.body)).toBe(201);
+  });
+
+  it('rejects unknown crew ids (422) and malformed scenarios (400)', async () => {
+    setDevEnv('true', TEST_CLERK_ID);
+    expect((await createDevRun({ markerIndex: 0, crew: [999], ignoreUnlocks: true })).status).toBe(422);
+    expect((await createDevRun({ markerIndex: 99 })).status).toBe(400);
+  });
+
+  it('retires the previous dev run but never touches a real run', async () => {
+    setDevEnv('true', TEST_CLERK_ID);
+    const realRun = await createRun(userId);
+    const first   = await createDevRun({ markerIndex: 3 });
+    const second  = await createDevRun({ markerIndex: 4 });
+    expect(second.status).toBe(201);
+    expect((await getRun(first.body['runId'] as string)).status).toBe('GAME_OVER');
+    expect((await getRun(realRun.id)).status).toBe('IDLE_TABLE');
+  });
+
+  it('entry "transition" into the Executive: real clear + pub → fight starts at rating 2', async () => {
+    setDevEnv('true', TEST_CLERK_ID);
+    const { status, body } = await createDevRun({ markerIndex: 11, entry: 'transition', crew: [16] });
+    expect(status, JSON.stringify(body)).toBe(201);
+    const runId = body['runId'] as string;
+    expect((await getRun(runId)).currentMarkerIndex).toBe(10);
+
+    // ADVANCE: bankroll already meets marker 10's target → server auto-clear.
+    const clear = await rollWithDice(app, runId, NO_BETS, 3, 4);
+    expect(clear.status, JSON.stringify(clear.body)).toBe(200);
+    let run = await getRun(runId);
+    expect(run.status).toBe('TRANSITION');
+    expect(run.currentMarkerIndex).toBe(11);
+
+    // Pub: skip recruiting.
+    const pub = await app.inject({
+      method:  'POST',
+      url:     `/api/v1/runs/${runId}/recruit`,
+      headers: { 'content-type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+      payload: JSON.stringify({}),
+    });
+    expect(pub.statusCode, pub.body).toBe(200);
+    run = await getRun(runId);
+    expect(run.status).toBe('IDLE_TABLE');
+    expect(run.bossPointHits).toBe(2);
+  });
+
+  it('entering Le Prix at the table charms a filled slot', async () => {
+    setDevEnv('true', TEST_CLERK_ID);
+    const { status, body } = await createDevRun({ markerIndex: 8, crew: [null, 17, null] });
+    expect(status, JSON.stringify(body)).toBe(201);
+    expect((await getRun(body['runId'] as string)).bossPointHits).toBe(1);
   });
 });

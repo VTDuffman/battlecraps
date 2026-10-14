@@ -1893,3 +1893,17 @@ Bring the boss whose Pink Slip inspired the pattern up to its current scale: mig
 ### Solution
 
 His escrow is invisible today. Make it physical with an **offering bowl** (held / released / seized, with candles, bell and choir), give him liturgical event barks, **The Eye Closes** as his win moment and **The Order Collects** as his loss moment. Redesign his dead comp, The Covenant, as **The Order Protects**: once per marker, your first Seven Out doesn't cost a shooter.
+
+---
+
+## FB-037 — The Sovereign Boss Moments (boss pattern #6)
+
+**Type:** Boss rule redesign (sim-tuned) + presentation (barks, water line, victory + defeat cinematics)
+**Area:** `apps/api/src/routes/rolls.ts`, `packages/shared/src/config.ts`, `packages/shared/src/bossRules/tidalSurge.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`
+**Status:** Designed (2026-10-14); pending implementation
+**Design:** `docs/design/fb-037-sovereign-boss-moments-design.md`
+**Manifest:** `docs/manifests/fb-037-sovereign-boss-moments-manifest.md`
+
+### Solution
+
+His tide only raised minimum bets (simulated cost ~0). Make each stage its own challenge — **Dead Calm** (LOW: no odds), **The Undertow** (EBB/FLOW: a Seven-Out drags 35% of the bankroll), **High Tide** (a Seven-Out drowns two shooters; The Covenant cancels it). Add regal barks, a rising water line + tide dial, **The Crown Sinks** win and **The Wave** loss. Tuned with `scripts/sim/sovereign-tide-sim.mjs`. Late-game economy is being audited separately and may retune him.

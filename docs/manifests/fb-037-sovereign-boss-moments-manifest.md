@@ -1,0 +1,42 @@
+# Implementation Manifest: FB-037 The Sovereign Boss Moments
+
+**Design doc:** `docs/design/fb-037-sovereign-boss-moments-design.md`
+**Status:** Pending approval.
+
+**Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
+
+---
+
+## Phase 1: The tide rhythm (server + rule copy)
+1. **Shared/config:** `TIDAL_SURGE` params → stage rules (LOW no odds, EBB/FLOW undertow 0.35, HIGH wave 2); drop stage minimums (`validateBet` + `getBossMinBet` TIDAL_SURGE branch).
+2. **Server:** reject odds placed during a LOW-tide point; undertow on a Seven-Out at EBB/FLOW (35% of the post-settlement bankroll, floored to $); wave at HIGH (2 shooters; The Covenant cancels it; can end the run). `tide { stage, nextStage, undertowCents?, waveShooters? }` on `turn:settled` + HTTP. Receipt lines.
+3. **Client (minimal):** odds controls disabled at Dead Calm with a reason; header readout shows the stage rule.
+4. **Copy:** ruleBlurb, ruleHeaderText, entry lines; docs.
+5. **Tests:** integration — Dead Calm odds rejected, undertow amount, wave −2, Covenant cancels the wave, Lefty escapes, wave on the last shooter(s).
+
+🛑 **Gate:** play the Sovereign locally — does each stage read?
+
+## Phase 2: Barks
+`waveHit` / `undertowHit` always, `highTide` 50%, win/loss by chance (design §5). Tests.
+
+🛑 **Gate:** play locally.
+
+## Phase 3: The water line + tide dial
+`TideWater` (rising sea along the bottom, surface + foam, surge on undertow, crest on wave), `TideDial` (current + next stage, one-line rule). Audio: `playSwell()`, `playUndertow()`, `playWaveCrash()`.
+
+🛑 **Gate:** can you feel the tide coming?
+
+## Phase 4: The Crown Sinks (victory)
+`THE_CROWN_SINKS` victory cinematic + hold.
+
+🛑 **Gate:** beat the Sovereign locally.
+
+## Phase 5: The Wave (defeat)
+`THE_WAVE` defeat cinematic.
+
+🛑 **Gate:** lose to the Sovereign locally.
+
+## Phase 6: Dev Mode + docs
+Presets: "Sovereign — Dead Calm, point on", "Sovereign — Undertow, point on", "Sovereign — High Tide, last two shooters", "Sovereign — one win from the crown". Docs: boss_framework, CLAUDE.md, backlog.
+
+🛑 **Gate:** FB-037 complete → push.

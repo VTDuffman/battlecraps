@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-034 Mme. Le Prix Boss Moments
 
 **Design doc:** `docs/design/fb-034-le-prix-boss-moments-design.md`
-**Status:** Pending approval.
+**Status:** Phase 1 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.**
 
@@ -14,6 +14,8 @@
 4. **Tests:** event priority; neutral copy.
 
 🛑 **Gate:** play Le Prix locally.
+
+--- Implemented locally (2026-10-13): `EVENT_BARK_CHANCE` (charmed 50%, never over a showing bark, skip = silence) so she stays quiet despite re-charming most come-outs; charmFired always barks. Added a test that scans every boss bark for gendered words. ---
 
 ## Phase 2: The heart's flight
 1. **`CharmFlight` overlay** (portal): measures old portrait → her name → new portrait; heart arcs between them; fires when the charmed slot changes (incl. the entry charm reveal after the boss intro).

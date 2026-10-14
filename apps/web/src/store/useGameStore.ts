@@ -2171,6 +2171,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       newPhase:         p.newPhase,
       newBossPointHits: p.newBossPointHits,
       clockExpired:     p.clockExpired === true,
+      // FB-034: Mme. Le Prix's charm (before / after this roll).
+      charmFired:        p.charmFired === true,
+      charmedSlotBefore: oldCharmedSlot,
+      charmedSlotAfter:  p.charmedCrewSlot ?? null,
       ...(p.bossCut && {
         cut: { before: cutBefore, after: p.bossCut.total, payoff: p.bossCut.payoff, paidOff: p.bossCut.paidOff },
       }),

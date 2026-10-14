@@ -68,7 +68,7 @@ describe('pickBossBark', () => {
   });
 
   it('bosses with no barks stay silent', () => {
-    expect(pickBossBark({ ...base, markerIndex: 8, bankrollDelta: 400 }, always)).toBeNull(); // Mme. Le Prix (no barks yet)
+    expect(pickBossBark({ ...base, markerIndex: 14, bankrollDelta: 400 }, always)).toBeNull(); // The Hierophant (no barks yet)
   });
 });
 
@@ -116,5 +116,50 @@ describe('Sarge (FB-033): Double Time clock events', () => {
 describe('deriveBossBarkEvents', () => {
   it('bosses without event rules derive nothing', () => {
     expect(deriveBossBarkEvents({ ...base, markerIndex: 11, rollResult: 'POINT_HIT' })).toEqual([]); // The Executive
+  });
+});
+
+describe('Mme. Le Prix (FB-034): charm events', () => {
+  const LE_PRIX = 8;
+  const leprix: BossBarkInput = { ...base, markerIndex: LE_PRIX };
+
+  it('her "OOH LA LA" (charmFired) always barks, over a showing bark and over a win', () => {
+    expect(selectBossBarkTrigger({ ...leprix, charmFired: true, charmedSlotBefore: 0, charmedSlotAfter: 2, bankrollDelta: 500, barkShowing: true }, never)).toBe('charmFired');
+  });
+
+  it('a re-charm that moves the heart barks only by chance', () => {
+    const moved = { ...leprix, rollResult: 'NATURAL' as const, charmedSlotBefore: 0, charmedSlotAfter: 2 };
+    expect(selectBossBarkTrigger(moved, always)).toBe('charmed');
+    expect(selectBossBarkTrigger(moved, never)).toBeNull();          // skipped → silence, no win/loss fallback
+  });
+
+  it('a re-charm never talks over a showing bark', () => {
+    expect(selectBossBarkTrigger({ ...leprix, charmedSlotBefore: 0, charmedSlotAfter: 2, barkShowing: true }, always)).toBeNull();
+  });
+
+  it('when the heart stays put, plain win / loss lines can play', () => {
+    expect(selectBossBarkTrigger({ ...leprix, charmedSlotBefore: 1, charmedSlotAfter: 1, bankrollDelta: 500 }, always)).toBe('win');
+    expect(selectBossBarkTrigger({ ...leprix, charmedSlotBefore: 1, charmedSlotAfter: 1, bankrollDelta: -500, isLoss: true }, always)).toBe('loss');
+  });
+
+  it('picks from her charmFired pool', () => {
+    const bark = pickBossBark({ ...leprix, charmFired: true }, always);
+    expect(GAUNTLET[LE_PRIX]?.boss?.barks?.charmFired).toContain(bark?.line);
+  });
+});
+
+describe('bark copy is gender-neutral (CLAUDE.md copy rule)', () => {
+  // Player and crew references must be neutral; bosses never refer to the
+  // player or a crew member with a gendered word.
+  const GENDERED = /\b(he|him|his|she|her|hers|boy|girl|guy|lady|man|sir|ma'am|son|lad|fella)\b/i;
+
+  it('no boss bark line uses a gendered word', () => {
+    const offenders: string[] = [];
+    GAUNTLET.forEach((m) => {
+      Object.values(m.boss?.barks ?? {}).forEach((lines) => {
+        (lines ?? []).forEach((line) => { if (GENDERED.test(line)) offenders.push(`${m.boss?.name}: ${line}`); });
+      });
+    });
+    expect(offenders).toEqual([]);
   });
 });

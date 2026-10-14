@@ -18,8 +18,16 @@
 import { GAUNTLET, type BossBarkTrigger } from './config.js';
 import type { GamePhase, RollResult } from './types.js';
 
-/** Chance a plain win / loss produces a bark (boss events always do). */
+/** Chance a plain win / loss produces a bark. */
 export const BARK_CHANCE: Readonly<Record<'win' | 'loss', number>> = { win: 0.55, loss: 0.35 };
+
+/**
+ * Boss events always bark, except frequent ones listed here, which bark by
+ * chance and never over a showing bark. A skipped frequent event means silence
+ * (no win/loss fallback) — e.g. Mme. Le Prix re-charms on most come-outs and
+ * "does not raise her voice".
+ */
+export const EVENT_BARK_CHANCE: Readonly<Partial<Record<BossBarkTrigger, number>>> = { charmed: 0.5 };
 
 export interface BossBarkInput {
   /** Marker the roll was played at (before any advance). */
@@ -38,6 +46,11 @@ export interface BossBarkInput {
   newBossPointHits?: number;
   /** Sarge's Double Time clock ran out on this roll. */
   clockExpired?: boolean;
+  /** Mme. Le Prix: the charmed crew's ability would have fired (server charmFired). */
+  charmFired?:   boolean;
+  /** Mme. Le Prix: charmed slot before / after this roll (null = none). */
+  charmedSlotBefore?: number | null;
+  charmedSlotAfter?:  number | null;
   /** Payoff fights: Cut before and after this roll, the Payoff, and whether it was reached. */
   cut?:          { before: number; after: number; payoff: number; paidOff: boolean };
   /** A bark is still showing — skip chance-based barks. */
@@ -89,6 +102,15 @@ export function deriveBossBarkEvents(input: BossBarkInput): BossBarkTrigger[] {
       break;
     }
 
+    // Mme. Le Prix: the charm. charmFired (her "OOH LA LA") outranks a plain
+    // re-charm; a re-charm only counts when the heart actually moves.
+    case 'DISABLE_CREW': {
+      if (input.charmFired) { events.push('charmFired'); break; }
+      const after = input.charmedSlotAfter;
+      if (after !== undefined && after !== null && after !== (input.charmedSlotBefore ?? null)) events.push('charmed');
+      break;
+    }
+
     default:
       break;
   }
@@ -104,7 +126,12 @@ export function selectBossBarkTrigger(input: BossBarkInput, random: () => number
   const barks = GAUNTLET[input.markerIndex]?.boss?.barks;
 
   const event = deriveBossBarkEvents(input).find((t) => (barks?.[t]?.length ?? 0) > 0);
-  if (event) return event;
+  if (event) {
+    const chance = EVENT_BARK_CHANCE[event];
+    if (chance === undefined) return event;               // rare event: always
+    if (input.barkShowing) return null;                    // frequent event: never over a bark
+    return random() < chance ? event : null;               // …and only sometimes
+  }
 
   if (input.barkShowing) return null;
   if (input.bankrollDelta > 0) return random() < BARK_CHANCE.win  ? 'win'  : null;

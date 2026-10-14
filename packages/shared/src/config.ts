@@ -102,11 +102,13 @@ export type BossRuleParams =
  * (chance-based); the rest are boss EVENTS derived per rule in bossBarks.ts:
  *   The Foreman: progress50 / progress80 / payoff (his Cut vs the Payoff)
  *   Sarge:       pointSet / clockLow / lastRoll / beatClock / timeUp (Double Time clock)
+ *   Mme. Le Prix: charmed (the heart moves) / charmFired ("OOH LA LA")
  */
 export type BossBarkTrigger =
   | 'win' | 'loss'
   | 'progress50' | 'progress80' | 'payoff'
-  | 'pointSet' | 'clockLow' | 'lastRoll' | 'beatClock' | 'timeUp';
+  | 'pointSet' | 'clockLow' | 'lastRoll' | 'beatClock' | 'timeUp'
+  | 'charmed' | 'charmFired';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
 export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE';
@@ -445,6 +447,27 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compFanLabel:    'SEA LEGS',
       // Legacy
       flavorText: "On my table, the crew works backwards. Adapt.",
+      // FB-034 barks — soft, purring lowercase ("she does not raise her voice").
+      // Crew references stay gender-neutral: "this one", "they".
+      barks: {
+        charmed: [
+          "ah… this one, I think.",
+          "come, chéri.",
+          "you won't mind if I borrow this one?",
+        ],
+        charmFired: [
+          "non, non. they are busy.",
+          "tsk. they work for me tonight.",
+        ],
+        win: [
+          "bravo, petit.",
+          "lucky… for now.",
+        ],
+        loss: [
+          "quel dommage.",
+          "tragique.",
+        ],
+      },
     },
   },
 

@@ -540,6 +540,25 @@ describe('Crew-bonus escrow', () => {
     expectNet(body, 0);   // nothing won, nothing paid — Ace's $4,000 is in the bowl
   });
 
+  it('Hierophant: the ADVANCE clear pays out the offering (with Hype) instead of carrying it', async () => {
+    // Bankroll already meets the $100,000 target at the start of the roll.
+    const run = await createRun(userId, {
+      currentMarkerIndex:   14,
+      bankrollCents:        10_000_000,
+      status:               'IDLE_TABLE',
+      phase:                'COME_OUT',
+      hype:                 2.0,
+      pendingAdditiveCents: 100_000,
+    });
+
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(0), 1, 1);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['status']).toBe('TRANSITION');
+    expect(r['bankrollCents']).toBe(10_200_000);   // + 100_000 × 2.0
+    expect(r['pendingAdditiveCents']).toBe(0);
+  });
+
   it('Hierophant: a craps out on the come-out keeps holding (only a win releases)', async () => {
     const run = await createRun(userId, {
       currentMarkerIndex:   14,

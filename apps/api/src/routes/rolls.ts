@@ -430,11 +430,16 @@ async function rollHandler(
   if (alreadyClears) {
     const remainingBets  = sumBets(incomingBets);
     const rawBankroll    = postBetBankroll + remainingBets;
-    const bankrollDelta  = sumBets(run.bets as Bets);   // total of all previously-placed bets returned
+    // FB-036: anything still held in escrow is paid out with the clear — the
+    // Hierophant's offering with Hype (as on any win), the Emissary's flat.
+    const escrowOnClear  = activeBossRule === 'TRIBUTE' && isBossMarker(run.currentMarkerIndex)
+      ? Math.floor(run.pendingAdditiveCents * run.hype / 100) * 100
+      : run.pendingAdditiveCents;
+    const bankrollDelta  = sumBets(run.bets as Bets) + escrowOnClear;   // bets returned + escrow paid
     const isLastMarker   = run.currentMarkerIndex >= MARKER_TARGETS.length - 1;
     const nextStatus     = isLastMarker ? 'GAME_OVER' : 'TRANSITION';
     const nextMkrIndex   = run.currentMarkerIndex + 1;
-    const finalBankroll  = rawBankroll;
+    const finalBankroll  = rawBankroll + escrowOnClear;
     const zeroBets: Bets = { passLine: 0, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } };
 
     const autoRun = await db
@@ -449,6 +454,7 @@ async function rollHandler(
         consecutivePointHits:  0,
         bossPointHits:         getBossEntryCounter(nextMkrIndex),
         bossProgressCents:     0,
+        pendingAdditiveCents:  0,
         pointPhaseBlankStreak: 0,
         mechanicFreeze:        null,
         hype:                  run.hype,

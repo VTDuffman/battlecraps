@@ -29,6 +29,10 @@ The Hierophant (Floor 5, The Lodge — The Inner Sanctum, `TRIBUTE`). Mechanic u
 | 4 | Loss moment | **The Order Collects.** |
 | 5 | Comp | Redesign The Covenant now as **The Order Protects** (FB-029 folded in). |
 
+## 2b. Rule change — the offering (2026-10-14, after simulation)
+
+Simulated on the real engine (`scripts/sim/hierophant-escrow-sim.mjs`, 20k fights/row): the old rule (held one roll, 25% seized, no Hype) cost a cash-crew build only ~2 points of clear rate vs ~15 for The Executive, and hype builds 0. **New rule:** crew cash is held **until a winning roll** (Natural / Point Hit), released **multiplied by Hype**; a Seven-Out seizes **75%**. Cost to a cash build ~14 points — Executive-level. He is deliberately the fight against **additive builds**; hype builds will be countered by a later boss (The Commander).
+
 ## 3. Server: escrow facts
 
 `turn:settled` + HTTP roll gain, during an escrow fight (Hierophant; generic so The Emissary can use it later):

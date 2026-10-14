@@ -49,7 +49,7 @@ export type BossRuleType =
   | 'DOUBLE_TIME'            // Floor 2 — Sarge: hit the point within rollLimit rolls or it's a Seven-Out (FB-030)
   | 'DISABLE_CREW'           // Floor 3 — Mme. Le Prix: one crew member enchanted per come-out
   | 'CROSS_CALIBRATION'      // Floor 4 — The Executive: performance review rating tracks roll outcomes
-  | 'TRIBUTE'                // Floor 5 — The Hierophant: crew additives held in escrow; 25% seized on 7-out
+  | 'TRIBUTE'                // Floor 5 — The Hierophant: crew additives held until a win, paid with Hype; 75% seized on 7-out
   | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: 4-stage tide (1×/2×/3×/2× min bet), advances each come-out
   | 'ORBITAL_DECAY'          // Floor 7 — The Commander: tiered seven-out hype drain (0.4/0.6/0.8×), floor 0.25×
   | 'FIRST_CONTACT_PROTOCOL' // Floor 8 — retired mechanic; kept in union for historical safety
@@ -562,10 +562,10 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       dreadTagline:        'THE ORDER COLLECTS.',
       entryLines: [
         "You were vouched for. That person is no longer welcome.",
-        "Three centuries of tradition: what your crew earns is held until the next roll.",
-        "Seven out, and the order takes its cut. Every time.",
+        "Three centuries of tradition: what your crew earns is offered to the order until you win.",
+        "Seven out, and the order keeps three quarters. Every time.",
       ],
-      ruleBlurb:          "Your crew's cash bonuses don't pay out on the roll they're earned — they're held in escrow and released on your next roll. Seven-out while bonuses are held and The Hierophant seizes 25% of them as tribute.",
+      ruleBlurb:          "Your crew's cash bonuses are offered to the order: they pile up in the offering bowl until you win a roll (a Natural or hitting your point), then come back to you multiplied by your Hype. Seven-out first and The Hierophant keeps 75% as tribute.",
       victoryQuote:       "…the rites acknowledge your offering. Leave before the observers decide otherwise.",
       defeatAnnouncement: 'RITES CONCLUDED',
       // FB-036 barks — solemn, liturgical; he speaks for the order.
@@ -578,13 +578,13 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       },
       // Mechanic
       rule:           'TRIBUTE',
-      ruleHeaderText: 'CREW ADDITIVES HELD IN ESCROW — 25% SEIZED ON SEVEN-OUT',
-      ruleParams:     { rule: 'TRIBUTE', escrowSeizurePct: 0.25 },
+      ruleHeaderText: 'CREW CASH HELD UNTIL YOU WIN — 75% SEIZED ON SEVEN-OUT',
+      ruleParams:     { rule: 'TRIBUTE', escrowSeizurePct: 0.75 },
       // Comp
       compReward:      'THE_COVENANT',
       compPerkId:      COMP_PERK_IDS.THE_COVENANT,
       compName:        'THE COVENANT',
-      compDescription: 'Hierophant escrow seizures on Seven Out are halved — 25% becomes 12.5%.',
+      compDescription: "The Hierophant's tribute on Seven Out is halved.",
       compFanLabel:    'COVENANT',
       // Legacy
       flavorText: "Three centuries of tradition. You'll respect it, or you'll fund it.",

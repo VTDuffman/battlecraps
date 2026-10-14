@@ -28,6 +28,8 @@
 
 --- Implemented locally (2026-10-14): `OfferingBowl` in MarkerProgress (his marker, not cleared): THE OFFERING, two flickering 🕯️, brass bowl with a coin pile scaled to held / (10% of target), HELD $X animated counter. Fresh rolls only: 🪙 drop in (`playCoinChime('drop')`), 🪙 rise out + RELEASED +$X (`playCoinChime('rise')`); seizure → candles flare + bowl glow (2.6 s), 12 embers, TRIBUTE −$X searing in, `playBellToll()` + `playChoirChord()`. Reduced motion: numbers/labels only. ---
 
+--- Rule change (2026-10-14, after simulation — design §2b): held until a win (Natural / Point Hit), released × Hype, 75% seized on a Seven-Out (Emissary unchanged). Copy + docs updated; integration tests rewritten (126). ---
+
 ## Phase 3: The Eye Closes (victory)
 1. `BossVictoryCinematicId` += `THE_EYE_CLOSES`; Hierophant `victoryCinematic`; `VICTORY_HOLD_MS_BY_ID` entry.
 2. **`TheEyeClosesCinematic`:** giant 👁️ in a candle ring, slow close, candles out in a sweep, doors part, light floods, line.

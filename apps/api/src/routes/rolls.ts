@@ -821,7 +821,7 @@ async function rollHandler(
 
   // ── 8d. TRIBUTE (Hierophant Escrow) — hold additives; don't pass to settleTurn ─
   // When Hierophant escrow is active, zero out additives before settlement —
-  // they accumulate in pendingAdditiveCents and release on the following roll.
+  // they accumulate in pendingAdditiveCents until a winning roll (FB-036, 9e/9f).
   const escrowHeld = isHierophantEscrow ? loadBearingContext.additives : 0;
   const escrowContext = isHierophantEscrow
     ? { ...loadBearingContext, additives: 0 }
@@ -829,7 +829,7 @@ async function rollHandler(
 
   // ── 8e. TRANSMISSION_DELAY (Emissary) — hold additives; don't pass to settleTurn ─
   // Additives are zeroed for settlement this roll; stored in pendingAdditiveCents
-  // for release next roll. Unlike Hierophant (25% seizure on 7-out), TD evaporates
+  // for release next roll. Unlike Hierophant (held until a win), TD evaporates
   // 100% of the escrow when the shooter dies. Hierophant and TD are mutually exclusive
   // (different floors) so chaining escrowContext here is safe.
   const tdEscrowHeld = isTransmissionDelay ? escrowContext.additives : 0;
@@ -890,31 +890,42 @@ async function rollHandler(
   const postFrequencyBankroll = tributedBankroll + frequencyBonus;
 
   // ── 9e/9f. Crew-bonus escrow (Hierophant TRIBUTE / Emissary TRANSMISSION_DELAY) ─
-  // Each roll releases the PREVIOUS roll's held bonuses (pendingAdditiveCents)
-  // and holds this roll's (escrowHeld / tdEscrowHeld) for the next roll.
-  // On a 7-out the whole escrow — previous AND this roll's — settles now:
-  //   Emissary:   100% evaporates.
-  //   Hierophant: escrowSeizurePct is seized (halved by THE_COVENANT), the rest paid.
+  // Hierophant (FB-036): "the offering" — crew bonuses pile up in escrow until
+  // a WINNING roll (Natural / Point Hit), which releases all of it multiplied
+  // by the Hype; a 7-out seizes escrowSeizurePct of it (with Hype), the rest paid.
+  // Emissary: each roll releases the PREVIOUS roll's bonuses and holds this
+  // roll's; on a 7-out the whole escrow (previous AND this roll's) evaporates.
   // Hierophant and TD are mutually exclusive (different floors).
   const isEscrowSevenOut  = finalContext.rollResult === 'SEVEN_OUT';
   const heldThisRoll      = isTransmissionDelay ? tdEscrowHeld : escrowHeld;
-  const escrowOnTable     = run.pendingAdditiveCents + (isEscrowSevenOut ? heldThisRoll : 0);
-  const seizurePct = isEscrowSevenOut
-    ? isTransmissionDelay
-      ? 1
-      : isHierophantEscrow
-        ? (() => {
-            const p = GAUNTLET[run.currentMarkerIndex]!.boss!.ruleParams as
-              Extract<BossRuleParams, { rule: 'TRIBUTE' }>;
-            return hasTheCovenant ? p.escrowSeizurePct * 0.5 : p.escrowSeizurePct;
-          })()
-        : 0
-    : 0;
-  // Released unconditionally so a stray pending balance is never stranded
-  // (outside these two fights seizurePct is 0 and nothing new is held).
-  const escrowRelease = Math.floor(escrowOnTable * (1 - seizurePct) / 100) * 100;
-  // Carried to the next roll — nothing carries past a 7-out.
-  const escrowCarried = isEscrowSevenOut ? 0 : heldThisRoll;
+  const escrowWithHype    = (cents: number): number => Math.floor(cents * finalContext.hype / 100) * 100;
+  let escrowRelease: number;
+  let escrowCarried: number;
+  let escrowSeized:  number;
+  if (isHierophantEscrow) {
+    const offering   = run.pendingAdditiveCents + heldThisRoll;
+    const isWin      = finalContext.rollResult === 'NATURAL' || finalContext.rollResult === 'POINT_HIT';
+    if (isEscrowSevenOut || isWin) {
+      const p = GAUNTLET[run.currentMarkerIndex]!.boss!.ruleParams as Extract<BossRuleParams, { rule: 'TRIBUTE' }>;
+      const seizurePct = isEscrowSevenOut ? (hasTheCovenant ? p.escrowSeizurePct * 0.5 : p.escrowSeizurePct) : 0;
+      const pot        = escrowWithHype(offering);
+      escrowRelease = Math.floor(pot * (1 - seizurePct) / 100) * 100;
+      escrowSeized  = pot - escrowRelease;
+      escrowCarried = 0;
+    } else {
+      escrowRelease = 0;
+      escrowSeized  = 0;
+      escrowCarried = offering;
+    }
+  } else {
+    // Emissary (and a stray pending balance anywhere else, so it's never stranded).
+    const escrowOnTable = run.pendingAdditiveCents + (isEscrowSevenOut ? heldThisRoll : 0);
+    const seizurePct    = isEscrowSevenOut && isTransmissionDelay ? 1 : 0;
+    escrowRelease = Math.floor(escrowOnTable * (1 - seizurePct) / 100) * 100;
+    escrowSeized  = escrowOnTable - escrowRelease;
+    // Carried to the next roll — nothing carries past a 7-out.
+    escrowCarried = isEscrowSevenOut ? 0 : heldThisRoll;
+  }
   const postEscrowBankroll = postFrequencyBankroll + escrowRelease;
 
   const rollAmplifiedProfit = payout - viggedContext.baseStakeReturned;
@@ -926,7 +937,7 @@ async function rollHandler(
   // Build the QA receipt with per-crew attribution and boss deduction breakdown.
   const bossDeductionAmount = rawPayout - payout;
   // FB-036: the Hierophant's real tribute — the part of the escrow seized on a 7-out.
-  const tributeAmount = isHierophantEscrow ? escrowOnTable - escrowRelease : 0;
+  const tributeAmount = isHierophantEscrow ? escrowSeized : 0;
   const bossDeductions: Array<{ amount: number; source: string; label: string }> = [];
   if (bossDeductionAmount > 0 && bossMarkerConfig?.boss) {
     bossDeductions.push({ amount: bossDeductionAmount, source: bossMarkerConfig.boss.name, label: 'extortion fee' });
@@ -949,9 +960,12 @@ async function rollHandler(
 
   // ── Escrow: a roll that clears the marker pays out what it just held ──────
   // The next marker has no escrow rule, so held bonuses would otherwise be lost.
-  const escrowPaidOnClear =
-    pipAdjustedState.currentMarkerIndex > run.currentMarkerIndex ? escrowCarried : 0;
-  const pendingAdditiveToPersist = escrowCarried - escrowPaidOnClear;
+  // (The Hierophant's offering pays with Hype, as on any win.)
+  const clearsMarkerNow   = pipAdjustedState.currentMarkerIndex > run.currentMarkerIndex;
+  const escrowPaidOnClear = clearsMarkerNow
+    ? (isHierophantEscrow ? escrowWithHype(escrowCarried) : escrowCarried)
+    : 0;
+  const pendingAdditiveToPersist = clearsMarkerNow ? 0 : escrowCarried;
   const finalNextState = escrowPaidOnClear > 0
     ? { ...pipAdjustedState, bankrollCents: pipAdjustedState.bankrollCents + escrowPaidOnClear }
     : pipAdjustedState;
@@ -988,7 +1002,7 @@ async function rollHandler(
     ? {
         heldCents:     pendingAdditiveToPersist,
         releasedCents: escrowRelease + escrowPaidOnClear,
-        seizedCents:   escrowOnTable - escrowRelease,
+        seizedCents:   escrowSeized,
       }
     : undefined;
 

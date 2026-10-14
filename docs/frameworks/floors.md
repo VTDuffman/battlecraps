@@ -231,7 +231,7 @@ Mechanics are documented in full in [`boss_framework.md`](boss_framework.md), wh
 | `DOUBLE_TIME` | Sarge (2) | Roll clock: hit the point within 6 rolls or the 6th blank counts as a Seven-Out |
 | `DISABLE_CREW` | Mme. Le Prix (3) | One random crew member charmed per come-out, sits out until the point resolves |
 | `CROSS_CALIBRATION` | The Executive (4) | Performance rating 0–4; +15% at Exceptional; bad roll at Action Required ends the run |
-| `TRIBUTE` | The Hierophant (5) | Crew cash held one roll in escrow; 25% seized on Seven-Out |
+| `TRIBUTE` | The Hierophant (5) | Crew cash held until a win, paid with Hype; 75% seized on Seven-Out |
 | `TIDAL_SURGE` | The Sovereign (6) | Tide LOW/EBB/HIGH/FLOW (1×/2×/3×/2× min bet), advances each come-out |
 | `ORBITAL_DECAY` | The Commander (7) | Tiered Seven-Out Hype drain (0.4/0.6/0.8×), floor 0.25×, death spiral below 0.75× / 0.5× |
 | `TRANSMISSION_DELAY` | The Emissary (8) | Crew cash held one roll; all of it evaporates on Seven-Out |
@@ -548,15 +548,15 @@ card, docs) lives in [`boss_framework.md` § Adding a New Boss](boss_framework.m
 | **Teaser** | The order always collects. Win or lose, something is owed. |
 | **Dread tagline** | THE ORDER COLLECTS. |
 | **Rule** | `TRIBUTE` |
-| **Comp reward** | `THE_COVENANT` — The Covenant: Hierophant escrow seizures on Seven Out are halved — 25% becomes 12.5%. |
+| **Comp reward** | `THE_COVENANT` — The Covenant: The Hierophant's tribute on Seven Out is halved. |
 | **Comp perk ID** | 5 |
 
-**Rule effect:** Crew cash bonuses are held in escrow and released on the next roll. On a Seven-Out the whole escrow settles at once and 25% is seized as tribute.
+**Rule effect:** Crew cash bonuses pile up in the offering bowl until you win a roll (Natural or Point Hit), then come back multiplied by your Hype. On a Seven-Out the whole offering settles at once and 75% is seized as tribute.
 
 **Entry lines:**
 > You were vouched for. That person is no longer welcome.
-> Three centuries of tradition: what your crew earns is held until the next roll.
-> Seven out, and the order takes its cut. Every time.
+> Three centuries of tradition: what your crew earns is offered to the order until you win.
+> Seven out, and the order keeps three quarters. Every time.
 
 **Victory quote:** *"…the rites acknowledge your offering. Leave before the observers decide otherwise."*
 

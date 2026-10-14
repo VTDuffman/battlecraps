@@ -63,7 +63,7 @@ export const COMP_DEFS: CompDef[] = [
     threshold:   15,
     name:        'The Covenant',
     icon:        '🩸',
-    effect:      'Hierophant escrow seizures halved (25% → 12.5%). The Hierophant reward.',
+    effect:      "The Hierophant's tribute on Seven Out is halved. The Hierophant reward.",
     accentColor: '#9a6e28',  // aged amber gold — The Lodge floor
   },
   {

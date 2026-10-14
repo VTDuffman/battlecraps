@@ -257,13 +257,15 @@ ruleParams: { rule: 'CROSS_CALIBRATION' }
 
 **Rule:** `TRIBUTE` | **Target:** $100,000 | **Index:** 14
 
-**Crew-bonus escrow.** Crew cash bonuses (`additives`, after The Vig) are not paid on the roll they're earned. They're held in `runs.pending_additive_cents` and released on the next roll. On a Seven-Out, the whole escrow — the previous roll's held bonuses **and** that roll's — settles immediately with 25% seized as tribute. Bonuses held on a roll that clears the marker are paid out with it.
+**The offering (crew-bonus escrow, FB-036).** Crew cash bonuses (`additives`, after The Vig) are not paid on the roll they're earned. They pile up in `runs.pending_additive_cents` until a **winning roll** (Natural or Point Hit), which releases everything held — including that roll's bonuses — **multiplied by the Hype** at that moment. On a Seven-Out the whole offering (with Hype) settles immediately with **75% seized** as tribute. Craps Outs, Point Sets and blanks keep holding. A roll that clears the marker pays out the offering (with Hype). Held bonuses are pulled out *before* settleTurn, so they are never multiplied twice.
+
+Designed as a fight against additive (cash-crew) builds — hype builds are unaffected; The Commander is their counter. Tuned with `scripts/sim/hierophant-escrow-sim.mjs` (2026-10-14): against a cash crew it costs ~14 points of clear rate, matching The Executive; the old rule (released next roll, 25% seized, no Hype) cost ~2.
 
 ```typescript
-ruleParams: { rule: 'TRIBUTE', escrowSeizurePct: 0.25 }
+ruleParams: { rule: 'TRIBUTE', escrowSeizurePct: 0.75 }
 ```
 
-**Comp:** The Covenant — halves the escrow seizure (25% → 12.5%). Because it's earned by beating The Hierophant, it currently has no effect for the rest of the run. **Redesign pending (FB-029).**
+**Comp:** The Covenant — halves the tribute. Because it's earned by beating The Hierophant, it currently has no effect for the rest of the run. **Redesign in FB-036 Phase 5 (FB-029).**
 
 ---
 
@@ -407,8 +409,9 @@ TypeScript narrows the type inside each hook file via the `rule` discriminant. T
 | Executive fight, Craps Out or Seven-Out above rating 0 | `bossPointHits` decrements; `bossRating.direction = 'down'`; no GAME_OVER |
 | Executive fight, rating already at 0, bad roll | PIP fires: run transitions to GAME_OVER; `pipTermination: true` in `turn:settled` |
 | Executive fight, rating at 4 (Exceptional), winning roll | Payout includes +15% gross profit bonus |
-| Hierophant fight, crew bonus earned | Held in `pendingAdditiveCents`; paid on the next roll |
-| Hierophant fight, seven-out | All escrow (previous + this roll) settles now, 25% seized (12.5% with THE_COVENANT) |
+| Hierophant fight, crew bonus earned | Held in `pendingAdditiveCents` until a winning roll |
+| Hierophant fight, Natural / Point Hit | Everything held (incl. this roll's) paid, × Hype |
+| Hierophant fight, seven-out | Everything held (incl. this roll's) settles now, × Hype, 75% seized |
 | Hierophant/Emissary fight, marker-clearing roll | Bonuses held that roll are paid out; `pendingAdditiveCents` → 0 |
 | Sovereign fight, tide stage | Advances on each come-out resolution: LOW → EBB → HIGH → FLOW |
 | Sovereign fight, come-out under the tide minimum | Rejected (422) |

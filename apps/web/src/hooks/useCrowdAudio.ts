@@ -1151,6 +1151,53 @@ function playWaveCrashSting(ctx: AudioContext, dest: AudioNode): void {
   boom.stop(t0 + 1.35);
 }
 
+/** FB-037 win: deep water — a muffled rumble with bubbles plopping up through it (≈5 s). */
+function playUnderwaterSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 5.0, { type: 'lowpass', from: 260, to: 160 }, 0.12, 1.2);
+  for (let i = 0; i < 14; i++) {
+    const at   = t0 + 0.3 + i * 0.32 + ((i * 37) % 10) / 50;
+    const base = 300 + ((i * 53) % 9) * 60;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(base, at);
+    osc.frequency.exponentialRampToValueAtTime(base * 2.4, at + 0.06);   // a bubble's rising "bloop"
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, at);
+    env.gain.exponentialRampToValueAtTime(0.035, at + 0.01);
+    env.gain.exponentialRampToValueAtTime(0.0001, at + 0.08);
+    osc.connect(env);
+    env.connect(dest);
+    osc.start(at);
+    osc.stop(at + 0.09);
+  }
+}
+
+/** FB-037 win: the crown settles in the sand — a soft muffled thud and a sandy puff. */
+function playSandThudSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  const thud = ctx.createOscillator();
+  thud.type = 'sine';
+  thud.frequency.setValueAtTime(95, t0);
+  thud.frequency.exponentialRampToValueAtTime(45, t0 + 0.2);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.22, t0 + 0.01);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+  thud.connect(env);
+  env.connect(dest);
+  thud.start(t0);
+  thud.stop(t0 + 0.32);
+  seaNoise(ctx, dest, t0, 0.6, { type: 'lowpass', from: 900, to: 200 }, 0.08, 0.03);
+}
+
+/** FB-037 win: a sunken chime — slow, glassy bell notes drifting down into a held chord (≈3 s). */
+function playSunkenChimeSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [1567.98, 1318.51, 1046.5, 783.99].forEach((f, i) => strikeBell(ctx, dest, f, t0 + i * 0.32, 0.045, 1.6));
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => strikeBell(ctx, dest, f, t0 + 1.4 + i * 0.05, 0.04, 2.2));
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -1313,6 +1360,21 @@ export function playUndertow(): void {
 /** FB-037: High Tide's wave breaks over your shooters. */
 export function playWaveCrash(): void {
   playStandalone(playWaveCrashSting);
+}
+
+/** FB-037 win: the throne room under water. */
+export function playUnderwater(): void {
+  playStandalone(playUnderwaterSting);
+}
+
+/** FB-037 win: the crown lands in the sand. */
+export function playSandThud(): void {
+  playStandalone(playSandThudSting);
+}
+
+/** FB-037 win: the sunken chime under the Sovereign's line. */
+export function playSunkenChime(): void {
+  playStandalone(playSunkenChimeSting);
 }
 
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */

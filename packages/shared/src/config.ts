@@ -117,7 +117,7 @@ export type BossBarkTrigger =
 export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS';
 
 /** FB-033: boss victory moments (one component each in the web registry). */
-export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP' | 'THE_EYE_CLOSES';
+export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP' | 'THE_EYE_CLOSES' | 'THE_CROWN_SINKS';
 
 export interface BossConfig {
   // ── Identity ──────────────────────────────────────────────────────────────
@@ -627,6 +627,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       ],
       ruleBlurb:          "The tide turns LOW → EBB → HIGH → FLOW each time a come-out resolves, and every stage is its own challenge. DEAD CALM (low tide): no odds bets. THE UNDERTOW (ebb and flow): a Seven-Out drags 35% of your bankroll out to sea. HIGH TIDE: a Seven-Out drowns two shooters. You can see it coming.",
       victoryQuote:       "…the tide will return. It always does.",
+      victoryCinematic:   { id: 'THE_CROWN_SINKS', line: "…the tide will return. It always does." },
       defeatAnnouncement: 'THE TIDE RECEDES',
       // FB-037 barks — regal, ancient, slow; he speaks like the sea.
       barks: {

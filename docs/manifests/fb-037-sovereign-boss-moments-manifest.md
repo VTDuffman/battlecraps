@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-037 The Sovereign Boss Moments
 
 **Design doc:** `docs/design/fb-037-sovereign-boss-moments-design.md`
-**Status:** Phases 1–3 done locally (not pushed).
+**Status:** Phases 1–4 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -36,6 +36,10 @@
 `THE_CROWN_SINKS` victory cinematic + hold.
 
 🛑 **Gate:** beat the Sovereign locally.
+
+--- Playtest follow-ups (Phase 3): the wave now fills the whole screen with a foam crest and drags the lost shooter pips (swollen ~3×, struggling) down as it drains; the Undertow uses the same fill and drags eight 💵 out of the bankroll readout; Dead Calm's Odds square is waterlogged. ---
+
+--- Implemented locally (2026-10-14): underwater throne room (light shafts swaying and dimming, 26 rising bubbles, a sand floor); the 👑 sinks over 3.6 s like a pendulum, drifting and rocking, and settles tilted in the sand with a sand puff (`playSandThud()`); `playUnderwater()` (muffled rumble + bubble bloops) throughout, `playSunkenChime()` with the line. ~8.0 s (≈3.2 s to read), hold 8.4 s. ---
 
 ## Phase 5: The Wave (defeat)
 `THE_WAVE` defeat cinematic.

@@ -31,7 +31,8 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
-import { MARKER_TARGETS, getMaxBet, isBossMarker, getBossPayoffCents } from '@battlecraps/shared';
+import { GAUNTLET, MARKER_TARGETS, getMaxBet, isBossMarker, getBossPayoffCents } from '@battlecraps/shared';
+import { PerformanceMeter } from './PerformanceMeter.js';
 import { HowToPlayScreen } from './tutorial/HowToPlayScreen.js';
 import { FeedbackModal }   from './FeedbackModal.js';
 import { DevRunBadge }     from './DevRunBadge.js';
@@ -937,6 +938,13 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
           }}
         />
       </div>
+
+      {/* FB-035: the Executive's Performance Review, front and center */}
+      {GAUNTLET[markerIndex]?.boss?.rule === 'CROSS_CALIBRATION' && !isCleared && (
+        <div className="pt-1.5">
+          <PerformanceMeter />
+        </div>
+      )}
     </div>
   );
 };

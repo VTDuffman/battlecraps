@@ -747,6 +747,12 @@ export interface GameState {
   executiveRating: number | null;
 
   /**
+   * FB-035: the last +15% Exceptional bonus paid (cents) + a key so the
+   * performance meter pops "+15% · $X" once per paying roll. null when none yet.
+   */
+  exceptionalBonus: { cents: number; key: number } | null;
+
+  /**
    * True when turn:settled carries pipTermination: true (The Executive fires the
    * final pink-slip termination). The GameOverScreen reads this to show the Pink Slip.
    */
@@ -1333,6 +1339,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   pendingVictory:          null,
   celebrationHoldUntil:    null,
   executiveRating:         null,
+  exceptionalBonus:        null,
   pipTermination:          false,
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -1406,6 +1413,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _pointRingKey:     0,
       _reRollKey:        0,
       executiveRating:   null,
+      exceptionalBonus:  null,
       pipTermination:    false,
       // Reset bets to zero so a new run never inherits a live bet from the
       // previous run. initialState.bets (present when reloading an existing
@@ -1677,6 +1685,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       pubDraft:                  [],
       unlockModalReady:          false,
       executiveRating:           null,
+      exceptionalBonus:          null,
       pipTermination:            false,
     });
   },
@@ -1900,6 +1909,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       charmingSlot:     oldCharmingSlot,
       charmFlight:      oldCharmFlight,
       executiveRating:  oldExecutiveRating,
+      exceptionalBonus: oldExceptionalBonus,
     } = get();
     if (!p) return;
 
@@ -2231,6 +2241,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       charmFlight:           newCharmFlight,
       _charmKey:             charmFired ? _charmKey + 1 : _charmKey,
       executiveRating:       newExecutiveRating,
+      exceptionalBonus:      (p.exceptionalBonusCents ?? 0) > 0
+        ? { cents: p.exceptionalBonusCents ?? 0, key: (oldExceptionalBonus?.key ?? 0) + 1 }
+        : oldExceptionalBonus,
       pipTermination:        newPipTermination,
       crewSlots:             newCrewSlots,
       // FB-032: The Foreman's Cut. On the paying-off roll the register keeps the

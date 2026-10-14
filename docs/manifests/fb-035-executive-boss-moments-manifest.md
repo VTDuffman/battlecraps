@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-035 The Executive Boss Moments
 
 **Design doc:** `docs/design/fb-035-executive-boss-moments-design.md`
-**Status:** Phase 1 done locally (not pushed).
+**Status:** Phases 1–2 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes) before a phase is done. Push when Mike says (bundled with the Floor 4 rename). **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -25,6 +25,8 @@
 4. Reduced motion.
 
 🛑 **Gate:** does the rating feel like the fight?
+
+--- Implemented locally (2026-10-14): `PerformanceMeter` inside MarkerProgress (his marker, not cleared); spring-sliding ▼ marker over five coloured segments + short labels; rating label pops on change; Exceptional gold glow + "★ +15% ON EVERY WIN", bonus pop "+15% · $X" from store `exceptionalBonus {cents,key}`; Action Required `review-alarm` pulse + "⚠ FINAL WARNING — ONE MORE BAD ROLL". Audio: `playReviewTick(steps)` (keyboard clack), `playPromotionDing()`, `playReviewWarning()` (low double buzz — added). Header PERF REVIEW text removed. ---
 
 ## Phase 3: The nameplate swap (victory)
 1. `BossVictoryCinematicId` += `NAMEPLATE_SWAP`; Executive `victoryCinematic`; `VICTORY_HOLD_MS_BY_ID` entry.

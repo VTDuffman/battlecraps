@@ -760,6 +760,89 @@ function playKissMwahSting(ctx: AudioContext, dest: AudioNode): void {
   breath.stop(v0 + 0.45);
 }
 
+/** FB-035: the review marker steps — a crisp keyboard clack per step. */
+function makeReviewTickSting(steps: number): (ctx: AudioContext, dest: AudioNode) => void {
+  return (ctx, dest) => {
+    const t0 = ctx.currentTime + 0.01;
+    for (let i = 0; i < Math.max(1, steps); i++) {
+      const at = t0 + i * 0.09;
+      const click = ctx.createBufferSource();
+      click.buffer = makeNoiseBuf(ctx, 0.04);
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 3200;
+      bp.Q.value = 2;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, at);
+      env.gain.exponentialRampToValueAtTime(0.16, at + 0.002);
+      env.gain.exponentialRampToValueAtTime(0.0001, at + 0.035);
+      click.connect(bp);
+      bp.connect(env);
+      env.connect(dest);
+      click.start(at);
+      click.stop(at + 0.04);
+      // Key bottoming out — a tiny low knock.
+      const knock = ctx.createOscillator();
+      knock.type = 'sine';
+      knock.frequency.setValueAtTime(180, at);
+      knock.frequency.exponentialRampToValueAtTime(90, at + 0.04);
+      const kEnv = ctx.createGain();
+      kEnv.gain.setValueAtTime(0.0001, at);
+      kEnv.gain.exponentialRampToValueAtTime(0.08, at + 0.003);
+      kEnv.gain.exponentialRampToValueAtTime(0.0001, at + 0.05);
+      knock.connect(kEnv);
+      kEnv.connect(dest);
+      knock.start(at);
+      knock.stop(at + 0.06);
+    }
+  };
+}
+
+/** FB-035: promoted to Exceptional — a bright two-tone office "ding". */
+function playPromotionDingSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [[1318.51, 0], [1760, 0.16]].forEach(([freq, at]) => {
+    [[1, 0.12], [2.76, 0.03]].forEach(([ratio, peak]) => {   // bell partials
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = (freq as number) * (ratio as number);
+      const env = ctx.createGain();
+      const s = t0 + (at as number);
+      env.gain.setValueAtTime(0.0001, s);
+      env.gain.exponentialRampToValueAtTime(peak as number, s + 0.005);
+      env.gain.exponentialRampToValueAtTime(0.0001, s + 1.1);
+      osc.connect(env);
+      env.connect(dest);
+      osc.start(s);
+      osc.stop(s + 1.15);
+    });
+  });
+}
+
+/** FB-035: dropped to Action Required — a low, flat double buzz. */
+function playReviewWarningSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [0, 0.22].forEach((at) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.value = 110;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 700;
+    const env = ctx.createGain();
+    const s = t0 + at;
+    env.gain.setValueAtTime(0.0001, s);
+    env.gain.exponentialRampToValueAtTime(0.07, s + 0.01);
+    env.gain.setValueAtTime(0.07, s + 0.14);
+    env.gain.exponentialRampToValueAtTime(0.0001, s + 0.18);
+    osc.connect(lp);
+    lp.connect(env);
+    env.connect(dest);
+    osc.start(s);
+    osc.stop(s + 0.2);
+  });
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -852,6 +935,21 @@ export function playHeartBloom(i: number): void {
 /** FB-034 defeat: her lipstick kiss presses onto the screen. */
 export function playKissMwah(): void {
   playStandalone(playKissMwahSting);
+}
+
+/** FB-035: the Executive's review marker moved `steps` notches. */
+export function playReviewTick(steps: number): void {
+  playStandalone(makeReviewTickSting(steps));
+}
+
+/** FB-035: promoted to Exceptional. */
+export function playPromotionDing(): void {
+  playStandalone(playPromotionDingSting);
+}
+
+/** FB-035: dropped to Action Required. */
+export function playReviewWarning(): void {
+  playStandalone(playReviewWarningSting);
 }
 
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */

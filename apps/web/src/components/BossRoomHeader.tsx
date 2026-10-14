@@ -17,8 +17,6 @@ import { SargeClock } from './SargeClock.js';
 import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 import { getFloorTheme } from '../lib/floorThemes.js';
 
-const RATING_LABELS = ['ACTION REQUIRED', 'BELOW STRONG', 'STRONG', 'VERY STRONG', 'EXCEPTIONAL'] as const;
-const RATING_COLORS = ['#ef4444', '#fbbf24', '#c8d8e8', '#4ade80', '#f5c842'] as const;
 
 export const BossRoomHeader: React.FC = () => {
   const currentMarkerIndex  = useGameStore(selectDisplayMarkerIndex);
@@ -27,7 +25,6 @@ export const BossRoomHeader: React.FC = () => {
   const crewSlots           = useGameStore((s) => s.crewSlots);
   const unlockedSlots       = useGameStore((s) => s.unlockedSlots);
   const currentHype         = useGameStore((s) => s.hype);
-  const executiveRating  = useGameStore((s) => s.executiveRating);
 
   if (!isBossMarker(currentMarkerIndex)) return null;
 
@@ -106,43 +103,8 @@ export const BossRoomHeader: React.FC = () => {
         </div>
 
         {/* Right: tide state / min-bet / rule indicator */}
-        {isExecutive ? (
-          (() => {
-            const ratingIndex   = executiveRating;
-            const label         = ratingIndex !== null ? (RATING_LABELS[ratingIndex] ?? 'STRONG') : null;
-            const color         = ratingIndex !== null ? (RATING_COLORS[ratingIndex] ?? '#c8d8e8') : '#c8d8e8';
-            const isActionReq   = ratingIndex === 0;
-            const isExceptional = ratingIndex === 4;
-            return (
-              <div className="flex-none text-right">
-                <div
-                  className="font-pixel text-[7.5px] tracking-widest leading-none"
-                  style={{ color: 'rgba(200,216,232,0.60)' }}
-                >
-                  PERF REVIEW
-                </div>
-                {label !== null ? (
-                  <div
-                    className={`font-pixel text-r-12 leading-tight font-bold${isActionReq ? ' animate-executive-action-required' : ''}`}
-                    style={{
-                      color:      isActionReq ? undefined : color,
-                      textShadow: isExceptional ? `0 0 8px ${color}bb, 0 0 18px ${color}55` : undefined,
-                    }}
-                  >
-                    {label}
-                  </div>
-                ) : (
-                  <div
-                    className="font-pixel text-r-12 leading-tight"
-                    style={{ color: '#c8d8e8' }}
-                  >
-                    PENDING…
-                  </div>
-                )}
-              </div>
-            );
-          })()
-        ) : isTidalSurge && tidalParams !== null ? (
+        {/* The Executive's rating lives in the PerformanceMeter (FB-035), front and center. */}
+        {isExecutive ? null : isTidalSurge && tidalParams !== null ? (
           <div className="flex-none text-right">
             <div className="font-pixel text-[7.5px] tracking-widest leading-none"
               style={{ color: inHighTide ? '#fbbf24' : 'rgba(0,201,160,0.70)' }}>

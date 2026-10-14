@@ -940,6 +940,82 @@ function makeBoxThumpSting(heavy: boolean): (ctx: AudioContext, dest: AudioNode)
   };
 }
 
+/** FB-036: coins in the offering bowl — 'drop' clinks down into it, 'rise' shimmers up out of it. */
+function makeCoinChimeSting(kind: 'drop' | 'rise'): (ctx: AudioContext, dest: AudioNode) => void {
+  return (ctx, dest) => {
+    const t0 = ctx.currentTime + 0.01;
+    const base = kind === 'drop' ? [2637, 2349, 2093] : [2093, 2637, 3136];
+    base.forEach((freq, i) => {
+      const at = t0 + i * (kind === 'drop' ? 0.07 : 0.09);
+      [[1, 0.05], [2.4, 0.02], [3.9, 0.012]].forEach(([ratio, peak]) => {
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = freq * (ratio as number);
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0.0001, at);
+        env.gain.exponentialRampToValueAtTime(peak as number, at + 0.003);
+        env.gain.exponentialRampToValueAtTime(0.0001, at + (kind === 'drop' ? 0.25 : 0.45));
+        osc.connect(env);
+        env.connect(dest);
+        osc.start(at);
+        osc.stop(at + 0.5);
+      });
+    });
+  };
+}
+
+/** FB-036: a deep temple bell — one long toll with inharmonic partials (≈3 s). */
+function playBellTollSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [[1, 0.13, 3.2], [2.0, 0.06, 2.4], [2.76, 0.05, 1.8], [5.4, 0.025, 1.0], [0.5, 0.05, 3.4]].forEach(([ratio, peak, ring]) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = 146.83 * (ratio as number);   // D3
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.exponentialRampToValueAtTime(peak as number, t0 + 0.008);
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + (ring as number));
+    osc.connect(env);
+    env.connect(dest);
+    osc.start(t0);
+    osc.stop(t0 + (ring as number) + 0.05);
+  });
+}
+
+/** FB-036: a low choir "aah" — a D-minor chord of formant-filtered voices (≈2 s). */
+function playChoirChordSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0  = ctx.currentTime + 0.01;
+  const end = t0 + 2.1;
+  const formants = [[700, 0.5], [1150, 0.3]].map(([f, g]) => {
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = f as number;
+    bp.Q.value = 6;
+    const gain = ctx.createGain();
+    gain.gain.value = g as number;
+    bp.connect(gain);
+    return { bp, gain };
+  });
+  const out = ctx.createGain();
+  out.gain.setValueAtTime(0.0001, t0);
+  out.gain.exponentialRampToValueAtTime(0.32, t0 + 0.45);   // slow swell
+  out.gain.setValueAtTime(0.32, t0 + 1.3);
+  out.gain.exponentialRampToValueAtTime(0.0001, end);
+  formants.forEach(({ gain }) => gain.connect(out));
+  out.connect(dest);
+  [146.83, 174.61, 220, 293.66].forEach((freq) => {          // D3 F3 A3 D4
+    [-6, 6].forEach((cents) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq;
+      osc.detune.value = cents;
+      formants.forEach(({ bp }) => osc.connect(bp));
+      osc.start(t0);
+      osc.stop(end + 0.05);
+    });
+  });
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -1062,6 +1138,21 @@ export function playOfficeFanfare(): void {
 /** FB-035 defeat: crew packed into the box (heavy = the lid comes down). */
 export function playBoxThump(heavy: boolean): void {
   playStandalone(makeBoxThumpSting(heavy));
+}
+
+/** FB-036: coins drop into / rise out of the Hierophant's offering bowl. */
+export function playCoinChime(kind: 'drop' | 'rise'): void {
+  playStandalone(makeCoinChimeSting(kind));
+}
+
+/** FB-036: the Hierophant's bell. */
+export function playBellToll(): void {
+  playStandalone(playBellTollSting);
+}
+
+/** FB-036: the order's choir. */
+export function playChoirChord(): void {
+  playStandalone(playChoirChordSting);
 }
 
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */

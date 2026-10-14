@@ -33,6 +33,7 @@ import {
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { GAUNTLET, MARKER_TARGETS, getMaxBet, isBossMarker, getBossPayoffCents } from '@battlecraps/shared';
 import { PerformanceMeter } from './PerformanceMeter.js';
+import { OfferingBowl } from './OfferingBowl.js';
 import { HowToPlayScreen } from './tutorial/HowToPlayScreen.js';
 import { FeedbackModal }   from './FeedbackModal.js';
 import { DevRunBadge }     from './DevRunBadge.js';
@@ -943,6 +944,13 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
       {GAUNTLET[markerIndex]?.boss?.rule === 'CROSS_CALIBRATION' && !isCleared && (
         <div className="pt-1.5">
           <PerformanceMeter />
+        </div>
+      )}
+
+      {/* FB-036: the Hierophant's offering bowl (his escrow, made visible) */}
+      {GAUNTLET[markerIndex]?.boss?.rule === 'TRIBUTE' && !isCleared && (
+        <div className="pt-1.5">
+          <OfferingBowl />
         </div>
       )}
     </div>

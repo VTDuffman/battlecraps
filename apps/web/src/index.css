@@ -683,6 +683,15 @@
 }
 .animate-review-alarm { animation: review-alarm 1.4s ease-in-out infinite; }
 
+/* FB-036: the Hierophant's candles. */
+@keyframes candle-flicker {
+  0%, 100% { opacity: 1;    transform: translateY(0)    scale(1); }
+  20%      { opacity: 0.86; transform: translateY(-1px) scale(1.04, 0.97); }
+  45%      { opacity: 0.95; transform: translateY(0)    scale(0.97, 1.03); }
+  70%      { opacity: 0.82; transform: translateY(-1px) scale(1.03, 0.98); }
+}
+.animate-candle-flicker { animation: candle-flicker 1.6s ease-in-out infinite; }
+
 /* ── Leaderboard retro-neon scrollbars ───────────────────────────────────────
    Firefox: scrollbar-width thin + scrollbar-color (thumb / track).
    Chrome/Edge/Safari: full ::-webkit-scrollbar control.

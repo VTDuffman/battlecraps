@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-036 The Hierophant Boss Moments
 
 **Design doc:** `docs/design/fb-036-hierophant-boss-moments-design.md`
-**Status:** Phase 1 done locally (not pushed).
+**Status:** Phases 1–2 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -25,6 +25,8 @@
 4. Reduced motion.
 
 🛑 **Gate:** can you *see* his rule?
+
+--- Implemented locally (2026-10-14): `OfferingBowl` in MarkerProgress (his marker, not cleared): THE OFFERING, two flickering 🕯️, brass bowl with a coin pile scaled to held / (10% of target), HELD $X animated counter. Fresh rolls only: 🪙 drop in (`playCoinChime('drop')`), 🪙 rise out + RELEASED +$X (`playCoinChime('rise')`); seizure → candles flare + bowl glow (2.6 s), 12 embers, TRIBUTE −$X searing in, `playBellToll()` + `playChoirChord()`. Reduced motion: numbers/labels only. ---
 
 ## Phase 3: The Eye Closes (victory)
 1. `BossVictoryCinematicId` += `THE_EYE_CLOSES`; Hierophant `victoryCinematic`; `VICTORY_HOLD_MS_BY_ID` entry.

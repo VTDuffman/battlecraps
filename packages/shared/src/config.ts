@@ -60,7 +60,7 @@ export type BossRuleType =
 export type CompRewardType =
   | 'THE_VIG'         // Floor 1 — The Vig: crew cash abilities pay out 20% more
   | 'EXTRA_SHOOTER'   // Floor 2 — Member's Jacket: +1 Shooter at every marker for the rest of the run
-  | 'HYPE_RESET_HALF' // Floor 3 — Sea Legs: on Seven Out, keep half the Hype above 1.0×
+  | 'HYPE_RESET_HALF' // Floor 3 — The Keepsake: on Seven Out, keep half the Hype above 1.0×
   | 'BOARD_SEAT'      // Floor 4 — Board Seat: a fourth crew slot unlocks
   | 'THE_COVENANT'    // Floor 5 — The Covenant: halves Hierophant escrow seizure (redesign pending)
   | 'POSEIDONS_FAVOR' // Floor 6 — Poseidon's Favor: each shooter's first-roll craps-out doesn't count
@@ -445,9 +445,9 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // Comp
       compReward:      'HYPE_RESET_HALF',
       compPerkId:      COMP_PERK_IDS.SEA_LEGS,
-      compName:        'SEA LEGS',
-      compDescription: "On Seven Out, you keep half your Hype above 1.0× instead of resetting — 2.0× drops to 1.5×, not 1.0×.",
-      compFanLabel:    'SEA LEGS',
+      compName:        'THE KEEPSAKE',
+      compDescription: "Something of hers stays with you. On Seven Out, you keep half your Hype above 1.0× instead of resetting — 2.0× drops to 1.5×, not 1.0×.",
+      compFanLabel:    'KEEPSAKE',
       // Legacy
       flavorText: "On my table, the crew works backwards. Adapt.",
       // FB-034 barks — soft, purring lowercase ("she does not raise her voice").

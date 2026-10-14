@@ -353,9 +353,9 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | **Unlock Mechanism** | Clear all 3 markers of any Gauntlet floor with only 1 crew member in your slots each time you clear. |
 | **Special Constant** | `LUCKY_CHARM_ID = 15` |
 | **Brief Description** | On the first Seven Out per shooter, injects +1.0 Hype before the reset. |
-| **Detailed Description** | The first time each shooter sevens out, the Lucky Charm fires a +1.0 Hype boost before the reset kicks in. The server captures that delta, so the next shooter always starts with a Hype advantage. Once per shooter — the Charm resets when a new shooter takes the table. Stack with Sea Legs for an even softer landing. |
+| **Detailed Description** | The first time each shooter sevens out, the Lucky Charm fires a +1.0 Hype boost before the reset kicks in. The server captures that delta, so the next shooter always starts with a Hype advantage. Once per shooter — the Charm resets when a new shooter takes the table. Stack with The Keepsake for an even softer landing. |
 
-**Ability:** On the first `SEVEN_OUT` per shooter, `execute()` returns `ctx.hype + 1.0` and sets `newCooldown: 1` to mark spent. The server's `cascadeHypeDelta = max(0, finalCtx.hype - run.hype)` captures this +1.0, and `nextHype = max(1.0, 1.0 + cascadeHypeDelta)` — 2.0× unless another crew lowered Hype in the same cascade. With Sea Legs active: `nextHype = max(1.0, seaLegsBaseline + 1.0)`, e.g. at 2.0× pre-seven-out → 2.5×. Cooldown resets when a new shooter takes the table.
+**Ability:** On the first `SEVEN_OUT` per shooter, `execute()` returns `ctx.hype + 1.0` and sets `newCooldown: 1` to mark spent. The server's `cascadeHypeDelta = max(0, finalCtx.hype - run.hype)` captures this +1.0, and `nextHype = max(1.0, 1.0 + cascadeHypeDelta)` — 2.0× unless another crew lowered Hype in the same cascade. With The Keepsake active: `nextHype = max(1.0, seaLegsBaseline + 1.0)`, e.g. at 2.0× pre-seven-out → 2.5×. Cooldown resets when a new shooter takes the table.
 
 ---
 

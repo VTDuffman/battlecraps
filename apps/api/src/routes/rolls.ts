@@ -999,7 +999,7 @@ async function rollHandler(
       hypeResetNote = `Commander: −${decayAmount.toFixed(2)}× (${tier}) → ${nextHype.toFixed(2)}×`;
     } else if (hasSeaLegs) {
       const nextHype = Math.round((1.0 + (finalContext.hype - 1.0) / 2) * 10_000) / 10_000;
-      hypeResetNote = `Seven Out — Sea Legs: Hype holds at ${nextHype.toFixed(2)}×`;
+      hypeResetNote = `Seven Out — The Keepsake: Hype holds at ${nextHype.toFixed(2)}×`;
     } else {
       hypeResetNote = 'Seven Out — Hype resets to 1.00×';
     }
@@ -1524,7 +1524,7 @@ function computeNextState(
 
       // Preserve any hype the crew injected during this cascade (e.g. Holly
       // firing on a Seven-Out gives the next shooter a head start).
-      // Sea Legs (Floor 3 boss comp) preserves half the accumulated hype above 1.0
+      // The Keepsake (Floor 3 boss comp) preserves half the accumulated hype above 1.0
       // so a high-hype run isn't completely reset on seven-out.
       // cascadeHypeDelta captures crew head-start above pre-roll level and stacks on top.
       const cascadeHypeDelta = Math.max(0, finalCtx.hype - run.hype);
@@ -1548,7 +1548,7 @@ function computeNextState(
       const markerCleared = nextMarkerIndex !== currentMarkerIndex;
 
       // Hype resets to 1.0× at every marker boundary — within-marker resource, not carried forward.
-      // Sea Legs and Commander decay operate on seven-out, not on marker advance; both are unaffected.
+      // The Keepsake and Commander decay operate on seven-out, not on marker advance; both are unaffected.
       if (markerCleared) {
         nextHype = 1.0;
       }

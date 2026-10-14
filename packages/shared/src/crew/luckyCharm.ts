@@ -15,13 +15,13 @@
 // Fires only once per shooter — cooldownState is set to 1 after firing and
 // cleared by the server's per_shooter reset on new-shooter transitions.
 //
-// With Sea Legs (comp): seaLegsBaseline = 1.0 + (run.hype - 1.0) / 2.
+// With The Keepsake (comp): seaLegsBaseline = 1.0 + (run.hype - 1.0) / 2.
 // Lucky Charm cascadeHypeDelta stacks on top — so at 2.0× pre-seven-out:
 //   seaLegsBaseline = 1.5, cascadeHypeDelta = 1.0 → nextHype = 2.5×.
 //
 // DISTINCTNESS:
 //   - Lefty:     Prevents the seven-out from happening (re-rolls the dice).
-//   - Sea Legs:  Comp perk — retains 50% of accumulated Hype above 1.0.
+//   - The Keepsake:  Comp perk — retains 50% of accumulated Hype above 1.0.
 //   - Lucky Charm: Injects a flat +1.0 Hype boost; once per shooter.
 //
 // UNIT TEST HINTS:

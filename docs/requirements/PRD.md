@@ -17,7 +17,7 @@ Starting Conditions:
 
 The Table: Player places bets (Pass Line, Odds, Hardways) to reach a specific cash Marker. Bets are deducted from the bankroll at placement (deduct-on-placement model); losses are already reflected before dice roll.
 
-The Roll: Dice are thrown; a 7-out ends a Shooter's life and resets Hype to 1.0x (Sea Legs, Lucky Charm and The Commander change this).
+The Roll: Dice are thrown; a 7-out ends a Shooter's life and resets Hype to 1.0x (The Keepsake, Lucky Charm and The Commander change this).
 
 The Cascade: After the dice land, active Crew members trigger abilities left-to-right (slot 1 through the last unlocked slot) to modify the result.
 
@@ -66,7 +66,7 @@ Hype is a persistent per-run multiplier that scales all profits above the base s
 Hype Lifecycle:
 - Starts at 1.0x at run start.
 - Increased by crew abilities and base-game ticks (see 3.4).
-- Resets to 1.0x on any Seven Out — except: Sea Legs keeps half the Hype above 1.0x; crew Hype gained on the seven-out roll (e.g. Lucky Charm +1.0) carries to the next shooter; The Commander's fight replaces the reset with a tiered drain that can go below 1.0x.
+- Resets to 1.0x on any Seven Out — except: The Keepsake keeps half the Hype above 1.0x; crew Hype gained on the seven-out roll (e.g. Lucky Charm +1.0) carries to the next shooter; The Commander's fight replaces the reset with a tiered drain that can go below 1.0x.
 - Resets to 1.0x on any Marker clear (Hype does not carry between markers).
 - Tiers: ≥1.5x Heating Up, ≥2.5x On Fire (visual effects).
 
@@ -148,7 +148,7 @@ Displayed in the Roll Log UI component (see Section 6).
 |---|---|---|---|---|---|
 | 1 | The Loading Dock | $50 / $100 / $25 Payoff | The Foreman | Skims 20% of winning profit (the Cut); clear by paying off $25 | The Vig: crew cash bonuses +20% |
 | 2 | VFW Hall | $300 / $500 / $1k | Sarge | Double Time: hit the point within 6 rolls or it's a Seven-Out | Member's Jacket: +1 shooter every marker |
-| 3 | The Riverboat | $1.5k / $2k / $4k | Mme. Le Prix | One crew charmed per come-out | Sea Legs: keep half the Hype above 1.0x on Seven Out |
+| 3 | The Riverboat | $1.5k / $2k / $4k | Mme. Le Prix | One crew charmed per come-out | The Keepsake: keep half the Hype above 1.0x on Seven Out |
 | 4 | The Suite | $5k / $7.5k / $15k | The Executive | Performance Review rating; PIP termination | Board Seat: 4th crew slot |
 | 5 | The Lodge | $30k / $50k / $100k | The Hierophant | Crew cash held one roll; 25% seized on Seven Out | The Covenant: halves that seizure (redesign pending, FB-029) |
 | 6 | Atlantis | $150k / $250k / $500k | The Sovereign | Tide LOW/EBB/HIGH/FLOW min bet (1×/2×/3×/2×) | Poseidon's Favor: first-roll craps-out doesn't count |

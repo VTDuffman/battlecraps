@@ -456,7 +456,7 @@ export const runs = pgTable(
     /**
      * Comp perk IDs earned during this specific run by defeating bosses.
      * Written by recruit.ts when a boss victory yields a non-NONE comp reward.
-     * Read by rolls.ts to enforce per-run comp mechanics (SEA_LEGS, POSEIDONS_FAVOR, etc.).
+     * Read by rolls.ts to enforce per-run comp mechanics (SEA_LEGS = The Keepsake, POSEIDONS_FAVOR, etc.).
      * Scoped to the run — starts empty, never carries over across runs.
      *
      * Migration: migrate-add-run-comp-perk-ids.ts

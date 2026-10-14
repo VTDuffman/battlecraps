@@ -45,10 +45,10 @@ export const COMP_DEFS: CompDef[] = [
   {
     perkId:      2,
     threshold:   9,
-    name:        'Sea Legs',
-    icon:        '⚓',
-    effect:      'On Seven Out, keep half your Hype above 1.0× instead of resetting. Earned by defeating Mme. Le Prix.',
-    accentColor: '#0d9488',  // teal — Riverboat floor
+    name:        'The Keepsake',
+    icon:        '🌹',
+    effect:      'Something of hers stays with you. On Seven Out, keep half your Hype above 1.0× instead of resetting. Earned by defeating Mme. Le Prix.',
+    accentColor: '#e11d48',  // rose — Mme. Le Prix's rose (FB-034)
   },
   {
     perkId:      3,

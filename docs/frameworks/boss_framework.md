@@ -131,7 +131,7 @@ Every marker-entry write uses `getBossEntryCounter(markerIndex)` (2 for The Exec
 10. Additive pipeline   The Vig ×1.2 → Architect load-bearing ×0.85^N → escrow hold (Hierophant/Emissary)
 11. settleTurn()        then bossHooks.modifyPayout() (Foreman), then Executive +15% at Exceptional
 12. Bankroll extras     The Frequency bonus → escrow release/seizure
-13. computeNextState()  boss counters, Commander decay / Sea Legs, Architect demolition,
+13. computeNextState()  boss counters, Commander decay / The Keepsake, Architect demolition,
                         Pressure Cooker streak; escrow held on a marker-clearing roll is paid out
 14. Persist + emit      `turn:settled` (bossRating, charmFired, pipTermination,
                         crapsOutBlocked, clockExpired, removedCrewSlot …)
@@ -169,7 +169,7 @@ The $25 appears in `ruleBlurb` / `ruleHeaderText` / `entryLines`; update them if
 
 **"Double Time" — the roll clock.** Once a point is set, the shooter has `rollLimit` (6) point-phase rolls to hit it. If the 6th roll is a blank, Sarge calls **"TIME'S UP!"** and it counts as a Seven-Out:
 - Pass Line and Odds are lost, and all Hardways clear (a Hardway that won on that roll still pays).
-- The shooter is lost, and Hype resets (Sea Legs applies).
+- The shooter is lost, and Hype resets (The Keepsake applies).
 
 The clock starts on the first roll after the point is set; come-out rolls never tick it. A real Seven-Out or a Point Hit resolves the point normally and resets the clock.
 
@@ -218,7 +218,7 @@ ruleParams: { rule: 'DOUBLE_TIME', rollLimit: 6 }
 
 **History:** originally a full crew shutdown (`modifyCascadeOrder` → `[]`); briefly a 35% additive tax ("The Tariff", FB-026 Step 2); replaced by The Enchantment on 2026-05-30.
 
-**Comp:** Sea Legs — on Seven Out, keep half the Hype above 1.0× instead of resetting: `nextHype = 1 + (hype − 1) / 2` (plus any crew hype gained that roll). 2.0× → 1.5×. Not applied during the Commander fight, where Orbital Decay replaces the reset.
+**Comp:** The Keepsake — on Seven Out, keep half the Hype above 1.0× instead of resetting: `nextHype = 1 + (hype − 1) / 2` (plus any crew hype gained that roll). 2.0× → 1.5×. Not applied during the Commander fight, where Orbital Decay replaces the reset.
 
 ---
 
@@ -297,7 +297,7 @@ Each Seven-Out drains Hype by a tier-scaled amount (based on Hype before the rol
 | ≥ 1.5× (Heating Up) | −0.6× |
 | < 1.5× | −0.4× |
 
-`nextHype = max(0.25, hype − decay + cascadeHypeDelta)`. Sea Legs does not apply.
+`nextHype = max(0.25, hype − decay + cascadeHypeDelta)`. The Keepsake does not apply.
 
 **Death spiral** (checked from the stored Hype at the start of each roll):
 - Hype < 0.75× → one fewer active cascade slot.

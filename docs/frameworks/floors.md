@@ -456,7 +456,7 @@ card, docs) lives in [`boss_framework.md` § Adding a New Boss](boss_framework.m
 | **Teaser** | Mme. Le Prix does not silence your crew. She simply looks at one of them. |
 | **Dread tagline** | HOW CHARMING. |
 | **Rule** | `DISABLE_CREW` |
-| **Comp reward** | `HYPE_RESET_HALF` — Sea Legs: On Seven Out, you keep half your Hype above 1.0× instead of resetting — 2.0× drops to 1.5×, not 1.0×. |
+| **Comp reward** | `HYPE_RESET_HALF` — The Keepsake: Something of hers stays with you. On Seven Out, you keep half your Hype above 1.0× instead of resetting — 2.0× drops to 1.5×, not 1.0×. |
 | **Comp perk ID** | 2 |
 
 **Rule effect:** The Enchantment: before each come-out one random crew member is charmed (❤️) and sits out the cascade through the point phase; a new one is chosen when the point resolves.

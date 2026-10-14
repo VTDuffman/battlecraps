@@ -11,8 +11,8 @@
 //
 // Timeline (ms): 0 doors + dark → 300 candles light → 500 eye opens (bell) →
 // 900–2300 it looks you over → 2400 it closes → 3300 candles out (12 × 75) →
-// 4300 doors part, light floods (rumble + choir) → 4700 line → 5600 fade →
-// 6000 onFinish. Runs inside the celebration hold (VICTORY_HOLD_MS_BY_ID).
+// 4300 doors part, light floods (rumble + choir) → 4600 line → 7800 fade →
+// 8200 onFinish. Runs inside the celebration hold (VICTORY_HOLD_MS_BY_ID).
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -26,9 +26,9 @@ const CLOSE_AT   = 2400;
 const SNUFF_AT   = 3300;
 const SNUFF_STEP = 75;
 const DOORS_AT   = 4300;
-const LINE_AT    = 4700;
-const FADE_AT    = 5600;
-const FINISH_AT  = 6000;
+const LINE_AT    = 4600;
+const FADE_AT    = 7800;   // ~3 s to read his (long) line
+const FINISH_AT  = 8200;
 
 const CANDLE_COUNT = 12;
 const AMBER = '#f59e0b';

@@ -34,6 +34,7 @@ import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortabl
 import { GAUNTLET, MARKER_TARGETS, getMaxBet, isBossMarker, getBossPayoffCents } from '@battlecraps/shared';
 import { PerformanceMeter } from './PerformanceMeter.js';
 import { OfferingBowl } from './OfferingBowl.js';
+import { TideDial } from './TideDial.js';
 import { HowToPlayScreen } from './tutorial/HowToPlayScreen.js';
 import { FeedbackModal }   from './FeedbackModal.js';
 import { DevRunBadge }     from './DevRunBadge.js';
@@ -946,6 +947,13 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
       {GAUNTLET[markerIndex]?.boss?.rule === 'CROSS_CALIBRATION' && !isCleared && (
         <div className="pt-1.5">
           <PerformanceMeter />
+        </div>
+      )}
+
+      {/* FB-037: the Sovereign's tide */}
+      {GAUNTLET[markerIndex]?.boss?.rule === 'TIDAL_SURGE' && !isCleared && (
+        <div className="pt-1.5">
+          <TideDial />
         </div>
       )}
 

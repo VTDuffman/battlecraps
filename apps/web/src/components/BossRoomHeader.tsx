@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getBossMinBet, getTideStage, GAUNTLET, isBossMarker, type BossRuleParams } from '@battlecraps/shared';
+import { GAUNTLET, isBossMarker, type BossRuleParams } from '@battlecraps/shared';
 import { BossBarkFloat } from './BossBarkFloat.js';
 import { SargeClock } from './SargeClock.js';
 import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
@@ -34,7 +34,6 @@ export const BossRoomHeader: React.FC = () => {
 
   const theme = getFloorTheme(currentMarkerIndex);
 
-  const currentMinBet = getBossMinBet(currentMarkerIndex, bossPointHits);
 
   const isTidalSurge        = boss.rule === 'TIDAL_SURGE';
   const isOrbitalDecay      = boss.rule === 'ORBITAL_DECAY';
@@ -42,13 +41,6 @@ export const BossRoomHeader: React.FC = () => {
   const isConvergence       = boss.rule === 'CONVERGENCE';
   const isExecutive         = boss.rule === 'CROSS_CALIBRATION';
   const isDoubleTime        = boss.rule === 'DOUBLE_TIME';
-  const tidalParams = isTidalSurge
-    ? (boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>)
-    : null;
-  // FB-037: the tide stage now and next (each stage is its own challenge).
-  const tideNow  = tidalParams !== null ? getTideStage(tidalParams, bossPointHits) : null;
-  const tideNext = tidalParams !== null ? getTideStage(tidalParams, bossPointHits + 1) : null;
-  const tideDanger = tideNow !== null && tideNow.effect !== 'DEAD_CALM';
 
   return (
     <div
@@ -101,26 +93,8 @@ export const BossRoomHeader: React.FC = () => {
 
         {/* Right: tide state / min-bet / rule indicator */}
         {/* The Executive's rating lives in the PerformanceMeter (FB-035), front and center. */}
-        {isExecutive ? null : isTidalSurge && tideNow !== null && tideNext !== null ? (
-          <div className="flex-none max-w-[48%] text-right">
-            <div className="font-pixel text-[7.5px] tracking-widest leading-none"
-              style={{ color: tideDanger ? '#fbbf24' : 'rgba(0,201,160,0.70)' }}>
-              {tideNow.tide}
-            </div>
-            <div className="font-pixel text-r-12 leading-tight"
-              style={{ color: tideDanger ? '#fbbf24' : '#5eead4' }}>
-              {tideDanger ? `⚠ ${tideNow.name}` : tideNow.name}
-            </div>
-            <div className="font-pixel text-[7px] leading-tight"
-              style={{ color: tideDanger ? 'rgba(251,191,36,0.80)' : 'rgba(94,234,212,0.70)' }}>
-              {tideNow.rule}
-            </div>
-            <div className="font-pixel text-[7.5px] leading-none mt-0.5"
-              style={{ color: 'rgba(0,201,160,0.55)' }}>
-              NEXT: {tideNext.name}
-            </div>
-          </div>
-        ) : isTransmissionDelay ? (
+        {/* The Executive's rating and the Sovereign's tide live front and center (PerformanceMeter, TideDial). */}
+        {isExecutive || isTidalSurge ? null : isTransmissionDelay ? (
           <div className="flex-none text-right">
             <div className="font-pixel text-[7.5px] tracking-widest leading-none"
               style={{ color: 'rgba(57,255,20,0.60)' }}>

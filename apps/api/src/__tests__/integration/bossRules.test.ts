@@ -791,3 +791,73 @@ describe('EXTORTION_FEE — The Foreman (marker 2): the Cut and the Payoff', () 
     expect((res.body['roll'] as Record<string, unknown>)['bossCut']).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// THE COVENANT — "The Order Protects" (FB-036, Hierophant comp, perk id 5)
+//
+// Once per marker, the first Seven-Out doesn't cost a shooter (bets are still
+// lost, Hype still resets). runs.covenant_spent_marker records where it was used.
+// Marker 15 (Floor 6, Atlantis): target 15_000_000¢ → min bet 250_000¢.
+// ---------------------------------------------------------------------------
+
+describe('THE COVENANT — The Order Protects (FB-036)', () => {
+  const COVENANT = 5;
+  const sevenOutRun = (overrides: Record<string, unknown> = {}) => createRun(userId, {
+    currentMarkerIndex: 15,
+    bankrollCents:      10_000_000,
+    status:             'POINT_ACTIVE',
+    phase:              'POINT_ACTIVE',
+    currentPoint:       6,
+    shooters:           3,
+    hype:               2.0,
+    bets:               PASS_ONLY(250_000),
+    compPerkIds:        [COVENANT],
+    ...overrides,
+  });
+
+  it('the first Seven-Out at a marker keeps the shooter (bets lost, Hype resets)', async () => {
+    const run = await sevenOutRun();
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(250_000), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['shooters']).toBe(3);
+    expect(r['covenantSpentMarker']).toBe(15);
+    expect(r['phase']).toBe('COME_OUT');
+    expect(r['hype']).toBe(1.0);
+    expect(r['bankrollCents']).toBe(10_000_000);   // the Pass Line stake is gone (it was already off the bankroll)
+    expect((body['roll'] as Record<string, unknown>)['covenantSaved']).toBe(true);
+  });
+
+  it('the second Seven-Out at the same marker costs a shooter', async () => {
+    const run = await sevenOutRun({ covenantSpentMarker: 15 });
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(250_000), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect((body['run'] as Record<string, unknown>)['shooters']).toBe(2);
+    expect((body['roll'] as Record<string, unknown>)['covenantSaved']).toBeUndefined();
+  });
+
+  it('a new marker brings it back', async () => {
+    const run = await sevenOutRun({ currentMarkerIndex: 16, covenantSpentMarker: 15 });
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(250_000), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect((body['run'] as Record<string, unknown>)['shooters']).toBe(3);
+    expect((body['run'] as Record<string, unknown>)['covenantSpentMarker']).toBe(16);
+  });
+
+  it('saves the last shooter — the run goes on', async () => {
+    const run = await sevenOutRun({ shooters: 1 });
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(250_000), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['shooters']).toBe(1);
+    expect(r['status']).not.toBe('GAME_OVER');
+  });
+
+  it('does nothing without the comp', async () => {
+    const run = await sevenOutRun({ compPerkIds: [] });
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(250_000), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect((body['run'] as Record<string, unknown>)['shooters']).toBe(2);
+    expect((body['run'] as Record<string, unknown>)['covenantSpentMarker']).toBeNull();
+  });
+});

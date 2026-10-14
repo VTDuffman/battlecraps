@@ -269,6 +269,8 @@ interface WsTurnSettledPayload {
   exceptionalBonusCents?: number;
   /** FB-036: crew-bonus escrow facts (escrow fights only). */
   escrow?: EscrowPayload;
+  /** FB-036: The Covenant kept the shooter on this Seven-Out. */
+  covenantSaved?: true;
 }
 
 // ---------------------------------------------------------------------------
@@ -336,8 +338,12 @@ async function rollHandler(
   const isTransmissionDelay = activeBossRule === 'TRANSMISSION_DELAY'  && isBossMarker(run.currentMarkerIndex);
   const isOrbitalDecay      = activeBossRule === 'ORBITAL_DECAY'       && isBossMarker(run.currentMarkerIndex);
   const isCrossCalibrationBoss = activeBossRule === 'CROSS_CALIBRATION' && isBossMarker(run.currentMarkerIndex);
-  const hasTheCovenant = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_COVENANT);
-  const bossState: BossRuleState = { bossPointHits: run.bossPointHits, markerIndex: run.currentMarkerIndex, covenantActive: hasTheCovenant };
+  const bossState: BossRuleState = { bossPointHits: run.bossPointHits, markerIndex: run.currentMarkerIndex };
+  // FB-036: The Covenant ("The Order Protects") — once per marker, the first
+  // Seven-Out doesn't cost a shooter. Available while it hasn't been used at
+  // this marker. Earned after the Hierophant, so it applies from Floor 6 on.
+  const hasTheCovenant      = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_COVENANT);
+  const covenantAvailable   = hasTheCovenant && run.covenantSpentMarker !== run.currentMarkerIndex;
 
   // ── 3c. Stuck-state catch-all ─────────────────────────────────────────────
   // If the run has already drifted into an unrecoverable state (bankroll below
@@ -913,7 +919,7 @@ async function rollHandler(
     const isWin      = finalContext.rollResult === 'NATURAL' || finalContext.rollResult === 'POINT_HIT';
     if (isEscrowSevenOut || isWin) {
       const p = GAUNTLET[run.currentMarkerIndex]!.boss!.ruleParams as Extract<BossRuleParams, { rule: 'TRIBUTE' }>;
-      const seizurePct = isEscrowSevenOut ? (hasTheCovenant ? p.escrowSeizurePct * 0.5 : p.escrowSeizurePct) : 0;
+      const seizurePct = isEscrowSevenOut ? p.escrowSeizurePct : 0;
       const pot        = escrowWithHype(offering);
       escrowRelease = Math.floor(pot * (1 - seizurePct) / 100) * 100;
       escrowSeized  = pot - escrowRelease;
@@ -948,7 +954,9 @@ async function rollHandler(
   }
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
-  const nextState = computeNextState(run, viggedContext, postEscrowBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot, payoffReached);
+  // FB-036: The Covenant saves this shooter (a real Seven-Out Lefty didn't block).
+  const covenantSaved = covenantAvailable && viggedContext.rollResult === 'SEVEN_OUT' && !viggedContext.flags.sevenOutBlocked;
+  const nextState = computeNextState(run, viggedContext, postEscrowBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot, payoffReached, covenantSaved);
 
   // ── DISABLE_CREW: override bossPointHits with the newly selected charm slot ─
   const charmAdjustedState = nextCharmSlot !== null
@@ -1041,6 +1049,7 @@ async function rollHandler(
       hypeResetNote = 'Seven Out — Hype resets to 1.00×';
     }
     if (clockExpired) hypeResetNote = `Time's up! ${hypeResetNote}`;
+    if (covenantSaved) hypeResetNote = `The Covenant — the order protects: your shooter stays. ${hypeResetNote}`;
   }
 
   const receipt = buildRollReceipt(
@@ -1113,6 +1122,8 @@ async function rollHandler(
       pointPhaseBlankStreak: finalNextState.pointPhaseBlankStreak,
       highestRollAmplifiedCents: newHighestRollAmplifiedCents,
       pendingAdditiveCents: pendingAdditiveToPersist,
+      // FB-036: remember where The Covenant's save was used (once per marker).
+      covenantSpentMarker:  covenantSaved ? run.currentMarkerIndex : run.covenantSpentMarker,
       updatedAt:             new Date(),
     })
     .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
@@ -1238,6 +1249,7 @@ async function rollHandler(
     ...(finalContext.flags.clockExpired && { clockExpired: true }),
     ...(bossCutPayload !== undefined && { bossCut: bossCutPayload }),
     ...(escrowPayload !== undefined && { escrow: escrowPayload }),
+    ...(covenantSaved && { covenantSaved: true as const }),
     ...(isDisableCrewBoss && { charmedCrewSlot: persistedBossPointHits }),
     ...(charmedWouldHaveFired && { charmFired: true }),
     ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
@@ -1283,6 +1295,7 @@ async function rollHandler(
       ...(finalContext.flags.clockExpired && { clockExpired: true as const }),
       ...(bossCutPayload !== undefined && { bossCut: bossCutPayload }),
       ...(escrowPayload !== undefined && { escrow: escrowPayload }),
+      ...(covenantSaved && { covenantSaved: true as const }),
       ...(removedSlotIndex !== null && { removedCrewSlot: removedSlotIndex }),
     },
   });
@@ -1320,6 +1333,8 @@ function computeNextState(
   lastTriggeredSlot?:  number | null,
   /** FB-032: this roll's Cut brought the boss Payoff total to/over the Payoff. */
   payoffReached:       boolean = false,
+  /** FB-036: The Covenant keeps the shooter on this Seven-Out. */
+  covenantSaved:       boolean = false,
 ): {
   status:               RunRow['status'];
   phase:                RunRow['phase'];
@@ -1528,11 +1543,12 @@ function computeNextState(
     // ── Seven-out — shooter life lost ──────────────────────────────────────
 
     case 'SEVEN_OUT': {
-      // Only Lefty's sevenOutBlocked prevents a shooter death (he re-rolls
-      // the dice). Floor Walker's passLineProtected only saves the bet —
-      // the shooter still dies, hype still resets, point still clears.
+      // Lefty's sevenOutBlocked (he re-rolls the dice) and The Covenant's
+      // once-per-marker save (FB-036) keep the shooter. Floor Walker's
+      // passLineProtected only saves the bet — the shooter still dies. Either
+      // way hype still resets and the point still clears.
 
-      const shooterLost = !flags.sevenOutBlocked;
+      const shooterLost = !flags.sevenOutBlocked && !covenantSaved;
       const newShooters = shooterLost ? run.shooters - 1 : run.shooters;
 
       let nextStatus: RunRow['status'];

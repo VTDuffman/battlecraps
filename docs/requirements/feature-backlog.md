@@ -1649,7 +1649,7 @@ A developer-only mode, bound to Mike's Clerk login via a server-side allowlist, 
 
 **Type:** Game design
 **Area:** `packages/shared/src/config.ts` (Floor 5 boss comp), `apps/api/src/routes/rolls.ts`, `apps/web/src/components/CompCard.tsx`
-**Status:** Designed (2026-10-14) — folded into FB-036 Phase 5 as **The Order Protects** (once per marker, the first Seven Out doesn't cost a shooter)
+**Status:** Implemented (2026-10-14) in FB-036 Phase 5 as **The Order Protects** (once per marker, the first Seven Out doesn't cost a shooter)
 **Source:** Documentation audit, 2026-10-13
 
 ### Problem

@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-036 The Hierophant Boss Moments
 
 **Design doc:** `docs/design/fb-036-hierophant-boss-moments-design.md`
-**Status:** Phases 1–4 done locally (not pushed).
+**Status:** Phases 1–5 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -55,6 +55,8 @@
 5. **Tests:** integration — save once per marker, resets on the next marker, last-shooter save, no save without the comp.
 
 🛑 **Gate:** play a Floor 6+ run with The Covenant.
+
+--- Implemented locally (2026-10-14): `runs.covenant_spent_marker` (integer, nullable; startup ALTER + drizzle/0009); `covenantSaved` computed in rolls.ts (held, unspent at this marker, real Seven-Out not blocked by Lefty) → `computeNextState` keeps the shooter, persisted marker, `covenantSaved: true` on payload + receipt note. Old seizure halving and `BossRuleState.covenantActive` removed. Client: `CovenantFlash` (THE ORDER PROTECTS, bell + major choir), store `_covenantKey`; CompCard 🕯️ + new copy. Integration: 5 Covenant tests (132 total). ---
 
 ## Phase 6: Dev Mode + docs
 1. **Presets:** keep "Hierophant — big escrow, point on"; add "Hierophant — one win from the eye", "Hierophant — last shooter, point on", "Covenant — Floor 6, fresh".

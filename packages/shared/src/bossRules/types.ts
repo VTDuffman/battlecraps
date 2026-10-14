@@ -19,8 +19,6 @@ export interface BossRuleState {
   bossPointHits: number;
   /** 0-based index into GAUNTLET for the current marker. */
   markerIndex:   number;
-  /** True when the player holds THE_COVENANT comp — halves TRIBUTE drain. */
-  covenantActive: boolean;
 }
 
 /**

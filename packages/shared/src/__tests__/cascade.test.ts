@@ -307,7 +307,7 @@ describe('resolveCascade — DISABLE_CREW boss hook', () => {
       modifyCascadeOrder: () => [],
     };
     const params: BossRuleParams = { rule: 'DISABLE_CREW' };
-    const state: BossRuleState = { bossPointHits: 0, markerIndex: 8, covenantActive: false };
+    const state: BossRuleState = { bossPointHits: 0, markerIndex: 8 };
 
     const ctx = makeCtx({ hype: 1.0 });
     const { finalContext, events } = resolveCascade([booster], ctx, neverCalledRng, disableCrew, params, state);
@@ -333,7 +333,7 @@ describe('resolveCascade — CONVERGENCE boss hook', () => {
     };
     const params: BossRuleParams = { rule: 'CONVERGENCE' };
     // For CONVERGENCE: bossPointHits stores seven-out count (per CLAUDE.md dual-use)
-    const state: BossRuleState = { bossPointHits: 2, markerIndex: 26, covenantActive: false };
+    const state: BossRuleState = { bossPointHits: 2, markerIndex: 26 };
 
     resolveCascade(
       [makeLogged(1), makeLogged(2), makeLogged(3), makeLogged(4), makeLogged(5)],

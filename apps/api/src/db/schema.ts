@@ -266,6 +266,13 @@ export const runs = pgTable(
      */
     bossProgressCents: bigint('boss_progress_cents', { mode: 'number' }).notNull().default(0),
 
+    /**
+     * FB-036: The Covenant ("The Order Protects") — the marker index where its
+     * once-per-marker Seven-Out save was used. The save is available whenever
+     * this ≠ currentMarkerIndex (NULL = never used).
+     */
+    covenantSpentMarker: integer('covenant_spent_marker'),
+
     // ── Shooter lives ──────────────────────────────────────────────────────
 
     /** Remaining shooter lives. Game over at 0. Starts at 5. */

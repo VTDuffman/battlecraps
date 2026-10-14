@@ -548,7 +548,7 @@ card, docs) lives in [`boss_framework.md` § Adding a New Boss](boss_framework.m
 | **Teaser** | The order always collects. Win or lose, something is owed. |
 | **Dread tagline** | THE ORDER COLLECTS. |
 | **Rule** | `TRIBUTE` |
-| **Comp reward** | `THE_COVENANT` — The Covenant: The Hierophant's tribute on Seven Out is halved. |
+| **Comp reward** | `THE_COVENANT` — The Covenant: The order protects its own. Once per marker, your first Seven Out doesn't cost a shooter — your bets are still lost and your Hype still resets. |
 | **Comp perk ID** | 5 |
 
 **Rule effect:** Crew cash bonuses pile up in the offering bowl until you win a roll (Natural or Point Hit), then come back multiplied by your Hype. On a Seven-Out the whole offering settles at once and 75% is seized as tribute.

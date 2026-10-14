@@ -311,6 +311,13 @@ await db.execute(sql`
 `);
 app.log.info('[migrate] boss_progress_cents ensured');
 
+// FB-036: covenant_spent_marker — where The Covenant's once-per-marker
+// Seven-Out save was used (NULL = never). Mirrors drizzle/0009.
+await db.execute(sql`
+  ALTER TABLE runs ADD COLUMN IF NOT EXISTS covenant_spent_marker integer
+`);
+app.log.info('[migrate] covenant_spent_marker ensured');
+
 // ---------------------------------------------------------------------------
 // Start listening
 // ---------------------------------------------------------------------------

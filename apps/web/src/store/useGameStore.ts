@@ -246,6 +246,8 @@ interface TurnSettledPayload {
   exceptionalBonusCents?:  number;
   /** FB-036: crew-bonus escrow facts (escrow fights only). */
   escrow?:                 { heldCents: number; releasedCents: number; seizedCents: number };
+  /** FB-036: The Covenant kept the shooter on this Seven-Out. */
+  covenantSaved?:          boolean;
   /** True when Poseidon's Favor cancelled the shooter's first-roll craps-out (rollResult is NO_RESOLUTION). */
   crapsOutBlocked?:        boolean;
   /** The Architect (CONVERGENCE): crew slot index permanently removed by this seven-out. */
@@ -795,6 +797,8 @@ export interface GameState {
   escrowHeldCents: number;
   /** The latest roll's escrow facts + a key (drives the bowl's animations). */
   lastEscrow: { heldCents: number; releasedCents: number; seizedCents: number; key: number } | null;
+  /** FB-036: bumps each time The Covenant saves a shooter (drives CovenantFlash). */
+  _covenantKey: number;
   /** The latest roll's Cut (drives the register's ka-ching / stamp). Null when none. */
   lastBossCut: BossCut | null;
   /** Increments on every roll that adds to the Cut — keys the ka-ching animation. */
@@ -1334,6 +1338,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   bossProgressCents:       0,
   escrowHeldCents:         0,
   lastEscrow:              null,
+  _covenantKey:            0,
   lastBossCut:             null,
   _cutKey:                 0,
   payoffAt:                null,
@@ -2258,6 +2263,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bossProgressCents:     p.bossCut ? p.bossCut.total : 0,
       escrowHeldCents:       p.escrow ? p.escrow.heldCents : 0,
       lastEscrow:            p.escrow ? { ...p.escrow, key: (oldLastEscrow?.key ?? 0) + 1 } : oldLastEscrow,
+      _covenantKey:          p.covenantSaved === true ? get()._covenantKey + 1 : get()._covenantKey,
       lastBossCut:           p.bossCut ?? null,
       _cutKey:               p.bossCut && p.bossCut.amount > 0 ? get()._cutKey + 1 : get()._cutKey,
       payoffAt:              p.bossCut?.paidOff === true ? Date.now() : get().payoffAt,
@@ -2523,6 +2529,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           pipTermination?: boolean;
           exceptionalBonusCents?: number;
           escrow?: { heldCents: number; releasedCents: number; seizedCents: number };
+          covenantSaved?: boolean;
           crapsOutBlocked?: boolean;
           clockExpired?: boolean;
           removedCrewSlot?: number;
@@ -2560,6 +2567,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           ...(data.roll.pipTermination === true     && { pipTermination: true as const           }),
           ...(data.roll.exceptionalBonusCents !== undefined && { exceptionalBonusCents: data.roll.exceptionalBonusCents }),
           ...(data.roll.escrow !== undefined && { escrow: data.roll.escrow }),
+          ...(data.roll.covenantSaved === true && { covenantSaved: true }),
         };
         set({ pendingSettlement: autoSettlement });
         get().applyPendingSettlement();
@@ -2594,6 +2602,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ...(data.roll.pipTermination  === true      && { pipTermination:  true as const              }),
         ...(data.roll.exceptionalBonusCents !== undefined && { exceptionalBonusCents: data.roll.exceptionalBonusCents }),
         ...(data.roll.escrow !== undefined && { escrow: data.roll.escrow }),
+        ...(data.roll.covenantSaved === true && { covenantSaved: true }),
         ...(data.roll.crapsOutBlocked === true      && { crapsOutBlocked: true as const              }),
         ...(data.roll.clockExpired    === true      && { clockExpired:    true as const              }),
         ...(data.roll.removedCrewSlot !== undefined && { removedCrewSlot: data.roll.removedCrewSlot  }),

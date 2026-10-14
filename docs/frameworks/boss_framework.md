@@ -265,7 +265,7 @@ Designed as a fight against additive (cash-crew) builds — hype builds are unaf
 ruleParams: { rule: 'TRIBUTE', escrowSeizurePct: 0.75 }
 ```
 
-**Comp:** The Covenant — halves the tribute. Because it's earned by beating The Hierophant, it currently has no effect for the rest of the run. **Redesign in FB-036 Phase 5 (FB-029).**
+**Comp:** The Covenant — **"The Order Protects"** (FB-036, replaced the old seizure-halving effect that did nothing once he was beaten — FB-029). Once per marker, the first Seven-Out doesn't cost a shooter: bets are still lost, Hype still resets, the point clears, and other seven-out consequences (Architect demolition, Emissary evaporation) still apply. `runs.covenant_spent_marker` stores the marker where it was used; the save is available whenever that ≠ `currentMarkerIndex`. It can save the last shooter. `turn:settled` carries `covenantSaved: true`; the client shows THE ORDER PROTECTS (`CovenantFlash`).
 
 ---
 

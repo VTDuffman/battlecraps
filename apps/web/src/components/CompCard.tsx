@@ -62,8 +62,8 @@ export const COMP_DEFS: CompDef[] = [
     perkId:      5,
     threshold:   15,
     name:        'The Covenant',
-    icon:        '🩸',
-    effect:      "The Hierophant's tribute on Seven Out is halved. The Hierophant reward.",
+    icon:        '🕯️',
+    effect:      "The order protects its own. Once per marker, your first Seven Out doesn't cost a shooter. The Hierophant reward.",
     accentColor: '#9a6e28',  // aged amber gold — The Lodge floor
   },
   {

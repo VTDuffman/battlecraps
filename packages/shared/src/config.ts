@@ -62,7 +62,7 @@ export type CompRewardType =
   | 'EXTRA_SHOOTER'   // Floor 2 — Member's Jacket: +1 Shooter at every marker for the rest of the run
   | 'HYPE_RESET_HALF' // Floor 3 — The Keepsake: on Seven Out, keep half the Hype above 1.0×
   | 'BOARD_SEAT'      // Floor 4 — Board Seat: a fourth crew slot unlocks
-  | 'THE_COVENANT'    // Floor 5 — The Covenant: halves Hierophant escrow seizure (redesign pending)
+  | 'THE_COVENANT'    // Floor 5 — The Covenant: once per marker, the first Seven Out keeps the shooter (FB-036)
   | 'POSEIDONS_FAVOR' // Floor 6 — Poseidon's Favor: each shooter's first-roll craps-out doesn't count
   | 'CARGO_HOLD'      // Floor 7 — Cargo Hold: a fifth crew slot unlocks
   | 'THE_FREQUENCY'   // Floor 8 — The Frequency: come-out naturals award 3% of marker target as bonus
@@ -215,7 +215,7 @@ export const COMP_PERK_IDS = {
   MEMBER_JACKET:    1,  // Floor 2 boss reward — +1 Shooter at every marker
   SEA_LEGS:         2,  // Floor 3 boss reward — keep half the Hype above 1.0× on Seven Out
   // ID 3 (GOLDEN_TOUCH) retired in FB-025 — slot unlock comps use perkId 0
-  THE_COVENANT:     5,  // Floor 5 boss reward — halves Hierophant escrow seizure (redesign pending)
+  THE_COVENANT:     5,  // Floor 5 boss reward — once per marker, the first Seven Out keeps the shooter (FB-036)
   POSEIDONS_FAVOR:  6,  // Floor 6 boss reward — each shooter's first-roll craps-out doesn't count
   // ID 7 (ZERO_POINT) retired in FB-025 — slot unlock comps use perkId 0
   THE_FREQUENCY:    8,  // Floor 8 boss reward — 3% marker target bonus on come-out naturals
@@ -586,7 +586,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compReward:      'THE_COVENANT',
       compPerkId:      COMP_PERK_IDS.THE_COVENANT,
       compName:        'THE COVENANT',
-      compDescription: "The Hierophant's tribute on Seven Out is halved.",
+      compDescription: "The order protects its own. Once per marker, your first Seven Out doesn't cost a shooter — your bets are still lost and your Hype still resets.",
       compFanLabel:    'COVENANT',
       // Legacy
       flavorText: "Three centuries of tradition. You'll respect it, or you'll fund it.",

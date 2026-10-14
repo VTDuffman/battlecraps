@@ -115,16 +115,41 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     point:       6,
   },
   {
+    // Action Required (red alarm meter): a bad roll → TERMINATED, PIP memo.
     name:        'Executive — one bad roll from PIP',
     markerIndex: EXECUTIVE,
     crew:        STARTER_CREW,
     bossCounter: 0, // Action Required
   },
   {
+    // Very Strong: a natural or point hit → promoted bark + office ding.
+    name:        'Executive — one step from Exceptional',
+    markerIndex: EXECUTIVE,
+    crew:        STARTER_CREW,
+    bossCounter: 3, // Very Strong
+  },
+  {
+    // Exceptional (gold meter): every win pops "+15% · $X".
     name:        'Executive — Exceptional streak',
     markerIndex: EXECUTIVE,
     crew:        STARTER_CREW,
     bossCounter: 4, // Exceptional (+15%)
+  },
+  {
+    // Point on, one min-bet win short of his target: hit the point → THE NAMEPLATE SWAP.
+    name:          'Executive — one win from the corner office',
+    markerIndex:   EXECUTIVE,
+    crew:          STARTER_CREW,
+    bankrollCents: target(EXECUTIVE) - getMinBet(EXECUTIVE),
+    point:         6,
+  },
+  {
+    // Last shooter, point on, rating Strong: a seven-out → TERMINATED, Position Eliminated memo.
+    name:        'Executive — last shooter, point on',
+    markerIndex: EXECUTIVE,
+    crew:        STARTER_CREW,
+    shooters:    1,
+    point:       6,
   },
   {
     name:                 'Hierophant — big escrow, point on',

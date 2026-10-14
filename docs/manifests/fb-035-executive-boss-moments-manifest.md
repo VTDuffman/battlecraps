@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-035 The Executive Boss Moments
 
 **Design doc:** `docs/design/fb-035-executive-boss-moments-design.md`
-**Status:** Phases 1–4 done locally (not pushed).
+**Status:** Complete (2026-10-14) — all five phases done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes) before a phase is done. Push when Mike says (bundled with the Floor 4 rename). **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -52,3 +52,5 @@
 2. **Docs:** boss_framework (Executive moments), CLAUDE.md (Pink Slip note, current state), backlog.
 
 🛑 **Gate:** FB-035 complete → push (with the Floor 4 rename).
+
+--- Implemented locally (2026-10-14): presets "one bad roll from PIP" (commented), new "one step from Exceptional", "Exceptional streak", new "one win from the corner office", new "last shooter, point on". Docs: boss_framework Executive moments, CLAUDE.md (current state + Floor 4 rename, 21 presets), backlog. ---

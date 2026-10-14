@@ -237,7 +237,13 @@ A 5-tier Performance Review rating (0–4) is tracked via `bossPointHits` for th
 
 **Exceptional bonus:** While the rating is at 4, the payout is enhanced by 15% of gross profit (rounded to nearest dollar). Applied after `settleTurn` and the Foreman's tax layer.
 
-**Implementation note:** No hook logic. All logic is inline in `rolls.ts`. `bossRating: { index, changed, direction }` is emitted on every roll in the fight.
+**Implementation note:** No hook logic. All logic is inline in `rolls.ts`. `bossRating: { index, changed, direction }` is emitted on every roll in the fight, and `exceptionalBonusCents` whenever the +15% pays.
+
+**Boss moments (FB-035):**
+- **Barks** (shared `bossBarks.ts`, migrated from his old header bubble): `promoted` (reached Exceptional) and `finalWarning` (reached Action Required) always bark; `bonusPaid` 50%; ordinary `ratingUp` / `ratingDown` 40% — a skip is silence. Clipped corporate-speak.
+- **Performance meter** (`PerformanceMeter.tsx`, under the marker progress bar): five-step review scale, a ▼ marker springs to the new rating with a keyboard clack per step; Exceptional glows gold and pops "+15% · $X" per bonus (office ding on promotion); Action Required pulses red with FINAL WARNING (low double buzz).
+- **Victory — THE NAMEPLATE SWAP** (`victoryCinematic`): his brass plate on the Corner Office door loses its screws and clangs to the floor; THE SHOOTER slides in with a glint, office-chime fanfare and ticker tape; "…restructuring was inevitable. Well played." (~5.9 s, hold 6.3 s).
+- **Defeat — TERMINATED** (`defeatCinematic`, every loss in his fight): pink HR memo (PIP → Performance Improvement Plan; otherwise Notice of Position Elimination), TERMINATED stamp slams, your real crew packed into a PERSONAL EFFECTS box which is carried off; "Security will see you out." (~7.6 s). Replaced `PinkSlipModal`.
 
 ```typescript
 ruleParams: { rule: 'CROSS_CALIBRATION' }

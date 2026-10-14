@@ -1872,7 +1872,7 @@ Soft, purring barks keyed to her charm; the ❤️ visibly flies from the old cr
 
 **Type:** Boss presentation (barks migration, performance meter, victory + defeat cinematics)
 **Area:** `apps/api/src/routes/rolls.ts`, `packages/shared/src/config.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`
-**Status:** Designed (2026-10-14); pending implementation
+**Status:** Implemented (2026-10-14) — shared barks, performance meter, THE NAMEPLATE SWAP, TERMINATED, Dev presets
 **Design:** `docs/design/fb-035-executive-boss-moments-design.md`
 **Manifest:** `docs/manifests/fb-035-executive-boss-moments-manifest.md`
 

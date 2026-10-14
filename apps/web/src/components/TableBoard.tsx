@@ -795,6 +795,7 @@ const GameStatus: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
                 return Array.from({ length: shooterCapacity }, (_, i) => (
                   <div
                     key={i}
+                    data-shooter-pip={i}
                     className={[
                       'w-2 h-2 rounded-full border',
                       i < shooters ? 'bg-gold border-gold/80' : 'bg-transparent',

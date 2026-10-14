@@ -1886,7 +1886,7 @@ Bring the boss whose Pink Slip inspired the pattern up to its current scale: mig
 
 **Type:** Boss presentation (barks, offering bowl, victory + defeat cinematics) + comp redesign (FB-029)
 **Area:** `apps/api/src/routes/rolls.ts`, `apps/api/src/db/schema.ts`, `packages/shared/src/config.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`
-**Status:** Designed (2026-10-14); pending implementation
+**Status:** Implemented (2026-10-14) — rule retune (held until a win, × Hype, 75% seized), barks, offering bowl, THE EYE CLOSES, THE ORDER COLLECTS, The Covenant → The Order Protects (FB-029), Dev presets
 **Design:** `docs/design/fb-036-hierophant-boss-moments-design.md`
 **Manifest:** `docs/manifests/fb-036-hierophant-boss-moments-manifest.md`
 

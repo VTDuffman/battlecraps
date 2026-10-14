@@ -18,6 +18,7 @@ const SARGE      = 5;
 const LE_PRIX    = 8;
 const EXECUTIVE  = 11;
 const HIEROPHANT = 14;
+const ATLANTIS_1 = 15;   // first marker after the Hierophant — The Covenant is held
 const SOVEREIGN  = 17;
 const COMMANDER  = 20;
 const ARCHITECT  = 26;
@@ -152,11 +153,38 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     point:       6,
   },
   {
+    // A full offering bowl, point on: hit it → a big release × Hype; seven-out
+    // → a big TRIBUTE (bell + choir).
     name:                 'Hierophant — big escrow, point on',
     markerIndex:          HIEROPHANT,
     crew:                 STARTER_CREW,
     point:                6,
     pendingAdditiveCents: Math.round(target(HIEROPHANT) * 0.2 / 100) * 100,
+  },
+  {
+    // Point on, one min-bet win short of his target: hit the point → THE EYE CLOSES.
+    name:          'Hierophant — one win from the eye',
+    markerIndex:   HIEROPHANT,
+    crew:          STARTER_CREW,
+    bankrollCents: target(HIEROPHANT) - getMinBet(HIEROPHANT),
+    point:         6,
+  },
+  {
+    // Last shooter, point on: a seven-out → THE ORDER COLLECTS.
+    name:        'Hierophant — last shooter, point on',
+    markerIndex: HIEROPHANT,
+    crew:        STARTER_CREW,
+    shooters:    1,
+    point:       6,
+  },
+  {
+    // Floor 6 with The Covenant (earned from the Hierophant), last shooter,
+    // point on: a seven-out → THE ORDER PROTECTS, and the run goes on.
+    name:        'Covenant — Floor 6, last shooter, point on',
+    markerIndex: ATLANTIS_1,
+    crew:        STARTER_CREW,
+    shooters:    1,
+    point:       6,
   },
   {
     name:        'Sovereign — entering HIGH tide',

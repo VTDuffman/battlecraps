@@ -265,6 +265,13 @@ Designed as a fight against additive (cash-crew) builds — hype builds are unaf
 ruleParams: { rule: 'TRIBUTE', escrowSeizurePct: 0.75 }
 ```
 
+**Boss moments (FB-036):**
+- **Barks** (solemn, liturgical; he speaks for the order): `tributeSeized` always; `bigOffering` (held ≥ 10% of target, newly) 50%; `escrowReleased` 30%; win / loss by chance.
+- **The offering bowl** (`OfferingBowl.tsx`, under the marker progress bar): HELD $X between two candles, a coin pile scaled to what's held; coins drop in when crew cash is offered, rise out on a release (RELEASED +$X); a seizure flares the candles, burns embers off the bowl and sears TRIBUTE −$X under a bell toll and a minor choir. Driven by the server's `escrow { heldCents, releasedCents, seizedCents }`.
+- **Roll log** (KI-083): in escrow fights crew cash reads "<crew>: $X → the offering"; "Released from the offering" and "The Hierophant: $X tribute" get their own lines; Net counts only what was paid.
+- **Victory — THE EYE CLOSES** (`victoryCinematic`): his SVG eye (`cinematics/HierophantEye.tsx`) opens in a ring of candles before the sanctum doors, looks you over and closes; the candles go out one by one; the doors grind open and light floods in under a major choir (~8.2 s, hold 8.6 s).
+- **Defeat — THE ORDER COLLECTS** (`defeatCinematic`): hooded figures close in, your bankroll drains into the bowl, the eye opens and burns, three bell tolls, candles out to black, "The order always collects." (~8.3 s).
+
 **Comp:** The Covenant — **"The Order Protects"** (FB-036, replaced the old seizure-halving effect that did nothing once he was beaten — FB-029). Once per marker, the first Seven-Out doesn't cost a shooter: bets are still lost, Hype still resets, the point clears, and other seven-out consequences (Architect demolition, Emissary evaporation) still apply. `runs.covenant_spent_marker` stores the marker where it was used; the save is available whenever that ≠ `currentMarkerIndex`. It can save the last shooter. `turn:settled` carries `covenantSaved: true`; the client shows THE ORDER PROTECTS (`CovenantFlash`).
 
 ---

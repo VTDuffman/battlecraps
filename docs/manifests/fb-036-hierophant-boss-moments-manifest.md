@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-036 The Hierophant Boss Moments
 
 **Design doc:** `docs/design/fb-036-hierophant-boss-moments-design.md`
-**Status:** Phases 1–5 done locally (not pushed).
+**Status:** Complete (2026-10-14) — all six phases done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -63,3 +63,5 @@
 2. **Docs:** boss_framework (Hierophant moments), CLAUDE.md, backlog (FB-036 + FB-029).
 
 🛑 **Gate:** FB-036 complete → push.
+
+--- Implemented locally (2026-10-14): presets "Hierophant — big escrow, point on" (annotated), new "one win from the eye", "last shooter, point on", "Covenant — Floor 6, last shooter, point on" (24 presets). Docs: boss_framework Hierophant moments, CLAUDE.md current state (next boss: The Sovereign), backlog. Side fixes logged: KI-083, KI-084. ---

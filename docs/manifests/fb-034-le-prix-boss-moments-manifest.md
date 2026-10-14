@@ -27,6 +27,8 @@
 
 --- Implemented locally (2026-10-13): store `charmFlight {from,to,key}` set when the ❤️ settles on a new slot (turn:settled, or clearCharmingSlot after OOH LA LA / the entry charm); the destination portrait holds its ❤️ until `finishCharmFlight()` (3s safety net), then pops it in. `CharmFlight` samples quadratic arcs old portrait → `[data-boss-name-anchor]` → new portrait with a 💗 trail. The pink `charm-glow` pulse replaces the gold ready-pulse on the charmed portrait. ---
 
+--- Playtest follow-up (2026-10-13): the "OOH LA LA!" bubble + arpeggio felt cheap next to the flight. Replaced by the **charm heartbeat** on the crew who was actually blocked (old charmed slot): swell, two pink beats, a drifting 💗, and `playCharmDaze()` (detuned Fmaj9 pad that sags flat + descending chimes; may revisit). Entry charm = the flight alone. ---
+
 ## Phase 3: The rose (victory)
 1. `BossVictoryCinematicId` += `THE_ROSE`; Le Prix `victoryCinematic`.
 2. **`TheRoseCinematic`:** rose arcs in, lands/bounces, petals scatter, line (~4 s, within `VICTORY_HOLD_MS`).

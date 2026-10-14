@@ -692,6 +692,13 @@
 }
 .animate-candle-flicker { animation: candle-flicker 1.6s ease-in-out infinite; }
 
+/* FB-037: the Sovereign's sea surface — the wave pattern tiles every 120px. */
+@keyframes sea-surface {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-120px); }
+}
+.animate-sea-surface { animation: sea-surface 7s linear infinite; }
+
 /* ── Leaderboard retro-neon scrollbars ───────────────────────────────────────
    Firefox: scrollbar-width thin + scrollbar-color (thumb / track).
    Chrome/Edge/Safari: full ::-webkit-scrollbar control.

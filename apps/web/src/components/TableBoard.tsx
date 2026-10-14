@@ -54,6 +54,7 @@ import { DefeatCinematicHost } from './defeat/DefeatCinematicHost.js';
 import { VictoryCinematicHost } from './victory/VictoryCinematicHost.js';
 import { CharmFlight } from './CharmFlight.js';
 import { CovenantFlash } from './CovenantFlash.js';
+import { TideWater } from './TideWater.js';
 import { DiceZone }      from './DiceZone.js';
 import { CrewPortrait }  from './CrewPortrait.js';
 import { RollLog }       from './RollLog.js';
@@ -489,6 +490,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
       <VictoryCinematicHost />
       <CharmFlight />
       <CovenantFlash />
+      <TideWater />
 
       {/* ── Feedback modal ────────────────────────────────────────────────── */}
       <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />

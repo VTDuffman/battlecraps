@@ -1083,6 +1083,74 @@ function playDoorsOpenSting(ctx: AudioContext, dest: AudioNode): void {
   thud.stop(t0 + 2.0);
 }
 
+/** A band of filtered noise with an envelope — the building block of the sea sounds. */
+function seaNoise(
+  ctx: AudioContext, dest: AudioNode, start: number, dur: number,
+  filter: { type: BiquadFilterType; from: number; to: number; q?: number },
+  peak: number, attack: number,
+): void {
+  const src = ctx.createBufferSource();
+  src.buffer = makeNoiseBuf(ctx, dur + 0.05);
+  const f = ctx.createBiquadFilter();
+  f.type = filter.type;
+  f.Q.value = filter.q ?? 0.7;
+  f.frequency.setValueAtTime(filter.from, start);
+  f.frequency.exponentialRampToValueAtTime(filter.to, start + dur);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, start);
+  env.gain.exponentialRampToValueAtTime(peak, start + attack);
+  env.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  src.connect(f);
+  f.connect(env);
+  env.connect(dest);
+  src.start(start);
+  src.stop(start + dur + 0.05);
+}
+
+/** FB-037: the tide turns — a slow swell washing in and out (≈1.8 s). */
+function playSwellSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 1.8, { type: 'lowpass', from: 300, to: 900 }, 0.16, 0.8);
+  seaNoise(ctx, dest, t0 + 0.6, 1.2, { type: 'highpass', from: 2500, to: 5000 }, 0.03, 0.4);   // foam
+}
+
+/** FB-037: the Undertow drags — a deep draining whoosh pulling away (≈1.5 s). */
+function playUndertowSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 1.5, { type: 'lowpass', from: 1400, to: 120 }, 0.24, 0.12);
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(110, t0);
+  sub.frequency.exponentialRampToValueAtTime(40, t0 + 1.3);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.14, t0 + 0.1);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.4);
+  sub.connect(env);
+  env.connect(dest);
+  sub.start(t0);
+  sub.stop(t0 + 1.45);
+}
+
+/** FB-037: High Tide's wave breaks — a roaring build, a crash and a long hiss (≈2.4 s). */
+function playWaveCrashSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 0.7, { type: 'bandpass', from: 300, to: 1600, q: 0.6 }, 0.12, 0.65);       // the build
+  seaNoise(ctx, dest, t0 + 0.65, 1.8, { type: 'lowpass', from: 6000, to: 400 }, 0.34, 0.02);         // the crash
+  const boom = ctx.createOscillator();
+  boom.type = 'sine';
+  boom.frequency.setValueAtTime(80, t0 + 0.65);
+  boom.frequency.exponentialRampToValueAtTime(32, t0 + 1.2);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0 + 0.65);
+  env.gain.exponentialRampToValueAtTime(0.3, t0 + 0.68);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.3);
+  boom.connect(env);
+  env.connect(dest);
+  boom.start(t0 + 0.65);
+  boom.stop(t0 + 1.35);
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -1230,6 +1298,21 @@ export function playCandleSnuff(): void {
 /** FB-036 win: the sanctum doors grind open. */
 export function playDoorsOpen(): void {
   playStandalone(playDoorsOpenSting);
+}
+
+/** FB-037: the tide turns. */
+export function playSwell(): void {
+  playStandalone(playSwellSting);
+}
+
+/** FB-037: the Undertow drags your bankroll. */
+export function playUndertow(): void {
+  playStandalone(playUndertowSting);
+}
+
+/** FB-037: High Tide's wave breaks over your shooters. */
+export function playWaveCrash(): void {
+  playStandalone(playWaveCrashSting);
 }
 
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */

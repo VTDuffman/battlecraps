@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-037 The Sovereign Boss Moments
 
 **Design doc:** `docs/design/fb-037-sovereign-boss-moments-design.md`
-**Status:** Phases 1–2 done locally (not pushed). Tide dial pulled forward from Phase 3.
+**Status:** Phases 1–3 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -29,6 +29,8 @@
 `TideWater` (rising sea along the bottom, surface + foam, surge on undertow, crest on wave), `TideDial` (current + next stage, one-line rule). Audio: `playSwell()`, `playUndertow()`, `playWaveCrash()`.
 
 🛑 **Gate:** can you feel the tide coming?
+
+--- Implemented locally (2026-10-14): `TideDial` (shipped early, front and center). `TideWater` portal (pointer-events none): translucent sea at 3 / 8 / 14 dvh for Dead Calm / Undertow / High Tide with two scrolling surface layers; on the Undertow the water surges to 30 dvh and drains, "UNDERTOW −$X" sinks; on the wave a crest sweeps across and breaks, "THE WAVE — N SHOOTERS DROWNED"; swell on a turn of the tide. Audio: `playSwell()`, `playUndertow()`, `playWaveCrash()`. Store `lastTide {…, key}`. ---
 
 ## Phase 4: The Crown Sinks (victory)
 `THE_CROWN_SINKS` victory cinematic + hold.

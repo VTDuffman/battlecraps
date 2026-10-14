@@ -801,6 +801,8 @@ export interface GameState {
   lastEscrow: { heldCents: number; releasedCents: number; seizedCents: number; key: number } | null;
   /** FB-036: bumps each time The Covenant saves a shooter (drives CovenantFlash). */
   _covenantKey: number;
+  /** FB-037: the latest roll's tide facts + a key (drives the water line). */
+  lastTide: { stage: number; nextStage: number; undertowCents?: number; waveShooters?: number; key: number } | null;
   /** The latest roll's Cut (drives the register's ka-ching / stamp). Null when none. */
   lastBossCut: BossCut | null;
   /** Increments on every roll that adds to the Cut — keys the ka-ching animation. */
@@ -1341,6 +1343,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   escrowHeldCents:         0,
   lastEscrow:              null,
   _covenantKey:            0,
+  lastTide:                null,
   lastBossCut:             null,
   _cutKey:                 0,
   payoffAt:                null,
@@ -1435,6 +1438,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bossProgressCents: 0,
       escrowHeldCents:   0,
       lastEscrow:        null,
+      lastTide:          null,
       lastBossCut:    null,
       payoffAt:       null,
       bossBark:       null,
@@ -1631,6 +1635,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bossProgressCents:   0,
       escrowHeldCents:     0,
       lastEscrow:          null,
+      lastTide:            null,
       lastBossCut:         null,
       payoffAt:            null,
       bossBark:            null,
@@ -2268,6 +2273,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       escrowHeldCents:       p.escrow ? p.escrow.heldCents : 0,
       lastEscrow:            p.escrow ? { ...p.escrow, key: (oldLastEscrow?.key ?? 0) + 1 } : oldLastEscrow,
       _covenantKey:          p.covenantSaved === true ? get()._covenantKey + 1 : get()._covenantKey,
+      lastTide:              p.tide ? { ...p.tide, key: (get().lastTide?.key ?? 0) + 1 } : get().lastTide,
       lastBossCut:           p.bossCut ?? null,
       _cutKey:               p.bossCut && p.bossCut.amount > 0 ? get()._cutKey + 1 : get()._cutKey,
       payoffAt:              p.bossCut?.paidOff === true ? Date.now() : get().payoffAt,

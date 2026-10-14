@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-033 Sarge Boss Moments
 
 **Design doc:** `docs/design/fb-033-sarge-boss-moments-design.md`
-**Status:** Phases 1–3 done locally (not pushed).
+**Status:** Phases 1–4 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. Before calling a phase done: `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes). Push when Mike says.
 
@@ -46,6 +46,8 @@
 3. **Audio:** `playStampThud()`, `playDogTagsJingle()`.
 
 🛑 **Gate:** lose to Sarge locally (Dev preview + real TIME'S UP on the last shooter).
+
+--- Implemented locally (2026-10-13): shared `components/cinematics/DischargeForm.tsx` (both moments use it; stamp lands in the blank band, form jolts); ~0.6s lead-in so TIME'S UP + the whistle land first; ~6.2s total. The defeat hold keeps the table mounted, so the last-shooter TIME'S UP whistle now plays. ---
 
 ## Phase 5: Dev Mode + docs
 

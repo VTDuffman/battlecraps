@@ -581,6 +581,52 @@ function playStampThudSting(ctx: AudioContext, dest: AudioNode): void {
 }
 
 /**
+ * Dog tags landing — two thin metal tags clinking against each other and the
+ * ball chain settling: staggered inharmonic pings + a tiny rattle (≈600ms).
+ */
+function playDogTagsJingleSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime;
+  // [offset, base freq, peak] — first hit loudest, then the clinks and settle.
+  const hits: Array<[number, number, number]> = [
+    [0.00, 2637, 0.10],
+    [0.06, 3520, 0.07],
+    [0.15, 2960, 0.05],
+    [0.27, 3730, 0.035],
+    [0.40, 3136, 0.02],
+  ];
+  hits.forEach(([offset, freq, peak]) => {
+    const start = t0 + offset;
+    [1, 2.76].forEach((ratio, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq * ratio;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, start);
+      env.gain.exponentialRampToValueAtTime(i === 0 ? peak : peak * 0.4, start + 0.002);
+      env.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+      osc.connect(env);
+      env.connect(dest);
+      osc.start(start);
+      osc.stop(start + 0.2);
+    });
+  });
+  // Ball-chain rattle.
+  const chain = ctx.createBufferSource();
+  chain.buffer = makeNoiseBuf(ctx, 0.25);
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 5000;
+  const chainEnv = ctx.createGain();
+  chainEnv.gain.setValueAtTime(0.04, t0 + 0.02);
+  chainEnv.gain.exponentialRampToValueAtTime(0.001, t0 + 0.27);
+  chain.connect(hp);
+  hp.connect(chainEnv);
+  chainEnv.connect(dest);
+  chain.start(t0 + 0.02);
+  chain.stop(t0 + 0.27);
+}
+
+/**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
  * which mounts the hook, is unmounted). Silent when muted.
@@ -617,6 +663,11 @@ export function playRegisterBell(): void {
 /** FB-033: a rubber stamp slams onto paper (HONORABLY / DISHONORABLE DISCHARGE). */
 export function playStampThud(): void {
   playStandalone(playStampThudSting);
+}
+
+/** FB-033: DISHONORABLE DISCHARGE — dog tags land on the form. */
+export function playDogTagsJingle(): void {
+  playStandalone(playDogTagsJingleSting);
 }
 
 /** FB-033: HONORABLY DISCHARGED — bugle call. */

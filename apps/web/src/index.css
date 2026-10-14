@@ -878,3 +878,18 @@
   .animate-honor-stamp { transform: rotate(-8deg); }
   .animate-stamp-impact { animation: none; }
 }
+
+/* ── Defeat cinematic: DISHONORABLE DISCHARGE dog tags (FB-033, Sarge) ──── */
+@keyframes dogtags-drop {
+  0%   { transform: translateY(-70vh) rotate(-40deg); opacity: 0; }
+  10%  { opacity: 1; }
+  68%  { transform: translateY(0)     rotate(14deg); }
+  80%  { transform: translateY(-12px) rotate(6deg); }
+  90%  { transform: translateY(0)     rotate(11deg); }
+  100% { transform: translateY(0)     rotate(9deg); opacity: 1; }
+}
+.animate-dogtags-drop { animation: dogtags-drop 520ms cubic-bezier(0.5, 0, 0.75, 0) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-dogtags-drop { animation: dock-door-fade 300ms ease-out both; transform: rotate(9deg); }
+}

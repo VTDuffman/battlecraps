@@ -109,7 +109,7 @@ export type BossBarkTrigger =
   | 'pointSet' | 'clockLow' | 'lastRoll' | 'beatClock' | 'timeUp';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
-export type BossDefeatCinematicId = 'DOCK_CLOSED';
+export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE';
 
 /** FB-033: boss victory moments (one component each in the web registry). */
 export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED';
@@ -362,6 +362,8 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       flavorText: "You shoot on MY clock, soldier. Six rolls.",
       // FB-033 victory moment: the discharge certificate, honorably stamped.
       victoryCinematic: { id: 'HONORABLY_DISCHARGED', line: "…not bad, soldier. Dismissed." },
+      // FB-033 defeat moment: the same discharge paper, dishonorably stamped.
+      defeatCinematic: { id: 'DISHONORABLE_DISCHARGE', line: "Drop and give me twenty… thousand." },
       // FB-033 barks — shouting caps for orders, deadpan lowercase for praise.
       barks: {
         pointSet: [

@@ -14,6 +14,7 @@ import type { DevScenario } from './devScenario.js';
 
 // Marker indices of each boss fight (every third marker).
 const FOREMAN    = 2;
+const SARGE      = 5;
 const LE_PRIX    = 8;
 const EXECUTIVE  = 11;
 const HIEROPHANT = 14;
@@ -58,6 +59,30 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     shooters:          1,
     point:             6,
     bossProgressCents: 1_800,
+  },
+  {
+    name:        'Sarge — fresh fight',
+    markerIndex: SARGE,
+    crew:        STARTER_CREW,
+  },
+  {
+    // Point on, 1 roll left on the Double Time clock (counter 5 of 6 used):
+    // hit the point → beat the clock; a blank → TIME'S UP.
+    name:        'Sarge — last roll on the clock',
+    markerIndex: SARGE,
+    crew:        STARTER_CREW,
+    point:       6,
+    bossCounter: 5,
+  },
+  {
+    // Last shooter, 3 rolls left: run the clock out (or seven-out) and Sarge
+    // ends the run → DISHONORABLE DISCHARGE (+ the TIME'S UP whistle).
+    name:        'Sarge — last shooter, clock running',
+    markerIndex: SARGE,
+    crew:        STARTER_CREW,
+    shooters:    1,
+    point:       6,
+    bossCounter: 3,
   },
   {
     name:        'Le Prix — charm on a full crew',

@@ -1840,7 +1840,7 @@ The Foreman's 20% skim, **the Cut**, accumulates on a cash-register counter. Whe
 
 **Type:** Boss presentation (barks, clock drama, victory + defeat cinematics)
 **Area:** `packages/shared/src/config.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/BossRoomHeader.tsx`, `apps/web/src/components/victory/`, `apps/web/src/components/defeat/`
-**Status:** Designed (2026-10-13); pending implementation
+**Status:** Implemented (2026-10-13) — barks (clock events), clock drama, HONORABLY DISCHARGED, DISHONORABLE DISCHARGE, Dev presets
 **Design:** `docs/design/fb-033-sarge-boss-moments-design.md`
 **Manifest:** `docs/manifests/fb-033-sarge-boss-moments-manifest.md`
 

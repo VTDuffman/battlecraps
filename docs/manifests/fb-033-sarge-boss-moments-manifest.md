@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-033 Sarge Boss Moments
 
 **Design doc:** `docs/design/fb-033-sarge-boss-moments-design.md`
-**Status:** Phases 1–4 done locally (not pushed).
+**Status:** ✅ All phases (1–5) done 2026-10-13. Ready to push.
 
 **Rules:** each phase ends at a 🛑 gate. Before calling a phase done: `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes). Push when Mike says.
 
@@ -55,3 +55,5 @@
 2. **Docs:** boss_framework (Sarge + victory system), CLAUDE.md, backlog.
 
 🛑 **Gate:** FB-033 complete → push.
+
+--- Implemented locally (2026-10-13): presets "Sarge — fresh fight", "Sarge — last roll on the clock" (counter 5), "Sarge — last shooter, clock running" (1 shooter, counter 3); integration test proves the last-roll preset's blank is TIME'S UP. ---

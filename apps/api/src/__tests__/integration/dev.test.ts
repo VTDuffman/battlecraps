@@ -719,3 +719,29 @@ describe('dev controls for the Foreman Cut', () => {
     expect((created.body['run'] as Record<string, unknown>)['bossProgressCents']).toBe(0);
   });
 });
+
+describe('FB-033 Sarge presets', () => {
+  beforeEach(() => setDevEnv('true', TEST_CLERK_ID));
+
+  it('"Sarge — last roll on the clock": one blank is TIME\'S UP', async () => {
+    const preset = DEV_SCENARIOS.find((p) => p.name === 'Sarge — last roll on the clock');
+    expect(preset).toBeDefined();
+    const res = await app.inject({
+      method:  'POST',
+      url:     '/api/v1/dev/runs',
+      headers: { 'content-type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+      payload: JSON.stringify(preset),
+    });
+    expect(res.statusCode, res.body).toBe(201);
+    const body = res.json() as Record<string, unknown>;
+    const run  = body['run'] as Record<string, unknown>;
+    expect(run['bossPointHits']).toBe(5);
+
+    const bets = run['bets'] as { passLine: number; odds: number; hardways: typeof NO_HARDWAYS };
+    const roll = await rollWithDice(app, body['runId'] as string, bets, 1, 2); // 3: a blank on point 6
+    expect(roll.status, JSON.stringify(roll.body)).toBe(200);
+    const r = roll.body['roll'] as Record<string, unknown>;
+    expect(r['rollResult']).toBe('SEVEN_OUT');
+    expect(r['clockExpired']).toBe(true);
+  });
+});

@@ -189,6 +189,12 @@ The clock starts on the first roll after the point is set; come-out rolls never 
 ruleParams: { rule: 'DOUBLE_TIME', rollLimit: 6 }
 ```
 
+**Boss moments (FB-033):**
+- **Barks** (`config.ts` `barks`, events from `deriveBossBarkEvents`): pointSet / clockLow (2 left) / lastRoll (1 left) / beatClock (point hit) / timeUp always bark; natural / craps sometimes.
+- **Clock drama** (`SargeClock.tsx`): label + clock grow ~1.35× and pulse in the point phase (faster on the last two rolls); tick per blank (sharper as it runs down), alarm on the last roll, drill whistle on TIME'S UP.
+- **Victory — HONORABLY DISCHARGED** (`victoryCinematic`): certificate slides up, a small green stamp comes down onto its blank band (thud + jolt), bugle call, "…not bad, soldier. Dismissed." (~4.6s, inside the celebration hold).
+- **Defeat — DISHONORABLE DISCHARGE** (`defeatCinematic`): NOTICE OF DISCHARGE, red stamp, dog tags drop and jingle, "Drop and give me twenty… thousand." (~6.2s). Both moments share `components/cinematics/DischargeForm.tsx`.
+
 **Comp:** Member's Jacket — +1 shooter (6 instead of 5) at every marker for the rest of the run. `recruit.ts` checks `run.compPerkIds` at every pub exit.
 
 ---

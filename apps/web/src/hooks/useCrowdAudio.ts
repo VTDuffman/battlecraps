@@ -165,15 +165,53 @@ function playGroan(ctx: AudioContext, dest: AudioNode): void {
 }
 
 /**
- * FB-034: the charm holds — two low, soft harp plucks timed to the charmed
- * portrait's heartbeat (≈0 s and ≈0.5 s). Replaces the old "OOH LA LA!" arpeggio.
+ * FB-034: the charmed crew is in a daze — a soft, detuned Fmaj9 pad that swims
+ * (slow vibrato) and droops a little flat, under three slow descending chime
+ * twinkles. ≈1.4 s, timed over the portrait's heartbeat.
  */
-function playHarpHeartbeatSting(ctx: AudioContext, dest: AudioNode): void {
-  const t0 = ctx.currentTime + 0.01;
-  // A3 + E4 together, then a softer repeat — a slow lub… dub.
-  [[0, 0.09], [0.5, 0.06]].forEach(([offset, peak]) => {
-    pluckHarpString(ctx, dest, 220,    t0 + (offset as number),         peak as number);
-    pluckHarpString(ctx, dest, 329.63, t0 + (offset as number) + 0.03,  (peak as number) * 0.7);
+function playCharmDazeSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0  = ctx.currentTime + 0.01;
+  const end = t0 + 1.5;
+
+  // Pad: each note is a detuned sine pair (chorus) with a shared woozy LFO.
+  const lfo = ctx.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.value = 4.5;
+  const lfoDepth = ctx.createGain();
+  lfoDepth.gain.value = 9;                     // cents
+  lfo.connect(lfoDepth);
+  lfo.start(t0);
+  lfo.stop(end);
+
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 2400;
+  const pad = ctx.createGain();
+  pad.gain.setValueAtTime(0.0001, t0);
+  pad.gain.exponentialRampToValueAtTime(0.05, t0 + 0.22);   // swell in
+  pad.gain.setValueAtTime(0.05, t0 + 0.6);
+  pad.gain.exponentialRampToValueAtTime(0.0001, end);       // drift away
+  lp.connect(pad);
+  pad.connect(dest);
+
+  // F4 A4 C5 E5 G5 — Fmaj9.
+  [349.23, 440, 523.25, 659.25, 783.99].forEach((freq) => {
+    [-7, 7].forEach((cents) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      osc.detune.setValueAtTime(cents, t0);
+      osc.detune.linearRampToValueAtTime(cents - 35, end);   // the daze: sags flat
+      lfoDepth.connect(osc.detune);
+      osc.connect(lp);
+      osc.start(t0);
+      osc.stop(end + 0.05);
+    });
+  });
+
+  // Chimes: slow, descending, softening — a sigh.
+  [[0.12, 2093, 0.035], [0.42, 1567.98, 0.028], [0.74, 1318.51, 0.02]].forEach(([at, freq, peak]) => {
+    pluckHarpString(ctx, dest, freq as number, t0 + (at as number), peak as number);
   });
 }
 
@@ -707,9 +745,9 @@ export function playDoorClang(): void {
   playStandalone(playDoorClangSting);
 }
 
-/** FB-034: a charmed crew member tries to fire — the heart holds them back. */
-export function playHarpHeartbeat(): void {
-  playStandalone(playHarpHeartbeatSting);
+/** FB-034: a charmed crew member tries to fire — and drifts off in a daze. */
+export function playCharmDaze(): void {
+  playStandalone(playCharmDazeSting);
 }
 
 /** FB-034: Mme. Le Prix's heart flies to a new crew member. */

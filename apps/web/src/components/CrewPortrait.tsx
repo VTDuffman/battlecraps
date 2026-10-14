@@ -23,7 +23,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { MARKER_TARGETS } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
-import { playHarpHeartbeat } from '../hooks/useCrowdAudio.js';
+import { playCharmDaze } from '../hooks/useCrowdAudio.js';
 
 interface CrewPortraitProps {
   slotIndex:      number;
@@ -322,9 +322,9 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
     return () => el.removeEventListener('animationend', handler);
   }, [isTriggering, charmHeld, onAnimationEnd]);
 
-  // FB-034: the heartbeat's harp plucks.
+  // FB-034: the charmed crew's daze.
   useEffect(() => {
-    if (charmHeld) playHarpHeartbeat();
+    if (charmHeld) playCharmDaze();
   }, [charmHeld]);
 
   const isEmpty    = crewId === null;

@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-034 Mme. Le Prix Boss Moments
 
 **Design doc:** `docs/design/fb-034-le-prix-boss-moments-design.md`
-**Status:** Phases 1–2 done locally (not pushed).
+**Status:** Phases 1–3 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.**
 
@@ -35,6 +35,8 @@
 3. **Audio:** `playHarpFlourish()`.
 
 🛑 **Gate:** beat Le Prix locally.
+
+--- Implemented locally (2026-10-13): rose thrown from the upper left (1.4 s, lazy spin, bounce, settles at −28°), six CSS petals pop off on landing, `playHarpFlourish()` (two-octave sweep + rolled C-major chord) at 600 ms, her line in Georgia italic at 1.8 s, fade 3.9 s, finish 4.2 s (within VICTORY_HOLD_MS 4.9 s). Reduced motion: rose fades in, no petals. ---
 
 ## Phase 4: She takes the crew (defeat)
 1. `BossDefeatCinematicId` += `SHE_TAKES_THE_CREW`; Le Prix `defeatCinematic`.

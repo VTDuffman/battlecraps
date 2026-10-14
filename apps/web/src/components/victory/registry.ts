@@ -11,6 +11,7 @@
 import type React from 'react';
 import type { BossVictoryCinematicId } from '@battlecraps/shared';
 import { HonorablyDischargedCinematic } from './HonorablyDischargedCinematic.js';
+import { TheRoseCinematic } from './TheRoseCinematic.js';
 
 export interface VictoryCinematicProps {
   /** The boss's line (config.ts victoryCinematic.line). */
@@ -21,4 +22,5 @@ export interface VictoryCinematicProps {
 
 export const VICTORY_CINEMATICS: Record<BossVictoryCinematicId, React.ComponentType<VictoryCinematicProps>> = {
   HONORABLY_DISCHARGED: HonorablyDischargedCinematic,
+  THE_ROSE:             TheRoseCinematic,
 };

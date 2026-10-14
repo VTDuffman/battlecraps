@@ -667,6 +667,24 @@ function playHarpGlissandoSting(ctx: AudioContext, dest: AudioNode): void {
 }
 
 /**
+ * FB-034: the rose — a harp flourish. A quick rising sweep over two octaves,
+ * then a slow rolled C-major chord that rings out (≈2.5 s).
+ */
+function playHarpFlourishSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  // Sweep: G4 → G6 in C major.
+  const sweep = [392, 440, 493.88, 523.25, 587.33, 659.25, 698.46, 783.99,
+                 880, 987.77, 1046.5, 1174.66, 1318.51, 1567.98];
+  sweep.forEach((freq, i) => {
+    pluckHarpString(ctx, dest, freq, t0 + 0.42 * Math.pow(i / (sweep.length - 1), 1.2), 0.055);
+  });
+  // Rolled chord: C4 G4 C5 E5 G5 C6, unhurried.
+  [261.63, 392, 523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+    pluckHarpString(ctx, dest, freq, t0 + 0.62 + i * 0.07, 0.08 - i * 0.008);
+  });
+}
+
+/**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
  * which mounts the hook, is unmounted). Silent when muted.
@@ -748,6 +766,11 @@ export function playDoorClang(): void {
 /** FB-034: a charmed crew member tries to fire — and drifts off in a daze. */
 export function playCharmDaze(): void {
   playStandalone(playCharmDazeSting);
+}
+
+/** FB-034: THE ROSE — you beat Mme. Le Prix. */
+export function playHarpFlourish(): void {
+  playStandalone(playHarpFlourishSting);
 }
 
 /** FB-034: Mme. Le Prix's heart flies to a new crew member. */

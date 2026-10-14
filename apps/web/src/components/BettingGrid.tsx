@@ -146,6 +146,8 @@ interface BetZoneProps {
   popDelay?:       number;   // ms stagger delay
   streakCount?:    number;   // consecutive point hits — shows flame badge >= 2
   tutorialZone?:   string;   // data-tutorial-zone attribute for spotlight targeting
+  /** FB-037: The Sovereign's Dead Calm — the square is under water (and disabled). */
+  waterlogged?:    boolean;
 }
 
 const BetZone: React.FC<BetZoneProps> = ({
@@ -157,6 +159,7 @@ const BetZone: React.FC<BetZoneProps> = ({
   disabled,
   highlight = false,
   wide = false,
+  waterlogged = false,
   popAmount = 0,
   popKey = 0,
   popDelay = 0,
@@ -241,15 +244,34 @@ const BetZone: React.FC<BetZoneProps> = ({
             ? 'border-gold/70 bg-felt-light/40'
             : 'border-felt-light/30 bg-felt-dark/40',
 
-        disabled
-          ? 'opacity-30 cursor-not-allowed'
-          : 'cursor-pointer hover:border-gold/80 hover:bg-felt-light/20 active:scale-95',
+        waterlogged
+          ? 'cursor-not-allowed border-cyan-700/60'
+          : disabled
+            ? 'opacity-30 cursor-not-allowed'
+            : 'cursor-pointer hover:border-gold/80 hover:bg-felt-light/20 active:scale-95',
       ].join(' ')}
       style={{ height: 'clamp(36px,5.2dvh,64px)' }}
     >
-      <span className="text-r-8 leading-tight" style={{ color: isNullSpace ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.80)' }}>{label}</span>
+      {/* FB-037: waterlogged — sea water sloshing in the square, bubbles rising */}
+      {waterlogged && (
+        <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-sm" aria-hidden="true">
+          <span className="animate-waterlog-slosh absolute inset-x-[-10%] bottom-0 block" style={{
+            height: '64%',
+            background: 'linear-gradient(180deg, rgba(103,232,249,0.45) 0%, rgba(14,116,144,0.55) 30%, rgba(8,51,68,0.75) 100%)',
+            borderTop: '2px solid rgba(207,250,254,0.7)',
+          }} />
+          {[18, 46, 74].map((left, i) => (
+            <span key={left} className="animate-waterlog-bubble absolute block rounded-full" style={{
+              left: `${left}%`, bottom: '8%', width: 5, height: 5,
+              border: '1px solid rgba(207,250,254,0.8)', animationDelay: `${i * 0.7}s`,
+            }} />
+          ))}
+          <span className="absolute right-1 top-0.5 select-none text-[11px] leading-none">💧</span>
+        </span>
+      )}
+      <span className="relative text-r-8 leading-tight" style={{ color: waterlogged ? 'rgba(207,250,254,0.9)' : isNullSpace ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.80)' }}>{label}</span>
       {sublabel && (
-        <span className="text-r-7 mt-0.5" style={{ color: isNullSpace ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.40)' }}>{sublabel}</span>
+        <span className="relative text-r-7 mt-0.5" style={{ color: waterlogged ? 'rgba(165,243,252,0.85)' : isNullSpace ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.40)' }}>{sublabel}</span>
       )}
 
       {/* Chip stack overlay */}
@@ -352,11 +374,12 @@ export const BettingGrid: React.FC = () => {
         />
         <BetZone
           label="ODDS"
-          sublabel={isDeadCalm ? 'DEAD CALM — NONE' : point ? oddsLabel(point) : 'TRUE ODDS'}
+          sublabel={isDeadCalm ? 'WATERLOGGED' : point ? oddsLabel(point) : 'TRUE ODDS'}
           field="odds"
           amount={bets.odds}
           committedAmount={committedBets.odds}
           disabled={isRolling || isComeOut || isDeadCalm}
+          waterlogged={isDeadCalm}
           wide
           popAmount={payoutPops?.odds ?? 0}
           popKey={_popsKey}

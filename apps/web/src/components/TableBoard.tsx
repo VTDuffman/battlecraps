@@ -750,7 +750,7 @@ const GameStatus: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
           {/* Bankroll — directly beneath logo */}
           <div className="mt-0.5 text-center">
             <div className="font-pixel text-r-7 mb-0.5" style={{ color: isNullSpace ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.40)' }}>BANKROLL</div>
-            <div data-testid="bankroll" className={`font-pixel text-r-13 transition-colors duration-150 ${bankrollColor}`}>
+            <div data-testid="bankroll" data-bankroll-readout="" className={`font-pixel text-r-13 transition-colors duration-150 ${bankrollColor}`}>
               {bankrollStr}
             </div>
           </div>

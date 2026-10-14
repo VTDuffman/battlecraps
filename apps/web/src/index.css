@@ -699,6 +699,23 @@
 }
 .animate-sea-surface { animation: sea-surface 7s linear infinite; }
 
+/* FB-037: Dead Calm — the waterlogged Odds square. */
+@keyframes waterlog-slosh {
+  0%, 100% { transform: translateY(0)    rotate(0deg); }
+  30%      { transform: translateY(-2px) rotate(-2deg); }
+  70%      { transform: translateY(1px)  rotate(1.5deg); }
+}
+@keyframes waterlog-bubble {
+  0%   { transform: translateY(0);     opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translateY(-22px); opacity: 0; }
+}
+.animate-waterlog-slosh  { animation: waterlog-slosh 3.2s ease-in-out infinite; }
+.animate-waterlog-bubble { animation: waterlog-bubble 2.1s ease-in infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-waterlog-slosh, .animate-waterlog-bubble { animation: none; }
+}
+
 /* ── Leaderboard retro-neon scrollbars ───────────────────────────────────────
    Firefox: scrollbar-width thin + scrollbar-color (thumb / track).
    Chrome/Edge/Safari: full ::-webkit-scrollbar control.

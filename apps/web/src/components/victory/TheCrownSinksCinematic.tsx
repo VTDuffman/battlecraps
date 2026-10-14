@@ -9,22 +9,24 @@
 // the sand with a soft puff, tilted, while the light above fades. A glassy
 // chime; then his line. Built at the scale of THE ROSE (big wins, big losses).
 //
-// Timeline (ms): 0 under water (rumble + bubbles) → 400 the crown starts to
-// sink → 4000 it lands (thud, sand puff) → 4400 chime + line → 7600 fade →
-// 8000 onFinish. Runs inside the celebration hold (VICTORY_HOLD_MS_BY_ID).
+// Timeline (ms): 0 the sea floods in from the bottom, foam on its crest (a
+// swell) → 1300 full — under water (rumble + bubbles) → 1600 the crown starts
+// to sink → 5200 it lands (thud, sand puff) → 5600 chime + line → 8800 fade →
+// 9200 onFinish. Runs inside the celebration hold (VICTORY_HOLD_MS_BY_ID).
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { playSandThud, playSunkenChime, playUnderwater } from '../../hooks/useCrowdAudio.js';
+import { playSandThud, playSunkenChime, playSwell, playUnderwater } from '../../hooks/useCrowdAudio.js';
 import type { VictoryCinematicProps } from './registry.js';
 
-const SINK_AT   = 400;
+const FLOOD_S   = 1.3;    // the sea rises to fill the screen first
+const SINK_AT   = 1600;
 const SINK_S    = 3.6;
-const LAND_AT   = SINK_AT + SINK_S * 1000;   // 4000
-const LINE_AT   = 4400;
-const FADE_AT   = 7600;   // ~3 s to read
-const FINISH_AT = 8000;
+const LAND_AT   = SINK_AT + SINK_S * 1000;   // 5200
+const LINE_AT   = 5600;
+const FADE_AT   = 8800;   // ~3 s to read
+const FINISH_AT = 9200;
 
 function rand(seed: number): number {
   const x = Math.sin(seed * 9301 + 49297) * 233280;
@@ -48,7 +50,8 @@ export const TheCrownSinksCinematic: React.FC<VictoryCinematicProps> = ({ line, 
   useEffect(() => {
     const timers: number[] = [];
     const at = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
-    playUnderwater();
+    playSwell();
+    at(FLOOD_S * 1000, playUnderwater);
     at(SINK_AT,   () => setSinking(true));
     at(LAND_AT,   () => { setLanded(true); playSandThud(); });
     at(LINE_AT,   () => { setShowLine(true); playSunkenChime(); });
@@ -60,9 +63,27 @@ export const TheCrownSinksCinematic: React.FC<VictoryCinematicProps> = ({ line, 
   const crownSize = 'clamp(110px, 30vw, 160px)';
 
   return (
-    <div
-      className="fixed inset-0 overflow-hidden transition-opacity duration-500"
-      style={{ opacity: fading ? 0 : 1, background: 'linear-gradient(180deg, #0e7490 0%, #0b4f6c 35%, #072f45 70%, #031a28 100%)' }}
+    <div className="fixed inset-0 overflow-hidden transition-opacity duration-500" style={{ opacity: fading ? 0 : 1 }}>
+    {/* foam riding the crest of the flood */}
+    {!reduceMotion && (
+      <motion.div
+        className="pointer-events-none absolute inset-x-0 z-10"
+        style={{
+          height: 26, marginBottom: -13,
+          background: 'radial-gradient(ellipse 20px 10px at 10% 50%, rgba(255,255,255,0.95), transparent 70%), radial-gradient(ellipse 26px 12px at 30% 45%, rgba(255,255,255,0.9), transparent 70%), radial-gradient(ellipse 18px 9px at 52% 55%, rgba(255,255,255,0.95), transparent 70%), radial-gradient(ellipse 24px 12px at 74% 45%, rgba(255,255,255,0.9), transparent 70%), radial-gradient(ellipse 18px 10px at 92% 55%, rgba(255,255,255,0.95), transparent 70%), linear-gradient(180deg, transparent, rgba(236,254,255,0.8) 50%, transparent)',
+        }}
+        initial={{ bottom: '0%', opacity: 1 }}
+        animate={{ bottom: '100%', opacity: [1, 1, 0] }}
+        transition={{ duration: FLOOD_S, ease: 'easeOut', opacity: { duration: FLOOD_S, times: [0, 0.85, 1] } }}
+      />
+    )}
+    {/* the underwater scene, flooding in from the bottom */}
+    <motion.div
+      className="absolute inset-0 overflow-hidden"
+      style={{ background: 'linear-gradient(180deg, #0e7490 0%, #0b4f6c 35%, #072f45 70%, #031a28 100%)' }}
+      initial={{ clipPath: reduceMotion ? 'inset(0% 0 0 0)' : 'inset(100% 0 0 0)' }}
+      animate={{ clipPath: 'inset(0% 0 0 0)' }}
+      transition={{ duration: reduceMotion ? 0 : FLOOD_S, ease: 'easeOut' }}
     >
       {/* light shafts from the surface — fading as the crown goes down */}
       <motion.div
@@ -164,6 +185,7 @@ export const TheCrownSinksCinematic: React.FC<VictoryCinematicProps> = ({ line, 
           </motion.div>
         </div>
       )}
+    </motion.div>
     </div>
   );
 };

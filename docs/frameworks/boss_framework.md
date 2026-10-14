@@ -280,13 +280,23 @@ ruleParams: { rule: 'TRIBUTE', escrowSeizurePct: 0.75 }
 
 **Rule:** `TIDAL_SURGE` | **Target:** $500,000 | **Index:** 17
 
-The table runs on a four-stage tide that advances on every come-out resolution: **LOW (1×) → EBB (2×) → HIGH (3×) → FLOW (2×)**, then repeats. At LOW TIDE the normal table minimum applies; otherwise the come-out Pass Line minimum is `getMinBet × multiplier`, snapped to the nearest $5. An under-minimum come-out bet is **rejected** (422) — unlike Sarge, there's no fine path. The table max is floored at 5× the tide minimum.
+**The tide rhythm (FB-037).** The table runs on a four-stage tide — **LOW → EBB → HIGH → FLOW**, then repeats — that advances each time a come-out cycle resolves (Natural, Craps Out, Point Hit, Seven-Out); a point set at a stage stays at that stage until it resolves. Each stage is its own challenge (shared `getTideStage()`; enforced inline in `rolls.ts`):
+
+| Stage | Name | Rule |
+|---|---|---|
+| LOW | **Dead Calm** | No odds bets — adding odds is rejected (422); the client disables the odds zone. |
+| EBB / FLOW | **The Undertow** | A Seven-Out drags `undertowPct` (35%) of the bankroll — after the roll's settlement, rounded down to the dollar — out to sea. Applied before the state machine, so a drag below the minimum ends the run. A bankroll loss: The Covenant doesn't stop it. |
+| HIGH | **High Tide** | A Seven-Out drowns `waveShooters` (2) shooters; can end the run. The Covenant (unused this marker) cancels the whole wave; Lefty re-rolling out of the 7 means no Seven-Out at all. |
+
+`turn:settled` carries `tide { stage, nextStage, undertowCents?, waveShooters? }`; the receipt shows "The Sovereign: $X undertow" and a High Tide note. The old stage minimum bets (1×/2×/3×/2×) were removed — simulated cost ~0. Tuned with `scripts/sim/sovereign-tide-sim.mjs`: about −6 pts (cash crew), −5 (mixed), −14 (hype), pass-line players with Floor-6 comps.
 
 ```typescript
 ruleParams: {
   rule: 'TIDAL_SURGE',
-  stageMultipliers: [1, 2, 3, 2],
-  stageLabels: ['LOW TIDE', 'EBB', 'HIGH TIDE', 'FLOW'],
+  stageLabels:  ['LOW TIDE', 'EBB', 'HIGH TIDE', 'FLOW'],
+  stageEffects: ['DEAD_CALM', 'UNDERTOW', 'HIGH_TIDE', 'UNDERTOW'],
+  undertowPct:  0.35,
+  waveShooters: 2,
 }
 ```
 

@@ -578,7 +578,7 @@ export interface GameState {
    *   DOUBLE_TIME (Sarge):       point-phase rolls used against the clock.
    *   DISABLE_CREW (Le Prix):    charmed slot index.
    *   CROSS_CALIBRATION:         Executive rating 0–4.
-   *   TIDAL_SURGE (Sovereign):   tide stage (drives getBossMinBet()).
+   *   TIDAL_SURGE (Sovereign):   tide stage (Dead Calm / Undertow / High Tide — getTideStage()).
    *   CONVERGENCE (Architect):   seven-out count.
    * Every marker entry sets it via getBossEntryCounter(). 0 outside boss fights.
    */

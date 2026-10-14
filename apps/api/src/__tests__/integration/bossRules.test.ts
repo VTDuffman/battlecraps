@@ -894,3 +894,98 @@ describe('THE COVENANT — The Order Protects (FB-036)', () => {
     expect((body['run'] as Record<string, unknown>)['covenantSpentMarker']).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// TIDAL_SURGE — The Sovereign's tide rhythm (FB-037), marker 17
+//
+// Target 50_000_000¢ → max bet 5_000_000¢, min bet 833_500¢. bossPointHits is
+// the tide position: 0 LOW (Dead Calm) · 1 EBB (Undertow) · 2 HIGH (High Tide)
+// · 3 FLOW (Undertow). It advances when a come-out cycle resolves.
+// ---------------------------------------------------------------------------
+
+describe('TIDAL_SURGE — The Sovereign: Dead Calm · Undertow · High Tide (FB-037)', () => {
+  const PASS = 833_500;
+  const WITH_ODDS = (pass: number, odds: number): Bets => ({ ...PASS_ONLY(pass), odds });
+  const tideRun = (bossPointHits: number, overrides: Record<string, unknown> = {}) => createRun(userId, {
+    currentMarkerIndex: 17,
+    bankrollCents:      20_000_000,
+    status:             'POINT_ACTIVE',
+    phase:              'POINT_ACTIVE',
+    currentPoint:       6,
+    shooters:           5,
+    bossPointHits,
+    bets:               PASS_ONLY(PASS),
+    ...overrides,
+  });
+
+  it('Dead Calm (LOW): adding odds is rejected', async () => {
+    const run = await tideRun(0);
+    const { status, body } = await rollWithDice(app, run.id, WITH_ODDS(PASS, 1_000_000), 2, 3);
+    expect(status).toBe(422);
+    expect(String(body['error'])).toMatch(/DEAD CALM/);
+  });
+
+  it('odds are fine at the other stages', async () => {
+    const run = await tideRun(1);
+    const { status, body } = await rollWithDice(app, run.id, WITH_ODDS(PASS, 1_000_000), 2, 3);
+    expect(status, JSON.stringify(body)).toBe(200);
+  });
+
+  it('the Undertow (EBB): a Seven-Out drags 35% of the bankroll and costs one shooter', async () => {
+    const run = await tideRun(1);
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(PASS), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['bankrollCents']).toBe(13_000_000);   // 20_000_000 − 35%
+    expect(r['shooters']).toBe(4);
+    const roll = body['roll'] as Record<string, unknown>;
+    expect(roll['tide']).toEqual({ stage: 1, nextStage: 2, undertowCents: 7_000_000 });
+    const receipt = roll['receipt'] as { lines: { text: string }[] };
+    expect(receipt.lines.some((l) => l.text === 'The Sovereign: $70000.00 undertow')).toBe(true);
+  });
+
+  it('High Tide (HIGH): a Seven-Out drowns two shooters — no undertow', async () => {
+    const run = await tideRun(2);
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(PASS), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['shooters']).toBe(3);
+    expect(r['bankrollCents']).toBe(20_000_000);
+    expect((body['roll'] as Record<string, unknown>)['tide']).toEqual({ stage: 2, nextStage: 3, waveShooters: 2 });
+  });
+
+  it('High Tide on your last two shooters ends the run', async () => {
+    const run = await tideRun(2, { shooters: 2 });
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(PASS), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['shooters']).toBe(0);
+    expect(r['status']).toBe('GAME_OVER');
+  });
+
+  it('The Covenant turns the whole wave back', async () => {
+    const run = await tideRun(2, { compPerkIds: [5] });
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(PASS), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const roll = body['roll'] as Record<string, unknown>;
+    expect((body['run'] as Record<string, unknown>)['shooters']).toBe(5);
+    expect(roll['covenantSaved']).toBe(true);
+    expect(roll['tide']).toEqual({ stage: 2, nextStage: 3, waveShooters: 0 });
+  });
+
+  it('Lefty re-rolling out of the 7 means no wave at all', async () => {
+    // rollDice is pinned to [2, 3] (a blank) for this file.
+    const run = await tideRun(2, { crewSlots: [{ crewId: 1, cooldownState: 0 }, null, null, null, null] });
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(PASS), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect((body['run'] as Record<string, unknown>)['shooters']).toBe(5);
+    expect(((body['roll'] as Record<string, unknown>)['tide'] as Record<string, unknown>)['waveShooters']).toBeUndefined();
+  });
+
+  it('a blank holds the stage; a point set holds it too', async () => {
+    const run = await tideRun(1);
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(PASS), 2, 3);
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect((body['roll'] as Record<string, unknown>)['tide']).toEqual({ stage: 1, nextStage: 1 });
+  });
+});

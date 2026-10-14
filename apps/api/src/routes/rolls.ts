@@ -36,6 +36,7 @@ import {
   getMinBet,
   isBossMarker,
   getBossEntryCounter,
+  getTideStage,
   getBossPayoffCents,
   getBaseHypeTick,
   OLD_PRO_ID,
@@ -166,6 +167,17 @@ interface BossCutPayload {
  * heldCents — what's held after this roll; releasedCents — paid to the bankroll
  * from escrow this roll; seizedCents — taken this roll (tribute / evaporation).
  */
+interface TidePayload {
+  /** 0–3: LOW / EBB / HIGH / FLOW — the stage this roll was played at. */
+  stage:          number;
+  /** 0–3: the stage after this roll (the next come-out's). */
+  nextStage:      number;
+  /** The Undertow's drag on this Seven-Out (cents). */
+  undertowCents?: number;
+  /** Shooters the High Tide wave drowned on this Seven-Out (0 if The Covenant stopped it). */
+  waveShooters?:  number;
+}
+
 interface EscrowPayload {
   heldCents:     number;
   releasedCents: number;
@@ -271,6 +283,8 @@ interface WsTurnSettledPayload {
   escrow?: EscrowPayload;
   /** FB-036: The Covenant kept the shooter on this Seven-Out. */
   covenantSaved?: true;
+  /** FB-037: The Sovereign's tide — stage this roll was played at, the stage now, and what it took. */
+  tide?: TidePayload;
 }
 
 // ---------------------------------------------------------------------------
@@ -574,10 +588,22 @@ async function rollHandler(
     });
   }
 
-  // ── Boss fight: bet-validation hook (The Sovereign's tide minimum) ────────
+  // ── FB-037: The Sovereign's tide — the stage this roll is played at ───────
+  // The counter advances when a come-out cycle resolves, so a point set at a
+  // stage stays at that stage until it resolves.
+  const tidalParams = activeBossRule === 'TIDAL_SURGE' && isBossMarker(run.currentMarkerIndex)
+    ? (bossParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>)
+    : null;
+  const tideStage = tidalParams !== null ? getTideStage(tidalParams, run.bossPointHits) : null;
+  // Dead Calm (LOW TIDE): no odds bets — reject any odds added this roll.
+  if (tideStage?.effect === 'DEAD_CALM' && incomingBets.odds > (run.bets as Bets).odds) {
+    return reply.status(422).send({ error: 'DEAD CALM — no odds bets at low tide.' });
+  }
+
+  // ── Boss fight: bet-validation hook ───────────────────────────────────────
   // validateBet returns null (accept) or an error string (reject, 422).
-  // Come-out only: the Pass Line is locked once the point is set, and boss
-  // minimums only move at come-out resolution.
+  // Come-out only. (No boss uses it today — The Sovereign's tide minimums were
+  // removed in FB-037.)
   if (bossHooks?.validateBet && run.phase === 'COME_OUT') {
     const bossError = bossHooks.validateBet(incomingBets, bossParams!, bossState);
     if (bossError !== null) {
@@ -940,6 +966,15 @@ async function rollHandler(
   }
   const postEscrowBankroll = postFrequencyBankroll + escrowRelease;
 
+  // ── FB-037: The Sovereign's Undertow (EBB / FLOW) ─────────────────────────
+  // A Seven-Out drags undertowPct of the bankroll (after this roll's
+  // settlement) out to sea, rounded down to the dollar. Applied before the state
+  // machine so a drag that leaves the bankroll below the minimum ends the run.
+  const undertowCents = tidalParams !== null && tideStage?.effect === 'UNDERTOW' && viggedContext.rollResult === 'SEVEN_OUT'
+    ? Math.floor(postEscrowBankroll * tidalParams.undertowPct / 100) * 100
+    : 0;
+  const postTideBankroll = postEscrowBankroll - undertowCents;
+
   const rollAmplifiedProfit = payout - viggedContext.baseStakeReturned;
   const newHighestRollAmplifiedCents = Math.max(
     run.highestRollAmplifiedCents,
@@ -952,12 +987,18 @@ async function rollHandler(
   if (bossDeductionAmount > 0 && bossMarkerConfig?.boss) {
     bossDeductions.push({ amount: bossDeductionAmount, source: bossMarkerConfig.boss.name, label: 'extortion fee' });
   }
+  if (undertowCents > 0 && bossMarkerConfig?.boss) {
+    bossDeductions.push({ amount: undertowCents, source: bossMarkerConfig.boss.name, label: 'undertow' });
+  }
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
   // FB-036: The Covenant saves this shooter when the roll is still a Seven-Out
   // after the cascade — including when Lefty's re-roll was another 7.
   const covenantSaved = covenantAvailable && viggedContext.rollResult === 'SEVEN_OUT';
-  const nextState = computeNextState(run, viggedContext, postEscrowBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot, payoffReached, covenantSaved);
+  // FB-037: High Tide — a Seven-Out drowns waveShooters (The Covenant cancels it).
+  const isWave = tidalParams !== null && tideStage?.effect === 'HIGH_TIDE' && viggedContext.rollResult === 'SEVEN_OUT';
+  const sevenOutShooters = isWave ? tidalParams!.waveShooters : 1;
+  const nextState = computeNextState(run, viggedContext, postTideBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot, payoffReached, covenantSaved, sevenOutShooters);
 
   // ── DISABLE_CREW: override bossPointHits with the newly selected charm slot ─
   const charmAdjustedState = nextCharmSlot !== null
@@ -981,7 +1022,7 @@ async function rollHandler(
     : pipAdjustedState;
 
   // Settled bankroll for this roll, including escrow paid out on a marker clear.
-  const settledBankroll = postEscrowBankroll + escrowPaidOnClear;
+  const settledBankroll = postTideBankroll + escrowPaidOnClear;
   const bankrollDelta   = settledBankroll - run.bankrollCents;
 
   // ── CROSS_CALIBRATION: compute bossRating for socket payload ──────────────
@@ -1013,6 +1054,15 @@ async function rollHandler(
         heldCents:     pendingAdditiveToPersist,
         releasedCents: escrowRelease + escrowPaidOnClear,
         seizedCents:   escrowSeized,
+      }
+    : undefined;
+
+  const tidePayload: TidePayload | undefined = tideStage !== null && tidalParams !== null && !hitMarker
+    ? {
+        stage:     tideStage.index,
+        nextStage: getTideStage(tidalParams, finalNextState.bossPointHits).index,
+        ...(undertowCents > 0 && { undertowCents }),
+        ...(isWave && { waveShooters: covenantSaved ? 0 : sevenOutShooters }),
       }
     : undefined;
 
@@ -1050,7 +1100,8 @@ async function rollHandler(
       hypeResetNote = 'Seven Out — Hype resets to 1.00×';
     }
     if (clockExpired) hypeResetNote = `Time's up! ${hypeResetNote}`;
-    if (covenantSaved) hypeResetNote = `The Covenant — the order protects: your shooter stays. ${hypeResetNote}`;
+    if (isWave && !covenantSaved) hypeResetNote = `High Tide — the wave drowns ${sevenOutShooters} shooters. ${hypeResetNote}`;
+    if (covenantSaved) hypeResetNote = `The Covenant — the order protects: your shooter stays${isWave ? ' (the wave is turned back)' : ''}. ${hypeResetNote}`;
   }
 
   const receipt = buildRollReceipt(
@@ -1251,6 +1302,7 @@ async function rollHandler(
     ...(bossCutPayload !== undefined && { bossCut: bossCutPayload }),
     ...(escrowPayload !== undefined && { escrow: escrowPayload }),
     ...(covenantSaved && { covenantSaved: true as const }),
+    ...(tidePayload !== undefined && { tide: tidePayload }),
     ...(isDisableCrewBoss && { charmedCrewSlot: persistedBossPointHits }),
     ...(charmedWouldHaveFired && { charmFired: true }),
     ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
@@ -1297,6 +1349,7 @@ async function rollHandler(
       ...(bossCutPayload !== undefined && { bossCut: bossCutPayload }),
       ...(escrowPayload !== undefined && { escrow: escrowPayload }),
       ...(covenantSaved && { covenantSaved: true as const }),
+      ...(tidePayload !== undefined && { tide: tidePayload }),
       ...(removedSlotIndex !== null && { removedCrewSlot: removedSlotIndex }),
     },
   });
@@ -1336,6 +1389,8 @@ function computeNextState(
   payoffReached:       boolean = false,
   /** FB-036: The Covenant keeps the shooter on this Seven-Out. */
   covenantSaved:       boolean = false,
+  /** FB-037: shooters a Seven-Out costs (The Sovereign's High Tide wave: 2). */
+  sevenOutShooters:    number = 1,
 ): {
   status:               RunRow['status'];
   phase:                RunRow['phase'];
@@ -1384,7 +1439,7 @@ function computeNextState(
     ? (() => {
         const p = GAUNTLET[currentMarkerIndex]!.boss!.ruleParams as
           Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>;
-        return p.stageMultipliers.length;
+        return p.stageEffects.length;
       })()
     : 0;
 
@@ -1553,7 +1608,7 @@ function computeNextState(
       // Either way hype resets and the point clears.
 
       const shooterLost = !covenantSaved;
-      const newShooters = shooterLost ? run.shooters - 1 : run.shooters;
+      const newShooters = shooterLost ? Math.max(0, run.shooters - sevenOutShooters) : run.shooters;
 
       let nextStatus: RunRow['status'];
       let nextMarkerIndex = currentMarkerIndex;

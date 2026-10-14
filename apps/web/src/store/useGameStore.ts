@@ -312,7 +312,7 @@ export interface GameState {
 
   /**
    * Per-boss-fight counter; meaning depends on the boss rule (Sarge: clock rolls
-   * used, Sovereign: tide stage — drives getBossMinBet(), Executive: rating, …).
+   * used, Sovereign: tide stage (getTideStage), Executive: rating, …).
    * 0 outside boss fights. Synced from the server via turn:settled and recruit responses.
    */
   bossPointHits: number;

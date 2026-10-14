@@ -38,8 +38,8 @@ Odds: True-odds betting allowed behind the Point (4/10 @ 2:1; 5/9 @ 3:2; 6/8 @ 6
 Hardways: Bets on 4, 6, 8, 10 appearing as pairs. Payouts: Hard 4/10 @ 7:1; Hard 6/8 @ 9:1. Hardway bets are cleared on a Seven Out or when the matching number rolls "soft" (non-paired). High-payout triggers for Crew abilities.
 
 Bet Constraints:
-- Maximum bet per type: 10% of the current Marker target (15% with The Old Pro). In The Sovereign's fight the max is floored at 5× the tide minimum; The Commander's death spiral halves it. Placing a chip that would exceed the maximum tops the bet out at the maximum rather than rejecting the click.
-- Minimum come-out Pass Line bet: ~1/6 of the table max, snapped to $5, never below $5 (`getMinBet`). The Sovereign's tide raises it during that fight.
+- Maximum bet per type: 10% of the current Marker target (15% with The Old Pro). The Commander's death spiral halves it. Placing a chip that would exceed the maximum tops the bet out at the maximum rather than rejecting the click.
+- Minimum come-out Pass Line bet: ~1/6 of the table max, snapped to $5, never below $5 (`getMinBet`).
 - Bets are deducted from bankroll at placement; losses require no further deduction at resolution.
 - Odds bets are only valid while a point is active.
 
@@ -151,7 +151,7 @@ Displayed in the Roll Log UI component (see Section 6).
 | 3 | The Riverboat | $1.5k / $2k / $4k | Mme. Le Prix | One crew charmed per come-out | The Keepsake: keep half the Hype above 1.0x on Seven Out |
 | 4 | The Suite | $5k / $7.5k / $15k | The Executive | Performance Review rating; PIP termination | Board Seat: 4th crew slot |
 | 5 | The Lodge | $30k / $50k / $100k | The Hierophant | Crew cash held until a win (paid with Hype); 75% seized on Seven Out | The Covenant: once per marker, your first Seven Out doesn't cost a shooter |
-| 6 | Atlantis | $150k / $250k / $500k | The Sovereign | Tide LOW/EBB/HIGH/FLOW min bet (1×/2×/3×/2×) | Poseidon's Favor: first-roll craps-out doesn't count |
+| 6 | Atlantis | $150k / $250k / $500k | The Sovereign | Tide: Dead Calm (no odds) / Undertow (7-out takes 35%) / High Tide (7-out drowns 2) | Poseidon's Favor: first-roll craps-out doesn't count |
 | 7 | The Station | $1M / $1.5M / $3M | The Commander | Tiered Seven-Out Hype drain + death spiral | Cargo Hold: 5th crew slot |
 | 8 | The Signal | $5M / $7.5M / $15M | The Emissary | Crew cash held one roll; evaporates on Seven Out | The Frequency: Naturals pay 3% of target |
 | 9 | The Null Space | $20M / $30M / $60M | The Architect | Seven Out removes the last crew to fire | None (victory) |

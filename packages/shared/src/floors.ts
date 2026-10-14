@@ -347,7 +347,7 @@ export const FLOORS: readonly FloorConfig[] = [
     bossName:   'The Sovereign',
     bossTitle:  'Last King of Atlantis',
     bossVenue:  'Atlantis — The Throne Room',
-    bossTeaser: 'The tides have always obeyed the Sovereign. So will your minimum bets.',
+    bossTeaser: 'The tides have always obeyed the Sovereign. Calm, undertow, high water — every turn of the tide wants something from you.',
     atmosphere: 'ancient',
   },
 

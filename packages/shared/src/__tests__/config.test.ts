@@ -15,6 +15,8 @@ import {
   STREAK_INCREMENT,
   STREAK_CAP,
 } from '../config.js';
+import { getTideStage } from '../bossRules/tidalSurge.js';
+import type { BossRuleParams } from '../config.js';
 
 // ---------------------------------------------------------------------------
 // GAUNTLET structure
@@ -139,9 +141,8 @@ describe('getMaxBet', () => {
     expect(getMaxBet(5, 5)).toBe(10_000);
   });
 
-  it('applies the 5× boss floor at The Sovereign\'s HIGH TIDE (index 17)', () => {
-    const bossMin = getBossMinBet(17, 2)!;
-    expect(getMaxBet(17, 2)).toBe(Math.max(5_000_000, bossMin * 5));
+  it("The Sovereign's tide no longer moves the max bet (FB-037)", () => {
+    expect(getMaxBet(17, 2)).toBe(5_000_000);
   });
 
   it('out-of-bounds index falls back to last GAUNTLET entry', () => {
@@ -211,30 +212,8 @@ describe('getBossMinBet', () => {
     expect(getBossMinBet(5, 5)).toBeNull();
   });
 
-  it('TIDAL_SURGE boss (index 17): stage 0 LOW TIDE (bossPointHits % 4 === 0) → null', () => {
-    expect(getBossMinBet(17, 0)).toBeNull();
-    expect(getBossMinBet(17, 4)).toBeNull();
-    expect(getBossMinBet(17, 8)).toBeNull();
-  });
-
-  it('TIDAL_SURGE boss (index 17): stage 1 EBB (2×) → 1_667_000', () => {
-    // GAUNTLET[17].targetCents = 50_000_000
-    // getMaxBet(17) = floor(50_000_000 * 0.10) = 5_000_000
-    // getMinBet(17) = max(500, round(5_000_000/6/500)*500) = 833_500
-    // EBB: round(833_500 × 2 / 500) × 500 = round(3334) × 500 = 3334*500 = 1_667_000
-    expect(getBossMinBet(17, 1)).toBe(1_667_000);
-    expect(getBossMinBet(17, 5)).toBe(1_667_000);
-  });
-
-  it('TIDAL_SURGE boss (index 17): stage 2 HIGH TIDE (3×) → 2_500_500', () => {
-    // HIGH: round(833_500 × 3 / 500) × 500 = round(5001) × 500 = 5001*500 = 2_500_500
-    expect(getBossMinBet(17, 2)).toBe(2_500_500);
-    expect(getBossMinBet(17, 6)).toBe(2_500_500);
-  });
-
-  it('TIDAL_SURGE boss (index 17): stage 3 FLOW (2×) → 1_667_000', () => {
-    expect(getBossMinBet(17, 3)).toBe(1_667_000);
-    expect(getBossMinBet(17, 7)).toBe(1_667_000);
+  it('TIDAL_SURGE (index 17) returns null at every stage — FB-037 removed the tide minimums', () => {
+    for (let stage = 0; stage < 8; stage++) expect(getBossMinBet(17, stage)).toBeNull();
   });
 
   it('CONVERGENCE boss (index 26) returns null', () => {
@@ -376,5 +355,25 @@ describe('getBossPayoffCents (FB-032)', () => {
       if (i === 2) return;
       expect(getBossPayoffCents(i)).toBeNull();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getTideStage — The Sovereign's tide rhythm (FB-037)
+// ---------------------------------------------------------------------------
+
+describe('getTideStage', () => {
+  const params = GAUNTLET[17]!.boss!.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>;
+
+  it('cycles LOW (Dead Calm) → EBB (Undertow) → HIGH (High Tide) → FLOW (Undertow)', () => {
+    expect([0, 1, 2, 3].map((c) => getTideStage(params, c).effect)).toEqual(['DEAD_CALM', 'UNDERTOW', 'HIGH_TIDE', 'UNDERTOW']);
+    expect([0, 1, 2, 3].map((c) => getTideStage(params, c).tide)).toEqual(['LOW TIDE', 'EBB', 'HIGH TIDE', 'FLOW']);
+    expect(getTideStage(params, 6).effect).toBe('HIGH_TIDE');   // wraps
+  });
+
+  it('states each stage in one line', () => {
+    expect(getTideStage(params, 0).rule).toBe('NO ODDS BETS');
+    expect(getTideStage(params, 1).rule).toBe('A SEVEN-OUT TAKES 35% OF YOUR BANKROLL');
+    expect(getTideStage(params, 2).rule).toBe('A SEVEN-OUT DROWNS 2 SHOOTERS');
   });
 });

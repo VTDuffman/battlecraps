@@ -318,7 +318,7 @@ export const runs = pgTable(
      *   DOUBLE_TIME (Sarge):     point-phase rolls used against the clock.
      *   DISABLE_CREW (Le Prix):  charmed slot index.
      *   CROSS_CALIBRATION:       Executive rating 0–4 (enters at 2).
-     *   TIDAL_SURGE (Sovereign): tide stage — drives getBossMinBet().
+     *   TIDAL_SURGE (Sovereign): tide stage (FB-037: Dead Calm / Undertow / High Tide).
      *   CONVERGENCE (Architect): seven-out count.
      * Set on every marker entry via getBossEntryCounter(); 0 outside boss fights.
      */

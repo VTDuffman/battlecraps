@@ -232,7 +232,7 @@ Mechanics are documented in full in [`boss_framework.md`](boss_framework.md), wh
 | `DISABLE_CREW` | Mme. Le Prix (3) | One random crew member charmed per come-out, sits out until the point resolves |
 | `CROSS_CALIBRATION` | The Executive (4) | Performance rating 0–4; +15% at Exceptional; bad roll at Action Required ends the run |
 | `TRIBUTE` | The Hierophant (5) | Crew cash held until a win, paid with Hype; 75% seized on Seven-Out |
-| `TIDAL_SURGE` | The Sovereign (6) | Tide LOW/EBB/HIGH/FLOW (1×/2×/3×/2× min bet), advances each come-out |
+| `TIDAL_SURGE` | The Sovereign (6) | Tide LOW/EBB/HIGH/FLOW: Dead Calm (no odds) / Undertow (7-out takes 35%) / High Tide (7-out drowns 2) |
 | `ORBITAL_DECAY` | The Commander (7) | Tiered Seven-Out Hype drain (0.4/0.6/0.8×), floor 0.25×, death spiral below 0.75× / 0.5× |
 | `TRANSMISSION_DELAY` | The Emissary (8) | Crew cash held one roll; all of it evaporates on Seven-Out |
 | `CONVERGENCE` | The Architect (9) | Each Seven-Out removes the last crew member to fire; 15% compounding cash cut |
@@ -591,17 +591,17 @@ card, docs) lives in [`boss_framework.md` § Adding a New Boss](boss_framework.m
 |---|---|
 | **Title** | Last King of Atlantis |
 | **Venue** | Atlantis — The Throne Room |
-| **Teaser** | The tides have always obeyed the Sovereign. So will your minimum bets. |
+| **Teaser** | The tides have always obeyed the Sovereign. Calm, undertow, high water — every turn of the tide wants something from you. |
 | **Dread tagline** | THE TIDE TURNS. |
 | **Rule** | `TIDAL_SURGE` |
 | **Comp reward** | `POSEIDONS_FAVOR` — Poseidon's Favor: The first roll of each shooter can never craps-out — a 2, 3 or 12 doesn't count and your Pass Line stays up. |
 | **Comp perk ID** | 6 |
 
-**Rule effect:** A four-stage tide advances each come-out: LOW (1× table minimum) → EBB (2×) → HIGH (3×) → FLOW (2×). Under-minimum come-out bets are rejected.
+**Rule effect:** A four-stage tide turns each time a come-out resolves, and each stage is its own challenge: DEAD CALM (LOW) — no odds bets; THE UNDERTOW (EBB, FLOW) — a Seven-Out drags 35% of the bankroll; HIGH TIDE — a Seven-Out drowns two shooters (The Covenant cancels it).
 
 **Entry lines:**
 > Three thousand years. Every empire above you has collapsed from here.
-> My table runs on a tide. It turns with every come-out.
+> My table runs on a tide. Calm, undertow, high water — it turns with every come-out.
 > You can see it coming. That was never the point.
 
 **Victory quote:** *"…the tide will return. It always does."*

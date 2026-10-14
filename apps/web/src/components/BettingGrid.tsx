@@ -16,7 +16,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 import type { BetField } from '../store/useGameStore.js';
-import { getMaxBet } from '@battlecraps/shared';
+import { getMaxBet, getTideStage, GAUNTLET, isBossMarker } from '@battlecraps/shared';
 import { getFloorIndex } from '../lib/floorThemes.js';
 import { useTutorialContext } from '../contexts/TutorialContext.js';
 
@@ -322,6 +322,11 @@ export const BettingGrid: React.FC = () => {
   const payoutPops           = useGameStore((s) => s.payoutPops);
   const _popsKey             = useGameStore((s) => s._popsKey);
   const consecutivePointHits = useGameStore((s) => s.consecutivePointHits);
+  // FB-037: The Sovereign's Dead Calm (LOW TIDE) — no odds bets.
+  const isDeadCalm = useGameStore((s) => {
+    const boss = isBossMarker(s.currentMarkerIndex) ? GAUNTLET[s.currentMarkerIndex]?.boss : undefined;
+    return boss?.ruleParams.rule === 'TIDAL_SURGE' && getTideStage(boss.ruleParams, s.bossPointHits).effect === 'DEAD_CALM';
+  });
   const isComeOut     = phase === 'COME_OUT' || phase === null;
   const isPointActive = phase === 'POINT_ACTIVE';
   const tutorialCtx   = useTutorialContext();
@@ -347,11 +352,11 @@ export const BettingGrid: React.FC = () => {
         />
         <BetZone
           label="ODDS"
-          sublabel={point ? oddsLabel(point) : 'TRUE ODDS'}
+          sublabel={isDeadCalm ? 'DEAD CALM — NONE' : point ? oddsLabel(point) : 'TRUE ODDS'}
           field="odds"
           amount={bets.odds}
           committedAmount={committedBets.odds}
-          disabled={isRolling || isComeOut}
+          disabled={isRolling || isComeOut || isDeadCalm}
           wide
           popAmount={payoutPops?.odds ?? 0}
           popKey={_popsKey}

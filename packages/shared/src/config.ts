@@ -50,7 +50,7 @@ export type BossRuleType =
   | 'DISABLE_CREW'           // Floor 3 — Mme. Le Prix: one crew member enchanted per come-out
   | 'CROSS_CALIBRATION'      // Floor 4 — The Executive: performance review rating tracks roll outcomes
   | 'TRIBUTE'                // Floor 5 — The Hierophant: crew additives held until a win, paid with Hype; 75% seized on 7-out
-  | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: 4-stage tide (1×/2×/3×/2× min bet), advances each come-out
+  | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: 4-stage tide — Dead Calm (no odds) / Undertow (7-out drags bankroll) / High Tide (7-out drowns 2)
   | 'ORBITAL_DECAY'          // Floor 7 — The Commander: tiered seven-out hype drain (0.4/0.6/0.8×), floor 0.25×
   | 'FIRST_CONTACT_PROTOCOL' // Floor 8 — retired mechanic; kept in union for historical safety
   | 'TRANSMISSION_DELAY'     // Floor 8 — The Emissary: crew additives held one roll; evaporate on 7-out
@@ -80,7 +80,7 @@ export type BossRuleParams =
   | { rule: 'DISABLE_CREW' }
   | { rule: 'CROSS_CALIBRATION' }
   | { rule: 'TRIBUTE';            escrowSeizurePct: number }
-  | { rule: 'TIDAL_SURGE'; stageMultipliers: readonly [number, number, number, number]; stageLabels: readonly [string, string, string, string] }
+  | { rule: 'TIDAL_SURGE'; stageLabels: readonly [string, string, string, string]; stageEffects: readonly ['DEAD_CALM' | 'UNDERTOW' | 'HIGH_TIDE', 'DEAD_CALM' | 'UNDERTOW' | 'HIGH_TIDE', 'DEAD_CALM' | 'UNDERTOW' | 'HIGH_TIDE', 'DEAD_CALM' | 'UNDERTOW' | 'HIGH_TIDE']; undertowPct: number; waveShooters: number }
   | {
       rule:            'ORBITAL_DECAY';
       /** Hype decay on 7-out when hype < 1.5× (below Heating Up). */
@@ -621,19 +621,22 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       dreadTagline:        'THE TIDE TURNS.',
       entryLines: [
         "Three thousand years. Every empire above you has collapsed from here.",
-        "My table runs on a tide. It turns with every come-out.",
+        "My table runs on a tide. Calm, undertow, high water — it turns with every come-out.",
         "You can see it coming. That was never the point.",
       ],
-      ruleBlurb:          "The tide runs a four-stage cycle — LOW, EBB, HIGH, FLOW — and advances on every come-out roll. LOW TIDE is the standard table minimum. EBB and FLOW hold at 2×. High Tide demands 3×. The rhythm is visible. The rhythm is inevitable.",
+      ruleBlurb:          "The tide turns LOW → EBB → HIGH → FLOW each time a come-out resolves, and every stage is its own challenge. DEAD CALM (low tide): no odds bets. THE UNDERTOW (ebb and flow): a Seven-Out drags 35% of your bankroll out to sea. HIGH TIDE: a Seven-Out drowns two shooters. You can see it coming.",
       victoryQuote:       "…the tide will return. It always does.",
       defeatAnnouncement: 'THE TIDE RECEDES',
       // Mechanic
       rule:           'TIDAL_SURGE',
-      ruleHeaderText: 'TIDE CYCLES EACH COME-OUT: LOW (1×) → EBB (2×) → HIGH (3×) → FLOW (2×)',
+      ruleHeaderText: 'DEAD CALM: NO ODDS · UNDERTOW: 7-OUT TAKES 35% · HIGH TIDE: 7-OUT DROWNS 2',
       ruleParams:     {
-        rule:             'TIDAL_SURGE',
-        stageMultipliers: [1, 2, 3, 2] as const,
-        stageLabels:      ['LOW TIDE', 'EBB', 'HIGH TIDE', 'FLOW'] as const,
+        rule:         'TIDAL_SURGE',
+        stageLabels:  ['LOW TIDE', 'EBB', 'HIGH TIDE', 'FLOW'] as const,
+        // FB-037 (tuned with scripts/sim/sovereign-tide-sim.mjs)
+        stageEffects: ['DEAD_CALM', 'UNDERTOW', 'HIGH_TIDE', 'UNDERTOW'] as const,
+        undertowPct:  0.35,
+        waveShooters: 2,
       },
       // Comp
       compReward:      'POSEIDONS_FAVOR',
@@ -879,26 +882,11 @@ export function pickEntryCharmSlot(
  * Returns the boss-raised minimum Pass Line bet (in cents) for the current boss
  * encounter, or null when no boss minimum applies.
  *
- * Only TIDAL_SURGE (The Sovereign) raises the minimum: EBB/FLOW 2×, HIGH TIDE 3×
- * the regular table minimum, snapped to $5. LOW TIDE returns null.
- *
- * @param markerIndex   0-based index into GAUNTLET.
- * @param bossPointHits The boss counter (tide stage for TIDAL_SURGE).
+ * No boss raises the minimum today — The Sovereign's tide used to (2×/3× at
+ * EBB/HIGH/FLOW) until FB-037 gave each tide stage its own challenge. Kept as
+ * the single place a boss minimum would go (getMaxBet, the client bet checks).
  */
-export function getBossMinBet(markerIndex: number, bossPointHits: number): number | null {
-  const config = GAUNTLET[markerIndex];
-  if (!config?.isBoss || !config.boss) return null;
-
-  const boss = config.boss;
-
-  if (boss.rule === 'TIDAL_SURGE') {
-    const params = boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>;
-    const stageIndex = bossPointHits % params.stageMultipliers.length;
-    const multiplier = params.stageMultipliers[stageIndex] ?? 1;
-    if (multiplier <= 1) return null; // LOW TIDE — no min-bet override
-    return Math.round(getMinBet(markerIndex) * multiplier / 500) * 500;
-  }
-
+export function getBossMinBet(_markerIndex: number, _bossPointHits: number): number | null {
   return null;
 }
 

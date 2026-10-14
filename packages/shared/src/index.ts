@@ -34,6 +34,8 @@ export type {
 
 // Boss rule hook registry + types
 export { BOSS_RULE_HOOKS } from './bossRules/index.js';
+export { getTideStage } from './bossRules/tidalSurge.js';
+export type { TideStage, TideEffect } from './bossRules/tidalSurge.js';
 export type { BossRuleHooks, BossRuleState } from './bossRules/index.js';
 
 // All TypeScript interfaces and type aliases

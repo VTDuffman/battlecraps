@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-037 The Sovereign Boss Moments
 
 **Design doc:** `docs/design/fb-037-sovereign-boss-moments-design.md`
-**Status:** Pending approval.
+**Status:** Phase 1 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -15,6 +15,8 @@
 5. **Tests:** integration — Dead Calm odds rejected, undertow amount, wave −2, Covenant cancels the wave, Lefty escapes, wave on the last shooter(s).
 
 🛑 **Gate:** play the Sovereign locally — does each stage read?
+
+--- Implemented locally (2026-10-14): shared `getTideStage()` + params (`stageEffects`, `undertowPct` 0.35, `waveShooters` 2); `getBossMinBet` returns null (minimums gone); server rejects odds at Dead Calm (422), applies the undertow before the state machine, the wave via `computeNextState(…, sevenOutShooters)`, `tide` payload + receipt lines; header shows tide · stage name · one-line rule · next; odds zone disabled at Dead Calm; copy (rule blurb, header text, entry line, floor teaser) + docs. Integration 143 (8 new). ---
 
 ## Phase 2: Barks
 `waveHit` / `undertowHit` always, `highTide` 50%, win/loss by chance (design §5). Tests.

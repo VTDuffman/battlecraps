@@ -23,6 +23,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { MARKER_TARGETS } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
+import { playHarpHeartbeat } from '../hooks/useCrowdAudio.js';
 
 interface CrewPortraitProps {
   slotIndex:      number;
@@ -34,9 +35,9 @@ interface CrewPortraitProps {
   isTriggering:   boolean;
   barkSeq:        number | null;   // changes → re-mounts bark element
   barkCrewId:     number | null;   // when set (Mimic), use this ID for bark text lookup
-  /** When set, overrides the normal getBark() text in the bark bubble. Used by
-   *  the Mme. Le Prix charm animation to show '"OOH LA LA!"' instead of a crew line. */
-  barkOverride?:  string;
+  /** FB-034: this charmed crew member tried to fire — play the heartbeat
+   *  (swell, two beats, sink back); onAnimationEnd fires when it finishes. */
+  charmHeld?:     boolean;
   onAnimationEnd: () => void;
   /** Called after the 1-second hold-to-fire completes. Undefined = no fire button shown. */
   onFire?:        () => void;
@@ -229,7 +230,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   isTriggering,
   barkSeq,
   barkCrewId,
-  barkOverride,
+  charmHeld = false,
   onAnimationEnd,
   onFire,
   onSetFreeze,
@@ -309,7 +310,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   // which tells the store to dequeue this event and show the next portrait.
   useEffect(() => {
     const el = portraitRef.current;
-    if (!el || !isTriggering) return;
+    if (!el || (!isTriggering && !charmHeld)) return;
 
     const handler = (e: AnimationEvent) => {
       // Guard: only respond to the portrait-flash animation on this element.
@@ -319,7 +320,12 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
     };
     el.addEventListener('animationend', handler);
     return () => el.removeEventListener('animationend', handler);
-  }, [isTriggering, onAnimationEnd]);
+  }, [isTriggering, charmHeld, onAnimationEnd]);
+
+  // FB-034: the heartbeat's harp plucks.
+  useEffect(() => {
+    if (charmHeld) playHarpHeartbeat();
+  }, [charmHeld]);
 
   const isEmpty    = crewId === null;
   const onCooldown = cooldownState > 0;
@@ -389,7 +395,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
               pointer-events-none z-20
             "
           >
-            {barkOverride ?? getBark(barkCrewId ?? crewId, crewName)}
+            {getBark(barkCrewId ?? crewId, crewName)}
           </motion.div>
         )}
       </AnimatePresence>
@@ -422,7 +428,14 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
             : 'none',
         }}
         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+        className="relative"
       >
+      {/* FB-034: a single 💗 drifts up off the held portrait. */}
+      {charmHeld && (
+        <span className="animate-charm-heart-drift pointer-events-none absolute left-1/2 top-0 z-20 leading-none" aria-hidden="true">
+          💗
+        </span>
+      )}
       <div
         ref={portraitRef}
         className={[
@@ -447,10 +460,13 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
             ? 'animate-portrait-flash border-white'
             : '',
 
-          // Charmed: pink glow pulse (FB-034) in place of the gold ready-pulse
-          isCharmed && !isTriggering && !holding
-            ? 'animate-charm-glow'
-            : '',
+          // Charmed: pink glow pulse (FB-034) in place of the gold ready-pulse;
+          // the heartbeat when the charmed crew tried to fire
+          charmHeld
+            ? 'animate-charm-heartbeat'
+            : isCharmed && !isTriggering && !holding
+              ? 'animate-charm-glow'
+              : '',
 
           // Ready: slow gold border pulse (suppressed while holding / charmed)
           !isEmpty && !onCooldown && !isTriggering && !holding && !isCharmed

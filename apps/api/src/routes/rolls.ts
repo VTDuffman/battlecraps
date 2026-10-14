@@ -229,7 +229,7 @@ interface WsTurnSettledPayload {
   charmedCrewSlot?: number;
   /**
    * True when the enchanted crew's ability WOULD HAVE triggered on this roll but
-   * was suppressed by the charm. The client fires the "OOH LA LA!" bark animation
+   * was suppressed by the charm. The client fires the charm heartbeat
    * only when this is true — not on every roll in the boss fight.
    * Absent (not false) when the charm did not suppress an active ability.
    */
@@ -733,7 +733,7 @@ async function rollHandler(
   // The charmed slot was excluded from slotOrder in the cascade. Check whether
   // that slot's crew member was ready to fire (non-null, within unlocked range,
   // cooldownState === 0). If so, the enchantment actively negated an ability —
-  // triggers "OOH LA LA!" audio on the client.
+  // triggers the charm heartbeat on the client.
   const currentCharmSlot  = bossState.bossPointHits;
   const charmedCrewMember = isDisableCrewBoss ? (crewSlots[currentCharmSlot] ?? null) : null;
   // Test whether the charmed crew member would have fired on this roll.
@@ -741,7 +741,7 @@ async function rollHandler(
   // the actual rolled dice (avoids consuming real RNG from crypto source). We then
   // compare the output context against the input to detect any game-affecting change.
   // Only when there is an observable change do we set charmFired: true so the client
-  // plays the "OOH LA LA!" bark — not on every roll in the boss fight.
+  // plays the charm heartbeat — not on every roll in the boss fight.
   const charmedWouldHaveFired = (() => {
     if (!isDisableCrewBoss || charmedCrewMember === null) return false;
     if (currentCharmSlot >= (run.unlockedSlots as number)) return false;

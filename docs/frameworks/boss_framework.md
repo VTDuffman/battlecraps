@@ -207,7 +207,7 @@ ruleParams: { rule: 'DOUBLE_TIME', rollLimit: 6 }
 
 **Entry charm:** chosen when the player leaves the pub (`recruit.ts`) via shared `pickEntryCharmSlot()`, so it reflects the crew that will actually play the fight. The client holds it in `pendingBossEntryCharm` and reveals the ❤️ after the boss-entry cinematic.
 
-**"OOH LA LA!" bark:** when the charmed crew member's ability *would* have fired on a roll, `turn:settled` carries `charmFired: true` and the client plays the bark.
+**Charm heartbeat (FB-034):** when the charmed crew member's ability *would* have fired on a roll, `turn:settled` carries `charmFired: true` and the client plays the heartbeat on that portrait (swell, two beats, a drifting 💗, two harp plucks) before the heart flies on.
 
 **Implementation note:** `modifyCascadeOrder` returns every slot except the charmed one. The charmed slot index (0-based) is stored in `bossPointHits`; `rolls.ts` reselects it with the server RNG after each come-out resolution and emits it as `charmedCrewSlot`.
 
@@ -390,7 +390,7 @@ TypeScript narrows the type inside each hook file via the `rule` discriminant. T
 | Sarge fight, real Seven-Out / come-out rolls | Normal; come-out never ticks the clock |
 | Sarge fight, timeout with Grinder / Floor Walker / Lefty | Grinder pays; Floor Walker doesn't refund; Lefty doesn't save |
 | Mme. Le Prix fight | Exactly one filled slot charmed per come-out (❤️); that crew produces no events; all others fire normally |
-| Mme. Le Prix fight, charmed crew would have fired | `charmFired: true` in `turn:settled`; "OOH LA LA!" bark plays |
+| Mme. Le Prix fight, charmed crew would have fired | `charmFired: true` in `turn:settled`; charm heartbeat plays on that portrait |
 | Mme. Le Prix fight, come-out resolves | `charmedCrewSlot` moves to a newly selected filled slot |
 | Executive fight, Natural or Point Hit | `bossPointHits` increments (capped at 4); `bossRating.direction = 'up'` in `turn:settled` |
 | Executive fight, Craps Out or Seven-Out above rating 0 | `bossPointHits` decrements; `bossRating.direction = 'down'`; no GAME_OVER |

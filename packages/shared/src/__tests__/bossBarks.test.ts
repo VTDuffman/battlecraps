@@ -123,7 +123,7 @@ describe('Mme. Le Prix (FB-034): charm events', () => {
   const LE_PRIX = 8;
   const leprix: BossBarkInput = { ...base, markerIndex: LE_PRIX };
 
-  it('her "OOH LA LA" (charmFired) always barks, over a showing bark and over a win', () => {
+  it('charmFired (the heartbeat) always barks, over a showing bark and over a win', () => {
     expect(selectBossBarkTrigger({ ...leprix, charmFired: true, charmedSlotBefore: 0, charmedSlotAfter: 2, bankrollDelta: 500, barkShowing: true }, never)).toBe('charmFired');
   });
 

@@ -251,7 +251,7 @@ interface TurnSettledPayload {
   charmedCrewSlot?:        number;
   /**
    * True when the enchanted crew's ability WOULD HAVE triggered on this roll but
-   * was suppressed by the charm. The "OOH LA LA!" bark only plays when true.
+   * was suppressed by the charm. The charm heartbeat only plays when true.
    * Absent (not false) when the charm did not suppress an active ability.
    */
   charmFired?:             boolean;
@@ -347,11 +347,10 @@ export interface GameState {
   pendingBossEntryCharm: number | null;
 
   /**
-   * The crew slot currently playing the charm animation (portrait expansion +
-   * "OOH LA LA!" bark bubble). Non-null only during the animation window.
-   * After the animation completes, clearCharmingSlot() moves this value into
-   * charmedCrewSlot so the ❤️ settles on that crew member.
-   * Distinct from charmedCrewSlot so the icon settles AFTER the bark, not before.
+   * The slot the ❤️ moves to after a charm heartbeat (FB-034: the charmed crew
+   * tried to fire). Non-null only while the heartbeat plays on the OLD charmed
+   * slot (still charmedCrewSlot); clearCharmingSlot() then moves the ❤️ here,
+   * flying it via CharmFlight if the slot changed. Locks rolling meanwhile.
    */
   charmingSlot: number | null;
 
@@ -470,7 +469,7 @@ export interface GameState {
 
   /**
    * Increments each time Mme. Le Prix enchants a new crew slot (per come-out
-   * resolution in the DISABLE_CREW boss fight). React key for the "OOH LA LA!"
+   * resolution in the DISABLE_CREW boss fight). React key for the charm
    * portrait label — re-fires even when the same slot index is re-selected.
    */
   _charmKey: number;
@@ -936,8 +935,8 @@ export interface GameActions {
 
   /**
    * Called by TableBoard's CrewPortrait onAnimationEnd when the charm
-   * animation (portrait expansion + "OOH LA LA!" bark) finishes for the
-   * charmingSlot. Moves charmingSlot → charmedCrewSlot so the ❤️ settles.
+   * heartbeat finishes (or by its safety net). Moves charmingSlot →
+   * charmedCrewSlot, starting the heart's flight if the slot changed.
    */
   clearCharmingSlot(): void;
 
@@ -2035,7 +2034,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       : oldCharmingSlot;
 
     // FB-034: the heart flies when it settles on a new slot without a bark
-    // (charmFired settles via clearCharmingSlot after "OOH LA LA!").
+    // (charmFired settles via clearCharmingSlot after the heartbeat).
     const newCharmFlight = isEndingBossFight
       ? null
       : !charmFired && newCharmedSlot !== null && newCharmedSlot !== oldCharmedSlot
@@ -2411,19 +2410,17 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         // Re-arm the unlock modal if it was suppressed during the dread sequence.
         const hasUnacknowledged  = get().unacknowledgedUnlocks.length > 0;
         const pendingCharm       = get().pendingBossEntryCharm;
-        const currentCharmKey    = get()._charmKey;
+        const prevFlightKey      = get().charmFlight?.key ?? 0;
         set({
           activeTransition:      null,
           transitionPhaseIndex:  0,
           unlockModalReady:      hasUnacknowledged,
-          // Start the charm animation so the player sees "OOH LA LA!" with portrait
-          // expansion before the first roll — just like a crew power firing.
-          // charmingSlot drives the bark; clearCharmingSlot() moves it to
-          // charmedCrewSlot (settles the ❤️) when the animation finishes.
+          // FB-034: reveal the entry charm — the heart flies from her name to
+          // the chosen crew member (CharmFlight) before the first roll.
           ...(pendingCharm !== null && {
-            charmingSlot:          pendingCharm,
+            charmedCrewSlot:       pendingCharm,
             pendingBossEntryCharm: null,
-            _charmKey:             currentCharmKey + 1,
+            charmFlight:           { from: null, to: pendingCharm, key: prevFlightKey + 1 },
           }),
         });
       } else {
@@ -2537,7 +2534,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           nudgedFrom?:     [number, number];
           /** Enchanted crew slot index (DISABLE_CREW boss only — mid-fight updates). */
           charmedCrewSlot?: number;
-          /** True when the charmed crew's ability would have fired this roll. Drives "OOH LA LA!" bark. */
+          /** True when the charmed crew's ability would have fired this roll. Drives charm heartbeat. */
           charmFired?: boolean;
           bossRating?: { index: number; changed: boolean; direction: 'up' | 'down' | null };
           pipTermination?: boolean;
@@ -2688,7 +2685,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       /**
        * Present only when entering the Mme. Le Prix (DISABLE_CREW) boss fight.
        * The client stashes this in pendingBossEntryCharm; clearTransition('BOSS_ENTRY')
-       * reveals the ❤️ and fires the "OOH LA LA!" sting after the boss-intro cinematic.
+       * reveals the ❤️ and flies the heart (CharmFlight) after the boss-intro cinematic.
        */
       bossEntryCharmSlot?: number;
     };

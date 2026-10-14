@@ -102,7 +102,7 @@ export function deriveBossBarkEvents(input: BossBarkInput): BossBarkTrigger[] {
       break;
     }
 
-    // Mme. Le Prix: the charm. charmFired (her "OOH LA LA") outranks a plain
+    // Mme. Le Prix: the charm. charmFired (the heartbeat) outranks a plain
     // re-charm; a re-charm only counts when the heart actually moves.
     case 'DISABLE_CREW': {
       if (input.charmFired) { events.push('charmFired'); break; }

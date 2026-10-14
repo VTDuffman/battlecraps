@@ -102,7 +102,7 @@ export type BossRuleParams =
  * (chance-based); the rest are boss EVENTS derived per rule in bossBarks.ts:
  *   The Foreman: progress50 / progress80 / payoff (his Cut vs the Payoff)
  *   Sarge:       pointSet / clockLow / lastRoll / beatClock / timeUp (Double Time clock)
- *   Mme. Le Prix: charmed (the heart moves) / charmFired ("OOH LA LA")
+ *   Mme. Le Prix: charmed (the heart moves) / charmFired (the heartbeat)
  */
 export type BossBarkTrigger =
   | 'win' | 'loss'

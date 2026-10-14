@@ -80,10 +80,20 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
   // Charm animation — Mme. Le Prix (DISABLE_CREW boss)
   const charmingSlot      = useGameStore((s) => s.charmingSlot);
   const clearCharmingSlot = useGameStore((s) => s.clearCharmingSlot);
-  const _charmKey         = useGameStore((s) => s._charmKey);
+  const charmedCrewSlot   = useGameStore((s) => s.charmedCrewSlot);
   // True while cascade portrait animations are running (NOT including charm — charm
   // waits for cascade to finish before starting its own portrait expansion).
   const cascadeRunning    = useGameStore((s) => s.cascadeQueue.length > 0);
+
+  // FB-034 safety net: the charm heartbeat settles via its portrait's
+  // animationend — if that portrait isn't on screen, settle it anyway so
+  // rolling never stays locked.
+  useEffect(() => {
+    if (charmingSlot === null || cascadeRunning) return;
+    const id = window.setTimeout(clearCharmingSlot, 2500);
+    return () => window.clearTimeout(id);
+  }, [charmingSlot, cascadeRunning, clearCharmingSlot]);
+
   const { flashType, _flashKey }           = useGameStore(selectFlash);
   const { wallFlash, _wallFlashKey }       = useGameStore(selectWallFlash);
   const reorderCrew   = useGameStore((s) => s.reorderCrew);
@@ -397,11 +407,11 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
           <SortableContext items={slotIds} strategy={horizontalListSortingStrategy}>
             <div className="flex justify-around items-end gap-1">
               {crewSlots.slice(0, unlockedSlots).map((slot, i) => {
-                // Charm animation — true when this slot is being enchanted by
-                // Mme. Le Prix AND cascade portrait animations are not running.
-                // Cascade takes priority: charm waits until the last crew bark
-                // finishes before expanding its own portrait.
-                const isCharmingSlot = charmingSlot === i && !cascadeRunning;
+                // FB-034 charm heartbeat — the charmed crew (the ❤️ still shows
+                // the old slot) tried to fire. Waits for the cascade to finish;
+                // clearCharmingSlot() then settles / flies the heart to charmingSlot.
+                const isCharmHeld = charmingSlot !== null && !cascadeRunning
+                  && (charmedCrewSlot ?? charmingSlot) === i;
                 return (
                 <div key={slotIds[i] ?? `slot-${i}`} data-slot-index={i}>
                   <CrewPortrait
@@ -411,18 +421,11 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
                     crewName={crewNameFromId(slot?.crewId ?? null)}
                     visualId={crewVisualIdFromId(slot?.crewId ?? null)}
                     cooldownState={slot?.cooldownState ?? 0}
-                    isTriggering={activeSlot === i || isCharmingSlot}
-                    barkSeq={
-                      isCharmingSlot
-                        ? _charmKey
-                        : activeSlot === i ? (activeBark?.seq ?? null) : null
-                    }
-                    barkCrewId={
-                      isCharmingSlot ? null
-                      : activeSlot === i ? (activeBark?.barkCrewId ?? null) : null
-                    }
-                    barkOverride={isCharmingSlot ? '"OOH LA LA!"' : undefined}
-                    onAnimationEnd={isCharmingSlot ? clearCharmingSlot : handleAnimationEnd}
+                    isTriggering={activeSlot === i}
+                    barkSeq={activeSlot === i ? (activeBark?.seq ?? null) : null}
+                    barkCrewId={activeSlot === i ? (activeBark?.barkCrewId ?? null) : null}
+                    charmHeld={isCharmHeld}
+                    onAnimationEnd={isCharmHeld ? clearCharmingSlot : handleAnimationEnd}
                     onFire={!isRolling && !isAutoCollecting && slot !== null ? () => { void fireCrew(i); } : undefined}
                     onSetFreeze={
                       slot?.crewId === 3 && !isRolling && !isAutoCollecting && slot.cooldownState === 0 && !mechanicFreeze

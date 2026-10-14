@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-034 Mme. Le Prix Boss Moments
 
 **Design doc:** `docs/design/fb-034-le-prix-boss-moments-design.md`
-**Status:** Phases 1–3 done locally (not pushed).
+**Status:** Phases 1–4 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.**
 
@@ -44,6 +44,8 @@
 3. **Audio:** `playKissMwah()` (+ reuse `playStampThud`).
 
 🛑 **Gate:** lose to Le Prix locally.
+
+--- Implemented locally (2026-10-13), at THE ROSE's scale ("big wins, big losses"): stand-ins of the real rail portraits (rail hidden as each lifts, restored on unmount); big ❤️ blooms staggered 260 ms with `playHeartBloom(i)` (rising A-minor harp notes); crew lift off staggered 380 ms, 1.5 s curved flight into `[data-boss-name-anchor]` with a pink flash per arrival + harp glissando; 💋 at clamp(200–320px) slams on with `playKissMwah()` + `playStampThud()` + shake; line in Georgia italic. ≈7.7 s with 5 crew (under the 9 s safety net); an empty rail skips to the kiss. ---
 
 ## Phase 5: Dev Mode + docs
 1. **Presets:** "Le Prix — fresh fight", "Le Prix — last shooter, point on".

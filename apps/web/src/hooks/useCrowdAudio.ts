@@ -691,6 +691,75 @@ function playHarpFlourishSting(ctx: AudioContext, dest: AudioNode): void {
   });
 }
 
+/** FB-034 defeat: a heart blooms on crew portrait i — a soft harp note, rising per crew. */
+function makeHeartBloomSting(i: number): (ctx: AudioContext, dest: AudioNode) => void {
+  // A minor-ish rise: A4 C5 E5 A5 C6 — wistful, not triumphant.
+  const notes = [440, 523.25, 659.25, 880, 1046.5];
+  const freq  = notes[Math.min(i, notes.length - 1)] ?? 440;
+  return (ctx, dest) => {
+    const t0 = ctx.currentTime + 0.01;
+    pluckHarpString(ctx, dest, freq, t0, 0.07);
+    pluckHarpString(ctx, dest, freq / 2, t0 + 0.02, 0.04);
+  };
+}
+
+/**
+ * FB-034 defeat: the lipstick kiss — a soft lip smack, then a breathy, voiced
+ * "mwah" (a buzz through a formant that opens from "m" to "ah") (≈0.45 s).
+ */
+function playKissMwahSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+
+  // Smack: a very short band-passed noise click.
+  const smack = ctx.createBufferSource();
+  smack.buffer = makeNoiseBuf(ctx, 0.05);
+  const smackBp = ctx.createBiquadFilter();
+  smackBp.type = 'bandpass';
+  smackBp.frequency.value = 1800;
+  smackBp.Q.value = 1.2;
+  const smackEnv = ctx.createGain();
+  smackEnv.gain.setValueAtTime(0.0001, t0);
+  smackEnv.gain.exponentialRampToValueAtTime(0.22, t0 + 0.004);
+  smackEnv.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.045);
+  smack.connect(smackBp);
+  smackBp.connect(smackEnv);
+  smackEnv.connect(dest);
+  smack.start(t0);
+  smack.stop(t0 + 0.05);
+
+  // "mwah": sawtooth voice, pitch lifts then falls, formant opens m → ah.
+  const v0 = t0 + 0.03;
+  const voice = ctx.createOscillator();
+  voice.type = 'sawtooth';
+  voice.frequency.setValueAtTime(260, v0);
+  voice.frequency.linearRampToValueAtTime(330, v0 + 0.12);
+  voice.frequency.exponentialRampToValueAtTime(210, v0 + 0.42);
+  const formant = ctx.createBiquadFilter();
+  formant.type = 'bandpass';
+  formant.Q.value = 3;
+  formant.frequency.setValueAtTime(320, v0);
+  formant.frequency.exponentialRampToValueAtTime(1100, v0 + 0.14);
+  formant.frequency.exponentialRampToValueAtTime(800, v0 + 0.42);
+  const breath = ctx.createBufferSource();
+  breath.buffer = makeNoiseBuf(ctx, 0.45);
+  const breathGain = ctx.createGain();
+  breathGain.gain.value = 0.25;
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, v0);
+  env.gain.exponentialRampToValueAtTime(0.16, v0 + 0.07);
+  env.gain.setValueAtTime(0.16, v0 + 0.16);
+  env.gain.exponentialRampToValueAtTime(0.0001, v0 + 0.44);
+  voice.connect(formant);
+  breath.connect(breathGain);
+  breathGain.connect(formant);
+  formant.connect(env);
+  env.connect(dest);
+  voice.start(v0);
+  voice.stop(v0 + 0.46);
+  breath.start(v0);
+  breath.stop(v0 + 0.45);
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -773,6 +842,16 @@ export function playDoorClang(): void {
 /** FB-034: a charmed crew member tries to fire — and drifts off in a daze. */
 export function playCharmDaze(): void {
   playStandalone(playCharmDazeSting);
+}
+
+/** FB-034 defeat: a heart blooms on the i-th crew portrait. */
+export function playHeartBloom(i: number): void {
+  playStandalone(makeHeartBloomSting(i));
+}
+
+/** FB-034 defeat: her lipstick kiss presses onto the screen. */
+export function playKissMwah(): void {
+  playStandalone(playKissMwahSting);
 }
 
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */

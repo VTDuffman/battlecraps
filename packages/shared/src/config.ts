@@ -111,7 +111,7 @@ export type BossBarkTrigger =
   | 'charmed' | 'charmFired';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
-export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE';
+export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW';
 
 /** FB-033: boss victory moments (one component each in the web registry). */
 export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE';
@@ -435,6 +435,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       ruleBlurb:          "Before each come-out roll, Mme. Le Prix enchants one of your crew. That crew member is mesmerized for the duration of the come-out — and through any point phase that follows. Upon resolution, her eye falls on someone new.",
       victoryQuote:       "…improbable. You may keep your winnings.",
       victoryCinematic:   { id: 'THE_ROSE', line: "…improbable. You may keep your winnings." },
+      defeatCinematic:    { id: 'SHE_TAKES_THE_CREW', line: "Your crew stays with me tonight. Au revoir, chéri." },
       defeatAnnouncement: 'TABLE CLOSED',
       // Mechanic
       rule:           'DISABLE_CREW',

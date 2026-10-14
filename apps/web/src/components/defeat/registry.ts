@@ -11,6 +11,7 @@ import type React from 'react';
 import type { BossDefeatCinematicId } from '@battlecraps/shared';
 import { DockClosedCinematic } from './DockClosedCinematic.js';
 import { DishonorableDischargeCinematic } from './DishonorableDischargeCinematic.js';
+import { SheTakesTheCrewCinematic } from './SheTakesTheCrewCinematic.js';
 
 export interface DefeatCinematicProps {
   /** The boss's parting line (config.ts defeatCinematic.line). */
@@ -24,4 +25,5 @@ export interface DefeatCinematicProps {
 export const DEFEAT_CINEMATICS: Record<BossDefeatCinematicId, React.ComponentType<DefeatCinematicProps>> = {
   DOCK_CLOSED:            DockClosedCinematic,
   DISHONORABLE_DISCHARGE: DishonorableDischargeCinematic,
+  SHE_TAKES_THE_CREW:     SheTakesTheCrewCinematic,
 };

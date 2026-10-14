@@ -12,7 +12,7 @@
 //   • All nine floor badges confirming all floors were conquered
 //
 // Visual tone: the darkness of Floor 9 (The Null Space) with the electric
-// gold that only The Strip uses at full brightness. All nine floor badges
+// gold that only The Suite uses at full brightness. All nine floor badges
 // visible — a visual summary of the whole run.
 // =============================================================================
 

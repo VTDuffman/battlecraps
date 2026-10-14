@@ -53,7 +53,7 @@ function getToneTagline(cleared: number): string {
   if (cleared <= 2)   return "The Loading Dock had your number.";
   if (cleared <= 5)   return "The VFW Hall cut the run short.";
   if (cleared <= 8)   return "The Riverboat finished it.";
-  if (cleared <= 11)  return "The Strip took you out.";
+  if (cleared <= 11)  return "The Suite let you go.";
   if (cleared <= 14)  return "The Lodge collected its debt.";
   if (cleared <= 17)  return "Atlantis pulled you under.";
   if (cleared <= 20)  return "The Station killed your momentum.";

@@ -119,7 +119,7 @@ export interface CelebrationSnapshot {
  * 'exposed'  — Floor 1 (The Loading Dock): stark, industrial, cold concrete
  * 'gritty'   — Floor 2 (VFW Hall): worn, blue-collar, fluorescent grime
  * 'elegant'  — Floor 3 (The Riverboat): candlelit, mahogany, quiet danger
- * 'electric' — Floor 4 (The Strip): neon, obsidian, pure machine
+ * 'electric' — Floor 4 (The Suite): neon, obsidian, pure machine
  * 'occult'   — Floor 5 (The Lodge): deep plum-black, amber candlelight, ritual silence
  * 'ancient'  — Floor 6 (Atlantis): bioluminescent warmth, coral-threaded stone, abyssal depth
  * 'cosmic'   — Floor 7 (The Station): void-black, starlight silver, nebula purple — zero gravity
@@ -164,7 +164,7 @@ export interface FloorConfig {
   /**
    * Short venue name. Displayed in progress UI, floor reveal headline,
    * and any screen that references the current location.
-   * Example: 'VFW Hall', 'The Riverboat', 'The Strip'
+   * Example: 'VFW Hall', 'The Riverboat', 'The Suite'
    */
   readonly name: string;
 
@@ -293,12 +293,12 @@ export const FLOORS: readonly FloorConfig[] = [
     atmosphere: 'elegant',
   },
 
-  // ── Floor 4: The Strip ────────────────────────────────────────────────────
+  // ── Floor 4: The Suite ────────────────────────────────────────────────────
   // Vegas tower penthouse, sixty floors up. Obsidian felt, electric gold,
   // neon magenta. No warmth, no texture, no mercy. Pure money, pure machine.
   {
     id:        4,
-    name:      'The Strip',
+    name:      'The Suite',
     tagline:   'Sixty floors up. No safety net.',
     introLines: [
       'Obsidian felt. Floor-to-ceiling glass. The city grid glitters sixty stories below.',
@@ -307,7 +307,7 @@ export const FLOORS: readonly FloorConfig[] = [
     ],
     bossName:   'The Executive',
     bossTitle:  'CFO, High Limit Division',
-    bossVenue:  'The Strip — Penthouse',
+    bossVenue:  'The Suite — Corner Office',
     bossTeaser: "The Executive runs a performance review. Every roll updates your rating. Slip to Action Required and roll badly — and you're terminated.",
     atmosphere: 'electric',
   },
@@ -433,7 +433,7 @@ export function getFloorById(id: number): FloorConfig | undefined {
  *   getFloorByMarkerIndex(0)  → Floor 1 (The Loading Dock)
  *   getFloorByMarkerIndex(3)  → Floor 2 (VFW Hall)
  *   getFloorByMarkerIndex(6)  → Floor 3 (The Riverboat)
- *   getFloorByMarkerIndex(9)  → Floor 4 (The Strip)
+ *   getFloorByMarkerIndex(9)  → Floor 4 (The Suite)
  *   getFloorByMarkerIndex(12) → Floor 5 (The Lodge)
  *   getFloorByMarkerIndex(15) → Floor 6 (Atlantis)
  *   getFloorByMarkerIndex(18) → Floor 7 (The Station)

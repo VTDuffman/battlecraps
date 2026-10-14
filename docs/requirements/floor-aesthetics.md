@@ -237,7 +237,7 @@ composed. The danger here isn't ominous — it's _refined_. That's worse.
 
 ---
 
-## Floor 4 — The Strip (Penthouse)
+## Floor 4 — The Suite (Corner Office)
 
 ### Identity
 **"The pinnacle. Where the money gets mythological."**
@@ -262,14 +262,14 @@ game is finally everywhere. This isn't a casino — it's a machine.
 | Accent (bright)    | `#ffd700`   | Electric gold — brighter, harder than Floors 1–2  |
 | Accent (primary)   | `#d4a800`   | Saturated gold                                     |
 | Accent (dim)       | `#7a5f00`   | Deep gold for borders                              |
-| Neon secondary     | `#ff2080`   | Electric magenta — the strip's signature color     |
+| Neon secondary     | `#ff2080`   | Electric magenta — the city's signature color     |
 | Neon tertiary      | `#00d4ff`   | Electric cyan — city lights bleed                  |
 | Border tint        | `gold/50`   | Gold at full 50% — more assertive than Floors 1–2  |
 
 ### Felt Breathing (Ambient Overlay)
 
 The felt pulses with city light bleed — not organic warmth, but electricity. The hot tier
-hits neon magenta: the color of the strip at 3am when things stop making sense.
+hits neon magenta: the color of the city at 3am when things stop making sense.
 
 | Tier   | Trigger                  | Color                           | Speed  |
 |--------|--------------------------|----------------------------------|--------|
@@ -307,7 +307,7 @@ cold, expensive, and utterly silent except for the ambient hum of the HVAC.
 - **Decorative motif:** ♠ spades, city grid lines (thin horizontal/vertical rules), no warm organic elements
 - **Narrative voice:** terse, corporate, zero empathy. _"Select your asset. The table opens in thirty seconds."_
 
-### Boss Room — The Penthouse (The Executive)
+### Boss Room — The Corner Office (The Executive)
 
 No ceremony. No warmth. Pure black room, one table, The Executive at the far end.
 He doesn't speak until he has to. The accent bars aren't red — they're cold gold and white,
@@ -711,7 +711,7 @@ No ceremony. No room. One table rendered in phosphor green wire-frame. The Archi
 | 1     | Loading Dock   | The Milk Crate Circle  | Freight Elevator    | Stained concrete + sodium orange   | Exposed, cold          |
 | 2     | VFW Hall       | The Seven-Proof Pub    | VFW High Limit      | Forest green + tarnished gold      | Warm, worn, amber      |
 | 3     | The Riverboat  | The Promenade Bar      | Salon Privé         | Navy blue + champagne brass        | Cool, candlelit        |
-| 4     | The Strip      | The Sky Lounge         | The Penthouse       | Obsidian black + electric gold     | Frigid, electric       |
+| 4     | The Suite      | The Sky Lounge         | The Corner Office   | Obsidian black + electric gold     | Frigid, electric       |
 | 5     | The Lodge      | The Anteroom           | The Inner Sanctum   | Black marble + candleflame gold    | Occult, stone-heavy    |
 | 6     | Atlantis       | The Hall of Records    | The Throne Room     | Sea-teal + bioluminescent aqua     | Ancient, warm depths   |
 | 7     | The Station    | The Observation Deck   | The Command Module  | Space black + nebula purple        | Cosmic, vast, cold     |

@@ -149,7 +149,7 @@ Displayed in the Roll Log UI component (see Section 6).
 | 1 | The Loading Dock | $50 / $100 / $25 Payoff | The Foreman | Skims 20% of winning profit (the Cut); clear by paying off $25 | The Vig: crew cash bonuses +20% |
 | 2 | VFW Hall | $300 / $500 / $1k | Sarge | Double Time: hit the point within 6 rolls or it's a Seven-Out | Member's Jacket: +1 shooter every marker |
 | 3 | The Riverboat | $1.5k / $2k / $4k | Mme. Le Prix | One crew charmed per come-out | Sea Legs: keep half the Hype above 1.0x on Seven Out |
-| 4 | The Strip | $5k / $7.5k / $15k | The Executive | Performance Review rating; PIP termination | Board Seat: 4th crew slot |
+| 4 | The Suite | $5k / $7.5k / $15k | The Executive | Performance Review rating; PIP termination | Board Seat: 4th crew slot |
 | 5 | The Lodge | $30k / $50k / $100k | The Hierophant | Crew cash held one roll; 25% seized on Seven Out | The Covenant: halves that seizure (redesign pending, FB-029) |
 | 6 | Atlantis | $150k / $250k / $500k | The Sovereign | Tide LOW/EBB/HIGH/FLOW min bet (1×/2×/3×/2×) | Poseidon's Favor: first-roll craps-out doesn't count |
 | 7 | The Station | $1M / $1.5M / $3M | The Commander | Tiered Seven-Out Hype drain + death spiral | Cargo Hold: 5th crew slot |

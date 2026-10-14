@@ -56,7 +56,7 @@ export const COMP_DEFS: CompDef[] = [
     name:        'Board Seat',
     icon:        '🪑',
     effect:      'Crew slot 4 unlocked. Add a fourth member to your crew. The Executive reward.',
-    accentColor: '#f5c842',  // gold — The Strip floor
+    accentColor: '#f5c842',  // gold — The Suite floor
   },
   {
     perkId:      5,

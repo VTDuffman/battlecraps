@@ -226,7 +226,7 @@ export const COMP_PERK_IDS = {
 //   Floor 1 — The Loading Dock: $50 / $100 / $200
 //   Floor 2 — VFW Hall:         $300 / $500 / $1,000
 //   Floor 3 — Riverboat:        $1,500 / $2,000 / $4,000
-//   Floor 4 — The Strip:        $5,000 / $7,500 / $15,000
+//   Floor 4 — The Suite:        $5,000 / $7,500 / $15,000
 //   Floor 5 — The Lodge:        $30,000 / $50,000 / $100,000
 //   Floor 6 — Atlantis:         $150,000 / $250,000 / $500,000
 //   Floor 7 — The Station:      $1,000,000 / $1,500,000 / $3,000,000
@@ -473,23 +473,23 @@ export const GAUNTLET: readonly MarkerConfig[] = [
     },
   },
 
-  // ── Floor 4: The Strip ────────────────────────────────────────────────────
+  // ── Floor 4: The Suite ────────────────────────────────────────────────────
 
   {
     targetCents: 500_000,  // $5,000
-    venue:       'The Strip',
+    venue:       'The Suite',
     floor:       4,
     isBoss:      false,
   },
   {
     targetCents: 750_000,  // $7,500
-    venue:       'The Strip',
+    venue:       'The Suite',
     floor:       4,
     isBoss:      false,
   },
   {
     targetCents: 1_500_000,  // $15,000 — BOSS: The Executive
-    venue:       'The Strip — Penthouse',
+    venue:       'The Suite — Corner Office',
     floor:       4,
     isBoss:      true,
     boss: {

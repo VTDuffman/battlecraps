@@ -12,7 +12,7 @@ interface LeaderboardScreenProps {
 
 type Tab = 'global' | 'personal';
 
-// Floor 4 — The Strip Penthouse: electric gold on near-black obsidian.
+// Floor 4 — The Suite (Corner Office): electric gold on near-black obsidian.
 // Pinned to marker index 9 so the leaderboard keeps its Vegas high-roller
 // aesthetic regardless of how many floors are added to the gauntlet.
 const theme = getFloorTheme(9);

@@ -15,7 +15,7 @@ There are nine bosses across the 9-floor gauntlet:
 | 2  | 1 — The Loading Dock | $200 | The Foreman | `EXTORTION_FEE` |
 | 5  | 2 — VFW Hall | $1,000 | Sarge | `DOUBLE_TIME` |
 | 8  | 3 — Riverboat | $4,000 | Mme. Le Prix | `DISABLE_CREW` |
-| 11 | 4 — The Strip | $15,000 | The Executive | `CROSS_CALIBRATION` |
+| 11 | 4 — The Suite | $15,000 | The Executive | `CROSS_CALIBRATION` |
 | 14 | 5 — The Lodge | $100,000 | The Hierophant | `TRIBUTE` |
 | 17 | 6 — Atlantis | $500,000 | The Sovereign | `TIDAL_SURGE` |
 | 20 | 7 — The Station | $3,000,000 | The Commander | `ORBITAL_DECAY` |

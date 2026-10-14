@@ -770,7 +770,7 @@ This ticket serves as the living master tracker for the 9-floor gauntlet. It wil
 | **1** | The Loading Dock | 🟢 Implemented | The Foreman | `EXTORTION_FEE` | The Vig |
 | **2** | VFW Hall | 🟢 Implemented | Sarge | `RISING_MIN_BETS` | Member's Jacket |
 | **3** | Riverboat | 🟢 Implemented | Mme. Le Prix | `DISABLE_CREW` | Sea Legs |
-| **4** | The Strip | 🟢 Implemented | The Executive | `FOURS_INSTANT_LOSS` | Golden Touch |
+| **4** | The Suite | 🟢 Implemented | The Executive | `FOURS_INSTANT_LOSS` | Golden Touch |
 | **5** | The Lodge | 🟢 Implemented | The Hierophant | `TRIBUTE` | The Covenant |
 | **6** | Atlantis | 🟢 Implemented | The Sovereign | `TIDAL_SURGE` | Poseidon's Favor |
 | **7** | The Station | 🟢 Implemented | The Commander | `ORBITAL_DECAY` | Zero Point |

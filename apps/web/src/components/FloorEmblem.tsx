@@ -10,7 +10,7 @@
 //   1 — The Loading Dock : Share Tech Mono (stencil/industrial, street-level)
 //   2 — VFW Hall         : Special Elite (typewriter/stencil, military)
 //   3 — The Riverboat    : IM Fell English Italic (1800s broadsheet, old-money)
-//   4 — The Strip        : Bebas Neue (tall condensed Las Vegas marquee)
+//   4 — The Suite        : Bebas Neue (tall condensed, corporate-tower marquee)
 //   5 — The Lodge        : UnifrakturMaguntia (occult gothic blackletter)
 //   6 — Atlantis         : Cinzel (classical Roman marble-inscription serif)
 //   7 — The Station      : Orbitron Bold (geometric space-station sans)
@@ -112,7 +112,7 @@ const FLOOR_CONFIGS: Record<FloorId, FloorConfig> = {
 
   4: {
     roman:         'IV',
-    displayName:   'THE STRIP',
+    displayName:   'THE SUITE',
     fontFamily:    '"Bebas Neue", sans-serif',
     fontWeight:    400,
     letterSpacing: '0.14em',

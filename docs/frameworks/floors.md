@@ -21,7 +21,7 @@
 9. [Floor 1 — The Loading Dock](#floor-1--the-loading-dock)
 10. [Floor 2 — VFW Hall](#floor-2--vfw-hall)
 11. [Floor 3 — The Riverboat](#floor-3--the-riverboat)
-12. [Floor 4 — The Strip](#floor-4--the-strip)
+12. [Floor 4 — The Suite](#floor-4--the-suite)
 13. [Floor 5 — The Lodge](#floor-5--the-lodge)
 14. [Floor 6 — Atlantis](#floor-6--atlantis)
 15. [Floor 7 — The Station](#floor-7--the-station)
@@ -41,7 +41,7 @@ Gauntlet (27 markers total)
 ├── Floor 1: The Loading Dock  [marker 0]  [marker 1]  [marker 2  — BOSS: The Foreman]
 ├── Floor 2: VFW Hall          [marker 3]  [marker 4]  [marker 5  — BOSS: Sarge]
 ├── Floor 3: The Riverboat     [marker 6]  [marker 7]  [marker 8  — BOSS: Mme. Le Prix]
-├── Floor 4: The Strip         [marker 9]  [marker 10] [marker 11 — BOSS: The Executive]
+├── Floor 4: The Suite         [marker 9]  [marker 10] [marker 11 — BOSS: The Executive]
 ├── Floor 5: The Lodge         [marker 12] [marker 13] [marker 14 — BOSS: The Hierophant]
 ├── Floor 6: Atlantis          [marker 15] [marker 16] [marker 17 — BOSS: The Sovereign]
 ├── Floor 7: The Station       [marker 18] [marker 19] [marker 20 — BOSS: The Commander]
@@ -476,7 +476,7 @@ card, docs) lives in [`boss_framework.md` § Adding a New Boss](boss_framework.m
 
 ---
 
-## Floor 4 — The Strip
+## Floor 4 — The Suite
 
 **Atmosphere:** `electric`
 **Tagline:** Sixty floors up. No safety net.
@@ -489,16 +489,16 @@ card, docs) lives in [`boss_framework.md` § Adding a New Boss](boss_framework.m
 
 | Index | Target | Venue | Boss? |
 |---|---|---|---|
-| 9 | $5,000 | The Strip | No |
-| 10 | $7,500 | The Strip | No |
-| 11 | $15,000 | The Strip — Penthouse | **Yes** |
+| 9 | $5,000 | The Suite | No |
+| 10 | $7,500 | The Suite | No |
+| 11 | $15,000 | The Suite — Corner Office | **Yes** |
 
 ### Boss: The Executive
 
 | Field | Value |
 |---|---|
 | **Title** | CFO, High Limit Division |
-| **Venue** | The Strip — Penthouse |
+| **Venue** | The Suite — Corner Office |
 | **Teaser** | The Executive runs a performance review. Every roll updates your rating. Slip to Action Required and roll badly — and you're terminated. |
 | **Dread tagline** | YOUR REVIEW IS PENDING. |
 | **Rule** | `CROSS_CALIBRATION` |

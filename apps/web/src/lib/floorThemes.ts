@@ -265,7 +265,7 @@ const FLOOR_3_THEME: FloorTheme = {
 };
 
 // =============================================================================
-// Floor 4 — The Strip (The Penthouse)
+// Floor 4 — The Suite (The Corner Office)
 // =============================================================================
 // Vegas tower penthouse, 60 floors up. The felt is near-black obsidian. Gold
 // hardens from warm to electric. Neon magenta pulses in the breathing overlay.
@@ -304,7 +304,7 @@ const FLOOR_4_THEME: FloorTheme = {
   pubTitleShadow: '0 0 20px rgba(255,215,0,0.60), 0 0 60px rgba(180,0,80,0.30)',
   pubSubtextColor: 'rgba(200,200,220,0.45)',
 
-  // Boss — The Penthouse (The Executive)
+  // Boss — The Corner Office (The Executive)
   bossBg:         'radial-gradient(ellipse at 50% 25%, #0a0615 0%, #040210 50%, #000000 100%)',
   bossAccentBar:  'linear-gradient(90deg, transparent, #7a5f00 30%, #ffd700 50%, #7a5f00 70%, transparent)',
   bossGlow:       'radial-gradient(ellipse at 50% 40%, rgba(80,30,160,0.06) 0%, transparent 65%)',

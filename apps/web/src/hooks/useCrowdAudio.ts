@@ -548,6 +548,38 @@ function playBugleCallSting(ctx: AudioContext, dest: AudioNode): void {
   });
 }
 
+/** Rubber stamp hitting paper on a desk — low wooden thud + papery slap (≈250ms) */
+function playStampThudSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime;
+  const thud = ctx.createOscillator();
+  thud.type = 'sine';
+  thud.frequency.setValueAtTime(160, t0);
+  thud.frequency.exponentialRampToValueAtTime(55, t0 + 0.12);
+  const thudEnv = ctx.createGain();
+  thudEnv.gain.setValueAtTime(0.0001, t0);
+  thudEnv.gain.exponentialRampToValueAtTime(0.45, t0 + 0.005);
+  thudEnv.gain.exponentialRampToValueAtTime(0.001, t0 + 0.22);
+  thud.connect(thudEnv);
+  thudEnv.connect(dest);
+  thud.start(t0);
+  thud.stop(t0 + 0.24);
+
+  const slap = ctx.createBufferSource();
+  slap.buffer = makeNoiseBuf(ctx, 0.08);
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 1400;
+  bp.Q.value = 0.8;
+  const slapEnv = ctx.createGain();
+  slapEnv.gain.setValueAtTime(0.3, t0);
+  slapEnv.gain.exponentialRampToValueAtTime(0.001, t0 + 0.07);
+  slap.connect(bp);
+  bp.connect(slapEnv);
+  slapEnv.connect(dest);
+  slap.start(t0);
+  slap.stop(t0 + 0.08);
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -580,6 +612,11 @@ export function playRegisterKaChing(): void {
 /** FB-032: The Foreman is paid off — register bell. */
 export function playRegisterBell(): void {
   playStandalone(playRegisterBellSting);
+}
+
+/** FB-033: a rubber stamp slams onto paper (HONORABLY / DISHONORABLE DISCHARGE). */
+export function playStampThud(): void {
+  playStandalone(playStampThudSting);
 }
 
 /** FB-033: HONORABLY DISCHARGED — bugle call. */

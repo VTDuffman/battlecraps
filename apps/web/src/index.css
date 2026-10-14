@@ -853,16 +853,28 @@
   100% { transform: translateY(0) rotate(0deg); opacity: 1; }
 }
 @keyframes honor-stamp {
-  0%   { transform: scale(2.4) rotate(-16deg); opacity: 0; }
-  55%  { transform: scale(0.92) rotate(-9deg); opacity: 1; }
-  75%  { transform: scale(1.04) rotate(-8deg); }
-  100% { transform: scale(1)    rotate(-8deg); opacity: 1; }
+  /* Comes down from above the paper (big, lifted, faint), lands hard at 55%. */
+  0%   { transform: translateY(-46px) scale(2.6) rotate(-14deg); opacity: 0; }
+  40%  { transform: translateY(-8px)  scale(1.25) rotate(-9deg); opacity: 0.7; }
+  55%  { transform: translateY(0)     scale(0.94) rotate(-8deg); opacity: 0.9; }
+  72%  { transform: translateY(0)     scale(1.03) rotate(-8deg); }
+  100% { transform: translateY(0)     scale(1)    rotate(-8deg); opacity: 0.9; }
 }
+/* The certificate jolts as the stamp lands. */
+@keyframes stamp-impact {
+  0%, 100% { transform: translate(0, 0); }
+  15%  { transform: translate(0, 5px); }
+  35%  { transform: translate(-3px, -2px); }
+  55%  { transform: translate(2px, 1px); }
+  75%  { transform: translate(-1px, 0); }
+}
+.animate-stamp-impact  { animation: stamp-impact 320ms ease-out both; }
 .animate-cert-slide-up { animation: cert-slide-up 480ms cubic-bezier(0.2, 0.9, 0.3, 1.05) both; }
-.animate-honor-stamp   { animation: honor-stamp 420ms cubic-bezier(0.2, 0.9, 0.3, 1.15) both; }
+.animate-honor-stamp   { animation: honor-stamp 400ms cubic-bezier(0.55, 0, 0.6, 1) both; }
 
 @media (prefers-reduced-motion: reduce) {
   .animate-cert-slide-up,
   .animate-honor-stamp { animation: dock-door-fade 300ms ease-out both; }
   .animate-honor-stamp { transform: rotate(-8deg); }
+  .animate-stamp-impact { animation: none; }
 }

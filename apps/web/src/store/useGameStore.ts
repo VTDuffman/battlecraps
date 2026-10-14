@@ -1211,7 +1211,7 @@ function buildSlotIds(n: number): string[] {
  * first. 0 when the Payoff wasn't just reached.
  */
 const PAYOFF_HOLD_MS = 2600;   // FB-032: PAID IN FULL stamp (1.6s) + a beat
-const VICTORY_HOLD_MS = 3900;  // FB-033: boss victory cinematic (~3.6s) + a beat
+const VICTORY_HOLD_MS = 4900;  // FB-033: boss victory cinematic (~4.6s) + a beat
 
 /**
  * Delay for a celebration hand-off timer: its usual delay, or longer if a

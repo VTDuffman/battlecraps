@@ -98,10 +98,15 @@ export type BossRuleParams =
 
 /** Full descriptor for a boss fight. Only present on markers where isBoss is true. */
 /**
- * FB-032: moments a boss can bark at. progress50/progress80/payoff apply to
- * payoff bosses (The Foreman); win/loss to any boss.
+ * Moments a boss can bark at (FB-032, FB-033). win/loss apply to any boss
+ * (chance-based); the rest are boss EVENTS derived per rule in bossBarks.ts:
+ *   The Foreman: progress50 / progress80 / payoff (his Cut vs the Payoff)
+ *   Sarge:       pointSet / clockLow / lastRoll / beatClock / timeUp (Double Time clock)
  */
-export type BossBarkTrigger = 'win' | 'loss' | 'progress50' | 'progress80' | 'payoff';
+export type BossBarkTrigger =
+  | 'win' | 'loss'
+  | 'progress50' | 'progress80' | 'payoff'
+  | 'pointSet' | 'clockLow' | 'lastRoll' | 'beatClock' | 'timeUp';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
 export type BossDefeatCinematicId = 'DOCK_CLOSED';
@@ -345,6 +350,38 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compFanLabel:    'JACKET',
       // Legacy
       flavorText: "You shoot on MY clock, soldier. Six rolls.",
+      // FB-033 barks — shouting caps for orders, deadpan lowercase for praise.
+      barks: {
+        pointSet: [
+          "CLOCK'S RUNNING, SOLDIER!",
+          "SIX ROLLS. MOVE IT!",
+          "THE CLOCK IS NOT YOUR FRIEND.",
+        ],
+        clockLow: [
+          "TWO MORE! I SAID MOVE!",
+          "YOU CALL THAT HUSTLE?",
+        ],
+        lastRoll: [
+          "LAST CHANCE, MAGGOT!",
+          "THIS IS IT, PRIVATE!",
+        ],
+        beatClock: [
+          "…adequate.",
+          "Don't let it go to your head.",
+        ],
+        timeUp: [
+          "TIME! DROP AND GIVE ME TWENTY!",
+          "TOO SLOW, RECRUIT!",
+        ],
+        win: [
+          "Don't get cocky.",
+          "Lucky shot, soldier.",
+        ],
+        loss: [
+          "PATHETIC.",
+          "MY GRANDMOTHER ROLLS BETTER.",
+        ],
+      },
     },
   },
 

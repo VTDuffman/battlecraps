@@ -2110,6 +2110,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bankrollDelta: p.bankrollDelta,
       isLoss:        p.rollResult === 'CRAPS_OUT' || p.rollResult === 'SEVEN_OUT',
       isGameOver:    p.runStatus === 'GAME_OVER',
+      // FB-033: roll facts for per-boss event barks (Sarge's clock).
+      rollResult:       p.rollResult,
+      newPhase:         p.newPhase,
+      newBossPointHits: p.newBossPointHits,
+      clockExpired:     p.clockExpired === true,
       ...(p.bossCut && {
         cut: { before: cutBefore, after: p.bossCut.total, payoff: p.bossCut.payoff, paidOff: p.bossCut.paidOff },
       }),

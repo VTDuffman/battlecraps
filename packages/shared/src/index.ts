@@ -110,4 +110,4 @@ export { DEV_SCENARIOS } from './devScenarios.js';
 // Boss barks (FB-032)
 export type { BossBarkTrigger, BossDefeatCinematicId } from './config.js';
 export type { BossBarkInput, BossBark } from './bossBarks.js';
-export { BARK_CHANCE, selectBossBarkTrigger, pickBossBark } from './bossBarks.js';
+export { BARK_CHANCE, deriveBossBarkEvents, selectBossBarkTrigger, pickBossBark } from './bossBarks.js';

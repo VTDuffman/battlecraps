@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-033 Sarge Boss Moments
 
 **Design doc:** `docs/design/fb-033-sarge-boss-moments-design.md`
-**Status:** Pending approval.
+**Status:** Phase 1 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. Before calling a phase done: `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes). Push when Mike says.
 
@@ -15,6 +15,8 @@
 4. **Tests:** event priority for Sarge; Foreman behavior unchanged.
 
 🛑 **Gate:** play Sarge locally; tune lines/chattiness.
+
+--- Implemented locally (2026-10-13): `deriveBossBarkEvents()` (per-rule, priority-ordered) in shared `bossBarks.ts`; Foreman milestones migrated with no behavior change (existing tests unchanged); Sarge events per design §3; 9 new tests. ---
 
 ## Phase 2: Clock drama
 

@@ -1,19 +1,24 @@
 // =============================================================================
-// BATTLECRAPS — BOSS BARKS (FB-032)
+// BATTLECRAPS — BOSS BARKS (FB-032, extended FB-033)
 // packages/shared/src/bossBarks.ts
 //
 // Decides whether a boss barks after a roll, and which line. Pure: the caller
 // supplies the roll facts and a random source, so it's unit-testable and the
 // same rules apply to every boss that defines `barks` in config.ts.
 //
-// Priority: payoff > progress80 > progress50 > win > loss. Milestones always
-// bark (they're rare); win/loss bark by chance and never over a bark already
-// on screen, so the boss doesn't talk on every roll.
+// Two kinds of trigger:
+//   • Boss EVENTS — moments specific to a boss's rule, derived per rule below
+//     (The Foreman's Cut milestones, Sarge's clock). Ordered by priority; the
+//     first one the boss has lines for ALWAYS barks.
+//   • win / loss — chance-based, and never over a bark already on screen, so
+//     the boss doesn't talk on every roll.
+// A run-ending roll is always silent (the defeat cinematic owns the screen).
 // =============================================================================
 
 import { GAUNTLET, type BossBarkTrigger } from './config.js';
+import type { GamePhase, RollResult } from './types.js';
 
-/** Chance a plain win / loss produces a bark (milestones always do). */
+/** Chance a plain win / loss produces a bark (boss events always do). */
 export const BARK_CHANCE: Readonly<Record<'win' | 'loss', number>> = { win: 0.55, loss: 0.35 };
 
 export interface BossBarkInput {
@@ -25,6 +30,14 @@ export interface BossBarkInput {
   isLoss:        boolean;
   /** The roll ended the run — no bark (the defeat moment owns the screen). */
   isGameOver:    boolean;
+  /** Final roll result (after boss conversions, e.g. Sarge's TIME'S UP → SEVEN_OUT). */
+  rollResult?:   RollResult;
+  /** Phase after the roll. */
+  newPhase?:     GamePhase;
+  /** Boss counter after the roll (Sarge: point-phase rolls used on the clock). */
+  newBossPointHits?: number;
+  /** Sarge's Double Time clock ran out on this roll. */
+  clockExpired?: boolean;
   /** Payoff fights: Cut before and after this roll, the Payoff, and whether it was reached. */
   cut?:          { before: number; after: number; payoff: number; paidOff: boolean };
   /** A bark is still showing — skip chance-based barks. */
@@ -43,15 +56,56 @@ function crossed(before: number, after: number, payoff: number, fraction: number
   return before < mark && after >= mark;
 }
 
-/** Picks the trigger for this roll, or null for silence. */
+/**
+ * The boss-specific moments this roll produced, highest priority first.
+ * Each boss rule contributes its own; rules without events return [].
+ */
+export function deriveBossBarkEvents(input: BossBarkInput): BossBarkTrigger[] {
+  const boss = GAUNTLET[input.markerIndex]?.boss;
+  if (!boss) return [];
+  const events: BossBarkTrigger[] = [];
+
+  switch (boss.ruleParams.rule) {
+    // The Foreman: his Cut closing in on the Payoff.
+    case 'EXTORTION_FEE': {
+      const { cut } = input;
+      if (!cut) break;
+      if (cut.paidOff) events.push('payoff');
+      else if (crossed(cut.before, cut.after, cut.payoff, 0.8)) events.push('progress80');
+      else if (crossed(cut.before, cut.after, cut.payoff, 0.5)) events.push('progress50');
+      break;
+    }
+
+    // Sarge: the Double Time clock. rollsLeft = rollLimit − rolls used.
+    case 'DOUBLE_TIME': {
+      const limit = boss.ruleParams.rollLimit;
+      if (input.clockExpired) { events.push('timeUp'); break; }
+      if (input.rollResult === 'POINT_HIT') { events.push('beatClock'); break; }
+      if (input.newPhase !== 'POINT_ACTIVE') break;
+      if (input.rollResult === 'POINT_SET') { events.push('pointSet'); break; }
+      const rollsLeft = limit - (input.newBossPointHits ?? 0);
+      if (rollsLeft === 1) events.push('lastRoll');
+      else if (rollsLeft === 2) events.push('clockLow');
+      break;
+    }
+
+    default:
+      break;
+  }
+  return events;
+}
+
+/**
+ * Picks the trigger for this roll, or null for silence. Boss events win (first
+ * one the boss has lines for); otherwise a chance-based win / loss.
+ */
 export function selectBossBarkTrigger(input: BossBarkInput, random: () => number = Math.random): BossBarkTrigger | null {
   if (input.isGameOver) return null;
-  const { cut } = input;
-  if (cut) {
-    if (cut.paidOff) return 'payoff';
-    if (crossed(cut.before, cut.after, cut.payoff, 0.8)) return 'progress80';
-    if (crossed(cut.before, cut.after, cut.payoff, 0.5)) return 'progress50';
-  }
+  const barks = GAUNTLET[input.markerIndex]?.boss?.barks;
+
+  const event = deriveBossBarkEvents(input).find((t) => (barks?.[t]?.length ?? 0) > 0);
+  if (event) return event;
+
   if (input.barkShowing) return null;
   if (input.bankrollDelta > 0) return random() < BARK_CHANCE.win  ? 'win'  : null;
   if (input.isLoss)            return random() < BARK_CHANCE.loss ? 'loss' : null;

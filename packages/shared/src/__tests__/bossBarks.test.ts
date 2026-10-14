@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { selectBossBarkTrigger, pickBossBark, type BossBarkInput } from '../bossBarks.js';
+import { deriveBossBarkEvents, selectBossBarkTrigger, pickBossBark, type BossBarkInput } from '../bossBarks.js';
 import { GAUNTLET } from '../config.js';
 
 const FOREMAN = 2;
@@ -68,6 +68,53 @@ describe('pickBossBark', () => {
   });
 
   it('bosses with no barks stay silent', () => {
-    expect(pickBossBark({ ...base, markerIndex: 5, bankrollDelta: 400 }, always)).toBeNull(); // Sarge
+    expect(pickBossBark({ ...base, markerIndex: 8, bankrollDelta: 400 }, always)).toBeNull(); // Mme. Le Prix (no barks yet)
+  });
+});
+
+describe('Sarge (FB-033): Double Time clock events', () => {
+  const SARGE = 5;
+  const sarge: BossBarkInput = { ...base, markerIndex: SARGE };
+
+  it('point set starts the clock → pointSet', () => {
+    expect(selectBossBarkTrigger({ ...sarge, rollResult: 'POINT_SET', newPhase: 'POINT_ACTIVE', newBossPointHits: 0 }, never)).toBe('pointSet');
+  });
+
+  it('2 rolls left → clockLow, 1 roll left → lastRoll (after the 4th and 5th blanks)', () => {
+    expect(selectBossBarkTrigger({ ...sarge, rollResult: 'NO_RESOLUTION', newPhase: 'POINT_ACTIVE', newBossPointHits: 4 }, never)).toBe('clockLow');
+    expect(selectBossBarkTrigger({ ...sarge, rollResult: 'NO_RESOLUTION', newPhase: 'POINT_ACTIVE', newBossPointHits: 5 }, never)).toBe('lastRoll');
+  });
+
+  it('other blanks are quiet (no event, no win/loss)', () => {
+    expect(selectBossBarkTrigger({ ...sarge, rollResult: 'NO_RESOLUTION', newPhase: 'POINT_ACTIVE', newBossPointHits: 2 }, always)).toBeNull();
+  });
+
+  it('hitting the point → beatClock, even over a showing bark and beating the win line', () => {
+    expect(selectBossBarkTrigger({ ...sarge, rollResult: 'POINT_HIT', newPhase: 'COME_OUT', bankrollDelta: 1_000, barkShowing: true }, always)).toBe('beatClock');
+  });
+
+  it("the clock running out → timeUp (beats the loss line)", () => {
+    expect(selectBossBarkTrigger({ ...sarge, rollResult: 'SEVEN_OUT', newPhase: 'COME_OUT', clockExpired: true, isLoss: true }, always)).toBe('timeUp');
+  });
+
+  it('TIME\'S UP on the last shooter is silent (defeat cinematic)', () => {
+    expect(selectBossBarkTrigger({ ...sarge, rollResult: 'SEVEN_OUT', clockExpired: true, isLoss: true, isGameOver: true }, always)).toBeNull();
+  });
+
+  it('a natural is a chance-based win; craps a chance-based loss', () => {
+    expect(selectBossBarkTrigger({ ...sarge, rollResult: 'NATURAL', newPhase: 'COME_OUT', bankrollDelta: 1_000 }, always)).toBe('win');
+    expect(selectBossBarkTrigger({ ...sarge, rollResult: 'CRAPS_OUT', newPhase: 'COME_OUT', bankrollDelta: -1_000, isLoss: true }, always)).toBe('loss');
+  });
+
+  it('pickBossBark returns a line from the matching Sarge pool', () => {
+    const bark = pickBossBark({ ...sarge, rollResult: 'NO_RESOLUTION', newPhase: 'POINT_ACTIVE', newBossPointHits: 5 }, always);
+    expect(bark?.trigger).toBe('lastRoll');
+    expect(GAUNTLET[SARGE]?.boss?.barks?.lastRoll).toContain(bark?.line);
+  });
+});
+
+describe('deriveBossBarkEvents', () => {
+  it('bosses without event rules derive nothing', () => {
+    expect(deriveBossBarkEvents({ ...base, markerIndex: 11, rollResult: 'POINT_HIT' })).toEqual([]); // The Executive
   });
 });

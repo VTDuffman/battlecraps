@@ -207,7 +207,12 @@ ruleParams: { rule: 'DOUBLE_TIME', rollLimit: 6 }
 
 **Entry charm:** chosen when the player leaves the pub (`recruit.ts`) via shared `pickEntryCharmSlot()`, so it reflects the crew that will actually play the fight. The client holds it in `pendingBossEntryCharm` and reveals the ❤️ after the boss-entry cinematic.
 
-**Charm heartbeat (FB-034):** when the charmed crew member's ability *would* have fired on a roll, `turn:settled` carries `charmFired: true` and the client plays the heartbeat on that portrait (swell, two beats, a drifting 💗, two harp plucks) before the heart flies on.
+**Boss moments (FB-034):**
+- **Barks** — soft, purring lowercase. `charmFired` (the charmed crew would have fired) always barks; `charmed` (the ❤️ moved to someone new) barks 50% of the time and never over a showing bark (`EVENT_BARK_CHANCE` in `bossBarks.ts`) — a skip is silence, so she stays quiet despite re-charming most come-outs. Win / loss sometimes.
+- **The heart's flight** (`CharmFlight.tsx`, store `charmFlight`): whenever the ❤️ settles on a new slot, a heart lifts off the old portrait, swoops to her name (`[data-boss-name-anchor]`) and arcs down onto the new one with a 💗 trail and a harp glissando; the destination holds its ❤️ until it lands. The entry charm is the flight alone (from her name). The charmed portrait pulses pink (`charm-glow`).
+- **Charm heartbeat:** when `turn:settled` carries `charmFired: true`, the portrait of the crew who was actually blocked (the *old* charmed slot) swells, is caught, gives two pink beats and sinks back, a 💗 drifts off it, and `playCharmDaze()` plays (a detuned pad that sags flat + descending chimes); then the heart flies on. Rolling stays locked until it settles (`charmingSlot`, 2.5 s safety net). Replaced the old "OOH LA LA!" bubble.
+- **Victory — THE ROSE** (`victoryCinematic`): a big rose is thrown in, lands with a pink bloom, a spiral burst of petals plus a petal shower, harp flourish, "…improbable. You may keep your winnings." (~5.7 s; own celebration hold, `VICTORY_HOLD_MS_BY_ID`).
+- **Defeat — SHE TAKES THE CREW** (`defeatCinematic`): hearts bloom on your real crew portraits (measured from the rail), they drift up into her name one by one, a huge 💋 presses onto the glass ("mwah" + thud), "Your crew stays with me… forever." (~7.7 s with five crew).
 
 **Implementation note:** `modifyCascadeOrder` returns every slot except the charmed one. The charmed slot index (0-based) is stored in `bossPointHits`; `rolls.ts` reselects it with the server RNG after each come-out resolution and emits it as `charmedCrewSlot`.
 

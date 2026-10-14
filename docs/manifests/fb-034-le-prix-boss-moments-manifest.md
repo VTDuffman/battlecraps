@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-034 Mme. Le Prix Boss Moments
 
 **Design doc:** `docs/design/fb-034-le-prix-boss-moments-design.md`
-**Status:** Phases 1–4 done locally (not pushed).
+**Status:** Complete (2026-10-13) — all five phases done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.**
 
@@ -52,3 +52,5 @@
 2. **Docs:** boss_framework (Le Prix moments), CLAUDE.md, backlog.
 
 🛑 **Gate:** FB-034 complete → push.
+
+--- Implemented locally (2026-10-13): presets "Le Prix — fresh fight" (renamed from "charm on a full crew"), "charm on the Doorman" (heartbeat on the first come-out), "one win from the rose", "last shooter, point on". Docs: boss_framework Le Prix moments, CLAUDE.md, backlog. ---

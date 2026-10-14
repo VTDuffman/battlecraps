@@ -9,7 +9,7 @@
 // Crew uses Starter roster ids (16–30) so presets work on any account.
 // =============================================================================
 
-import { MARKER_TARGETS, getMaxBet } from './config.js';
+import { MARKER_TARGETS, getMaxBet, getMinBet } from './config.js';
 import type { DevScenario } from './devScenario.js';
 
 // Marker indices of each boss fight (every third marker).
@@ -85,9 +85,34 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     bossCounter: 3,
   },
   {
-    name:        'Le Prix — charm on a full crew',
+    // The entry charm: the heart flies from her name to a crew member.
+    name:        'Le Prix — fresh fight',
     markerIndex: LE_PRIX,
     crew:        STARTER_CREW,
+  },
+  {
+    // The Doorman (+$ on every come-out) in slot 0, charmed: the first come-out
+    // plays the charm heartbeat + her charmFired bark, then the heart flies on.
+    name:        'Le Prix — charm on the Doorman',
+    markerIndex: LE_PRIX,
+    crew:        [24, 16, 17, 18, 19],
+    bossCounter: 0,
+  },
+  {
+    // Point on, one min-bet win short of her target: hit the point → THE ROSE.
+    name:          'Le Prix — one win from the rose',
+    markerIndex:   LE_PRIX,
+    crew:          STARTER_CREW,
+    bankrollCents: target(LE_PRIX) - getMinBet(LE_PRIX),
+    point:         6,
+  },
+  {
+    // Last shooter, point on: a seven-out → SHE TAKES THE CREW.
+    name:        'Le Prix — last shooter, point on',
+    markerIndex: LE_PRIX,
+    crew:        STARTER_CREW,
+    shooters:    1,
+    point:       6,
   },
   {
     name:        'Executive — one bad roll from PIP',

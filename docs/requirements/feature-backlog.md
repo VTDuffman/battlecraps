@@ -1858,10 +1858,10 @@ Drill-sergeant barks driven by his Double Time clock (new per-boss bark event tr
 
 **Type:** Boss presentation (barks, charm drama, victory + defeat cinematics)
 **Area:** `packages/shared/src/config.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`
-**Status:** Designed (2026-10-13); pending implementation
+**Status:** Implemented (2026-10-13) — barks (charm events), the heart's flight, charm heartbeat, THE ROSE, SHE TAKES THE CREW, Dev presets
 **Design:** `docs/design/fb-034-le-prix-boss-moments-design.md`
 **Manifest:** `docs/manifests/fb-034-le-prix-boss-moments-manifest.md`
 
 ### Solution
 
-Soft, purring barks keyed to her charm; the ❤️ visibly flies from the old crew member to her name and down onto the new one (harp glissando); **the rose** as her win moment; **she takes the crew** (every portrait drifts off to her, then a lipstick kiss on the screen) as her loss moment. Mechanic unchanged. Crew/player references gender-neutral.
+Soft, purring barks keyed to her charm; the ❤️ visibly flies from the old crew member to her name and down onto the new one (harp glissando); **the rose** as her win moment; **she takes the crew** (every portrait drifts off to her, then a lipstick kiss on the screen) as her loss moment. Mechanic unchanged. Crew/player references gender-neutral. Playtesting replaced the "OOH LA LA!" bubble with a **charm heartbeat** on the blocked crew (dreamy "daze" sound), and made both cinematics bigger ("big wins, big losses").

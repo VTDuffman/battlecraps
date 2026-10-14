@@ -244,6 +244,8 @@ interface TurnSettledPayload {
   pipTermination?:         boolean;
   /** FB-035: the +15% Exceptional bonus paid this roll (The Executive; omitted when 0). */
   exceptionalBonusCents?:  number;
+  /** FB-036: crew-bonus escrow facts (escrow fights only). */
+  escrow?:                 { heldCents: number; releasedCents: number; seizedCents: number };
   /** True when Poseidon's Favor cancelled the shooter's first-roll craps-out (rollResult is NO_RESOLUTION). */
   crapsOutBlocked?:        boolean;
   /** The Architect (CONVERGENCE): crew slot index permanently removed by this seven-out. */
@@ -786,6 +788,13 @@ export interface GameState {
 
   /** Running Cut toward the Payoff (cents). 0 outside payoff fights. */
   bossProgressCents: number;
+
+  // ── The Hierophant: the offering bowl (FB-036) ────────────────────────────
+
+  /** Crew bonuses held in escrow right now (cents). 0 outside escrow fights. */
+  escrowHeldCents: number;
+  /** The latest roll's escrow facts + a key (drives the bowl's animations). */
+  lastEscrow: { heldCents: number; releasedCents: number; seizedCents: number; key: number } | null;
   /** The latest roll's Cut (drives the register's ka-ching / stamp). Null when none. */
   lastBossCut: BossCut | null;
   /** Increments on every roll that adds to the Cut — keys the ka-ching animation. */
@@ -1322,6 +1331,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   devLastRoll:             null,
   devPreview:              null,
   bossProgressCents:       0,
+  escrowHeldCents:         0,
+  lastEscrow:              null,
   lastBossCut:             null,
   _cutKey:                 0,
   payoffAt:                null,
@@ -1414,6 +1425,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       devDiceQueue:   [],
       devPreview:     null,
       bossProgressCents: 0,
+      escrowHeldCents:   0,
+      lastEscrow:        null,
       lastBossCut:    null,
       payoffAt:       null,
       bossBark:       null,
@@ -1608,6 +1621,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       devDiceQueue:        [],
       devPreview:          null,
       bossProgressCents:   0,
+      escrowHeldCents:     0,
+      lastEscrow:          null,
       lastBossCut:         null,
       payoffAt:            null,
       bossBark:            null,
@@ -2149,7 +2164,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       : null;
 
     // ── FB-032: generic boss barks (lines in config.ts; rules in shared bossBarks.ts) ─
-    const { bossBark: oldBossBark, bossBarkLastLine, bossProgressCents: cutBefore } = get();
+    const { bossBark: oldBossBark, bossBarkLastLine, bossProgressCents: cutBefore, escrowHeldCents: escrowBefore, lastEscrow: oldLastEscrow } = get();
     const bark = pickBossBark({
       markerIndex:   oldMarkerIndex,
       bankrollDelta: p.bankrollDelta,
@@ -2168,6 +2183,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       ratingBefore:          oldExecutiveRating,
       ratingAfter:           p.bossRating?.index ?? null,
       exceptionalBonusCents: p.exceptionalBonusCents ?? 0,
+      // FB-036: the Hierophant's offering bowl.
+      escrowBeforeCents: escrowBefore,
+      ...(p.escrow && { escrow: p.escrow }),
       ...(p.bossCut && {
         cut: { before: cutBefore, after: p.bossCut.total, payoff: p.bossCut.payoff, paidOff: p.bossCut.paidOff },
       }),
@@ -2237,6 +2255,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // FB-032: The Foreman's Cut. On the paying-off roll the register keeps the
       // final total (≥ Payoff) through the PAID IN FULL stamp.
       bossProgressCents:     p.bossCut ? p.bossCut.total : 0,
+      escrowHeldCents:       p.escrow ? p.escrow.heldCents : 0,
+      lastEscrow:            p.escrow ? { ...p.escrow, key: (oldLastEscrow?.key ?? 0) + 1 } : oldLastEscrow,
       lastBossCut:           p.bossCut ?? null,
       _cutKey:               p.bossCut && p.bossCut.amount > 0 ? get()._cutKey + 1 : get()._cutKey,
       payoffAt:              p.bossCut?.paidOff === true ? Date.now() : get().payoffAt,
@@ -2501,6 +2521,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           bossRating?: { index: number; changed: boolean; direction: 'up' | 'down' | null };
           pipTermination?: boolean;
           exceptionalBonusCents?: number;
+          escrow?: { heldCents: number; releasedCents: number; seizedCents: number };
           crapsOutBlocked?: boolean;
           clockExpired?: boolean;
           removedCrewSlot?: number;
@@ -2537,6 +2558,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           ...(data.roll.bossRating    !== undefined && { bossRating:    data.roll.bossRating    }),
           ...(data.roll.pipTermination === true     && { pipTermination: true as const           }),
           ...(data.roll.exceptionalBonusCents !== undefined && { exceptionalBonusCents: data.roll.exceptionalBonusCents }),
+          ...(data.roll.escrow !== undefined && { escrow: data.roll.escrow }),
         };
         set({ pendingSettlement: autoSettlement });
         get().applyPendingSettlement();
@@ -2570,6 +2592,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ...(data.roll.bossRating      !== undefined && { bossRating:      data.roll.bossRating      }),
         ...(data.roll.pipTermination  === true      && { pipTermination:  true as const              }),
         ...(data.roll.exceptionalBonusCents !== undefined && { exceptionalBonusCents: data.roll.exceptionalBonusCents }),
+        ...(data.roll.escrow !== undefined && { escrow: data.roll.escrow }),
         ...(data.roll.crapsOutBlocked === true      && { crapsOutBlocked: true as const              }),
         ...(data.roll.clockExpired    === true      && { clockExpired:    true as const              }),
         ...(data.roll.removedCrewSlot !== undefined && { removedCrewSlot: data.roll.removedCrewSlot  }),
@@ -2917,6 +2940,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bossPointHits:        payload.bossPointHits,
       consecutivePointHits: payload.consecutivePointHits,
       bossProgressCents:    payload.bossProgressCents ?? 0,
+      escrowHeldCents:      payload.pendingAdditiveCents ?? 0,
       isDevRun:             payload.isDevRun,
     };
 

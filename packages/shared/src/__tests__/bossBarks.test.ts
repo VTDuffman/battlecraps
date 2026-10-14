@@ -68,7 +68,7 @@ describe('pickBossBark', () => {
   });
 
   it('bosses with no barks stay silent', () => {
-    expect(pickBossBark({ ...base, markerIndex: 14, bankrollDelta: 400 }, always)).toBeNull(); // The Hierophant (no barks yet)
+    expect(pickBossBark({ ...base, markerIndex: 17, bankrollDelta: 400 }, always)).toBeNull(); // The Sovereign (no barks yet)
   });
 });
 
@@ -177,6 +177,33 @@ describe('The Executive (FB-035): performance review events', () => {
 
   it('PIP termination (game over) is silent', () => {
     expect(selectBossBarkTrigger({ ...exec, isLoss: true, isGameOver: true, ratingBefore: 0, ratingAfter: 0 }, always)).toBeNull();
+  });
+});
+
+describe('The Hierophant (FB-036): offering bowl events', () => {
+  const HIERO = 14;   // target $100,000 → a big offering is ≥ $10,000 held
+  const hiero: BossBarkInput = { ...base, markerIndex: HIERO };
+  const escrow = (heldCents: number, releasedCents: number, seizedCents: number) => ({ heldCents, releasedCents, seizedCents });
+
+  it('a seizure always speaks, even over a showing bark', () => {
+    expect(selectBossBarkTrigger({ ...hiero, isLoss: true, escrow: escrow(0, 375_000, 125_000), barkShowing: true }, never)).toBe('tributeSeized');
+  });
+
+  it('a newly big offering barks half the time; an already-big one does not re-trigger', () => {
+    const big = { ...hiero, escrowBeforeCents: 200_000, escrow: escrow(1_200_000, 0, 0) };
+    expect(selectBossBarkTrigger(big, always)).toBe('bigOffering');
+    expect(selectBossBarkTrigger(big, never)).toBeNull();
+    expect(deriveBossBarkEvents({ ...big, escrowBeforeCents: 1_100_000 })).toEqual([]);
+  });
+
+  it('a release barks by chance; a skip is silence (no win fallback)', () => {
+    const rel = { ...hiero, bankrollDelta: 400_000, escrow: escrow(0, 100_000, 0) };
+    expect(selectBossBarkTrigger(rel, always)).toBe('escrowReleased');
+    expect(selectBossBarkTrigger(rel, never)).toBeNull();
+  });
+
+  it('no escrow movement falls back to chance win / loss', () => {
+    expect(selectBossBarkTrigger({ ...hiero, bankrollDelta: 300_000, escrow: escrow(0, 0, 0) }, always)).toBe('win');
   });
 });
 

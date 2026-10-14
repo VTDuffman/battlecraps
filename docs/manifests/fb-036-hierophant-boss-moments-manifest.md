@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-036 The Hierophant Boss Moments
 
 **Design doc:** `docs/design/fb-036-hierophant-boss-moments-design.md`
-**Status:** Pending approval.
+**Status:** Phase 1 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -15,6 +15,8 @@
 5. **Tests:** event derivation + chances; integration for the escrow payload + tribute deduction.
 
 🛑 **Gate:** play the Hierophant locally.
+
+--- Implemented locally (2026-10-14): server `escrow {heldCents, releasedCents, seizedCents}` (Hierophant + Emissary fights) on turn:settled + HTTP roll; receipt tribute line now real ("The Hierophant: $X tribute"). Shared TRIBUTE events (tributeSeized always; bigOffering ≥ 10% of target, newly, 50%; escrowReleased 30%) + barks incl. win/loss. Store `escrowHeldCents` (hydrated from pendingAdditiveCents) + `lastEscrow {…, key}` for the bowl. Shared 461 tests, integration 124. ---
 
 ## Phase 2: The offering bowl
 1. **`OfferingBowl`** under the marker progress bar in his fight: candles, bowl, HELD $X rolling digits.

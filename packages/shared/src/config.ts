@@ -109,7 +109,8 @@ export type BossBarkTrigger =
   | 'progress50' | 'progress80' | 'payoff'
   | 'pointSet' | 'clockLow' | 'lastRoll' | 'beatClock' | 'timeUp'
   | 'charmed' | 'charmFired'
-  | 'promoted' | 'finalWarning' | 'bonusPaid' | 'ratingUp' | 'ratingDown';
+  | 'promoted' | 'finalWarning' | 'bonusPaid' | 'ratingUp' | 'ratingDown'
+  | 'tributeSeized' | 'bigOffering' | 'escrowReleased';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
 export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED';
@@ -567,6 +568,14 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       ruleBlurb:          "Your crew's cash bonuses don't pay out on the roll they're earned — they're held in escrow and released on your next roll. Seven-out while bonuses are held and The Hierophant seizes 25% of them as tribute.",
       victoryQuote:       "…the rites acknowledge your offering. Leave before the observers decide otherwise.",
       defeatAnnouncement: 'RITES CONCLUDED',
+      // FB-036 barks — solemn, liturgical; he speaks for the order.
+      barks: {
+        tributeSeized:  ["The order receives.", "Every offering is remembered."],
+        bigOffering:    ["A generous offering.", "The order is pleased."],
+        escrowReleased: ["The rites permit it.", "Go. It is yours… for now."],
+        win:            ["The observers take note.", "So it is witnessed."],
+        loss:           ["As it was written.", "The candles do not lie."],
+      },
       // Mechanic
       rule:           'TRIBUTE',
       ruleHeaderText: 'CREW ADDITIVES HELD IN ESCROW — 25% SEIZED ON SEVEN-OUT',

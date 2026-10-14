@@ -496,6 +496,33 @@ describe('Crew-bonus escrow', () => {
     // (100_000 + 400_000) × 0.75 = 375_000 released now; nothing carried forward.
     expect(r['bankrollCents']).toBe(2_375_000);
     expect(r['pendingAdditiveCents']).toBe(0);
+
+    // FB-036: the client is told what happened to the offering…
+    const roll = body['roll'] as Record<string, unknown>;
+    expect(roll['escrow']).toEqual({ heldCents: 0, releasedCents: 375_000, seizedCents: 125_000 });
+    // …and the receipt shows the real tribute (it used to be computed as 0).
+    const receipt = roll['receipt'] as { lines: { text: string }[] };
+    expect(receipt.lines.some((l) => l.text === 'The Hierophant: $1250.00 tribute')).toBe(true);
+  });
+
+  it('Hierophant: an ordinary roll releases the previous offering and holds this one (FB-036)', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex:   14,
+      bankrollCents:        2_000_000,
+      status:               'POINT_ACTIVE',
+      phase:                'POINT_ACTIVE',
+      currentPoint:         6,
+      bets:                 PASS_ONLY(166_500),
+      crewSlots:            [ACE, null, null, null, null],
+      pendingAdditiveCents: 100_000,
+    });
+
+    // 1+2 = 3 → blank in the point phase; Ace fires on the 1 (400_000¢ held).
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(166_500), 1, 2);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const roll = body['roll'] as Record<string, unknown>;
+    expect(roll['escrow']).toEqual({ heldCents: 400_000, releasedCents: 100_000, seizedCents: 0 });
+    expect((body['run'] as Record<string, unknown>)['pendingAdditiveCents']).toBe(400_000);
   });
 
   it('Emissary: a seven-out evaporates ALL escrow, including bonuses earned on that roll', async () => {

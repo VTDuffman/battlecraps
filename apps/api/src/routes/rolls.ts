@@ -161,6 +161,17 @@ interface BossCutPayload {
   paidOff: boolean;
 }
 
+/**
+ * FB-036: crew-bonus escrow this roll (The Hierophant; The Emissary later).
+ * heldCents — what's held after this roll; releasedCents — paid to the bankroll
+ * from escrow this roll; seizedCents — taken this roll (tribute / evaporation).
+ */
+interface EscrowPayload {
+  heldCents:     number;
+  releasedCents: number;
+  seizedCents:   number;
+}
+
 interface WsTurnSettledPayload {
   runId:            string;
   dice:             [number, number];
@@ -256,6 +267,8 @@ interface WsTurnSettledPayload {
    * Executive at rating 4, winning roll). Omitted when 0.
    */
   exceptionalBonusCents?: number;
+  /** FB-036: crew-bonus escrow facts (escrow fights only). */
+  escrow?: EscrowPayload;
 }
 
 // ---------------------------------------------------------------------------
@@ -912,7 +925,8 @@ async function rollHandler(
 
   // Build the QA receipt with per-crew attribution and boss deduction breakdown.
   const bossDeductionAmount = rawPayout - payout;
-  const tributeAmount = newBankroll - tributedBankroll;
+  // FB-036: the Hierophant's real tribute — the part of the escrow seized on a 7-out.
+  const tributeAmount = isHierophantEscrow ? escrowOnTable - escrowRelease : 0;
   const bossDeductions: Array<{ amount: number; source: string; label: string }> = [];
   if (bossDeductionAmount > 0 && bossMarkerConfig?.boss) {
     bossDeductions.push({ amount: bossDeductionAmount, source: bossMarkerConfig.boss.name, label: 'extortion fee' });
@@ -968,6 +982,14 @@ async function rollHandler(
 
   const bossCutPayload: BossCutPayload | undefined = payoffCents !== null
     ? { amount: cutThisRoll, total: newBossProgress, payoff: payoffCents, paidOff: payoffReached && hitMarker }
+    : undefined;
+
+  const escrowPayload: EscrowPayload | undefined = (isHierophantEscrow || isTransmissionDelay)
+    ? {
+        heldCents:     pendingAdditiveToPersist,
+        releasedCents: escrowRelease + escrowPaidOnClear,
+        seizedCents:   escrowOnTable - escrowRelease,
+      }
     : undefined;
 
   // The persisted bossPointHits for this roll.
@@ -1190,6 +1212,7 @@ async function rollHandler(
       : user.highestMarkerReached,
     ...(finalContext.flags.clockExpired && { clockExpired: true }),
     ...(bossCutPayload !== undefined && { bossCut: bossCutPayload }),
+    ...(escrowPayload !== undefined && { escrow: escrowPayload }),
     ...(isDisableCrewBoss && { charmedCrewSlot: persistedBossPointHits }),
     ...(charmedWouldHaveFired && { charmFired: true }),
     ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
@@ -1234,6 +1257,7 @@ async function rollHandler(
       ...(finalContext.flags.crapsOutBlocked && { crapsOutBlocked: true as const }),
       ...(finalContext.flags.clockExpired && { clockExpired: true as const }),
       ...(bossCutPayload !== undefined && { bossCut: bossCutPayload }),
+      ...(escrowPayload !== undefined && { escrow: escrowPayload }),
       ...(removedSlotIndex !== null && { removedCrewSlot: removedSlotIndex }),
     },
   });

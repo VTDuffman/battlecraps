@@ -75,6 +75,7 @@ interface RunStateData {
   bossPointHits?:        number;
   consecutivePointHits?: number;
   bossProgressCents?:    number;
+  pendingAdditiveCents?: number;
 }
 
 interface CreateRunResponse {
@@ -252,6 +253,7 @@ const AuthenticatedApp: React.FC = () => {
             ...(data.bossPointHits !== undefined && { bossPointHits: data.bossPointHits }),
             ...(data.consecutivePointHits !== undefined && { consecutivePointHits: data.consecutivePointHits }),
             ...(data.bossProgressCents !== undefined && { bossProgressCents: data.bossProgressCents }),
+            ...(data.pendingAdditiveCents !== undefined && { escrowHeldCents: data.pendingAdditiveCents }),
           });
           setLoading(false);
           return;

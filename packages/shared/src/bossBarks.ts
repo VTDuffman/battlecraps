@@ -33,7 +33,12 @@ export const EVENT_BARK_CHANCE: Readonly<Partial<Record<BossBarkTrigger, number>
   bonusPaid:  0.5,
   ratingUp:   0.4,
   ratingDown: 0.4,
+  bigOffering:    0.5,
+  escrowReleased: 0.3,
 };
+
+/** The Hierophant: a held escrow at least this share of the marker target is a "big offering". */
+export const BIG_OFFERING_SHARE = 0.10;
 
 export interface BossBarkInput {
   /** Marker the roll was played at (before any advance). */
@@ -62,6 +67,9 @@ export interface BossBarkInput {
   ratingAfter?:  number | null;
   /** The Executive: the +15% Exceptional bonus paid this roll (cents). */
   exceptionalBonusCents?: number;
+  /** The Hierophant: escrow before (held going in) and this roll's escrow facts. */
+  escrowBeforeCents?: number;
+  escrow?: { heldCents: number; releasedCents: number; seizedCents: number };
   /** Payoff fights: Cut before and after this roll, the Payoff, and whether it was reached. */
   cut?:          { before: number; after: number; payoff: number; paidOff: boolean };
   /** A bark is still showing — skip chance-based barks. */
@@ -132,6 +140,19 @@ export function deriveBossBarkEvents(input: BossBarkInput): BossBarkTrigger[] {
       else if (moved && after === 0) events.push('finalWarning');
       if ((input.exceptionalBonusCents ?? 0) > 0) events.push('bonusPaid');
       if (moved && after > 0 && after < 4) events.push(after > before ? 'ratingUp' : 'ratingDown');
+      break;
+    }
+
+    // The Hierophant: the offering bowl. A seizure always speaks; a newly big
+    // offering and a release sometimes do.
+    case 'TRIBUTE': {
+      const e = input.escrow;
+      if (!e) break;
+      if (e.seizedCents > 0) events.push('tributeSeized');
+      const target = GAUNTLET[input.markerIndex]?.targetCents ?? 0;
+      const big    = target * BIG_OFFERING_SHARE;
+      if (target > 0 && e.heldCents >= big && (input.escrowBeforeCents ?? 0) < big) events.push('bigOffering');
+      if (e.releasedCents > 0) events.push('escrowReleased');
       break;
     }
 

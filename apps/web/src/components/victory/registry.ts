@@ -5,7 +5,7 @@
 // Maps config.ts `victoryCinematic.id` → component. To give another boss a win
 // moment: add an id to BossVictoryCinematicId (shared config.ts), set it on the
 // boss, build a component here that calls onFinish() when done, and keep it
-// within the store's VICTORY_HOLD_MS (the celebration waits that long).
+// within its entry in the store's VICTORY_HOLD_MS_BY_ID (the celebration waits that long).
 // =============================================================================
 
 import type React from 'react';

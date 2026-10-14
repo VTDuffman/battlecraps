@@ -36,7 +36,7 @@
 
 🛑 **Gate:** beat Le Prix locally.
 
---- Implemented locally (2026-10-13): rose thrown from the upper left (1.4 s, lazy spin, bounce, settles at −28°), six CSS petals pop off on landing, `playHarpFlourish()` (two-octave sweep + rolled C-major chord) at 600 ms, her line in Georgia italic at 1.8 s, fade 3.9 s, finish 4.2 s (within VICTORY_HOLD_MS 4.9 s). Reduced motion: rose fades in, no petals. ---
+--- Implemented locally (2026-10-13): rose thrown from the upper left (1.4 s, lazy spin, bounce, settles at −28°), six CSS petals pop off on landing, `playHarpFlourish()` (two-octave sweep + rolled C-major chord) at 600 ms, her line in Georgia italic. **Playtest: "more of everything"** — rose now ~2× (clamp 120–180px), 2.1 s throw, pink bloom on landing, 16-petal spiral burst + 22-petal shower, longer harp (shimmer + second chord); 5.7 s, with a per-cinematic hold (`VICTORY_HOLD_MS_BY_ID`, THE_ROSE 6.1 s; Sarge unchanged at 4.9 s). Reduced motion: rose fades in, no petals. ---
 
 ## Phase 4: She takes the crew (defeat)
 1. `BossDefeatCinematicId` += `SHE_TAKES_THE_CREW`; Le Prix `defeatCinematic`.

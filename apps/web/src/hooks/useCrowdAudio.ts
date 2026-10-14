@@ -668,7 +668,7 @@ function playHarpGlissandoSting(ctx: AudioContext, dest: AudioNode): void {
 
 /**
  * FB-034: the rose — a harp flourish. A quick rising sweep over two octaves,
- * then a slow rolled C-major chord that rings out (≈2.5 s).
+ * a rolled C-major chord, a falling high shimmer, and the chord again (≈3.5 s).
  */
 function playHarpFlourishSting(ctx: AudioContext, dest: AudioNode): void {
   const t0 = ctx.currentTime + 0.01;
@@ -678,9 +678,16 @@ function playHarpFlourishSting(ctx: AudioContext, dest: AudioNode): void {
   sweep.forEach((freq, i) => {
     pluckHarpString(ctx, dest, freq, t0 + 0.42 * Math.pow(i / (sweep.length - 1), 1.2), 0.055);
   });
-  // Rolled chord: C4 G4 C5 E5 G5 C6, unhurried.
+  // Rolled chord: C4 G4 C5 E5 G5 C6, unhurried — lands with the rose.
   [261.63, 392, 523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
     pluckHarpString(ctx, dest, freq, t0 + 0.62 + i * 0.07, 0.08 - i * 0.008);
+  });
+  // Petals falling: a slow, high, descending shimmer, then the chord again, softer.
+  [2093, 1760, 1567.98, 1318.51, 1174.66, 1046.5].forEach((freq, i) => {
+    pluckHarpString(ctx, dest, freq, t0 + 1.35 + i * 0.16, 0.03);
+  });
+  [261.63, 392, 523.25, 659.25, 783.99].forEach((freq, i) => {
+    pluckHarpString(ctx, dest, freq, t0 + 2.45 + i * 0.09, 0.05 - i * 0.006);
   });
 }
 

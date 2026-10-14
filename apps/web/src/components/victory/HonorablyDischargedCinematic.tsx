@@ -10,7 +10,7 @@
 //
 // Timeline (ms): 0 certificate slides up (480) → 1300 stamp comes down →
 // 1520 impact (thud, shake) → 1750 bugle → 2300 line → 4300 fade → 4600 onFinish.
-// Runs inside the store's celebration hold (VICTORY_HOLD_MS).
+// Runs inside the store's celebration hold (VICTORY_HOLD_MS_BY_ID).
 // =============================================================================
 
 import React, { useEffect, useState } from 'react';

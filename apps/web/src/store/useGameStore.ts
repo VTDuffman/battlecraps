@@ -1221,7 +1221,11 @@ function buildSlotIds(n: number): string[] {
  * first. 0 when the Payoff wasn't just reached.
  */
 const PAYOFF_HOLD_MS = 2600;   // FB-032: PAID IN FULL stamp (1.6s) + a beat
-const VICTORY_HOLD_MS = 4900;  // FB-033: boss victory cinematic (~4.6s) + a beat
+/** Celebration hold per boss victory cinematic: its length + a beat. */
+const VICTORY_HOLD_MS_BY_ID: Readonly<Record<BossVictoryCinematicId, number>> = {
+  HONORABLY_DISCHARGED: 4900,  // FB-033: Sarge (~4.6s)
+  THE_ROSE:             6100,  // FB-034: Mme. Le Prix (~5.7s)
+};
 
 /**
  * Delay for a celebration hand-off timer: its usual delay, or longer if a
@@ -2187,7 +2191,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       ? { key: settleNow, id: victoryCinematic.id, line: victoryCinematic.line, markerIndex: oldMarkerIndex, preview: false }
       : null;
     const celebrationHoldUntil =
-      pendingVictory !== null       ? settleNow + VICTORY_HOLD_MS
+      pendingVictory !== null       ? settleNow + VICTORY_HOLD_MS_BY_ID[pendingVictory.id]
       : p.bossCut?.paidOff === true ? settleNow + PAYOFF_HOLD_MS
       : null;
 

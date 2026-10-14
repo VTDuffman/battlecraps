@@ -626,6 +626,36 @@ function playDogTagsJingleSting(ctx: AudioContext, dest: AudioNode): void {
   chain.stop(t0 + 0.27);
 }
 
+/** One harp string pluck: triangle body + soft octave shimmer, long decay. */
+function pluckHarpString(ctx: AudioContext, dest: AudioNode, freq: number, start: number, peak: number): void {
+  [[1, 'triangle', peak], [2, 'sine', peak * 0.25]].forEach(([ratio, type, gain]) => {
+    const osc = ctx.createOscillator();
+    osc.type = type as OscillatorType;
+    osc.frequency.value = freq * (ratio as number);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, start);
+    env.gain.exponentialRampToValueAtTime(gain as number, start + 0.006);
+    env.gain.exponentialRampToValueAtTime(0.0001, start + 1.1);
+    osc.connect(env);
+    env.connect(dest);
+    osc.start(start);
+    osc.stop(start + 1.15);
+  });
+}
+
+/** FB-034: harp glissando — a quick rising C-major sweep (≈0.7s) as the heart flies. */
+function playHarpGlissandoSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  // C5 → C7, C major.
+  const scale = [523.25, 587.33, 659.25, 698.46, 783.99, 880, 987.77,
+                 1046.5, 1174.66, 1318.51, 1396.91, 1567.98, 1760, 1975.53, 2093];
+  scale.forEach((freq, i) => {
+    // Accelerating sweep, softening as it climbs.
+    const start = t0 + 0.6 * Math.pow(i / (scale.length - 1), 1.3);
+    pluckHarpString(ctx, dest, freq, start, 0.07 - i * 0.003);
+  });
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -703,6 +733,11 @@ export function playDoorRattle(): void {
 /** FB-032 defeat: the dock door slams shut. */
 export function playDoorClang(): void {
   playStandalone(playDoorClangSting);
+}
+
+/** FB-034: Mme. Le Prix's heart flies to a new crew member. */
+export function playHarpGlissando(): void {
+  playStandalone(playHarpGlissandoSting);
 }
 
 // ---------------------------------------------------------------------------

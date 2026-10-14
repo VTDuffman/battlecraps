@@ -355,6 +355,14 @@ export interface GameState {
    */
   charmingSlot: number | null;
 
+  /**
+   * FB-034: the heart's flight. Set whenever the ❤️ settles on a NEW slot —
+   * CharmFlight arcs a heart from `from` (null = her name only) via her name
+   * to `to`, and the destination portrait holds its ❤️ until it lands.
+   * Cosmetic only; cleared by finishCharmFlight() (or a newer flight).
+   */
+  charmFlight: { from: number | null; to: number; key: number } | null;
+
   // ── Crew ──────────────────────────────────────────────────────────────────
   crewSlots: StoredCrewSlots;
 
@@ -933,6 +941,9 @@ export interface GameActions {
    */
   clearCharmingSlot(): void;
 
+  /** CharmFlight finished (or was skipped) — show the ❤️ on its portrait. */
+  finishCharmFlight(): void;
+
   /**
    * Submit the current bets and trigger a dice roll.
    *
@@ -1263,6 +1274,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   charmedCrewSlot:     null,
   pendingBossEntryCharm: null,
   charmingSlot:        null,
+  charmFlight:         null,
   bets:                DEFAULT_BETS,
   committedBets:       DEFAULT_BETS,
   activeChip:          500,  // $5 default
@@ -1413,6 +1425,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       charmedCrewSlot:       null,
       pendingBossEntryCharm: null,
       charmingSlot:          null,
+      charmFlight:           null,
       payoutPops:            null,
       _popsKey:             0,
       pointRingType:        null,
@@ -1667,6 +1680,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       charmedCrewSlot:       null,
       pendingBossEntryCharm: null,
       charmingSlot:          null,
+      charmFlight:           null,
       payoutPops:            null,
       _popsKey:              0,
       _reRollKey:            0,
@@ -1872,8 +1886,18 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     // Called by TableBoard's CrewPortrait onAnimationEnd for the charming slot.
     // Moves charmingSlot → charmedCrewSlot so the ❤️ icon settles on the crew member
     // AFTER the bark animation completes (not during).
-    const { charmingSlot } = get();
-    set({ charmedCrewSlot: charmingSlot, charmingSlot: null });
+    const { charmingSlot, charmedCrewSlot, charmFlight } = get();
+    set({
+      charmedCrewSlot: charmingSlot,
+      charmingSlot:    null,
+      ...(charmingSlot !== null && charmingSlot !== charmedCrewSlot && {
+        charmFlight: { from: charmedCrewSlot, to: charmingSlot, key: (charmFlight?.key ?? 0) + 1 },
+      }),
+    });
+  },
+
+  finishCharmFlight() {
+    set({ charmFlight: null });
   },
 
   dequeueEvent() {
@@ -1902,6 +1926,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       isAutoCollecting,
       charmedCrewSlot:  oldCharmedSlot,
       charmingSlot:     oldCharmingSlot,
+      charmFlight:      oldCharmFlight,
       executiveBark:    oldExecutiveBark,
     } = get();
     if (!p) return;
@@ -2008,6 +2033,14 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       isEndingBossFight ? null
       : charmFired      ? p.charmedCrewSlot!
       : oldCharmingSlot;
+
+    // FB-034: the heart flies when it settles on a new slot without a bark
+    // (charmFired settles via clearCharmingSlot after "OOH LA LA!").
+    const newCharmFlight = isEndingBossFight
+      ? null
+      : !charmFired && newCharmedSlot !== null && newCharmedSlot !== oldCharmedSlot
+        ? { from: oldCharmedSlot, to: newCharmedSlot, key: (oldCharmFlight?.key ?? 0) + 1 }
+        : oldCharmFlight;
 
     // Lose results always take priority. Win fires for canonical win results AND
     // any roll where the player nets money (e.g. NO_RESOLUTION with a hardway
@@ -2234,6 +2267,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _hypeKey:             hypeSource !== null ? _hypeKey + 1 : _hypeKey,
       charmedCrewSlot:       newCharmedSlot,
       charmingSlot:          newCharmingSlot,
+      charmFlight:           newCharmFlight,
       _charmKey:             charmFired ? _charmKey + 1 : _charmKey,
       executiveRating:       newExecutiveRating,
       executiveBark:         newExecutiveBark,
@@ -2686,6 +2720,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // handles the normal case) and charmingSlot (in case animation was mid-flight).
       charmedCrewSlot: null,
       charmingSlot:    null,
+      charmFlight:     null,
       // Stash the entry charm for Mme. Le Prix — clearTransition('BOSS_ENTRY') will
       // reveal it (set charmedCrewSlot + fire sting) once the boss-intro cinematic ends.
       ...(data.bossEntryCharmSlot !== undefined && {

@@ -240,6 +240,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   const isRolling          = useGameStore((s) => s.isRolling);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
   const charmedCrewSlot    = useGameStore((s) => s.charmedCrewSlot);
+  const charmFlightTo      = useGameStore((s) => s.charmFlight?.to ?? null);
   const markerTargetCents  = MARKER_TARGETS[currentMarkerIndex] ?? 5000;
 
   // ── Emoji pulse tier — scales with hype, suppressed while triggering/cooldown
@@ -324,6 +325,8 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   const onCooldown = cooldownState > 0;
   /** True while this slot is enchanted by Mme. Le Prix (DISABLE_CREW boss). */
   const isCharmed  = !isEmpty && charmedCrewSlot === slotIndex;
+  /** FB-034: the heart is still flying here — hold the ❤️ until it lands. */
+  const heartArriving = isCharmed && charmFlightTo === slotIndex;
 
   // ── Drag-and-drop sortable ─────────────────────────────────────────────────
   const {
@@ -431,7 +434,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
           isEmpty
             ? 'border-felt-light/40 bg-felt-dark/60'
             : isCharmed
-              ? 'border-pink-400/90 bg-felt-dark shadow-[0_0_8px_2px_rgba(244,114,182,0.35)]'
+              ? 'border-pink-400/90 bg-felt-dark'
               : 'border-gold/60 bg-felt-dark',
 
           // Holding: red border + soft glow overrides gold
@@ -444,8 +447,13 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
             ? 'animate-portrait-flash border-white'
             : '',
 
-          // Ready: slow gold border pulse (suppressed while holding)
-          !isEmpty && !onCooldown && !isTriggering && !holding
+          // Charmed: pink glow pulse (FB-034) in place of the gold ready-pulse
+          isCharmed && !isTriggering && !holding
+            ? 'animate-charm-glow'
+            : '',
+
+          // Ready: slow gold border pulse (suppressed while holding / charmed)
+          !isEmpty && !onCooldown && !isTriggering && !holding && !isCharmed
             ? 'animate-portrait-ready'
             : '',
 
@@ -471,7 +479,9 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
                 animationDelay:  emojiPulseClass ? emojiDelay : undefined,
               }}
             >
-              {isCharmed ? '❤️' : (crewId !== null ? (CREW_EMOJI[crewId] ?? '?') : '?')}
+              {isCharmed && !heartArriving
+                ? <span className="animate-charm-heart-pop">❤️</span>
+                : (crewId !== null ? (CREW_EMOJI[crewId] ?? '?') : '?')}
             </span>
           </div>
         )}

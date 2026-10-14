@@ -97,6 +97,7 @@ export const BossRoomHeader: React.FC = () => {
             <div
               className="font-pixel text-[13.2px] leading-tight truncate"
               style={{ color: theme.bossTextColor }}
+              data-boss-name-anchor=""
             >
               {boss.name.toUpperCase()}
             </div>

@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-034 Mme. Le Prix Boss Moments
 
 **Design doc:** `docs/design/fb-034-le-prix-boss-moments-design.md`
-**Status:** Phase 1 done locally (not pushed).
+**Status:** Phases 1–2 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.**
 
@@ -24,6 +24,8 @@
 4. Reduced-motion cross-fade.
 
 🛑 **Gate:** does watching her choose feel good?
+
+--- Implemented locally (2026-10-13): store `charmFlight {from,to,key}` set when the ❤️ settles on a new slot (turn:settled, or clearCharmingSlot after OOH LA LA / the entry charm); the destination portrait holds its ❤️ until `finishCharmFlight()` (3s safety net), then pops it in. `CharmFlight` samples quadratic arcs old portrait → `[data-boss-name-anchor]` → new portrait with a 💗 trail. The pink `charm-glow` pulse replaces the gold ready-pulse on the charmed portrait. ---
 
 ## Phase 3: The rose (victory)
 1. `BossVictoryCinematicId` += `THE_ROSE`; Le Prix `victoryCinematic`.

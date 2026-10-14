@@ -49,6 +49,7 @@ import { BossRoomHeader }  from './BossRoomHeader.js';
 import { CashRegister }    from './CashRegister.js';
 import { DefeatCinematicHost } from './defeat/DefeatCinematicHost.js';
 import { VictoryCinematicHost } from './victory/VictoryCinematicHost.js';
+import { CharmFlight } from './CharmFlight.js';
 import { DiceZone }      from './DiceZone.js';
 import { CrewPortrait }  from './CrewPortrait.js';
 import { RollLog }       from './RollLog.js';
@@ -479,6 +480,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
 
       {/* ── Boss victory cinematic (FB-033) — plays during the celebration hold ── */}
       <VictoryCinematicHost />
+      <CharmFlight />
 
       {/* ── Feedback modal ────────────────────────────────────────────────── */}
       <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />

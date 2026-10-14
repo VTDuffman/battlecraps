@@ -19,6 +19,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { playBellToll, playCandleSnuff, playChoirChord, playDoorsOpen } from '../../hooks/useCrowdAudio.js';
 import type { VictoryCinematicProps } from './registry.js';
+import { HierophantEye } from '../cinematics/HierophantEye.js';
 
 const CANDLES_AT = 300;
 const EYE_AT     = 500;
@@ -32,66 +33,6 @@ const FINISH_AT  = 8200;
 
 const CANDLE_COUNT = 12;
 const AMBER = '#f59e0b';
-
-/** The great eye — an SVG so its lids can actually close. */
-const Eye: React.FC<{ closed: boolean; reduceMotion: boolean }> = ({ closed, reduceMotion }) => {
-  const W = 260, H = 130;
-  const almond = `M 10 ${H / 2} Q ${W / 2} -${H * 0.55} ${W - 10} ${H / 2} Q ${W / 2} ${H * 1.55} 10 ${H / 2} Z`;
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: 'min(70vw, 300px)', overflow: 'visible' }} aria-hidden="true">
-      <defs>
-        <clipPath id="hiero-eye-clip"><path d={almond} /></clipPath>
-        <radialGradient id="hiero-iris" cx="50%" cy="45%" r="55%">
-          <stop offset="0%"  stopColor="#fde68a" />
-          <stop offset="45%" stopColor="#d97706" />
-          <stop offset="100%" stopColor="#451a03" />
-        </radialGradient>
-        <radialGradient id="hiero-white" cx="50%" cy="50%" r="60%">
-          <stop offset="0%" stopColor="#fdf4e3" />
-          <stop offset="100%" stopColor="#b9a58a" />
-        </radialGradient>
-      </defs>
-
-      {/* outer glow */}
-      <path d={almond} fill="none" stroke={AMBER} strokeWidth={3} style={{ filter: `drop-shadow(0 0 12px ${AMBER})` }} />
-
-      <g clipPath="url(#hiero-eye-clip)">
-        <rect x={0} y={-20} width={W} height={H + 40} fill="url(#hiero-white)" />
-        {/* the iris looks you over before the lids come down */}
-        <motion.g
-          initial={{ x: 0 }}
-          animate={reduceMotion ? { x: 0 } : { x: [0, -34, -34, 30, 30, 0] }}
-          transition={{ duration: 1.4, delay: 0.4, times: [0, 0.18, 0.42, 0.6, 0.85, 1], ease: 'easeInOut' }}
-        >
-          <circle cx={W / 2} cy={H / 2} r={40} fill="url(#hiero-iris)" />
-          <circle cx={W / 2} cy={H / 2} r={17} fill="#0c0a09" />
-          <circle cx={W / 2 + 8} cy={H / 2 - 9} r={5} fill="rgba(255,255,255,0.8)" />
-        </motion.g>
-        {/* lids */}
-        <motion.rect
-          x={0} width={W} height={H} fill="#2a0f2e"
-          initial={{ y: -H }}
-          animate={{ y: closed ? -H / 2 + 2 : -H }}
-          transition={{ duration: reduceMotion ? 0.3 : 0.9, ease: [0.45, 0, 0.55, 1] }}
-        />
-        <motion.rect
-          x={0} width={W} height={H} fill="#24092a"
-          initial={{ y: H }}
-          animate={{ y: closed ? H / 2 - 2 : H }}
-          transition={{ duration: reduceMotion ? 0.3 : 0.9, ease: [0.45, 0, 0.55, 1] }}
-        />
-      </g>
-
-      {/* the closed seam + lashes */}
-      <motion.path
-        d={`M 14 ${H / 2} Q ${W / 2} ${H / 2 + 18} ${W - 14} ${H / 2}`}
-        fill="none" stroke="#f59e0b" strokeWidth={2.5} strokeLinecap="round"
-        initial={{ opacity: 0 }} animate={{ opacity: closed ? 0.9 : 0 }}
-        transition={{ duration: 0.4, delay: closed ? 0.7 : 0 }}
-      />
-    </svg>
-  );
-};
 
 export const TheEyeClosesCinematic: React.FC<VictoryCinematicProps> = ({ line, onFinish }) => {
   const reduceMotion = useReducedMotion() === true;
@@ -207,7 +148,7 @@ export const TheEyeClosesCinematic: React.FC<VictoryCinematicProps> = ({ line, o
             animate={{ opacity: 1, scaleY: 1 }}
             transition={{ duration: reduceMotion ? 0.3 : 0.6, ease: 'easeOut' }}
           >
-            <Eye closed={closed} reduceMotion={reduceMotion} />
+            <HierophantEye open={!closed} initiallyOpen lookAround reduceMotion={reduceMotion} />
           </motion.div>
         )}
       </motion.div>

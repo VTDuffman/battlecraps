@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-036 The Hierophant Boss Moments
 
 **Design doc:** `docs/design/fb-036-hierophant-boss-moments-design.md`
-**Status:** Phases 1–3 done locally (not pushed).
+**Status:** Phases 1–4 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -44,6 +44,8 @@
 2. **`TheOrderCollectsCinematic`:** hooded silhouettes close in, bankroll drains into the bowl as coins, the eye opens and glows, three bell tolls, candles snuff to black, line.
 
 🛑 **Gate:** lose to the Hierophant locally.
+
+--- Implemented locally (2026-10-14): four hooded silhouettes (CSS) close in from the edges; the bowl in a row of 8 candles; YOUR BANKROLL counts down to $0 as 18 coins stream up into the glowing bowl (six coin clinks); the shut eye opens and burns (pupil narrows, orange glow) with a minor choir; three bell tolls; candles out one by one; fade to black; "The order always collects." in amber (≈2.8 s to read). ~8.3 s, inside the 9 s net. Eye shared as `cinematics/HierophantEye.tsx` (win cinematic refactored onto it). ---
 
 ## Phase 5: The Covenant → The Order Protects (FB-029)
 1. **DB:** `runs.covenant_spent_marker smallint NULL` (startup `ADD COLUMN IF NOT EXISTS` + Drizzle migration).

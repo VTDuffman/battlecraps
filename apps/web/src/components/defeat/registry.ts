@@ -13,6 +13,7 @@ import { DockClosedCinematic } from './DockClosedCinematic.js';
 import { DishonorableDischargeCinematic } from './DishonorableDischargeCinematic.js';
 import { SheTakesTheCrewCinematic } from './SheTakesTheCrewCinematic.js';
 import { TerminatedCinematic } from './TerminatedCinematic.js';
+import { TheOrderCollectsCinematic } from './TheOrderCollectsCinematic.js';
 
 export interface DefeatCinematicProps {
   /** The boss's parting line (config.ts defeatCinematic.line). */
@@ -30,4 +31,5 @@ export const DEFEAT_CINEMATICS: Record<BossDefeatCinematicId, React.ComponentTyp
   DISHONORABLE_DISCHARGE: DishonorableDischargeCinematic,
   SHE_TAKES_THE_CREW:     SheTakesTheCrewCinematic,
   TERMINATED:             TerminatedCinematic,
+  THE_ORDER_COLLECTS:     TheOrderCollectsCinematic,
 };

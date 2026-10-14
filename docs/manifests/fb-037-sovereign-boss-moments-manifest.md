@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-037 The Sovereign Boss Moments
 
 **Design doc:** `docs/design/fb-037-sovereign-boss-moments-design.md`
-**Status:** Phases 1–4 done locally (not pushed).
+**Status:** Phases 1–5 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -45,6 +45,8 @@
 `THE_WAVE` defeat cinematic.
 
 🛑 **Gate:** lose to the Sovereign locally.
+
+--- Implemented locally (2026-10-14): a dark wall of water rises (0.9 s) and breaks — crash, screen jolt, foam splash — and does NOT drain; under water (rumble, bubbles) your real crew stand-ins (railCrew) and seven 💵 sink and turn into the deep (`playUndertow()`), the light fades to near-black, "Your run will not outlast this tide." in pale cyan. ~8.1 s, under the 9 s net. `TideWater` stands aside when `pendingDefeat` is set (no double crash). Win cinematic also floods in first (playtest). ---
 
 ## Phase 6: Dev Mode + docs
 Presets: "Sovereign — Dead Calm, point on", "Sovereign — Undertow, point on", "Sovereign — High Tide, last two shooters", "Sovereign — one win from the crown". Docs: boss_framework, CLAUDE.md, backlog.

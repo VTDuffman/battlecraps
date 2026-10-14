@@ -140,6 +140,8 @@ export const TideWater: React.FC = () => {
 
   useEffect(() => {
     if (!fresh) return;
+    // A run-ending roll belongs to his defeat cinematic (THE WAVE) — stand aside.
+    if (useGameStore.getState().pendingDefeat !== null) return;
     let kind: 'undertow' | 'wave' | null = null;
     if ((fresh.waveShooters ?? 0) > 0) { kind = 'wave'; playWaveCrash(); }
     else if ((fresh.undertowCents ?? 0) > 0) { kind = 'undertow'; playWaveCrash(); window.setTimeout(playUndertow, FILL_S * CREST * 1000); }

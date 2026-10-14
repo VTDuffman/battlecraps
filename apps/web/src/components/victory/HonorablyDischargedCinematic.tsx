@@ -62,30 +62,31 @@ export const HonorablyDischargedCinematic: React.FC<VictoryCinematicProps> = ({ 
             This certifies that <strong>THE SHOOTER</strong> beat the clock
             in Sarge&apos;s hall and is hereby released from duty.
           </p>
-          <div className="mt-2 flex w-full items-end justify-between font-mono text-[10px]" style={{ color: '#6b5a36' }}>
+
+          {/* Blank space reserved for the stamp, so it never covers the text */}
+          <div className="relative flex h-24 w-full items-center justify-center">
+            {stamped && (
+              <div
+                className="font-pixel px-3 py-2 tracking-widest whitespace-nowrap animate-honor-stamp"
+                style={{
+                  fontSize:     'clamp(15px, 4.6vw, 22px)',
+                  color:        STAMP_GREEN,
+                  border:       `4px double ${STAMP_GREEN}`,
+                  borderRadius: '6px',
+                  background:   'rgba(240,253,244,0.35)',
+                  mixBlendMode: 'multiply',
+                }}
+              >
+                HONORABLY DISCHARGED
+              </div>
+            )}
+          </div>
+
+          <div className="flex w-full items-end justify-between border-t pt-1 font-mono text-[10px]" style={{ color: '#6b5a36', borderColor: '#8a6d2f55' }}>
             <span>— SARGE, Pit Boss</span>
             <span>Floor 2</span>
           </div>
         </div>
-
-        {/* The stamp */}
-        {stamped && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div
-              className="font-pixel px-3 py-2 tracking-widest animate-honor-stamp"
-              style={{
-                fontSize:     'clamp(16px, 5vw, 24px)',
-                color:        STAMP_GREEN,
-                border:       `4px double ${STAMP_GREEN}`,
-                borderRadius: '6px',
-                background:   'rgba(240,253,244,0.35)',
-                mixBlendMode: 'multiply',
-              }}
-            >
-              HONORABLY DISCHARGED
-            </div>
-          </div>
-        )}
 
         {/* Sarge's line */}
         {showLine && (

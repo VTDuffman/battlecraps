@@ -1649,7 +1649,7 @@ A developer-only mode, bound to Mike's Clerk login via a server-side allowlist, 
 
 **Type:** Game design
 **Area:** `packages/shared/src/config.ts` (Floor 5 boss comp), `apps/api/src/routes/rolls.ts`, `apps/web/src/components/CompCard.tsx`
-**Status:** Open — design needed
+**Status:** Designed (2026-10-14) — folded into FB-036 Phase 5 as **The Order Protects** (once per marker, the first Seven Out doesn't cost a shooter)
 **Source:** Documentation audit, 2026-10-13
 
 ### Problem
@@ -1879,3 +1879,17 @@ Soft, purring barks keyed to her charm; the ❤️ visibly flies from the old cr
 ### Solution
 
 Bring the boss whose Pink Slip inspired the pattern up to its current scale: migrate his corporate-speak barks to the shared, event-driven bark system (promoted / final warning / bonus paid always or often; ordinary rating moves sometimes); a real **performance meter** front and center; **the nameplate swap** as his win moment; and **TERMINATED** — the Pink Slip rebuilt as a defeat cinematic with your crew packed into a banker's box — for every loss in his fight. Mechanic unchanged.
+
+---
+
+## FB-036 — The Hierophant Boss Moments (boss pattern #5)
+
+**Type:** Boss presentation (barks, offering bowl, victory + defeat cinematics) + comp redesign (FB-029)
+**Area:** `apps/api/src/routes/rolls.ts`, `apps/api/src/db/schema.ts`, `packages/shared/src/config.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`
+**Status:** Designed (2026-10-14); pending implementation
+**Design:** `docs/design/fb-036-hierophant-boss-moments-design.md`
+**Manifest:** `docs/manifests/fb-036-hierophant-boss-moments-manifest.md`
+
+### Solution
+
+His escrow is invisible today. Make it physical with an **offering bowl** (held / released / seized, with candles, bell and choir), give him liturgical event barks, **The Eye Closes** as his win moment and **The Order Collects** as his loss moment. Redesign his dead comp, The Covenant, as **The Order Protects**: once per marker, your first Seven Out doesn't cost a shooter.

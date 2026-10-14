@@ -1957,3 +1957,18 @@ The receipt was built from the context before the escrow step, so crew cash bonu
 
 **Fix applied:**
 `buildRollReceipt` takes an `escrow` option. In escrow fights crew lines read "<crew>: $X → the offering" (info), "Released from the offering: $X" and "The Hierophant: $X tribute" get their own lines, and Net counts only what the escrow actually paid. Integration tests assert the lines and Net.
+
+---
+
+## KI-084 — Lefty saved the shooter even when his re-roll was another 7
+
+**Area:** `apps/api/src/routes/rolls.ts` (`computeNextState`, SEVEN_OUT)
+**Severity:** Medium (balance — Lefty was a guaranteed once-per-shooter save, not the second chance his copy describes)
+**Status:** Fixed (2026-10-14)
+**Source:** Found while designing The Covenant (FB-036)
+
+**Issue:**
+Lefty sets `flags.sevenOutBlocked` whenever he re-rolls — even when the re-roll is another 7 and the Seven-Out stands. The server read that flag as "shooter saved" (`shooterLost = !sevenOutBlocked`), so a failed re-roll still kept the shooter (bets lost, Hype reset). His copy says "if the new roll isn't a 7, the shooter lives".
+
+**Fix applied:**
+A shooter survives a Seven-Out only if Lefty's re-roll escapes the 7 (then the result isn't SEVEN_OUT at all) or The Covenant saves it (FB-036). The flag now only drives his animation. Confirmed with the designer that this is the intended Lefty. Integration tests: Lefty fails → shooter lost; Lefty fails → The Covenant catches it; Lefty succeeds → The Covenant is kept.

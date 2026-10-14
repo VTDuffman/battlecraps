@@ -954,8 +954,9 @@ async function rollHandler(
   }
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
-  // FB-036: The Covenant saves this shooter (a real Seven-Out Lefty didn't block).
-  const covenantSaved = covenantAvailable && viggedContext.rollResult === 'SEVEN_OUT' && !viggedContext.flags.sevenOutBlocked;
+  // FB-036: The Covenant saves this shooter when the roll is still a Seven-Out
+  // after the cascade — including when Lefty's re-roll was another 7.
+  const covenantSaved = covenantAvailable && viggedContext.rollResult === 'SEVEN_OUT';
   const nextState = computeNextState(run, viggedContext, postEscrowBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot, payoffReached, covenantSaved);
 
   // ── DISABLE_CREW: override bossPointHits with the newly selected charm slot ─
@@ -1543,12 +1544,15 @@ function computeNextState(
     // ── Seven-out — shooter life lost ──────────────────────────────────────
 
     case 'SEVEN_OUT': {
-      // Lefty's sevenOutBlocked (he re-rolls the dice) and The Covenant's
-      // once-per-marker save (FB-036) keep the shooter. Floor Walker's
-      // passLineProtected only saves the bet — the shooter still dies. Either
-      // way hype still resets and the point still clears.
+      // Reaching this case means the roll is STILL a Seven-Out after the
+      // cascade. Lefty saves a shooter only by re-rolling out of the 7 (then
+      // the result isn't SEVEN_OUT and we never get here); his sevenOutBlocked
+      // flag just marks that he tried — a re-roll that's another 7 doesn't save
+      // anyone (KI-084). Only The Covenant's once-per-marker save (FB-036) keeps
+      // the shooter here. Floor Walker's passLineProtected only saves the bet.
+      // Either way hype resets and the point clears.
 
-      const shooterLost = !flags.sevenOutBlocked && !covenantSaved;
+      const shooterLost = !covenantSaved;
       const newShooters = shooterLost ? run.shooters - 1 : run.shooters;
 
       let nextStatus: RunRow['status'];

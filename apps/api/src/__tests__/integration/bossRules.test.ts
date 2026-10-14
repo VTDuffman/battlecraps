@@ -29,6 +29,7 @@ import {
 } from '../helpers/testSetup.js';
 import type { Bets } from '@battlecraps/shared';
 import { getIO } from '../../lib/io.js';
+import { rollDice } from '../../lib/rng.js';
 
 const PASS_ONLY = (amt: number): Bets => ({
   passLine: amt,
@@ -851,6 +852,38 @@ describe('THE COVENANT — The Order Protects (FB-036)', () => {
     const r = body['run'] as Record<string, unknown>;
     expect(r['shooters']).toBe(1);
     expect(r['status']).not.toBe('GAME_OVER');
+  });
+
+  // KI-084: Lefty only saves a shooter by re-rolling OUT of the 7.
+  const LEFTY = { crewId: 1, cooldownState: 0 };
+
+  it('Lefty re-rolls another 7 and there is no Covenant — the shooter is lost', async () => {
+    vi.mocked(rollDice).mockReturnValueOnce([3, 4]);
+    const run = await sevenOutRun({ compPerkIds: [], crewSlots: [LEFTY, null, null, null, null] });
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(250_000), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect((body['roll'] as Record<string, unknown>)['rollResult']).toBe('SEVEN_OUT');
+    expect((body['run'] as Record<string, unknown>)['shooters']).toBe(2);
+  });
+
+  it('Lefty re-rolls another 7 — The Covenant catches it', async () => {
+    vi.mocked(rollDice).mockReturnValueOnce([3, 4]);
+    const run = await sevenOutRun({ crewSlots: [LEFTY, null, null, null, null] });
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(250_000), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect((body['run'] as Record<string, unknown>)['shooters']).toBe(3);
+    expect((body['run'] as Record<string, unknown>)['covenantSpentMarker']).toBe(15);
+    expect((body['roll'] as Record<string, unknown>)['covenantSaved']).toBe(true);
+  });
+
+  it('Lefty re-rolls out of the 7 — no Seven-Out, and The Covenant is kept for later', async () => {
+    // rollDice is pinned to [2, 3] (a blank) for this file.
+    const run = await sevenOutRun({ crewSlots: [LEFTY, null, null, null, null] });
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(250_000), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect((body['roll'] as Record<string, unknown>)['rollResult']).not.toBe('SEVEN_OUT');
+    expect((body['run'] as Record<string, unknown>)['shooters']).toBe(3);
+    expect((body['run'] as Record<string, unknown>)['covenantSpentMarker']).toBeNull();
   });
 
   it('does nothing without the comp', async () => {

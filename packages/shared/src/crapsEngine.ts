@@ -714,6 +714,21 @@ export function buildRollReceipt(
      *  Commander decay, or marker-cleared reset. Omit when hype carries forward. */
     resetNote?: string;
   },
+  /**
+   * FB-036: crew-bonus escrow fights (The Hierophant / The Emissary). Crew cash
+   * isn't paid on the roll it's earned, so the crew lines read as held, the
+   * escrow's actual payout and seizure get their own lines, and netDelta
+   * matches the real bankroll change.
+   */
+  escrow?: {
+    releasedCents: number;
+    seizedCents:   number;
+    /** e.g. "The offering" — "<label>: held" / "Released from <label>". */
+    label:         string;
+    /** e.g. "The Hierophant: $X tribute". */
+    seizedBy:      string;
+    seizeLabel:    string;
+  },
 ): RollReceipt {
   const { dice, diceTotal, isHardway, rollResult, activePoint, bets } = ctx;
   const lines: RollReceiptLine[] = [];
@@ -828,13 +843,25 @@ export function buildRollReceipt(
       if (event.contextDelta.additives !== undefined) {
         const delta = event.contextDelta.additives - runningAdditives;
         if (delta > 0) {
-          lines.push({ kind: 'win', text: `${event.crewName}: ${fmtCents(delta)}` });
+          lines.push(escrow
+            ? { kind: 'info', text: `${event.crewName}: ${fmtCents(delta)} → ${escrow.label.toLowerCase()}` }
+            : { kind: 'win', text: `${event.crewName}: ${fmtCents(delta)}` });
         }
         runningAdditives = event.contextDelta.additives;
       }
     }
   } else if (ctx.additives > 0) {
-    lines.push({ kind: 'win', text: `Crew Bonus: ${fmtCents(ctx.additives)}` });
+    lines.push(escrow
+      ? { kind: 'info', text: `Crew Bonus: ${fmtCents(ctx.additives)} → ${escrow.label.toLowerCase()}` }
+      : { kind: 'win', text: `Crew Bonus: ${fmtCents(ctx.additives)}` });
+  }
+
+  // ── Escrow payout / seizure (FB-036) ──────────────────────────────────────
+  if (escrow && escrow.releasedCents > 0) {
+    lines.push({ kind: 'win', text: `Released from ${escrow.label.toLowerCase()}: ${fmtCents(escrow.releasedCents)}` });
+  }
+  if (escrow && escrow.seizedCents > 0) {
+    lines.push({ kind: 'loss', text: `${escrow.seizedBy}: ${fmtCents(escrow.seizedCents)} ${escrow.seizeLabel}` });
   }
 
   // ── Boss deductions (extortion fee, tribute, etc.) ────────────────────────
@@ -932,9 +959,11 @@ export function buildRollReceipt(
   // settleTurn(ctx) = baseStakeReturned + amplifiedProfit (pre-boss-deduction),
   // so subtracting baseStakeReturned isolates the profit. Then subtract lost
   // stakes and the boss's cut to get the true signed net for this roll.
-  const amplifiedProfit = settleTurn(ctx) - ctx.baseStakeReturned;
+  // In an escrow fight crew cash isn't paid this roll — only what the escrow
+  // actually released is (the seizure is shown but was never paid out).
+  const amplifiedProfit = settleTurn(escrow ? { ...ctx, additives: 0 } : ctx) - ctx.baseStakeReturned;
   const totalBossDeductions = bossDeductions ? bossDeductions.reduce((sum, d) => sum + d.amount, 0) : 0;
-  const netDelta = amplifiedProfit - calcLostBetsThisRoll(ctx) - totalBossDeductions;
+  const netDelta = amplifiedProfit - calcLostBetsThisRoll(ctx) - totalBossDeductions + (escrow?.releasedCents ?? 0);
 
   return {
     timestamp: new Date().toISOString(),

@@ -936,14 +936,9 @@ async function rollHandler(
 
   // Build the QA receipt with per-crew attribution and boss deduction breakdown.
   const bossDeductionAmount = rawPayout - payout;
-  // FB-036: the Hierophant's real tribute — the part of the escrow seized on a 7-out.
-  const tributeAmount = isHierophantEscrow ? escrowSeized : 0;
   const bossDeductions: Array<{ amount: number; source: string; label: string }> = [];
   if (bossDeductionAmount > 0 && bossMarkerConfig?.boss) {
     bossDeductions.push({ amount: bossDeductionAmount, source: bossMarkerConfig.boss.name, label: 'extortion fee' });
-  }
-  if (tributeAmount > 0 && bossMarkerConfig?.boss) {
-    bossDeductions.push({ amount: tributeAmount, source: bossMarkerConfig.boss.name, label: 'tribute' });
   }
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
@@ -1047,6 +1042,16 @@ async function rollHandler(
     events,
     bossDeductions.length > 0 ? bossDeductions : undefined,
     { prevHype: run.hype, seededHype, resetNote: hypeResetNote },
+    // FB-036: escrow fights — crew cash goes to the escrow; show what it paid / lost.
+    escrowPayload !== undefined && bossMarkerConfig?.boss
+      ? {
+          releasedCents: escrowPayload.releasedCents,
+          seizedCents:   escrowPayload.seizedCents,
+          label:         isHierophantEscrow ? 'The offering' : 'The transmission',
+          seizedBy:      bossMarkerConfig.boss.name,
+          seizeLabel:    isHierophantEscrow ? 'tribute' : 'lost in transmission',
+        }
+      : undefined,
   );
 
   // ── CONVERGENCE: Targeted Demolition — persist the removed slot as null ───

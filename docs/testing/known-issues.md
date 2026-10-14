@@ -1942,3 +1942,18 @@ FB-025 says the new slot is filled at the post-boss pub, but `unlockedSlots` was
 
 **Fix applied:**
 Shared `getSlotsAfterBossComp(clearedMarkerIndex, unlockedSlots)` gives the slot count that includes the just-won comp. The recruit guard and the pub both use it; step 4b still persists it on exit. Works for runs already sitting in that pub. Tests: shared unit + recruit integration.
+
+---
+
+## KI-083 — Roll log counted escrowed crew cash as paid
+
+**Area:** `packages/shared/src/crapsEngine.ts` (`buildRollReceipt`), `apps/api/src/routes/rolls.ts`
+**Severity:** Medium (misleading Net in the Hierophant / Emissary fights; bankroll was always correct)
+**Status:** Fixed (2026-10-14)
+**Source:** Playtest (FB-036)
+
+**Issue:**
+The receipt was built from the context before the escrow step, so crew cash bonuses showed as green "+$X" lines and were added to Net (× Hype) on the roll they were earned — e.g. Ace $4,000 + Close Call $3,500 at 1.20× showed "Net: +$9,000" although both went into the offering and the bankroll didn't move. The seven-out roll's Net was off the other way (tribute subtracted, release not added).
+
+**Fix applied:**
+`buildRollReceipt` takes an `escrow` option. In escrow fights crew lines read "<crew>: $X → the offering" (info), "Released from the offering: $X" and "The Hierophant: $X tribute" get their own lines, and Net counts only what the escrow actually paid. Integration tests assert the lines and Net.

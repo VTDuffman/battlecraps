@@ -476,6 +476,15 @@ describe('Crew-bonus escrow', () => {
   const ACE   = { crewId: 17, cooldownState: 0 };
   const SHARK = { crewId: 8,  cooldownState: 0 };
 
+  // FB-036: in an escrow fight the roll log's Net counts only what the escrow
+  // actually paid — never crew cash that went into it. (Net is the bets' win /
+  // loss for the roll, so a lost stake counts here though it left the bankroll
+  // when it was placed.)
+  const expectNet = (body: Record<string, unknown>, cents: number) => {
+    const roll = body['roll'] as { receipt: { netDelta: number } };
+    expect(roll.receipt.netDelta).toBe(cents);
+  };
+
   it('Hierophant: a seven-out seizes 75% of the whole offering, including bonuses earned on that roll', async () => {
     // Marker 14: target 10_000_000¢ → max bet 1_000_000¢ → Ace = 400_000¢. Min bet 166_500¢.
     const run = await createRun(userId, {
@@ -503,6 +512,8 @@ describe('Crew-bonus escrow', () => {
     // …and the receipt shows the real tribute (it used to be computed as 0).
     const receipt = roll['receipt'] as { lines: { text: string }[] };
     expect(receipt.lines.some((l) => l.text === 'The Hierophant: $3750.00 tribute')).toBe(true);
+    expect(receipt.lines.some((l) => l.text === 'Released from the offering: $1250.00')).toBe(true);
+    expectNet(body, -166_500 + 125_000);   // Pass Line lost + what the offering paid
   });
 
   it('Hierophant: a blank keeps holding — the offering grows (FB-036)', async () => {
@@ -523,6 +534,10 @@ describe('Crew-bonus escrow', () => {
     const roll = body['roll'] as Record<string, unknown>;
     expect(roll['escrow']).toEqual({ heldCents: 500_000, releasedCents: 0, seizedCents: 0 });
     expect((body['run'] as Record<string, unknown>)['pendingAdditiveCents']).toBe(500_000);
+    // Ace's bonus reads as offered, not paid (it used to inflate Net).
+    const receipt = roll['receipt'] as { lines: { kind: string; text: string }[] };
+    expect(receipt.lines).toContainEqual({ kind: 'info', text: '"Ace" McGee: $4000.00 → the offering' });
+    expectNet(body, 0);   // nothing won, nothing paid — Ace's $4,000 is in the bowl
   });
 
   it('Hierophant: a craps out on the come-out keeps holding (only a win releases)', async () => {
@@ -562,6 +577,7 @@ describe('Crew-bonus escrow', () => {
     const roll = body['roll'] as Record<string, unknown>;
     expect(roll['escrow']).toEqual({ heldCents: 0, releasedCents: 215_000, seizedCents: 0 });
     expect((body['run'] as Record<string, unknown>)['pendingAdditiveCents']).toBe(0);
+    expectNet(body, 357_900 + 215_000);   // Pass Line profit × 2.15 + the offering × 2.15
   });
 
   it('Emissary: a seven-out evaporates ALL escrow, including bonuses earned on that roll', async () => {

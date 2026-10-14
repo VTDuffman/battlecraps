@@ -1865,3 +1865,17 @@ Drill-sergeant barks driven by his Double Time clock (new per-boss bark event tr
 ### Solution
 
 Soft, purring barks keyed to her charm; the ❤️ visibly flies from the old crew member to her name and down onto the new one (harp glissando); **the rose** as her win moment; **she takes the crew** (every portrait drifts off to her, then a lipstick kiss on the screen) as her loss moment. Mechanic unchanged. Crew/player references gender-neutral. Playtesting replaced the "OOH LA LA!" bubble with a **charm heartbeat** on the blocked crew (dreamy "daze" sound), and made both cinematics bigger ("big wins, big losses").
+
+---
+
+## FB-035 — The Executive Boss Moments (boss pattern #4)
+
+**Type:** Boss presentation (barks migration, performance meter, victory + defeat cinematics)
+**Area:** `apps/api/src/routes/rolls.ts`, `packages/shared/src/config.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`
+**Status:** Designed (2026-10-14); pending implementation
+**Design:** `docs/design/fb-035-executive-boss-moments-design.md`
+**Manifest:** `docs/manifests/fb-035-executive-boss-moments-manifest.md`
+
+### Solution
+
+Bring the boss whose Pink Slip inspired the pattern up to its current scale: migrate his corporate-speak barks to the shared, event-driven bark system (promoted / final warning / bonus paid always or often; ordinary rating moves sometimes); a real **performance meter** front and center; **the nameplate swap** as his win moment; and **TERMINATED** — the Pink Slip rebuilt as a defeat cinematic with your crew packed into a banker's box — for every loss in his fight. Mechanic unchanged.

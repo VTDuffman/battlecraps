@@ -376,6 +376,10 @@ const OPTIONS = {
     note: 'From Floor 5 every target is × 1.2 per marker on top of today (marker 26 → × 15.4, ≈ $924M)',
     levers: { targetMult: (m) => (LATE(m) ? Math.pow(1.2, m - 11) : 1) },
   },
+  'C2 · boss targets × 2': {
+    note: 'Floor 5–9 boss targets doubled (filler targets unchanged) — pressure concentrated on the boss rooms',
+    levers: { targetMult: (m) => (LATE(m) && GAUNTLET[m].isBoss ? 2 : 1) },
+  },
   'X · late table max 5%': {
     note: 'From Floor 5 the table max (and min bet) is 5% of the target — shown because it does NOT work',
     levers: { maxBetPct: (m) => (LATE(m) ? 0.05 : 0.10) },
@@ -426,20 +430,28 @@ const LEVERS = {
   'Targets × 1.15 per marker':  { targetMult: (m) => (LATE(m) ? Math.pow(1.15, m - 11) : 1) },
   'Targets × 1.3 per marker':   { targetMult: (m) => (LATE(m) ? Math.pow(1.3, m - 11) : 1) },
   'One extra hire per floor':   { hires: 'floor' },
+  'Crew cash × 0.35 (F5+)':     { additiveMult: (m) => (LATE(m) ? 0.35 : 1) },
+  'Crew cash × 0.5 + Jacket off (F5+)': { additiveMult: (m) => (LATE(m) ? 0.5 : 1), jacket: (m) => (LATE(m) ? 0 : 1) },
+  '4 shooters (F5+)':           { jacket: (m) => (LATE(m) ? -1 : 1) },
+  'Crew cash × 0.5 + 4 shooters (F5+)': { additiveMult: (m) => (LATE(m) ? 0.5 : 1), jacket: (m) => (LATE(m) ? -1 : 1) },
+  'Boss targets × 2 (F5+)':     { targetMult: (m) => (LATE(m) && GAUNTLET[m].isBoss ? 2 : 1) },
 };
 
 function printLevers(n) {
-  console.log('\n## Single-lever sensitivity — Finish | F5 (share of runs that reach Floor 5 and beat The Architect)\n');
+  console.log('\n## Single-lever sensitivity — Finish | F5 (share of runs that reach Floor 5 and beat The Architect)');
+  console.log('Last column: the five late boss markers with every boss rule OFF (cash crew · pass line) — the room a boss rule has.\n');
   const combos = [['cash', 'pass'], ['mixed', 'pass'], ['hype', 'pass'], ['mixed', 'odds1x']];
-  console.log(`| Lever | ${combos.map(([l, s]) => `${l} · ${s}`).join(' | ')} |`);
-  console.log(`|---|${combos.map(() => '---').join('|')}|`);
+  console.log(`| Lever | ${combos.map(([l, s]) => `${l} · ${s}`).join(' | ')} | No-rule boss ${BOSS_MS.join('/')} |`);
+  console.log(`|---|${combos.map(() => '---').join('|')}|---|`);
   for (const [label, lv] of [['Today', {}], ...Object.entries(LEVERS)]) {
     const cells = combos.map(([lineup, strategy]) => {
       const s = chainStats({ lineup, strategy, levers: { ...BASE_LEVERS, ...lv } }, n);
       const reach = s.per[12].entered / s.n;
       return pct(reach ? s.finished / reach : NaN);
     });
-    console.log(`| ${label} | ${cells.join(' | ')} |`);
+    const s0 = chainStats({ lineup: 'cash', strategy: 'pass', levers: { ...BASE_LEVERS, ...lv, bossRules: false } }, n);
+    const base = BOSS_MS.map((m) => (s0.per[m].entered ? (100 * s0.per[m].cleared / s0.per[m].entered).toFixed(0) : '—'));
+    console.log(`| ${label} | ${cells.join(' | ')} | ${base.join(' / ')} |`);
   }
 }
 

@@ -683,14 +683,6 @@
 }
 .animate-review-alarm { animation: review-alarm 1.4s ease-in-out infinite; }
 
-/* ── Pink Slip modal enter ───────────────────────────────────────────────────
-   Formal HR document slides down from slightly above and fades in.
-   ────────────────────────────────────────────────────────────────────────── */
-@keyframes pink-slip-enter {
-  from { opacity: 0; transform: translateY(-20px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
 /* ── Leaderboard retro-neon scrollbars ───────────────────────────────────────
    Firefox: scrollbar-width thin + scrollbar-color (thumb / track).
    Chrome/Edge/Safari: full ::-webkit-scrollbar control.

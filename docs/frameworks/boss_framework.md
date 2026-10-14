@@ -233,7 +233,7 @@ A 5-tier Performance Review rating (0–4) is tracked via `bossPointHits` for th
 - Craps Out or Seven-Out → −1 (floored at 0, "Action Required")
 - Point Set or No Resolution → neutral, no change
 
-**PIP termination:** Rolling a Craps Out or Seven-Out while the rating is already at 0 (Action Required) triggers an immediate GAME_OVER. The `turn:settled` WebSocket payload includes `pipTermination: true`; the client shows the Pink Slip modal.
+**PIP termination:** Rolling a Craps Out or Seven-Out while the rating is already at 0 (Action Required) triggers an immediate GAME_OVER. The `turn:settled` WebSocket payload includes `pipTermination: true`; the client plays the PIP variant of his TERMINATED defeat cinematic (FB-035).
 
 **Exceptional bonus:** While the rating is at 4, the payout is enhanced by 15% of gross profit (rounded to nearest dollar). Applied after `settleTurn` and the Foreman's tax layer.
 

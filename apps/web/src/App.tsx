@@ -22,7 +22,6 @@ import { useGameStore, selectDisplayMarkerIndex } from './store/useGameStore.js'
 import { TransitionOrchestrator }      from './transitions/TransitionOrchestrator.js';
 import { TitleLobbyScreen }            from './components/TitleLobbyScreen.js';
 import { UnlockModal }                  from './components/UnlockModal.js';
-import { PinkSlipModal }               from './components/PinkSlipModal.js';
 import { KnowledgeGate }              from './components/tutorial/KnowledgeGate.js';
 import { TutorialOverlay }            from './components/tutorial/TutorialOverlay.js';
 import { AliasPickerModal }            from './components/AliasPickerModal.js';
@@ -501,7 +500,6 @@ const AuthenticatedApp: React.FC = () => {
         <TableBoard onNewRun={() => void bootstrap(true)} onReturnToTitle={handleReturnToTitle} />
       </TransitionOrchestrator>
       <UnlockModal />
-      <PinkSlipModal />
     </main>
   );
 };
@@ -610,7 +608,6 @@ const TestAuthenticatedApp: React.FC = () => {
         <TableBoard />
       </TransitionOrchestrator>
       <UnlockModal />
-      <PinkSlipModal />
     </main>
   );
 };

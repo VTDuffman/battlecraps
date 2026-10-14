@@ -409,7 +409,7 @@ const DevPanel: React.FC = () => {
                     <button type="button" disabled={locked} className={smallBtn} onClick={() => preview('GAME_OVER', payload.currentMarkerIndex, previewUnlocks)}>Unlock recap</button>
                     <button type="button" disabled={locked} className={smallBtn} onClick={() => preview('VICTORY', GAUNTLET.length - 1, previewUnlocks)}>Victory sequence</button>
                     <button type="button" disabled={locked} className={smallBtn} onClick={() => preview('TITLE', 0)}>Title screen</button>
-                    <button type="button" disabled={locked} className={smallBtn} onClick={() => { setOpen(false); previewPinkSlip(); }}>Pink Slip</button>
+                    <button type="button" disabled={locked} className={smallBtn} onClick={() => { setOpen(false); previewPinkSlip(); }}>Pink Slip (PIP)</button>
                   </div>
                   <details className="text-[11px]">
                     <summary className="cursor-pointer text-white/70">Unlock recap crew ({previewUnlocks.length})</summary>

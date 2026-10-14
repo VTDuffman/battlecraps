@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-035 The Executive Boss Moments
 
 **Design doc:** `docs/design/fb-035-executive-boss-moments-design.md`
-**Status:** Phases 1–3 done locally (not pushed).
+**Status:** Phases 1–4 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes) before a phase is done. Push when Mike says (bundled with the Floor 4 rename). **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -44,6 +44,8 @@
 4. **Audio:** reuse `playStampThud`; `playBoxThump()`.
 
 🛑 **Gate:** lose to the Executive both ways (PIP + last-shooter seven-out).
+
+--- Implemented locally (2026-10-14): pink memo (PIP: Performance Improvement Plan; otherwise Notice of Position Elimination) slides in, TERMINATED slams (`playStampThud` + jolt), memo filed up; banker's box (PERSONAL EFFECTS) rises; real crew arc in one by one (`playBoxThump`), lid slams (heavy thump), box carried off right; "Security will see you out." ≈7.6 s with five crew. `pendingDefeat.pipTermination` + `DefeatCinematicProps.pipTermination`; PinkSlipModal, pipTermination store state, clearPipTermination and pink-slip-enter CSS removed; Dev "Pink Slip (PIP)" now previews the PIP variant. Rail measurement shared in `components/cinematics/railCrew.ts` (Le Prix refactored onto it). ---
 
 ## Phase 5: Dev Mode + docs
 1. **Presets:** keep "one bad roll from PIP" / "Exceptional streak"; add "Executive — one win from the corner office", "Executive — last shooter, point on".

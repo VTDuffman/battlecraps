@@ -26,6 +26,7 @@ export const DefeatCinematicHost: React.FC = () => {
         key={pendingDefeat.key}
         line={pendingDefeat.line}
         balanceDueCents={pendingDefeat.balanceDueCents}
+        pipTermination={pendingDefeat.pipTermination}
         onFinish={finish}
       />
     </div>,

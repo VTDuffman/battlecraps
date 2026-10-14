@@ -18,8 +18,7 @@
 
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { useGameStore } from '../../store/useGameStore.js';
-import { CREW_EMOJI } from '../CrewPortrait.js';
+import { measureRailCrew, setRailHidden, type RailMember } from '../cinematics/railCrew.js';
 import { playHarpGlissando, playHeartBloom, playKissMwah, playStampThud } from '../../hooks/useCrowdAudio.js';
 import type { DefeatCinematicProps } from './registry.js';
 
@@ -34,38 +33,16 @@ const FADE_AFTER   = 2400;  // kiss → fade
 const FINISH_AFTER = 2800;  // kiss → onFinish
 const EMPTY_KISS_AT = 1000;
 
-interface Member { slot: number; emoji: string; x: number; y: number; size: number; order: number }
+type Member = RailMember;
 interface Pt { x: number; y: number }
 
 function measureCrew(): { members: Member[]; target: Pt } {
-  const { crewSlots, unlockedSlots } = useGameStore.getState();
   const nameEl = document.querySelector('[data-boss-name-anchor]');
   const nr     = nameEl?.getBoundingClientRect();
   const target = nr && nr.width > 0
     ? { x: nr.left + Math.min(nr.width, 160) / 2, y: nr.top + nr.height / 2 }
     : { x: window.innerWidth / 2, y: window.innerHeight * 0.12 };
-
-  const occupied = crewSlots.slice(0, unlockedSlots)
-    .map((slot, i) => ({ slot: i, crewId: slot?.crewId ?? null }))
-    .filter((m): m is { slot: number; crewId: number } => m.crewId !== null);
-
-  const members = occupied.map((m, order) => {
-    const el = document.querySelector(`[data-slot-index="${m.slot}"]`);
-    const r  = el?.getBoundingClientRect();
-    const size = r && r.width > 0 ? r.width : 56;
-    // Fallback (rail not on screen, e.g. some previews): a row near the bottom.
-    const x = r && r.width > 0 ? r.left + r.width / 2
-      : window.innerWidth * ((order + 1) / (occupied.length + 1));
-    const y = r && r.width > 0 ? r.top + r.width / 2 : window.innerHeight * 0.82;
-    return { slot: m.slot, emoji: CREW_EMOJI[m.crewId] ?? '?', x, y, size, order };
-  });
-  return { members, target };
-}
-
-/** Rail portraits hidden while their stand-ins fly (restored on unmount). */
-function setRailHidden(slot: number, hidden: boolean): void {
-  const el = document.querySelector<HTMLElement>(`[data-slot-index="${slot}"]`);
-  if (el) el.style.visibility = hidden ? 'hidden' : '';
+  return { members: measureRailCrew(), target };
 }
 
 const CrewStandIn: React.FC<{ m: Member; target: Pt; bloomed: boolean; lifted: boolean; reduceMotion: boolean }> = ({

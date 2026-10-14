@@ -90,6 +90,8 @@ export interface PendingDefeat {
   markerIndex:     number;
   /** Payoff bosses: how short the player came up (Payoff − Cut). */
   balanceDueCents: number | null;
+  /** FB-035: The Executive's PIP termination (vs. an ordinary loss) — picks the memo. */
+  pipTermination:  boolean;
   /** Dev Mode replay — finishing it never ends the run. */
   preview:         boolean;
 }
@@ -752,12 +754,6 @@ export interface GameState {
    */
   exceptionalBonus: { cents: number; key: number } | null;
 
-  /**
-   * True when turn:settled carries pipTermination: true (The Executive fires the
-   * final pink-slip termination). The GameOverScreen reads this to show the Pink Slip.
-   */
-  pipTermination: boolean;
-
   // ── Developer Mode (FB-028) ───────────────────────────────────────────────
 
   /**
@@ -1004,7 +1000,7 @@ export interface GameActions {
    */
   previewTransition(type: TransitionType, opts: DevPreviewOptions): void;
 
-  /** FB-028: show the Pink Slip modal (dismissing it clears the flag). */
+  /** FB-035 Dev Mode: play the Executive's TERMINATED cinematic as a PIP termination. */
   previewPinkSlip(): void;
 
   /**
@@ -1169,11 +1165,6 @@ export interface GameActions {
   /** FB-032 Dev Mode: play a boss's defeat cinematic without ending the run. */
   previewDefeatCinematic(markerIndex: number): void;
 
-  /**
-   * Dismiss the Pink Slip modal after the player acknowledges the PIP termination.
-   * Clears pipTermination so the standard GameOverScreen renders.
-   */
-  clearPipTermination(): void;
 }
 
 // ---------------------------------------------------------------------------
@@ -1341,7 +1332,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   celebrationHoldUntil:    null,
   executiveRating:         null,
   exceptionalBonus:        null,
-  pipTermination:          false,
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -1415,7 +1405,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _reRollKey:        0,
       executiveRating:   null,
       exceptionalBonus:  null,
-      pipTermination:    false,
       // Reset bets to zero so a new run never inherits a live bet from the
       // previous run. initialState.bets (present when reloading an existing
       // run via /runs/:id) will override this via the spread below.
@@ -1687,7 +1676,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       unlockModalReady:          false,
       executiveRating:           null,
       exceptionalBonus:          null,
-      pipTermination:            false,
     });
   },
 
@@ -2113,7 +2101,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         : get().executiveRating;
 
 
-    const newPipTermination = p.pipTermination === true ? true : get().pipTermination;
 
     // The Architect removed a crew member on this seven-out — clear it from the rail.
     const currentCrewSlots = get().crewSlots;
@@ -2134,6 +2121,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           line:            defeatCinematic.line,
           markerIndex:     oldMarkerIndex,
           balanceDueCents: defeatPayoff !== null ? Math.max(0, defeatPayoff - (p.bossCut?.total ?? 0)) : null,
+          pipTermination:  p.pipTermination === true,
           preview:         false,
         }
       : null;
@@ -2245,7 +2233,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       exceptionalBonus:      (p.exceptionalBonusCents ?? 0) > 0
         ? { cents: p.exceptionalBonusCents ?? 0, key: (oldExceptionalBonus?.key ?? 0) + 1 }
         : oldExceptionalBonus,
-      pipTermination:        newPipTermination,
       crewSlots:             newCrewSlots,
       // FB-032: The Foreman's Cut. On the paying-off roll the register keeps the
       // final total (≥ Payoff) through the PAID IN FULL stamp.
@@ -2884,7 +2871,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   previewPinkSlip() {
-    set({ pipTermination: true });
+    // The Executive's marker, PIP variant of TERMINATED.
+    const exec = GAUNTLET.findIndex((m) => m.boss?.rule === 'CROSS_CALIBRATION');
+    get().previewDefeatCinematic(exec);
+    const pending = get().pendingDefeat;
+    if (pending?.preview === true && pending.markerIndex === exec) set({ pendingDefeat: { ...pending, pipTermination: true } });
   },
 
   applyDevUnlockChange({ granted, revoked, queueCinematic }) {
@@ -3004,6 +2995,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         line:            cinematic.line,
         markerIndex,
         balanceDueCents: payoff !== null ? Math.max(100, payoff - s.bossProgressCents) : null,
+        pipTermination:  false,
         preview:         true,
       },
     });
@@ -3014,9 +3006,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
 
-  clearPipTermination() {
-    set({ pipTermination: false });
-  },
 
   async reorderCrew(oldIndex, newIndex) {
     const { runId, crewSlots, slotIds, unlockedSlots } = get();

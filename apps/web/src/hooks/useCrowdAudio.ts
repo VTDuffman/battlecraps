@@ -906,6 +906,40 @@ function playOfficeFanfareSting(ctx: AudioContext, dest: AudioNode): void {
   [1046.5, 1318.51, 1567.98, 2093].forEach((f, i) => strikeBell(ctx, dest, f, t0 + 0.5 + i * 0.02, 0.065, 1.6));
 }
 
+/** FB-035 defeat: something lands in a cardboard box (heavy = the lid). */
+function makeBoxThumpSting(heavy: boolean): (ctx: AudioContext, dest: AudioNode) => void {
+  return (ctx, dest) => {
+    const t0 = ctx.currentTime + 0.01;
+    const body = ctx.createOscillator();
+    body.type = 'sine';
+    body.frequency.setValueAtTime(heavy ? 120 : 160, t0);
+    body.frequency.exponentialRampToValueAtTime(heavy ? 55 : 80, t0 + 0.12);
+    const bEnv = ctx.createGain();
+    bEnv.gain.setValueAtTime(0.0001, t0);
+    bEnv.gain.exponentialRampToValueAtTime(heavy ? 0.22 : 0.13, t0 + 0.006);
+    bEnv.gain.exponentialRampToValueAtTime(0.0001, t0 + (heavy ? 0.22 : 0.14));
+    body.connect(bEnv);
+    bEnv.connect(dest);
+    body.start(t0);
+    body.stop(t0 + 0.25);
+    // Cardboard: a dull, low-passed slap.
+    const slap = ctx.createBufferSource();
+    slap.buffer = makeNoiseBuf(ctx, 0.12);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = heavy ? 900 : 1300;
+    const sEnv = ctx.createGain();
+    sEnv.gain.setValueAtTime(0.0001, t0);
+    sEnv.gain.exponentialRampToValueAtTime(heavy ? 0.2 : 0.1, t0 + 0.004);
+    sEnv.gain.exponentialRampToValueAtTime(0.0001, t0 + (heavy ? 0.12 : 0.07));
+    slap.connect(lp);
+    lp.connect(sEnv);
+    sEnv.connect(dest);
+    slap.start(t0);
+    slap.stop(t0 + 0.12);
+  };
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -1023,6 +1057,11 @@ export function playPlateClang(): void {
 /** FB-035 win: THE SHOOTER's plate lands — office-chime fanfare. */
 export function playOfficeFanfare(): void {
   playStandalone(playOfficeFanfareSting);
+}
+
+/** FB-035 defeat: crew packed into the box (heavy = the lid comes down). */
+export function playBoxThump(heavy: boolean): void {
+  playStandalone(makeBoxThumpSting(heavy));
 }
 
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */

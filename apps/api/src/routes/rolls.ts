@@ -248,7 +248,7 @@ interface WsTurnSettledPayload {
   /**
    * Present (and true) only when The Executive's Pink Slip fires — the rating was
    * at 0 (Action Required) and another Craps Out or Seven-Out occurred.
-   * The client shows the Pink Slip modal instead of the standard game-over screen.
+   * The client plays the PIP variant of his TERMINATED defeat cinematic (FB-035).
    */
   pipTermination?: true;
   /**

@@ -12,12 +12,15 @@ import type { BossDefeatCinematicId } from '@battlecraps/shared';
 import { DockClosedCinematic } from './DockClosedCinematic.js';
 import { DishonorableDischargeCinematic } from './DishonorableDischargeCinematic.js';
 import { SheTakesTheCrewCinematic } from './SheTakesTheCrewCinematic.js';
+import { TerminatedCinematic } from './TerminatedCinematic.js';
 
 export interface DefeatCinematicProps {
   /** The boss's parting line (config.ts defeatCinematic.line). */
   line:            string;
   /** Payoff bosses: how short the player came up; null otherwise. */
   balanceDueCents: number | null;
+  /** FB-035: The Executive's PIP termination (vs. an ordinary loss). */
+  pipTermination:  boolean;
   /** Call when the cinematic is done — releases GAME_OVER (or ends a preview). */
   onFinish:        () => void;
 }
@@ -26,4 +29,5 @@ export const DEFEAT_CINEMATICS: Record<BossDefeatCinematicId, React.ComponentTyp
   DOCK_CLOSED:            DockClosedCinematic,
   DISHONORABLE_DISCHARGE: DishonorableDischargeCinematic,
   SHE_TAKES_THE_CREW:     SheTakesTheCrewCinematic,
+  TERMINATED:             TerminatedCinematic,
 };

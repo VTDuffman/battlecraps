@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-035 The Executive Boss Moments
 
 **Design doc:** `docs/design/fb-035-executive-boss-moments-design.md`
-**Status:** Phases 1–2 done locally (not pushed).
+**Status:** Phases 1–3 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes) before a phase is done. Push when Mike says (bundled with the Floor 4 rename). **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -34,6 +34,8 @@
 3. **Audio:** `playPlateClang()`, `playOfficeFanfare()`.
 
 🛑 **Gate:** beat the Executive locally.
+
+--- Implemented locally (2026-10-14): mahogany CORNER OFFICE door; three screws spin out (keyboard-clack ticks), plate tips on the top screw, falls, `playPlateClang()` (inharmonic clang + bounce); THE SHOOTER slides in, lands with `playOfficeFanfare()` (bell arpeggio → held chord), gold glint ×2, 46 ticker-tape strips; line in Georgia italic. ~5.9 s, hold 6.3 s. ---
 
 ## Phase 4: Terminated (defeat)
 1. `BossDefeatCinematicId` += `TERMINATED`; Executive `defeatCinematic`. Store passes `pipTermination` into `pendingDefeat` (memo variant).

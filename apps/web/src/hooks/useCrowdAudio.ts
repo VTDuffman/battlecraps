@@ -844,6 +844,69 @@ function playReviewWarningSting(ctx: AudioContext, dest: AudioNode): void {
 }
 
 /**
+ * FB-035 win: the Executive's brass nameplate hits the floor — an inharmonic
+ * metal clang with a noise crash, then a smaller bounce (≈0.9 s).
+ */
+function playPlateClangSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [[0, 1], [0.2, 0.45]].forEach(([at, level]) => {
+    const s = t0 + (at as number);
+    const lv = level as number;
+    [[523, 0.09], [1310, 0.06], [2147, 0.05], [3390, 0.03], [4710, 0.02]].forEach(([freq, peak]) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = freq as number;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, s);
+      env.gain.exponentialRampToValueAtTime((peak as number) * lv, s + 0.003);
+      env.gain.exponentialRampToValueAtTime(0.0001, s + 0.7 * lv + 0.1);
+      osc.connect(env);
+      env.connect(dest);
+      osc.start(s);
+      osc.stop(s + 0.85);
+    });
+    const crash = ctx.createBufferSource();
+    crash.buffer = makeNoiseBuf(ctx, 0.2);
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 2500;
+    const cEnv = ctx.createGain();
+    cEnv.gain.setValueAtTime(0.0001, s);
+    cEnv.gain.exponentialRampToValueAtTime(0.12 * lv, s + 0.003);
+    cEnv.gain.exponentialRampToValueAtTime(0.0001, s + 0.18);
+    crash.connect(hp);
+    hp.connect(cEnv);
+    cEnv.connect(dest);
+    crash.start(s);
+    crash.stop(s + 0.2);
+  });
+}
+
+/** One mallet-bell note (sine + a bright, fast-decaying partial). */
+function strikeBell(ctx: AudioContext, dest: AudioNode, freq: number, start: number, peak: number, ring: number): void {
+  [[1, peak, ring], [4, peak * 0.25, ring * 0.3]].forEach(([ratio, p, r]) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = freq * (ratio as number);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, start);
+    env.gain.exponentialRampToValueAtTime(p as number, start + 0.004);
+    env.gain.exponentialRampToValueAtTime(0.0001, start + (r as number));
+    osc.connect(env);
+    env.connect(dest);
+    osc.start(start);
+    osc.stop(start + (r as number) + 0.05);
+  });
+}
+
+/** FB-035 win: an office-chime fanfare — a quick rising arpeggio into a held chord. */
+function playOfficeFanfareSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [783.99, 1046.5, 1318.51, 1567.98].forEach((f, i) => strikeBell(ctx, dest, f, t0 + i * 0.11, 0.08, 0.5));
+  [1046.5, 1318.51, 1567.98, 2093].forEach((f, i) => strikeBell(ctx, dest, f, t0 + 0.5 + i * 0.02, 0.065, 1.6));
+}
+
+/**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
  * which mounts the hook, is unmounted). Silent when muted.
@@ -950,6 +1013,16 @@ export function playPromotionDing(): void {
 /** FB-035: dropped to Action Required. */
 export function playReviewWarning(): void {
   playStandalone(playReviewWarningSting);
+}
+
+/** FB-035 win: the Executive's nameplate clangs to the floor. */
+export function playPlateClang(): void {
+  playStandalone(playPlateClangSting);
+}
+
+/** FB-035 win: THE SHOOTER's plate lands — office-chime fanfare. */
+export function playOfficeFanfare(): void {
+  playStandalone(playOfficeFanfareSting);
 }
 
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */

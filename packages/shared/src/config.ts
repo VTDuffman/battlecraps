@@ -115,7 +115,7 @@ export type BossBarkTrigger =
 export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW';
 
 /** FB-033: boss victory moments (one component each in the web registry). */
-export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE';
+export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP';
 
 export interface BossConfig {
   // ── Identity ──────────────────────────────────────────────────────────────
@@ -507,6 +507,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       ],
       ruleBlurb:          "The Executive tracks your Performance Review rating throughout the fight. Every roll outcome shifts it up or down. Reach Action Required and one more bad roll ends the run.",
       victoryQuote:       "…restructuring was inevitable. Well played.",
+      victoryCinematic:   { id: 'NAMEPLATE_SWAP', line: "…restructuring was inevitable. Well played." },
       defeatAnnouncement: 'EXECUTIVE OVERRIDE',
       // FB-035 barks — clipped corporate-speak, polite and cold.
       barks: {

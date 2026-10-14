@@ -143,6 +143,26 @@ describe('Slot placement', () => {
     expect(status).toBe(400);
     expect(body['error']).toBe('Slot not yet unlocked.');
   });
+
+  it('the pub right after The Executive offers the Board Seat slot (FB-025)', async () => {
+    // Just beat The Executive (marker 11): still 3 slots stored, slot 4 is the comp.
+    const run = await createTransitionRun({ bankrollCents: 2_000_000, currentMarkerIndex: 12 });
+
+    const { status, body } = await recruitCrew(app, run.id, STARTER_CREW_ID, 3);
+
+    expect(status).toBe(200);
+    const crewSlots = body['crewSlots'] as ({ crewId: number } | null)[];
+    expect(crewSlots[3]?.crewId).toBe(STARTER_CREW_ID);
+    expect(body['unlockedSlots']).toBe(4);
+  });
+
+  it('a pub after an ordinary marker does not offer an extra slot', async () => {
+    const run = await createTransitionRun({ bankrollCents: 2_000_000, currentMarkerIndex: 11 });
+
+    const { status } = await recruitCrew(app, run.id, STARTER_CREW_ID, 3);
+
+    expect(status).toBe(400);
+  });
 });
 
 // ---------------------------------------------------------------------------

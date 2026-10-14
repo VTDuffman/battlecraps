@@ -12,6 +12,7 @@ export {
   getMinBet,
   isBossMarker,
   getBossEntryCounter,
+  getSlotsAfterBossComp,
   getBossPayoffCents,
   pickEntryCharmSlot,
   getBossMinBet,

@@ -23,7 +23,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
-import { isBossMarker, getBossEntryCounter, pickEntryCharmSlot, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, COMP_PERK_IDS, type CompRewardType, type CrewRarity } from '@battlecraps/shared';
+import { isBossMarker, getBossEntryCounter, getSlotsAfterBossComp, pickEntryCharmSlot, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, COMP_PERK_IDS, type CompRewardType, type CrewRarity } from '@battlecraps/shared';
 import { randomBelow } from '../lib/rng.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
@@ -94,7 +94,10 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
       }
 
       // ── 3b. Slot availability guard (FB-025) ───────────────────────────────
-      if (hasSlot && slotIndex! >= run.unlockedSlots) {
+      // The pub right after Board Seat / Cargo Hold already offers the new slot
+      // (it's persisted in 4b below), so count it here.
+      const slotsThisVisit = getSlotsAfterBossComp(run.currentMarkerIndex - 1, run.unlockedSlots);
+      if (hasSlot && slotIndex! >= slotsThisVisit) {
         return reply.status(400).send({ error: 'Slot not yet unlocked.' });
       }
 

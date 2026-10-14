@@ -1928,3 +1928,17 @@ The draft is generated once per Pub visit and saved on the run (`runs.pub_draft`
 **Fix applied:**
 Hiring now requires the crew member to be in the saved draft (403 "wasn't offered at this Pub"). It returns 409 if no draft has been loaded yet. The draft is the single authority for what can be hired, since it already applies unlocks, the rarity gate and guaranteed unlocks.
 
+---
+
+## KI-082 — Board Seat slot not available in the pub right after The Executive
+
+**Area:** `apps/api/src/routes/recruit.ts`, `apps/web/src/components/PubScreen.tsx`
+**Severity:** High (a boss comp you earned can't be used on that visit)
+**Status:** Fixed (2026-10-14)
+**Source:** Playtest
+
+**Issue:**
+FB-025 says the new slot is filled at the post-boss pub, but `unlockedSlots` was only raised when the player *left* that pub (recruit step 4b). The pub drew the old 3 slots, and the recruit guard checked the old count, so slot 4 (Board Seat) — and slot 5 (Cargo Hold) after The Commander — could only be filled one pub later.
+
+**Fix applied:**
+Shared `getSlotsAfterBossComp(clearedMarkerIndex, unlockedSlots)` gives the slot count that includes the just-won comp. The recruit guard and the pub both use it; step 4b still persists it on exit. Works for runs already sitting in that pub. Tests: shared unit + recruit integration.

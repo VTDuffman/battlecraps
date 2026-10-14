@@ -817,6 +817,17 @@ export function isBossMarker(markerIndex: number): boolean {
  * marker starts at 0. DISABLE_CREW's entry charm slot depends on the final crew
  * and is chosen in recruit.ts, which overrides this value.
  */
+/**
+ * Crew slots active once the boss at `clearedMarkerIndex` is beaten: Board Seat
+ * (The Executive) → 4, Cargo Hold (The Commander) → 5; otherwise unchanged.
+ * Used by the pub that follows the fight so the new slot can be filled there.
+ */
+export function getSlotsAfterBossComp(clearedMarkerIndex: number, unlockedSlots: number): 3 | 4 | 5 {
+  const reward = GAUNTLET[clearedMarkerIndex]?.boss?.compReward;
+  const granted = reward === 'BOARD_SEAT' ? 4 : reward === 'CARGO_HOLD' ? 5 : 3;
+  return Math.min(5, Math.max(3, unlockedSlots, granted)) as 3 | 4 | 5;
+}
+
 export function getBossEntryCounter(markerIndex: number): number {
   if (!isBossMarker(markerIndex)) return 0;
   return GAUNTLET[markerIndex]?.boss?.rule === 'CROSS_CALIBRATION' ? 2 : 0;

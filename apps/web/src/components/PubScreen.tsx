@@ -20,6 +20,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   isBossMarker,
   GAUNTLET,
+  getSlotsAfterBossComp,
 } from '@battlecraps/shared';
 import { useGameStore, selectBankrollDisplay } from '../store/useGameStore.js';
 import type { CrewRosterEntry, PubDraftEntry } from '../store/useGameStore.js';
@@ -321,7 +322,9 @@ export const PubScreen: React.FC = () => {
   const bankrollDisplay    = useGameStore(selectBankrollDisplay);
   const bankroll           = useGameStore((s) => s.bankroll);
   const crewSlots          = useGameStore((s) => s.crewSlots);
-  const unlockedSlots      = useGameStore((s) => s.unlockedSlots);
+  // FB-025: the pub right after Board Seat / Cargo Hold offers the new slot
+  // (the server persists it when you leave).
+  const unlockedSlots      = useGameStore((s) => getSlotsAfterBossComp(s.currentMarkerIndex - 1, s.unlockedSlots));
   const recruitCrew        = useGameStore((s) => s.recruitCrew);
   const fireCrew           = useGameStore((s) => s.fireCrew);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);

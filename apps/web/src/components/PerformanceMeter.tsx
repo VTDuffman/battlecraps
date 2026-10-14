@@ -28,7 +28,10 @@ const GOLD = '#f5c842';
 const RED  = '#ef4444';
 
 export const PerformanceMeter: React.FC = () => {
-  const rating       = useGameStore((s) => s.executiveRating);
+  // executiveRating is set by every roll in the fight and at pub exit; fall
+  // back to the raw boss counter (the rating) so the meter never waits for
+  // the first roll.
+  const rating       = useGameStore((s) => s.executiveRating ?? Math.min(4, Math.max(0, s.bossPointHits)));
   const bonus        = useGameStore((s) => s.exceptionalBonus);
   const reduceMotion = useReducedMotion();
 

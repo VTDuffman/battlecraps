@@ -2683,6 +2683,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       charmedCrewSlot: null,
       charmingSlot:    null,
       charmFlight:     null,
+      // FB-035: entering The Executive's fight — show his starting rating
+      // (Strong) on the performance meter before the first roll.
+      executiveRating: GAUNTLET[state.currentMarkerIndex]?.boss?.rule === 'CROSS_CALIBRATION'
+        ? data.bossPointHits
+        : null,
       // Stash the entry charm for Mme. Le Prix — clearTransition('BOSS_ENTRY') will
       // reveal it (set charmedCrewSlot + fire sting) once the boss-intro cinematic ends.
       ...(data.bossEntryCharmSlot !== undefined && {

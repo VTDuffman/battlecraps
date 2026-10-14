@@ -13,9 +13,9 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getBossMinBet, GAUNTLET, isBossMarker, type BossRuleParams } from '@battlecraps/shared';
 import { BossBarkFloat } from './BossBarkFloat.js';
+import { SargeClock } from './SargeClock.js';
 import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 import { getFloorTheme } from '../lib/floorThemes.js';
-import { SevenSegmentDisplay } from './SevenSegmentDisplay.js';
 
 const RATING_LABELS = ['ACTION REQUIRED', 'BELOW STRONG', 'STRONG', 'VERY STRONG', 'EXCEPTIONAL'] as const;
 const RATING_COLORS = ['#ef4444', '#fbbf24', '#c8d8e8', '#4ade80', '#f5c842'] as const;
@@ -245,42 +245,10 @@ export const BossRoomHeader: React.FC = () => {
             );
           })()
         ) : isDoubleTime ? (
-          (() => {
-            // Sarge's roll clock: point-phase rolls left before time's up,
-            // shown as a two-digit digital clock. Gold while running, red for
-            // the last two rolls, blinking on the last. Dimmed on the come-out
-            // (the clock only starts once a point is set).
-            const limit     = boss.ruleParams.rule === 'DOUBLE_TIME' ? boss.ruleParams.rollLimit : 6;
-            const inPoint   = phase === 'POINT_ACTIVE';
-            const rollsLeft = inPoint ? Math.max(1, limit - bossPointHits) : limit;
-            const isLast    = inPoint && rollsLeft === 1;
-            const ledColor  = inPoint && rollsLeft <= 2 ? '#ef4444' : '#fbbf24';
-            return (
-              <div className="flex-none flex items-center gap-2">
-                <div className="font-pixel text-[7.5px] tracking-widest leading-tight text-right"
-                  style={{ color: `${theme.bossStarColor}b3` }}>
-                  DOUBLE<br />TIME
-                </div>
-                <div
-                  className="rounded-sm px-1.5 py-1"
-                  style={{
-                    background: '#0a0605',
-                    border:     `1px solid ${ledColor}40`,
-                    boxShadow:  'inset 0 0 6px rgba(0,0,0,0.9)',
-                    opacity:    inPoint ? 1 : 0.55,
-                  }}
-                >
-                  <SevenSegmentDisplay
-                    value={String(rollsLeft).padStart(2, '0')}
-                    color={ledColor}
-                    height={20}
-                    label={inPoint ? `${rollsLeft} rolls left to hit the point` : 'Clock starts when the point is set'}
-                    className={isLast ? 'animate-pulse' : undefined}
-                  />
-                </div>
-              </div>
-            );
-          })()
+          <SargeClock
+            rollLimit={boss.ruleParams.rule === 'DOUBLE_TIME' ? boss.ruleParams.rollLimit : 6}
+            labelColor={`${theme.bossStarColor}b3`}
+          />
         ) : null}
       </div>
 

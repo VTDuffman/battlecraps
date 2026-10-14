@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-033 Sarge Boss Moments
 
 **Design doc:** `docs/design/fb-033-sarge-boss-moments-design.md`
-**Status:** Phase 1 done locally (not pushed).
+**Status:** Phases 1–2 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. Before calling a phase done: `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes). Push when Mike says.
 
@@ -24,6 +24,8 @@
 2. **Audio:** `playClockTick(rollsLeft)`, `playClockAlarm()`, `playDrillWhistle()` (standalone); tick per point-phase roll, alarm on reaching the last roll, whistle on TIME'S UP.
 
 🛑 **Gate:** does the clock feel tense?
+
+--- Implemented locally (2026-10-13): clock extracted to `SargeClock.tsx`; sounds keyed to the reveal (phase / bossPointHits change in applyPendingSettlement), reading `lastClockExpired` only then so the whistle lands with the TIME'S UP popup. On a last-shooter TIME'S UP the table unmounts at once until Phase 4's defeat hold, so that whistle arrives with Phase 4. ---
 
 ## Phase 3: Boss victory moments + HONORABLY DISCHARGED
 

@@ -398,6 +398,111 @@ function playDoorClangSting(ctx: AudioContext, dest: AudioNode): void {
 }
 
 /**
+ * Clock tick — a mechanical click + short blip, sharper (higher, louder) as
+ * Sarge's clock runs down. rollsLeft 6 → mellow, 1 → urgent.
+ */
+function makeClockTickSting(rollsLeft: number) {
+  const urgency = Math.max(0, Math.min(5, 6 - rollsLeft)); // 0..5
+  return (ctx: AudioContext, dest: AudioNode): void => {
+    const t0 = ctx.currentTime;
+    const click = ctx.createBufferSource();
+    click.buffer = makeNoiseBuf(ctx, 0.02);
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 3000;
+    const clickEnv = ctx.createGain();
+    clickEnv.gain.setValueAtTime(0.18 + urgency * 0.03, t0);
+    clickEnv.gain.exponentialRampToValueAtTime(0.001, t0 + 0.02);
+    click.connect(hp);
+    hp.connect(clickEnv);
+    clickEnv.connect(dest);
+    click.start(t0);
+    click.stop(t0 + 0.025);
+
+    const blip = ctx.createOscillator();
+    blip.type = 'square';
+    blip.frequency.value = 1300 + urgency * 220;
+    const blipEnv = ctx.createGain();
+    blipEnv.gain.setValueAtTime(0.0001, t0);
+    blipEnv.gain.exponentialRampToValueAtTime(0.05 + urgency * 0.015, t0 + 0.004);
+    blipEnv.gain.exponentialRampToValueAtTime(0.001, t0 + 0.06);
+    blip.connect(blipEnv);
+    blipEnv.connect(dest);
+    blip.start(t0);
+    blip.stop(t0 + 0.07);
+  };
+}
+
+/** Last-roll alarm — three quick two-tone buzzes (≈450ms) */
+function playClockAlarmSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime;
+  [880, 660, 880].forEach((freq, i) => {
+    const start = t0 + i * 0.15;
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.value = freq;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 2200;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, start);
+    env.gain.exponentialRampToValueAtTime(0.11, start + 0.01);
+    env.gain.setValueAtTime(0.11, start + 0.10);
+    env.gain.exponentialRampToValueAtTime(0.001, start + 0.13);
+    osc.connect(lp);
+    lp.connect(env);
+    env.connect(dest);
+    osc.start(start);
+    osc.stop(start + 0.14);
+  });
+}
+
+/** Drill whistle for TIME'S UP — trilling pea whistle with a breathy edge (≈650ms) */
+function playDrillWhistleSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0  = ctx.currentTime;
+  const dur = 0.65;
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(2850, t0);
+  // The pea's trill: fast, deep frequency wobble.
+  const lfo = ctx.createOscillator();
+  lfo.type = 'sine';
+  lfo.frequency.value = 32;
+  const lfoDepth = ctx.createGain();
+  lfoDepth.gain.value = 140;
+  lfo.connect(lfoDepth);
+  lfoDepth.connect(osc.frequency);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.16, t0 + 0.03);
+  env.gain.setValueAtTime(0.16, t0 + dur - 0.08);
+  env.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  osc.connect(env);
+  env.connect(dest);
+
+  const breath = ctx.createBufferSource();
+  breath.buffer = makeNoiseBuf(ctx, dur);
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 2900;
+  bp.Q.value = 2;
+  const breathEnv = ctx.createGain();
+  breathEnv.gain.setValueAtTime(0.0001, t0);
+  breathEnv.gain.exponentialRampToValueAtTime(0.05, t0 + 0.03);
+  breathEnv.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  breath.connect(bp);
+  bp.connect(breathEnv);
+  breathEnv.connect(dest);
+
+  osc.start(t0);
+  osc.stop(t0 + dur);
+  lfo.start(t0);
+  lfo.stop(t0 + dur);
+  breath.start(t0);
+  breath.stop(t0 + dur);
+}
+
+/**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
  * which mounts the hook, is unmounted). Silent when muted.
@@ -429,6 +534,21 @@ export function playRegisterKaChing(): void {
 /** FB-032: The Foreman is paid off — register bell. */
 export function playRegisterBell(): void {
   playStandalone(playRegisterBellSting);
+}
+
+/** FB-033: Sarge's clock ticks (sharper as rollsLeft drops). */
+export function playClockTick(rollsLeft: number): void {
+  playStandalone(makeClockTickSting(rollsLeft));
+}
+
+/** FB-033: Sarge's clock reaches the last roll. */
+export function playClockAlarm(): void {
+  playStandalone(playClockAlarmSting);
+}
+
+/** FB-033: TIME'S UP. */
+export function playDrillWhistle(): void {
+  playStandalone(playDrillWhistleSting);
 }
 
 /** FB-032 defeat: register goes dead on BALANCE DUE. */

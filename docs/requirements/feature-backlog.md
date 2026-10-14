@@ -1851,3 +1851,17 @@ After FB-032 the Foreman has a voice and signature win/loss moments; Sarge doesn
 ### Solution
 
 Drill-sergeant barks driven by his Double Time clock (new per-boss bark event triggers), a clock that grows/pulses and ticks during the point phase (alarm on the last roll, whistle on TIME'S UP), a **HONORABLY DISCHARGED** win stamp with a bugle call (new per-boss victory-moment system), and a **DISHONORABLE DISCHARGE** defeat cinematic with dog tags. Mechanic unchanged. Remaining bosses follow one at a time.
+
+---
+
+## FB-034 — Mme. Le Prix Boss Moments (boss pattern #3)
+
+**Type:** Boss presentation (barks, charm drama, victory + defeat cinematics)
+**Area:** `packages/shared/src/config.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`
+**Status:** Designed (2026-10-13); pending implementation
+**Design:** `docs/design/fb-034-le-prix-boss-moments-design.md`
+**Manifest:** `docs/manifests/fb-034-le-prix-boss-moments-manifest.md`
+
+### Solution
+
+Soft, purring barks keyed to her charm; the ❤️ visibly flies from the old crew member to her name and down onto the new one (harp glissando); **the rose** as her win moment; **she takes the crew** (every portrait drifts off to her, then a lipstick kiss on the screen) as her loss moment. Mechanic unchanged. Crew/player references gender-neutral.

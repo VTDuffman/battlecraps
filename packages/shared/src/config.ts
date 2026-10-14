@@ -288,7 +288,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
           "Keep 'em coming.",
           "That's my cut.",
           "Pleasure doing business.",
-          "Atta boy. Slide it over.",
+          "Good kid. Slide it over.",
           "Every little bit, pal.",
         ],
         loss: [

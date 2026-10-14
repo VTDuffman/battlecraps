@@ -33,6 +33,7 @@ import type {
   CelebrationSnapshot,
   TransitionType,
   BossDefeatCinematicId,
+  BossVictoryCinematicId,
 } from '@battlecraps/shared';
 import { validateOddsBet, getMaxBet, getBossMinBet, getBossPayoffCents, isBossMarker, pickBossBark, GAUNTLET, MARKER_TARGETS } from '@battlecraps/shared';
 
@@ -68,6 +69,17 @@ function withBetField(bets: Bets, field: BetField, value: number): Bets {
 
 /** FB-032: The Foreman's Cut for one roll (mirrors BossCutPayload in rolls.ts). */
 /** FB-032: a boss defeat cinematic in progress (see pendingDefeat). */
+/** FB-033: a boss victory cinematic in progress (see pendingVictory). */
+export interface PendingVictory {
+  key:         number;
+  id:          BossVictoryCinematicId;
+  /** The boss's line (config.ts victoryCinematic.line). */
+  line:        string;
+  markerIndex: number;
+  /** Dev Mode replay. */
+  preview:     boolean;
+}
+
 export interface PendingDefeat {
   /** Unique per play — keys the component so a replay restarts it. */
   key:             number;
@@ -813,6 +825,17 @@ export interface GameState {
    * until finishDefeatCinematic(). preview = Dev Mode replay; never ends the run.
    */
   pendingDefeat: PendingDefeat | null;
+
+  /**
+   * FB-033: a boss victory cinematic is playing over the table (e.g. Sarge's
+   * HONORABLY DISCHARGED). The celebration is held via celebrationHoldUntil.
+   */
+  pendingVictory: PendingVictory | null;
+  /**
+   * Date.now() timestamp until which celebration hand-offs must wait, so a
+   * victory moment (PAID IN FULL, a boss victory cinematic) is never cut off.
+   */
+  celebrationHoldUntil: number | null;
 }
 
 /** FB-028: what a cinematic preview should show. */
@@ -1150,6 +1173,10 @@ export interface GameActions {
   clearBossBark(): void;
   /** FB-032: the defeat cinematic finished — release GAME_OVER (or end a preview). */
   finishDefeatCinematic(): void;
+  /** FB-033: the victory cinematic finished (or was cut short) — clear it. */
+  finishVictoryCinematic(): void;
+  /** FB-033 Dev Mode: play a boss's victory cinematic (client-only). */
+  previewVictoryCinematic(markerIndex: number): void;
   /** FB-032 Dev Mode: play a boss's defeat cinematic without ending the run. */
   previewDefeatCinematic(markerIndex: number): void;
   clearExecutiveBark(): void;
@@ -1183,9 +1210,17 @@ function buildSlotIds(n: number): string[] {
  * Foreman, so the register's PAID IN FULL stamp (CashRegister.tsx) can land
  * first. 0 when the Payoff wasn't just reached.
  */
-const PAYOFF_HOLD_MS = 1600;
-function payoffHoldMs(payoffAt: number | null): number {
-  return payoffAt !== null && Date.now() - payoffAt < 5000 ? PAYOFF_HOLD_MS : 0;
+const PAYOFF_HOLD_MS = 2600;   // FB-032: PAID IN FULL stamp (1.6s) + a beat
+const VICTORY_HOLD_MS = 3900;  // FB-033: boss victory cinematic (~3.6s) + a beat
+
+/**
+ * Delay for a celebration hand-off timer: its usual delay, or longer if a
+ * victory moment (PAID IN FULL, a boss victory cinematic) has claimed the table
+ * until `holdUntil` (a Date.now() timestamp). Every hand-off timer goes through
+ * this so a moment is never cut off by the celebration.
+ */
+function celebrationDelay(baseMs: number, holdUntil: number | null): number {
+  return Math.max(baseMs, holdUntil !== null ? holdUntil - Date.now() : 0);
 }
 
 /**
@@ -1308,6 +1343,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   bossBark:                null,
   bossBarkLastLine:        null,
   pendingDefeat:           null,
+  pendingVictory:          null,
+  celebrationHoldUntil:    null,
   executiveRating:         null,
   executiveBark:           null,
   pipTermination:          false,
@@ -1397,6 +1434,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       payoffAt:       null,
       bossBark:       null,
       pendingDefeat:  null,
+      pendingVictory: null,
+      celebrationHoldUntil: null,
       devLastRoll:    null,
       ...initialState,
       // Always sync committedBets to the server's confirmed bet state so
@@ -1590,6 +1629,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bossBark:            null,
       bossBarkLastLine:    null,
       pendingDefeat:       null,
+      pendingVictory:      null,
+      celebrationHoldUntil: null,
       status:              null,
       phase:               null,
       bankroll:            0,
@@ -1843,7 +1884,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         if (!get().pendingTransition) return;
         const { celebrationSnapshot: snap } = get();
         set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
-      }, 1000 + payoffHoldMs(get().payoffAt));
+      }, celebrationDelay(1000, get().celebrationHoldUntil));
     }
   },
 
@@ -2103,6 +2144,21 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       }, 9000);
     }
 
+    // ── FB-033: boss victory cinematic — the roll that clears a boss marker ──
+    // Plays over the table during the celebration hold (celebrationHoldUntil);
+    // the Foreman's PAID IN FULL claims the same hold from his register.
+    const victoryCinematic = isTransition && isBossMarker(oldMarkerIndex)
+      ? GAUNTLET[oldMarkerIndex]?.boss?.victoryCinematic
+      : undefined;
+    const settleNow = Date.now();
+    const pendingVictory: PendingVictory | null = victoryCinematic
+      ? { key: settleNow, id: victoryCinematic.id, line: victoryCinematic.line, markerIndex: oldMarkerIndex, preview: false }
+      : null;
+    const celebrationHoldUntil =
+      pendingVictory !== null       ? settleNow + VICTORY_HOLD_MS
+      : p.bossCut?.paidOff === true ? settleNow + PAYOFF_HOLD_MS
+      : null;
+
     // ── FB-032: generic boss barks (lines in config.ts; rules in shared bossBarks.ts) ─
     const { bossBark: oldBossBark, bossBarkLastLine, bossProgressCents: cutBefore } = get();
     const bark = pickBossBark({
@@ -2156,6 +2212,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // finishDefeatCinematic() releases it (see pendingDefeat below).
       status:               isTransition || pendingDefeat !== null ? currentStatus : p.runStatus,
       pendingDefeat,
+      pendingVictory,
+      celebrationHoldUntil,
       pendingTransition:    isTransition,
       currentMarkerIndex:   p.newMarkerIndex,
       celebrationSnapshot,
@@ -2209,7 +2267,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           if (!get().pendingTransition) return;
           const { celebrationSnapshot: snap } = get();
           set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
-        }, 400);
+        }, celebrationDelay(400, get().celebrationHoldUntil));
       } else if (!hasPops) {
         // No chip rain will fire. Treat chip rain as already done so that
         // dequeueEvent() can start the savor window when cascade empties.
@@ -2220,7 +2278,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
             if (!get().pendingTransition) return;
             const { celebrationSnapshot: snap } = get();
             set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
-          }, 1000 + payoffHoldMs(get().payoffAt));
+          }, celebrationDelay(1000, get().celebrationHoldUntil));
         }
         // else: dequeueEvent() handles it when the last bark completes.
         // Safety net covers cascade_duration + 1500ms savor + buffer.
@@ -2228,7 +2286,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           if (!get().pendingTransition) return;
           const { celebrationSnapshot: snap } = get();
           set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
-        }, 5000);
+        }, celebrationDelay(5000, (get().celebrationHoldUntil ?? 0) + 1000));
       } else {
         // hasPops=true: primary path is triggerChipRainComplete() + dequeueEvent()
         // coordinating via chipRainDone. Safety net covers worst case.
@@ -2236,7 +2294,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           if (!get().pendingTransition) return;
           const { celebrationSnapshot: snap } = get();
           set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
-        }, 5000);
+        }, celebrationDelay(5000, (get().celebrationHoldUntil ?? 0) + 1000));
       }
     }
   },
@@ -2371,7 +2429,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         if (!get().pendingTransition) return;
         const { celebrationSnapshot: snap } = get();
         set({ pendingTransition: false, activeTransition: snap?.isBossVictory ? 'BOSS_VICTORY' : 'MARKER_CLEAR', transitionPhaseIndex: 0 });
-      }, 1000 + payoffHoldMs(get().payoffAt));
+      }, celebrationDelay(1000, get().celebrationHoldUntil));
     }
   },
 
@@ -2898,6 +2956,18 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   clearFeedbackSnapshot() {
     set({ feedbackContextSnapshot: null });
+  },
+
+  finishVictoryCinematic() {
+    if (get().pendingVictory) set({ pendingVictory: null });
+  },
+
+  previewVictoryCinematic(markerIndex) {
+    const s = get();
+    if (s.pendingVictory || s.pendingDefeat || s.activeTransition !== null || s.isRolling) return;
+    const cinematic = GAUNTLET[markerIndex]?.boss?.victoryCinematic;
+    if (!cinematic) return;
+    set({ pendingVictory: { key: Date.now(), id: cinematic.id, line: cinematic.line, markerIndex, preview: true } });
   },
 
   finishDefeatCinematic() {

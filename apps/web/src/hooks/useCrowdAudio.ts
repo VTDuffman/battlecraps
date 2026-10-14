@@ -503,6 +503,52 @@ function playDrillWhistleSting(ctx: AudioContext, dest: AudioNode): void {
 }
 
 /**
+ * Bugle call for HONORABLY DISCHARGED — brassy C-major arpeggio, short-short-
+ * short-LONG (G4 C5 E5 G5), sawtooth through a lowpass with a little vibrato (≈1.7s).
+ */
+function playBugleCallSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime;
+  const notes: Array<[number, number, number]> = [
+    // [freq, start offset, length]
+    [392.00, 0.00, 0.16],
+    [523.25, 0.18, 0.16],
+    [659.25, 0.36, 0.16],
+    [783.99, 0.54, 1.05],
+  ];
+  notes.forEach(([freq, offset, len]) => {
+    const start = t0 + offset;
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = freq;
+    if (len > 0.5) {
+      // Vibrato on the held note.
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 5.5;
+      const depth = ctx.createGain();
+      depth.gain.value = 5;
+      lfo.connect(depth);
+      depth.connect(osc.frequency);
+      lfo.start(start + 0.15);
+      lfo.stop(start + len);
+    }
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(1100, start);
+    lp.frequency.linearRampToValueAtTime(2200, start + 0.05); // brassy "blat" attack
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, start);
+    env.gain.exponentialRampToValueAtTime(0.12, start + 0.03);
+    env.gain.setValueAtTime(0.11, start + len - 0.06);
+    env.gain.exponentialRampToValueAtTime(0.001, start + len);
+    osc.connect(lp);
+    lp.connect(env);
+    env.connect(dest);
+    osc.start(start);
+    osc.stop(start + len + 0.01);
+  });
+}
+
+/**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
  * which mounts the hook, is unmounted). Silent when muted.
@@ -534,6 +580,11 @@ export function playRegisterKaChing(): void {
 /** FB-032: The Foreman is paid off — register bell. */
 export function playRegisterBell(): void {
   playStandalone(playRegisterBellSting);
+}
+
+/** FB-033: HONORABLY DISCHARGED — bugle call. */
+export function playBugleCall(): void {
+  playStandalone(playBugleCallSting);
 }
 
 /** FB-033: Sarge's clock ticks (sharper as rollsLeft drops). */

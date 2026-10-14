@@ -92,6 +92,7 @@ const DevPanel: React.FC = () => {
   const previewTransition = useGameStore((s) => s.previewTransition);
   const previewPinkSlip   = useGameStore((s) => s.previewPinkSlip);
   const previewDefeatCinematic = useGameStore((s) => s.previewDefeatCinematic);
+  const previewVictoryCinematic = useGameStore((s) => s.previewVictoryCinematic);
   const crewRoster        = useGameStore((s) => s.crewRoster);
   const fetchCrewRoster   = useGameStore((s) => s.fetchCrewRoster);
   const applyDevUnlockChange = useGameStore((s) => s.applyDevUnlockChange);
@@ -390,6 +391,9 @@ const DevPanel: React.FC = () => {
                     <button type="button" disabled={locked || !GAUNTLET[previewBoss]?.boss?.defeatCinematic} className={smallBtn}
                       title={GAUNTLET[previewBoss]?.boss?.defeatCinematic ? undefined : 'No defeat cinematic for this boss yet'}
                       onClick={() => { setOpen(false); previewDefeatCinematic(previewBoss); }}>Defeat</button>
+                    <button type="button" disabled={locked || !GAUNTLET[previewBoss]?.boss?.victoryCinematic} className={smallBtn}
+                      title={GAUNTLET[previewBoss]?.boss?.victoryCinematic ? undefined : "No victory cinematic for this boss (the Foreman's PAID IN FULL lives in his register)"}
+                      onClick={() => { setOpen(false); previewVictoryCinematic(previewBoss); }}>Victory</button>
                   </div>
                   <DevRow label="Floor">
                     <select className={devSelectCls} value={previewFloor} onChange={(e) => setPreviewFloor(Number(e.target.value))}>

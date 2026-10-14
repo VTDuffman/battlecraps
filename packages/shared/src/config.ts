@@ -111,6 +111,9 @@ export type BossBarkTrigger =
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
 export type BossDefeatCinematicId = 'DOCK_CLOSED';
 
+/** FB-033: boss victory moments (one component each in the web registry). */
+export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED';
+
 export interface BossConfig {
   // ── Identity ──────────────────────────────────────────────────────────────
   /** NPC name shown in boss entry and victory screens. */
@@ -134,6 +137,13 @@ export interface BossConfig {
    * component (web DEFEAT_CINEMATICS registry); `line` is the boss's parting shot.
    */
   defeatCinematic?: { id: BossDefeatCinematicId; line: string };
+  /**
+   * FB-033: signature "you beat me" moment played over the table before the
+   * boss-victory celebration (the celebration is held for it). Optional. `id`
+   * picks the component (web VICTORY_CINEMATICS registry). The Foreman has none:
+   * his PAID IN FULL lives in his cash register.
+   */
+  victoryCinematic?: { id: BossVictoryCinematicId; line: string };
 
   // ── Vibe copy ─────────────────────────────────────────────────────────────
   /** 1–3 word bark displayed on the dread screen before the rule briefing. */
@@ -350,6 +360,8 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compFanLabel:    'JACKET',
       // Legacy
       flavorText: "You shoot on MY clock, soldier. Six rolls.",
+      // FB-033 victory moment: the discharge certificate, honorably stamped.
+      victoryCinematic: { id: 'HONORABLY_DISCHARGED', line: "…not bad, soldier. Dismissed." },
       // FB-033 barks — shouting caps for orders, deadpan lowercase for praise.
       barks: {
         pointSet: [

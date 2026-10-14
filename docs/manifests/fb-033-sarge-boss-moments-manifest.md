@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-033 Sarge Boss Moments
 
 **Design doc:** `docs/design/fb-033-sarge-boss-moments-design.md`
-**Status:** Phases 1–2 done locally (not pushed).
+**Status:** Phases 1–3 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. Before calling a phase done: `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes). Push when Mike says.
 
@@ -36,6 +36,8 @@
 5. **Dev Panel:** Victory preview.
 
 🛑 **Gate:** beat Sarge locally.
+
+--- Implemented locally (2026-10-13): `celebrationHoldUntil` (absolute timestamp) + `celebrationDelay()` now gate all five celebration hand-offs (savor ×3, ADVANCE fast path, safety ×2); PAID IN FULL claims 2.6s, victory cinematics 3.9s. Victory host clears a cut-short cinematic on unmount so it can't replay. ---
 
 ## Phase 4: DISHONORABLE DISCHARGE
 

@@ -48,6 +48,7 @@ import { BettingGrid, ChipSelector } from './BettingGrid.js';
 import { BossRoomHeader }  from './BossRoomHeader.js';
 import { CashRegister }    from './CashRegister.js';
 import { DefeatCinematicHost } from './defeat/DefeatCinematicHost.js';
+import { VictoryCinematicHost } from './victory/VictoryCinematicHost.js';
 import { DiceZone }      from './DiceZone.js';
 import { CrewPortrait }  from './CrewPortrait.js';
 import { RollLog }       from './RollLog.js';
@@ -475,6 +476,9 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
 
       {/* ── Boss defeat cinematic (FB-032) — holds GAME_OVER while it plays ── */}
       <DefeatCinematicHost />
+
+      {/* ── Boss victory cinematic (FB-033) — plays during the celebration hold ── */}
+      <VictoryCinematicHost />
 
       {/* ── Feedback modal ────────────────────────────────────────────────── */}
       <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />

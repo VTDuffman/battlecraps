@@ -845,3 +845,24 @@
   .animate-clock-label-glow,
   .animate-clock-label-glow-hard { animation: none; text-shadow: 0 0 6px var(--clock-glow); }
 }
+
+/* ── Victory cinematic: HONORABLY DISCHARGED (FB-033, Sarge) ─────────────── */
+@keyframes cert-slide-up {
+  0%   { transform: translateY(60vh) rotate(2deg); opacity: 0; }
+  70%  { transform: translateY(-6px) rotate(-0.5deg); opacity: 1; }
+  100% { transform: translateY(0) rotate(0deg); opacity: 1; }
+}
+@keyframes honor-stamp {
+  0%   { transform: scale(2.4) rotate(-16deg); opacity: 0; }
+  55%  { transform: scale(0.92) rotate(-9deg); opacity: 1; }
+  75%  { transform: scale(1.04) rotate(-8deg); }
+  100% { transform: scale(1)    rotate(-8deg); opacity: 1; }
+}
+.animate-cert-slide-up { animation: cert-slide-up 480ms cubic-bezier(0.2, 0.9, 0.3, 1.05) both; }
+.animate-honor-stamp   { animation: honor-stamp 420ms cubic-bezier(0.2, 0.9, 0.3, 1.15) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-cert-slide-up,
+  .animate-honor-stamp { animation: dock-door-fade 300ms ease-out both; }
+  .animate-honor-stamp { transform: rotate(-8deg); }
+}

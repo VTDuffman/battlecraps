@@ -110,7 +110,8 @@ export type BossBarkTrigger =
   | 'pointSet' | 'clockLow' | 'lastRoll' | 'beatClock' | 'timeUp'
   | 'charmed' | 'charmFired'
   | 'promoted' | 'finalWarning' | 'bonusPaid' | 'ratingUp' | 'ratingDown'
-  | 'tributeSeized' | 'bigOffering' | 'escrowReleased';
+  | 'tributeSeized' | 'bigOffering' | 'escrowReleased'
+  | 'waveHit' | 'undertowHit' | 'highTide';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
 export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS';
@@ -627,6 +628,14 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       ruleBlurb:          "The tide turns LOW → EBB → HIGH → FLOW each time a come-out resolves, and every stage is its own challenge. DEAD CALM (low tide): no odds bets. THE UNDERTOW (ebb and flow): a Seven-Out drags 35% of your bankroll out to sea. HIGH TIDE: a Seven-Out drowns two shooters. You can see it coming.",
       victoryQuote:       "…the tide will return. It always does.",
       defeatAnnouncement: 'THE TIDE RECEDES',
+      // FB-037 barks — regal, ancient, slow; he speaks like the sea.
+      barks: {
+        waveHit:     ["The deep keeps what it takes.", "Two more for the sea."],
+        undertowHit: ["The tide takes its share.", "Everything returns to the sea."],
+        highTide:    ["The sea rises for its king.", "Hear it coming?"],
+        win:         ["Even kings must wait for the tide.", "A ripple. Nothing more."],
+        loss:        ["Another empire, gone under.", "The current is patient."],
+      },
       // Mechanic
       rule:           'TIDAL_SURGE',
       ruleHeaderText: 'DEAD CALM: NO ODDS · UNDERTOW: 7-OUT TAKES 35% · HIGH TIDE: 7-OUT DROWNS 2',

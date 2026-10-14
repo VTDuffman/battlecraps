@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-037 The Sovereign Boss Moments
 
 **Design doc:** `docs/design/fb-037-sovereign-boss-moments-design.md`
-**Status:** Phase 1 done locally (not pushed).
+**Status:** Phases 1–2 done locally (not pushed). Tide dial pulled forward from Phase 3.
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -22,6 +22,8 @@
 `waveHit` / `undertowHit` always, `highTide` 50%, win/loss by chance (design §5). Tests.
 
 🛑 **Gate:** play locally.
+
+--- Implemented locally (2026-10-14): shared TIDAL_SURGE events (waveHit / undertowHit always; highTide on the turn to HIGH, 50%) + lines incl. win/loss; store passes `tide`. Shared 468 tests. ---
 
 ## Phase 3: The water line + tide dial
 `TideWater` (rising sea along the bottom, surface + foam, surge on undertow, crest on wave), `TideDial` (current + next stage, one-line rule). Audio: `playSwell()`, `playUndertow()`, `playWaveCrash()`.

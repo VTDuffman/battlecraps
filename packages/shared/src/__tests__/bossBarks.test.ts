@@ -68,7 +68,7 @@ describe('pickBossBark', () => {
   });
 
   it('bosses with no barks stay silent', () => {
-    expect(pickBossBark({ ...base, markerIndex: 17, bankrollDelta: 400 }, always)).toBeNull(); // The Sovereign (no barks yet)
+    expect(pickBossBark({ ...base, markerIndex: 20, bankrollDelta: 400 }, always)).toBeNull(); // The Commander (no barks yet)
   });
 });
 
@@ -204,6 +204,34 @@ describe('The Hierophant (FB-036): offering bowl events', () => {
 
   it('no escrow movement falls back to chance win / loss', () => {
     expect(selectBossBarkTrigger({ ...hiero, bankrollDelta: 300_000, escrow: escrow(0, 0, 0) }, always)).toBe('win');
+  });
+});
+
+describe('The Sovereign (FB-037): tide events', () => {
+  const SOV = 17;
+  const sov: BossBarkInput = { ...base, markerIndex: SOV };
+
+  it('the wave and the undertow always speak, even over a showing bark', () => {
+    expect(selectBossBarkTrigger({ ...sov, isLoss: true, tide: { stage: 2, nextStage: 3, waveShooters: 2 }, barkShowing: true }, never)).toBe('waveHit');
+    expect(selectBossBarkTrigger({ ...sov, isLoss: true, tide: { stage: 1, nextStage: 2, undertowCents: 7_000_000 }, barkShowing: true }, never)).toBe('undertowHit');
+  });
+
+  it('a wave The Covenant turned back is silent about the wave', () => {
+    expect(deriveBossBarkEvents({ ...sov, tide: { stage: 2, nextStage: 3, waveShooters: 0 } })).toEqual([]);
+  });
+
+  it('the turn to High Tide speaks half the time', () => {
+    const turning = { ...sov, bankrollDelta: 500, tide: { stage: 1, nextStage: 2 } };
+    expect(selectBossBarkTrigger(turning, always)).toBe('highTide');
+    expect(selectBossBarkTrigger(turning, never)).toBeNull();
+  });
+
+  it('a stage that holds (a blank or a point set) derives nothing', () => {
+    expect(deriveBossBarkEvents({ ...sov, tide: { stage: 2, nextStage: 2 } })).toEqual([]);
+  });
+
+  it('a wave that ends the run is silent (the defeat moment owns it)', () => {
+    expect(selectBossBarkTrigger({ ...sov, isLoss: true, isGameOver: true, tide: { stage: 2, nextStage: 3, waveShooters: 2 } }, always)).toBeNull();
   });
 });
 

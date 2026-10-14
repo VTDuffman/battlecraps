@@ -248,6 +248,8 @@ interface TurnSettledPayload {
   escrow?:                 { heldCents: number; releasedCents: number; seizedCents: number };
   /** FB-036: The Covenant kept the shooter on this Seven-Out. */
   covenantSaved?:          boolean;
+  /** FB-037: The Sovereign's tide this roll. */
+  tide?:                   { stage: number; nextStage: number; undertowCents?: number; waveShooters?: number };
   /** True when Poseidon's Favor cancelled the shooter's first-roll craps-out (rollResult is NO_RESOLUTION). */
   crapsOutBlocked?:        boolean;
   /** The Architect (CONVERGENCE): crew slot index permanently removed by this seven-out. */
@@ -2192,6 +2194,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // FB-036: the Hierophant's offering bowl.
       escrowBeforeCents: escrowBefore,
       ...(p.escrow && { escrow: p.escrow }),
+      // FB-037: the Sovereign's tide.
+      ...(p.tide && { tide: p.tide }),
       ...(p.bossCut && {
         cut: { before: cutBefore, after: p.bossCut.total, payoff: p.bossCut.payoff, paidOff: p.bossCut.paidOff },
       }),
@@ -2530,6 +2534,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           exceptionalBonusCents?: number;
           escrow?: { heldCents: number; releasedCents: number; seizedCents: number };
           covenantSaved?: boolean;
+          tide?: { stage: number; nextStage: number; undertowCents?: number; waveShooters?: number };
           crapsOutBlocked?: boolean;
           clockExpired?: boolean;
           removedCrewSlot?: number;
@@ -2568,6 +2573,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           ...(data.roll.exceptionalBonusCents !== undefined && { exceptionalBonusCents: data.roll.exceptionalBonusCents }),
           ...(data.roll.escrow !== undefined && { escrow: data.roll.escrow }),
           ...(data.roll.covenantSaved === true && { covenantSaved: true }),
+          ...(data.roll.tide !== undefined && { tide: data.roll.tide }),
         };
         set({ pendingSettlement: autoSettlement });
         get().applyPendingSettlement();
@@ -2603,6 +2609,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ...(data.roll.exceptionalBonusCents !== undefined && { exceptionalBonusCents: data.roll.exceptionalBonusCents }),
         ...(data.roll.escrow !== undefined && { escrow: data.roll.escrow }),
         ...(data.roll.covenantSaved === true && { covenantSaved: true }),
+        ...(data.roll.tide !== undefined && { tide: data.roll.tide }),
         ...(data.roll.crapsOutBlocked === true      && { crapsOutBlocked: true as const              }),
         ...(data.roll.clockExpired    === true      && { clockExpired:    true as const              }),
         ...(data.roll.removedCrewSlot !== undefined && { removedCrewSlot: data.roll.removedCrewSlot  }),

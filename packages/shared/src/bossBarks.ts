@@ -17,6 +17,7 @@
 // =============================================================================
 
 import { GAUNTLET, type BossBarkTrigger } from './config.js';
+import { getTideStage } from './bossRules/tidalSurge.js';
 import type { GamePhase, RollResult } from './types.js';
 
 /** Chance a plain win / loss produces a bark. */
@@ -35,6 +36,7 @@ export const EVENT_BARK_CHANCE: Readonly<Partial<Record<BossBarkTrigger, number>
   ratingDown: 0.4,
   bigOffering:    0.5,
   escrowReleased: 0.3,
+  highTide:       0.5,
 };
 
 /** The Hierophant: a held escrow at least this share of the marker target is a "big offering". */
@@ -70,6 +72,8 @@ export interface BossBarkInput {
   /** The Hierophant: escrow before (held going in) and this roll's escrow facts. */
   escrowBeforeCents?: number;
   escrow?: { heldCents: number; releasedCents: number; seizedCents: number };
+  /** The Sovereign: the tide this roll (stage played at, stage now, what it took). */
+  tide?: { stage: number; nextStage: number; undertowCents?: number; waveShooters?: number };
   /** Payoff fights: Cut before and after this roll, the Payoff, and whether it was reached. */
   cut?:          { before: number; after: number; payoff: number; paidOff: boolean };
   /** A bark is still showing — skip chance-based barks. */
@@ -153,6 +157,17 @@ export function deriveBossBarkEvents(input: BossBarkInput): BossBarkTrigger[] {
       const big    = target * BIG_OFFERING_SHARE;
       if (target > 0 && e.heldCents >= big && (input.escrowBeforeCents ?? 0) < big) events.push('bigOffering');
       if (e.releasedCents > 0) events.push('escrowReleased');
+      break;
+    }
+
+    // The Sovereign: the tide. What it takes always speaks; the turn to High
+    // Tide sometimes does.
+    case 'TIDAL_SURGE': {
+      const t = input.tide;
+      if (!t) break;
+      if ((t.waveShooters ?? 0) > 0) events.push('waveHit');
+      if ((t.undertowCents ?? 0) > 0) events.push('undertowHit');
+      if (t.nextStage !== t.stage && getTideStage(boss.ruleParams, t.nextStage).effect === 'HIGH_TIDE') events.push('highTide');
       break;
     }
 

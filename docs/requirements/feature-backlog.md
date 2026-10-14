@@ -1833,3 +1833,21 @@ The Floor 1 boss is a flat 20% payout tax with a bankroll target: a stat penalty
 ### Solution
 
 The Foreman's 20% skim, **the Cut**, accumulates on a cash-register counter. When it reaches **the Payoff** ($25 to start) he looks the other way and you move on; the Payoff is the **only** way out (no bankroll target). Losses can't push you back, so it's no harder than today. Pilots a **generic boss bark system** (lines in `config.ts`) on the Foreman before rolling barks out to the other bosses.
+
+---
+
+## FB-033 — Sarge Boss Moments (boss pattern #2)
+
+**Type:** Boss presentation (barks, clock drama, victory + defeat cinematics)
+**Area:** `packages/shared/src/config.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/BossRoomHeader.tsx`, `apps/web/src/components/victory/`, `apps/web/src/components/defeat/`
+**Status:** Designed (2026-10-13); pending implementation
+**Design:** `docs/design/fb-033-sarge-boss-moments-design.md`
+**Manifest:** `docs/manifests/fb-033-sarge-boss-moments-manifest.md`
+
+### Problem
+
+After FB-032 the Foreman has a voice and signature win/loss moments; Sarge doesn't.
+
+### Solution
+
+Drill-sergeant barks driven by his Double Time clock (new per-boss bark event triggers), a clock that grows/pulses and ticks during the point phase (alarm on the last roll, whistle on TIME'S UP), a **HONORABLY DISCHARGED** win stamp with a bugle call (new per-boss victory-moment system), and a **DISHONORABLE DISCHARGE** defeat cinematic with dog tags. Mechanic unchanged. Remaining bosses follow one at a time.

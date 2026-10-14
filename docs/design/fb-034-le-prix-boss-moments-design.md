@@ -56,7 +56,7 @@ When she ends the run:
 1. A ❤️ blooms on **every** crew portrait (staggered),
 2. one by one the portraits **drift up and away** toward her name and fade,
 3. a big glossy **lipstick kiss** presses onto the screen like a stamp on glass (soft "mwah" + thud),
-4. her line: *"Your crew stays with me tonight. Au revoir, chéri."*
+4. her line: *"Your crew stays with me… forever."*
 ~6 s, then game over. `defeatCinematic { id: 'SHE_TAKES_THE_CREW', line }`. Uses the real crew portraits (measured from the rail) so it's *your* crew that leaves.
 
 ## 7. Copy

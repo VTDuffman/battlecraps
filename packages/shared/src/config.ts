@@ -116,7 +116,7 @@ export type BossBarkTrigger =
 export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED';
 
 /** FB-033: boss victory moments (one component each in the web registry). */
-export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP';
+export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP' | 'THE_EYE_CLOSES';
 
 export interface BossConfig {
   // ── Identity ──────────────────────────────────────────────────────────────
@@ -567,6 +567,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       ],
       ruleBlurb:          "Your crew's cash bonuses are offered to the order: they pile up in the offering bowl until you win a roll (a Natural or hitting your point), then come back to you multiplied by your Hype. Seven-out first and The Hierophant keeps 75% as tribute.",
       victoryQuote:       "…the rites acknowledge your offering. Leave before the observers decide otherwise.",
+      victoryCinematic:   { id: 'THE_EYE_CLOSES', line: "…the rites acknowledge your offering. Leave before the observers decide otherwise." },
       defeatAnnouncement: 'RITES CONCLUDED',
       // FB-036 barks — solemn, liturgical; he speaks for the order.
       barks: {

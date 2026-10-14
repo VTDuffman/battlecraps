@@ -1204,6 +1204,7 @@ const VICTORY_HOLD_MS_BY_ID: Readonly<Record<BossVictoryCinematicId, number>> = 
   HONORABLY_DISCHARGED: 4900,  // FB-033: Sarge (~4.6s)
   THE_ROSE:             6100,  // FB-034: Mme. Le Prix (~5.7s)
   NAMEPLATE_SWAP:       6300,  // FB-035: The Executive (~5.9s)
+  THE_EYE_CLOSES:       6400,  // FB-036: The Hierophant (~6.0s)
 };
 
 /**

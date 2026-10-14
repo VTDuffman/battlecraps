@@ -13,6 +13,7 @@ import type { BossVictoryCinematicId } from '@battlecraps/shared';
 import { HonorablyDischargedCinematic } from './HonorablyDischargedCinematic.js';
 import { TheRoseCinematic } from './TheRoseCinematic.js';
 import { NameplateSwapCinematic } from './NameplateSwapCinematic.js';
+import { TheEyeClosesCinematic } from './TheEyeClosesCinematic.js';
 
 export interface VictoryCinematicProps {
   /** The boss's line (config.ts victoryCinematic.line). */
@@ -25,4 +26,5 @@ export const VICTORY_CINEMATICS: Record<BossVictoryCinematicId, React.ComponentT
   HONORABLY_DISCHARGED: HonorablyDischargedCinematic,
   THE_ROSE:             TheRoseCinematic,
   NAMEPLATE_SWAP:       NameplateSwapCinematic,
+  THE_EYE_CLOSES:       TheEyeClosesCinematic,
 };

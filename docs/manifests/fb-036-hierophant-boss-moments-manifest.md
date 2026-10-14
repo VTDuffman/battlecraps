@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-036 The Hierophant Boss Moments
 
 **Design doc:** `docs/design/fb-036-hierophant-boss-moments-design.md`
-**Status:** Phases 1–2 done locally (not pushed).
+**Status:** Phases 1–3 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -36,6 +36,8 @@
 3. **Audio:** reuse choir/bell; `playDoorsOpen()` (stone rumble + swell).
 
 🛑 **Gate:** beat the Hierophant locally.
+
+--- Implemented locally (2026-10-14): sealed sanctum doors behind a ring of 12 flickering candles; an SVG eye (almond clip, amber iris, lids that really close) opens with a bell toll, its iris looks left/right, then the lids close (0.9 s); candles snuff out one by one with smoke wisps (`playCandleSnuff()` every third); the doors part, warm light floods in (`playDoorsOpen()` rumble + thud, `playChoirChord('major')`), line in the light. ~6.0 s, hold 6.4 s. ---
 
 ## Phase 4: The Order Collects (defeat)
 1. `BossDefeatCinematicId` += `THE_ORDER_COLLECTS`; Hierophant `defeatCinematic`.

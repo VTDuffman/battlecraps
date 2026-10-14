@@ -982,10 +982,18 @@ function playBellTollSting(ctx: AudioContext, dest: AudioNode): void {
   });
 }
 
-/** FB-036: a low choir "aah" — a D-minor chord of formant-filtered voices (≈2 s). */
-function playChoirChordSting(ctx: AudioContext, dest: AudioNode): void {
+/**
+ * FB-036: a choir "aah" — formant-filtered voices. 'minor' (D minor, ≈2 s) for
+ * the order's tribute; 'major' (D major, brighter and longer, ≈3 s) for the
+ * light through the sanctum doors.
+ */
+function makeChoirChordSting(mode: 'minor' | 'major'): (ctx: AudioContext, dest: AudioNode) => void {
+  return (ctx, dest) => playChoirChordVoices(ctx, dest, mode);
+}
+
+function playChoirChordVoices(ctx: AudioContext, dest: AudioNode, mode: 'minor' | 'major'): void {
   const t0  = ctx.currentTime + 0.01;
-  const end = t0 + 2.1;
+  const end = t0 + (mode === 'major' ? 3.0 : 2.1);
   const formants = [[700, 0.5], [1150, 0.3]].map(([f, g]) => {
     const bp = ctx.createBiquadFilter();
     bp.type = 'bandpass';
@@ -1003,7 +1011,10 @@ function playChoirChordSting(ctx: AudioContext, dest: AudioNode): void {
   out.gain.exponentialRampToValueAtTime(0.0001, end);
   formants.forEach(({ gain }) => gain.connect(out));
   out.connect(dest);
-  [146.83, 174.61, 220, 293.66].forEach((freq) => {          // D3 F3 A3 D4
+  const chord = mode === 'major'
+    ? [146.83, 185.0, 220, 293.66, 369.99]                    // D3 F#3 A3 D4 F#4
+    : [146.83, 174.61, 220, 293.66];                          // D3 F3 A3 D4
+  chord.forEach((freq) => {
     [-6, 6].forEach((cents) => {
       const osc = ctx.createOscillator();
       osc.type = 'sawtooth';
@@ -1014,6 +1025,62 @@ function playChoirChordSting(ctx: AudioContext, dest: AudioNode): void {
       osc.stop(end + 0.05);
     });
   });
+}
+
+/** FB-036: a candle pinched out — a short, soft breath of noise. */
+function playCandleSnuffSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  const puff = ctx.createBufferSource();
+  puff.buffer = makeNoiseBuf(ctx, 0.2);
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(2400, t0);
+  bp.frequency.exponentialRampToValueAtTime(900, t0 + 0.18);
+  bp.Q.value = 0.8;
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.07, t0 + 0.02);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+  puff.connect(bp);
+  bp.connect(env);
+  env.connect(dest);
+  puff.start(t0);
+  puff.stop(t0 + 0.2);
+}
+
+/** FB-036: the sanctum doors grind open — a low stone rumble that swells and settles (≈2 s). */
+function playDoorsOpenSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  const rumble = ctx.createBufferSource();
+  rumble.buffer = makeNoiseBuf(ctx, 2.2);
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(180, t0);
+  lp.frequency.linearRampToValueAtTime(420, t0 + 1.0);
+  lp.frequency.linearRampToValueAtTime(140, t0 + 2.1);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.32, t0 + 0.5);
+  env.gain.setValueAtTime(0.32, t0 + 1.3);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.15);
+  rumble.connect(lp);
+  lp.connect(env);
+  env.connect(dest);
+  rumble.start(t0);
+  rumble.stop(t0 + 2.2);
+  // A final heavy thud as they come to rest.
+  const thud = ctx.createOscillator();
+  thud.type = 'sine';
+  thud.frequency.setValueAtTime(70, t0 + 1.55);
+  thud.frequency.exponentialRampToValueAtTime(38, t0 + 1.85);
+  const tEnv = ctx.createGain();
+  tEnv.gain.setValueAtTime(0.0001, t0 + 1.55);
+  tEnv.gain.exponentialRampToValueAtTime(0.25, t0 + 1.57);
+  tEnv.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.95);
+  thud.connect(tEnv);
+  tEnv.connect(dest);
+  thud.start(t0 + 1.55);
+  thud.stop(t0 + 2.0);
 }
 
 /**
@@ -1150,9 +1217,19 @@ export function playBellToll(): void {
   playStandalone(playBellTollSting);
 }
 
-/** FB-036: the order's choir. */
-export function playChoirChord(): void {
-  playStandalone(playChoirChordSting);
+/** FB-036: the order's choir ('minor' for tribute; 'major' when the doors open). */
+export function playChoirChord(mode: 'minor' | 'major' = 'minor'): void {
+  playStandalone(makeChoirChordSting(mode));
+}
+
+/** FB-036 win: a candle in the ring goes out. */
+export function playCandleSnuff(): void {
+  playStandalone(playCandleSnuffSting);
+}
+
+/** FB-036 win: the sanctum doors grind open. */
+export function playDoorsOpen(): void {
+  playStandalone(playDoorsOpenSting);
 }
 
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */

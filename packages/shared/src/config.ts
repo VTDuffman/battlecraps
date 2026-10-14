@@ -108,7 +108,8 @@ export type BossBarkTrigger =
   | 'win' | 'loss'
   | 'progress50' | 'progress80' | 'payoff'
   | 'pointSet' | 'clockLow' | 'lastRoll' | 'beatClock' | 'timeUp'
-  | 'charmed' | 'charmFired';
+  | 'charmed' | 'charmFired'
+  | 'promoted' | 'finalWarning' | 'bonusPaid' | 'ratingUp' | 'ratingDown';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
 export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW';
@@ -507,6 +508,14 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       ruleBlurb:          "The Executive tracks your Performance Review rating throughout the fight. Every roll outcome shifts it up or down. Reach Action Required and one more bad roll ends the run.",
       victoryQuote:       "…restructuring was inevitable. Well played.",
       defeatAnnouncement: 'EXECUTIVE OVERRIDE',
+      // FB-035 barks — clipped corporate-speak, polite and cold.
+      barks: {
+        promoted:     ["Now that's executive presence.", "Let's fast-track this one."],
+        finalWarning: ["Consider this your formal notice.", "One more and we part ways."],
+        bonusPaid:    ["Don't spend it all in one quarter.", "Bonus approved. Don't get used to it."],
+        ratingUp:     ["You're really moving the needle.", "Excellent value-add.", "I'm seeing real alignment."],
+        ratingDown:   ["We need to discuss your engagement metrics.", "I'm concerned about your trajectory.", "I'd like to loop in HR on this one."],
+      },
       // Mechanic
       rule:           'CROSS_CALIBRATION',
       ruleHeaderText: 'PERFORMANCE REVIEW — EVERY ROLL SHIFTS YOUR RATING',

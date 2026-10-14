@@ -194,28 +194,6 @@ export interface QueuedCascadeEvent extends CascadeEvent {
 }
 
 // ---------------------------------------------------------------------------
-// The Executive — corporate speak bark line pools
-// ---------------------------------------------------------------------------
-
-const EXECUTIVE_BARKS_UP: string[] = [
-  "Let's circle back on that synergy.",
-  "You're really moving the needle.",
-  "Excellent value-add. Very on-brand.",
-  "I'm seeing real alignment with our objectives.",
-  "That's the kind of paradigm shift we're looking for.",
-  "You're leveraging your bandwidth effectively.",
-];
-
-const EXECUTIVE_BARKS_DOWN: string[] = [
-  "We need to discuss your engagement metrics.",
-  "This isn't aligned with our Q4 objectives.",
-  "I'm concerned about your trajectory.",
-  "Let's schedule a touch-base about your performance pathway.",
-  "This is not the culture fit we were looking for.",
-  "I'd like to loop in HR on this one.",
-];
-
-// ---------------------------------------------------------------------------
 // WS payload types (must match apps/api/src/routes/rolls.ts)
 // ---------------------------------------------------------------------------
 
@@ -262,6 +240,8 @@ interface TurnSettledPayload {
   bossRating?:             { index: number; changed: boolean; direction: 'up' | 'down' | null };
   /** True when The Executive fires the final termination (pip termination / game over). */
   pipTermination?:         boolean;
+  /** FB-035: the +15% Exceptional bonus paid this roll (The Executive; omitted when 0). */
+  exceptionalBonusCents?:  number;
   /** True when Poseidon's Favor cancelled the shooter's first-roll craps-out (rollResult is NO_RESOLUTION). */
   crapsOutBlocked?:        boolean;
   /** The Architect (CONVERGENCE): crew slot index permanently removed by this seven-out. */
@@ -767,13 +747,6 @@ export interface GameState {
   executiveRating: number | null;
 
   /**
-   * Corporate-speak bark line to display, and a monotonic key so React re-fires
-   * the animation even when consecutive barks carry the same text.
-   * null when no bark is playing.
-   */
-  executiveBark: { line: string; key: number } | null;
-
-  /**
    * True when turn:settled carries pipTermination: true (The Executive fires the
    * final pink-slip termination). The GameOverScreen reads this to show the Pink Slip.
    */
@@ -1189,7 +1162,6 @@ export interface GameActions {
   previewVictoryCinematic(markerIndex: number): void;
   /** FB-032 Dev Mode: play a boss's defeat cinematic without ending the run. */
   previewDefeatCinematic(markerIndex: number): void;
-  clearExecutiveBark(): void;
 
   /**
    * Dismiss the Pink Slip modal after the player acknowledges the PIP termination.
@@ -1361,7 +1333,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   pendingVictory:          null,
   celebrationHoldUntil:    null,
   executiveRating:         null,
-  executiveBark:           null,
   pipTermination:          false,
 
   // ── Actions ───────────────────────────────────────────────────────────────
@@ -1435,7 +1406,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _pointRingKey:     0,
       _reRollKey:        0,
       executiveRating:   null,
-      executiveBark:     null,
       pipTermination:    false,
       // Reset bets to zero so a new run never inherits a live bet from the
       // previous run. initialState.bets (present when reloading an existing
@@ -1707,7 +1677,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       pubDraft:                  [],
       unlockModalReady:          false,
       executiveRating:           null,
-      executiveBark:             null,
       pipTermination:            false,
     });
   },
@@ -1930,7 +1899,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       charmedCrewSlot:  oldCharmedSlot,
       charmingSlot:     oldCharmingSlot,
       charmFlight:      oldCharmFlight,
-      executiveBark:    oldExecutiveBark,
+      executiveRating:  oldExecutiveRating,
     } = get();
     if (!p) return;
 
@@ -2132,21 +2101,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ? p.bossRating.index
         : get().executiveRating;
 
-    let newExecutiveBark: { line: string; key: number } | null = isEndingBossFight
-      ? null
-      : oldExecutiveBark;
-
-    if (!isEndingBossFight && p.bossRating?.changed === true) {
-      const pool = p.bossRating.direction === 'up' ? EXECUTIVE_BARKS_UP : EXECUTIVE_BARKS_DOWN;
-      const line = pool[Math.floor(Math.random() * pool.length)] ?? pool[0] ?? '';
-      newExecutiveBark = { line, key: (oldExecutiveBark?.key ?? 0) + 1 };
-      // Safety timeout — clears the bark if the UI component never calls clearExecutiveBark().
-      const barkKey = newExecutiveBark.key;
-      setTimeout(() => {
-        const cur = get().executiveBark;
-        if (cur?.key === barkKey) set({ executiveBark: null });
-      }, 3000);
-    }
 
     const newPipTermination = p.pipTermination === true ? true : get().pipTermination;
 
@@ -2211,6 +2165,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       charmFired:        p.charmFired === true,
       charmedSlotBefore: oldCharmedSlot,
       charmedSlotAfter:  p.charmedCrewSlot ?? null,
+      // FB-035: the Executive's Performance Review (before / after) + bonus paid.
+      ratingBefore:          oldExecutiveRating,
+      ratingAfter:           p.bossRating?.index ?? null,
+      exceptionalBonusCents: p.exceptionalBonusCents ?? 0,
       ...(p.bossCut && {
         cut: { before: cutBefore, after: p.bossCut.total, payoff: p.bossCut.payoff, paidOff: p.bossCut.paidOff },
       }),
@@ -2273,7 +2231,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       charmFlight:           newCharmFlight,
       _charmKey:             charmFired ? _charmKey + 1 : _charmKey,
       executiveRating:       newExecutiveRating,
-      executiveBark:         newExecutiveBark,
       pipTermination:        newPipTermination,
       crewSlots:             newCrewSlots,
       // FB-032: The Foreman's Cut. On the paying-off roll the register keeps the
@@ -2542,6 +2499,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           charmFired?: boolean;
           bossRating?: { index: number; changed: boolean; direction: 'up' | 'down' | null };
           pipTermination?: boolean;
+          exceptionalBonusCents?: number;
           crapsOutBlocked?: boolean;
           clockExpired?: boolean;
           removedCrewSlot?: number;
@@ -2577,6 +2535,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           highestMarkerReached:    data.run.highestMarkerReached ?? 0,
           ...(data.roll.bossRating    !== undefined && { bossRating:    data.roll.bossRating    }),
           ...(data.roll.pipTermination === true     && { pipTermination: true as const           }),
+          ...(data.roll.exceptionalBonusCents !== undefined && { exceptionalBonusCents: data.roll.exceptionalBonusCents }),
         };
         set({ pendingSettlement: autoSettlement });
         get().applyPendingSettlement();
@@ -2609,6 +2568,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ...(data.roll.charmFired      === true      && { charmFired:      true                      }),
         ...(data.roll.bossRating      !== undefined && { bossRating:      data.roll.bossRating      }),
         ...(data.roll.pipTermination  === true      && { pipTermination:  true as const              }),
+        ...(data.roll.exceptionalBonusCents !== undefined && { exceptionalBonusCents: data.roll.exceptionalBonusCents }),
         ...(data.roll.crapsOutBlocked === true      && { crapsOutBlocked: true as const              }),
         ...(data.roll.clockExpired    === true      && { clockExpired:    true as const              }),
         ...(data.roll.removedCrewSlot !== undefined && { removedCrewSlot: data.roll.removedCrewSlot  }),
@@ -3039,9 +2999,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({ bossBark: null });
   },
 
-  clearExecutiveBark() {
-    set({ executiveBark: null });
-  },
 
   clearPipTermination() {
     set({ pipTermination: false });

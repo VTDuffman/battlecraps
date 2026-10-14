@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-035 The Executive Boss Moments
 
 **Design doc:** `docs/design/fb-035-executive-boss-moments-design.md`
-**Status:** Pending approval.
+**Status:** Phase 1 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite if the server changes) before a phase is done. Push when Mike says (bundled with the Floor 4 rename). **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -15,6 +15,8 @@
 5. **Tests:** event priority + chances; neutral copy (existing guard).
 
 🛑 **Gate:** play the Executive locally.
+
+--- Implemented locally (2026-10-14): server `exceptionalBonusCents` on turn:settled + HTTP roll; shared CROSS_CALIBRATION events (promoted > finalWarning > bonusPaid > ratingUp/Down); legacy EXECUTIVE_BARKS_*, executiveBark, clearExecutiveBark and the header bubble removed. Shared 450 tests, API integration 121. ---
 
 ## Phase 2: The performance meter
 1. **`PerformanceMeter`** under the marker progress bar in his fight: 5-step scale, sliding marker, labels; replaces the header PERF REVIEW text.

@@ -8,8 +8,9 @@
 //
 // Two kinds of trigger:
 //   • Boss EVENTS — moments specific to a boss's rule, derived per rule below
-//     (The Foreman's Cut milestones, Sarge's clock). Ordered by priority; the
-//     first one the boss has lines for ALWAYS barks.
+//     (The Foreman's Cut milestones, Sarge's clock, Le Prix's charm, the
+//     Executive's review). Ordered by priority; the first one the boss has
+//     lines for barks — always, or by chance for frequent ones (EVENT_BARK_CHANCE).
 //   • win / loss — chance-based, and never over a bark already on screen, so
 //     the boss doesn't talk on every roll.
 // A run-ending roll is always silent (the defeat cinematic owns the screen).
@@ -27,7 +28,12 @@ export const BARK_CHANCE: Readonly<Record<'win' | 'loss', number>> = { win: 0.55
  * (no win/loss fallback) — e.g. Mme. Le Prix re-charms on most come-outs and
  * "does not raise her voice".
  */
-export const EVENT_BARK_CHANCE: Readonly<Partial<Record<BossBarkTrigger, number>>> = { charmed: 0.5 };
+export const EVENT_BARK_CHANCE: Readonly<Partial<Record<BossBarkTrigger, number>>> = {
+  charmed:    0.5,
+  bonusPaid:  0.5,
+  ratingUp:   0.4,
+  ratingDown: 0.4,
+};
 
 export interface BossBarkInput {
   /** Marker the roll was played at (before any advance). */
@@ -51,6 +57,11 @@ export interface BossBarkInput {
   /** Mme. Le Prix: charmed slot before / after this roll (null = none). */
   charmedSlotBefore?: number | null;
   charmedSlotAfter?:  number | null;
+  /** The Executive: Performance Review rating before / after this roll (0–4). */
+  ratingBefore?: number | null;
+  ratingAfter?:  number | null;
+  /** The Executive: the +15% Exceptional bonus paid this roll (cents). */
+  exceptionalBonusCents?: number;
   /** Payoff fights: Cut before and after this roll, the Payoff, and whether it was reached. */
   cut?:          { before: number; after: number; payoff: number; paidOff: boolean };
   /** A bark is still showing — skip chance-based barks. */
@@ -108,6 +119,19 @@ export function deriveBossBarkEvents(input: BossBarkInput): BossBarkTrigger[] {
       if (input.charmFired) { events.push('charmFired'); break; }
       const after = input.charmedSlotAfter;
       if (after !== undefined && after !== null && after !== (input.charmedSlotBefore ?? null)) events.push('charmed');
+      break;
+    }
+
+    // The Executive: his Performance Review. Reaching the ends of the scale
+    // outranks the bonus, which outranks an ordinary move.
+    case 'CROSS_CALIBRATION': {
+      const before = input.ratingBefore ?? null;
+      const after  = input.ratingAfter ?? null;
+      const moved  = before !== null && after !== null && after !== before;
+      if (moved && after === 4) events.push('promoted');
+      else if (moved && after === 0) events.push('finalWarning');
+      if ((input.exceptionalBonusCents ?? 0) > 0) events.push('bonusPaid');
+      if (moved && after > 0 && after < 4) events.push(after > before ? 'ratingUp' : 'ratingDown');
       break;
     }
 

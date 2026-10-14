@@ -148,6 +148,38 @@ describe('Mme. Le Prix (FB-034): charm events', () => {
   });
 });
 
+describe('The Executive (FB-035): performance review events', () => {
+  const EXEC = 11;
+  const exec: BossBarkInput = { ...base, markerIndex: EXEC };
+
+  it('reaching Exceptional / Action Required always barks, even over a showing bark', () => {
+    expect(selectBossBarkTrigger({ ...exec, bankrollDelta: 500, ratingBefore: 3, ratingAfter: 4, barkShowing: true }, never)).toBe('promoted');
+    expect(selectBossBarkTrigger({ ...exec, bankrollDelta: -500, isLoss: true, ratingBefore: 1, ratingAfter: 0, barkShowing: true }, never)).toBe('finalWarning');
+  });
+
+  it('the Exceptional bonus barks half the time, never over a showing bark', () => {
+    const paid = { ...exec, bankrollDelta: 900, ratingBefore: 4, ratingAfter: 4, exceptionalBonusCents: 300 };
+    expect(selectBossBarkTrigger(paid, always)).toBe('bonusPaid');
+    expect(selectBossBarkTrigger(paid, never)).toBeNull();
+    expect(selectBossBarkTrigger({ ...paid, barkShowing: true }, always)).toBeNull();
+  });
+
+  it('ordinary rating moves bark by chance; a skip is silence', () => {
+    expect(selectBossBarkTrigger({ ...exec, bankrollDelta: 500, ratingBefore: 2, ratingAfter: 3 }, always)).toBe('ratingUp');
+    expect(selectBossBarkTrigger({ ...exec, bankrollDelta: -500, isLoss: true, ratingBefore: 2, ratingAfter: 1 }, always)).toBe('ratingDown');
+    expect(selectBossBarkTrigger({ ...exec, bankrollDelta: 500, ratingBefore: 2, ratingAfter: 3 }, never)).toBeNull();
+  });
+
+  it('an unchanged rating with no bonus derives no events', () => {
+    expect(deriveBossBarkEvents({ ...exec, ratingBefore: 2, ratingAfter: 2 })).toEqual([]);
+    expect(deriveBossBarkEvents({ ...exec, ratingBefore: null, ratingAfter: 2 })).toEqual([]);
+  });
+
+  it('PIP termination (game over) is silent', () => {
+    expect(selectBossBarkTrigger({ ...exec, isLoss: true, isGameOver: true, ratingBefore: 0, ratingAfter: 0 }, always)).toBeNull();
+  });
+});
+
 describe('bark copy is gender-neutral (CLAUDE.md copy rule)', () => {
   // Player and crew references must be neutral; bosses never refer to the
   // player or a crew member with a gendered word.

@@ -28,7 +28,6 @@ export const BossRoomHeader: React.FC = () => {
   const unlockedSlots       = useGameStore((s) => s.unlockedSlots);
   const currentHype         = useGameStore((s) => s.hype);
   const executiveRating  = useGameStore((s) => s.executiveRating);
-  const executiveBark    = useGameStore((s) => s.executiveBark);
 
   if (!isBossMarker(currentMarkerIndex)) return null;
 
@@ -101,22 +100,6 @@ export const BossRoomHeader: React.FC = () => {
             >
               {boss.name.toUpperCase()}
             </div>
-            {/* Executive corporate-speak bark bubble */}
-            <AnimatePresence>
-              {executiveBark !== null && (
-                <motion.div
-                  key={executiveBark.key}
-                  initial={{ scale: 0.85, opacity: 0, y: -4 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.9, opacity: 0, transition: { duration: 0.2 } }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 14 }}
-                  className="mt-1 font-pixel text-[8px] leading-snug italic"
-                  style={{ color: '#e2e8f0', maxWidth: '160px' }}
-                >
-                  "{executiveBark.line}"
-                </motion.div>
-              )}
-            </AnimatePresence>
             {/* FB-032: generic boss bark — flashes here, then floats down-right */}
             <BossBarkFloat />
           </div>

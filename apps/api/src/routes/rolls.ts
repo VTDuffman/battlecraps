@@ -251,6 +251,11 @@ interface WsTurnSettledPayload {
    * The client shows the Pink Slip modal instead of the standard game-over screen.
    */
   pipTermination?: true;
+  /**
+   * FB-035: the +15% Exceptional bonus actually paid on this roll (The
+   * Executive at rating 4, winning roll). Omitted when 0.
+   */
+  exceptionalBonusCents?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -1189,6 +1194,7 @@ async function rollHandler(
     ...(charmedWouldHaveFired && { charmFired: true }),
     ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
     ...(pipTermination && { pipTermination: true as const }),
+    ...(crossCalibrationExceptionalBonus > 0 && { exceptionalBonusCents: crossCalibrationExceptionalBonus }),
   };
   io.to(runRoom).emit('turn:settled', settledPayload);
 
@@ -1224,6 +1230,7 @@ async function rollHandler(
       ...(charmedWouldHaveFired && { charmFired: true }),
       ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
       ...(pipTermination && { pipTermination: true as const }),
+      ...(crossCalibrationExceptionalBonus > 0 && { exceptionalBonusCents: crossCalibrationExceptionalBonus }),
       ...(finalContext.flags.crapsOutBlocked && { crapsOutBlocked: true as const }),
       ...(finalContext.flags.clockExpired && { clockExpired: true as const }),
       ...(bossCutPayload !== undefined && { bossCut: bossCutPayload }),

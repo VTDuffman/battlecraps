@@ -52,15 +52,26 @@ export const SargeClock: React.FC<SargeClockProps> = ({ rollLimit, labelColor })
     }
   }, [phase, bossPointHits, rollLimit]);
 
+  const glowClass = inPoint ? (isLow ? 'hard' : 'soft') : null;
+
   return (
-    <div className="flex-none flex items-center gap-2">
-      <div className="font-pixel text-[7.5px] tracking-widest leading-tight text-right" style={{ color: labelColor }}>
-        DOUBLE<br />TIME
-      </div>
+    // Label + clock scale together in the point phase (anchored right so the
+    // growth spills left, away from the header edge) and pulse in sync.
+    <div
+      className="flex-none flex items-center gap-2 transition-transform duration-300 ease-out motion-reduce:transition-none"
+      style={{
+        transform:       inPoint ? 'scale(1.35)' : 'scale(1)',
+        transformOrigin: 'right center',
+        ['--clock-glow' as string]: ledColor,
+      }}
+    >
       <div
-        className="transition-transform duration-300 ease-out motion-reduce:transition-none"
-        style={{ transform: inPoint ? 'scale(1.35)' : 'scale(1)', transformOrigin: 'right center' }}
+        className={`font-pixel text-[10px] tracking-widest leading-none whitespace-nowrap${glowClass === 'hard' ? ' animate-clock-label-glow-hard' : glowClass === 'soft' ? ' animate-clock-label-glow' : ''}`}
+        style={{ color: inPoint ? ledColor : labelColor }}
       >
+        DOUBLE TIME
+      </div>
+      <div>
         <div
           className={`rounded-sm px-1.5 py-1${inPoint ? (isLow ? ' animate-clock-glow-hard' : ' animate-clock-glow') : ''}`}
           style={{

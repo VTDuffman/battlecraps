@@ -40,6 +40,32 @@ export function getCrewHireCost(rarity: CrewRarity, clearedMarkerTargetCents: nu
 }
 
 // ---------------------------------------------------------------------------
+// The opening — "First Round's on the House" (FB-041)
+// ---------------------------------------------------------------------------
+
+/**
+ * Starting bankroll for a run created while the tutorial is pending. The
+ * tutorial's scripted dice need $30 — $40 cleared the first marker too early
+ * and broke its beat flow.
+ */
+export const TUTORIAL_BANKROLL_CENTS = 3_000;
+
+/**
+ * Starting bankroll for every run after the tutorial. These runs also open on
+ * a free Starter pick (the opening pub) before the first roll.
+ */
+export const OPENING_BANKROLL_CENTS = 4_000;
+
+/**
+ * True when a pub visit at this marker is the opening pub: a run that hasn't
+ * cleared any marker yet is in TRANSITION only for its free first pick. The
+ * draft is 3 random Starter-roster crew and hiring costs nothing.
+ */
+export function isOpeningPub(markerIndex: number): boolean {
+  return markerIndex === 0;
+}
+
+// ---------------------------------------------------------------------------
 // Boss rule & reward types
 // ---------------------------------------------------------------------------
 

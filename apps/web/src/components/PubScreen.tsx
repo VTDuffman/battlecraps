@@ -7,6 +7,9 @@
 // in any of the five rail slots (overwriting the occupant if needed), or skip
 // and go straight back to the table with fresh shooters.
 //
+// FB-041: a post-tutorial run opens here at marker 0 ("First Round's on the
+// House") — 3 random Starters, the pick is free (hireCostCents 0).
+//
 // Data flow:
 //   1. On mount, fetch GET /api/v1/crew-roster; pick 3 available crew as draft.
 //   2. Player clicks a crew card   → selectedCrew is set; slot rail appears.
@@ -19,6 +22,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   isBossMarker,
+  isOpeningPub,
   GAUNTLET,
   getSlotsAfterBossComp,
 } from '@battlecraps/shared';
@@ -161,7 +165,7 @@ const CrewCard: React.FC<CrewCardProps> = ({ crew, isSelected, canAfford, onClic
           canAfford ? 'text-amber-400' : 'text-red-400',
         ].join(' ')}
       >
-        {formatCents(crew.hireCostCents)}
+        {crew.hireCostCents === 0 ? 'FREE' : formatCents(crew.hireCostCents)}
       </div>
     </button>
   );
@@ -328,6 +332,8 @@ export const PubScreen: React.FC = () => {
   const recruitCrew        = useGameStore((s) => s.recruitCrew);
   const fireCrew           = useGameStore((s) => s.fireCrew);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
+  // FB-041: the opening pub — a free Starter pick before the first roll.
+  const isOpening          = isOpeningPub(currentMarkerIndex);
   // The pub belongs to the floor just cleared, not the floor about to start.
   // Theme from prevMarker so cross-floor pubs stay in the completed floor's aesthetic.
   const prevMarkerForTheme = Math.max(0, currentMarkerIndex - 1);
@@ -455,7 +461,7 @@ export const PubScreen: React.FC = () => {
         />
 
         <div className="font-pixel text-r-11 tracking-widest mb-1" style={{ color: theme.pubSubtextColor }}>
-          ✦ MARKER CLEARED ✦
+          {isOpening ? "✦ FIRST ROUND'S ON THE HOUSE ✦" : '✦ MARKER CLEARED ✦'}
         </div>
         <h1
           className="font-pixel text-r-21 tracking-wide"
@@ -464,7 +470,7 @@ export const PubScreen: React.FC = () => {
           {theme.pubName}
         </h1>
         <div className="mt-1 font-mono text-r-18" style={{ color: theme.pubSubtextColor }}>
-          Hire a hand before the next marker…
+          {isOpening ? 'Pick a hand to start — this one’s free.' : 'Hire a hand before the next marker…'}
         </div>
 
         {/* Divider */}
@@ -596,7 +602,9 @@ export const PubScreen: React.FC = () => {
                 ? 'HIRING…'
                 : selectedSlot === null
                   ? 'SELECT A SLOT'
-                  : `HIRE FOR ${formatCents(selectedCrew.hireCostCents)}`}
+                  : selectedCrew.hireCostCents === 0
+                    ? 'HIRE — ON THE HOUSE'
+                    : `HIRE FOR ${formatCents(selectedCrew.hireCostCents)}`}
             </button>
 
             {/* Cancel selection */}
@@ -641,7 +649,9 @@ export const PubScreen: React.FC = () => {
             borderColor: theme.borderLow,
           }}
         >
-          {isLoading ? 'RESTING…' : '— REST & SKIP TO TABLE —'}
+          {isLoading
+            ? (isOpening ? 'HEADING OUT…' : 'RESTING…')
+            : (isOpening ? '— NO THANKS · TO THE TABLE —' : '— REST & SKIP TO TABLE —')}
         </button>
       </footer>
     </div>

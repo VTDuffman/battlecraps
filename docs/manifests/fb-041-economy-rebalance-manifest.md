@@ -86,6 +86,18 @@
 
 **Prompt:** "Implement FB-041 Phase 1 per `docs/design/fb-041-economy-rebalance-design.md` § Change 1. Post-tutorial `POST /runs` creates a run at marker 0 with $40 (`OPENING_BANKROLL_CENTS`) in status TRANSITION. Tutorial-pending runs stay $30 IDLE_TABLE (`TUTORIAL_BANKROLL_CENTS`). At marker 0: pub-draft offers 3 random Starter-roster crew only (saved, never re-rolled; no unlocked or guaranteed crew); recruit costs $0 and skips all logic keyed off the cleared marker (comp slots, boss entry, charm); skip allowed. Client: PubScreen 'opening' mode ('FIRST ROUND'S ON THE HOUSE', FREE price) before the marker 0 intro; refresh-safe. Update the $30 copy in GameOverScreen and BattleCrapsRulesSection. Add the integration tests listed in the manifest."
 
+--- Implemented (2026-10-15):
+- **Shared `config.ts`:** `TUTORIAL_BANKROLL_CENTS`, `OPENING_BANKROLL_CENTS`, `isOpeningPub(markerIndex)`.
+- **`runs.ts`:** a post-tutorial create → $40 + TRANSITION at marker 0.
+- **`pubDraft.ts`:** at the opening pub, 3 random `isStarterRoster` crew, no unlocked or guaranteed crew, `hireCostCents` 0.
+- **`recruit.ts`:** opening hire costs $0. The existing marker-cleared logic already tolerates index −1: no comp, 3 slots, boss counter 0.
+- **`PubScreen`:** opening mode ("FIRST ROUND'S ON THE HOUSE", FREE price, "HIRE — ON THE HOUSE", "NO THANKS · TO THE TABLE"). The orchestrator already routes TRANSITION → PubScreen, and after leaving it the normal title / marker-0 intro play.
+- **Copy:** GameOverScreen, How to Play.
+- **CLAUDE.md:** key constraint added.
+- **Tests:** `opening.test.ts` (8): tutorial $30 at the table; post-tutorial $40 at the pub; Starter-only draft, free, stable; unlocked/guaranteed ignored; free hire; skip; non-offered → 403; marker-1 pub still charges.
+- **Results:** shared 489, integration 159.
+- **Side effect:** Lucky Charm's "solo floor" unlock becomes reachable on Floor 1, since a run can start with exactly one crew member. ---
+
 🛑 **Gate:**
 - Locally: a fresh account plays the tutorial unchanged.
 - A second run opens the free pick, the table starts at $40 with that crew member, and refresh at the pick restores it.

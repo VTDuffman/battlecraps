@@ -3,7 +3,8 @@
 // apps/api/src/routes/recruit.ts
 //
 // Handles the "Seven-Proof Pub" recruitment phase that fires after every
-// gauntlet marker is cleared.
+// gauntlet marker is cleared — and the FB-041 opening pub (marker 0, before
+// the first roll of a post-tutorial run), where the pick costs nothing.
 //
 // Two use-cases in one endpoint:
 //   1. BUY  — provide { crewId, slotIndex } to hire a crew member.
@@ -23,7 +24,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
-import { isBossMarker, getBossEntryCounter, getSlotsAfterBossComp, pickEntryCharmSlot, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, COMP_PERK_IDS, type CompRewardType, type CrewRarity } from '@battlecraps/shared';
+import { isBossMarker, getBossEntryCounter, getSlotsAfterBossComp, pickEntryCharmSlot, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, isOpeningPub, COMP_PERK_IDS, type CompRewardType, type CrewRarity } from '@battlecraps/shared';
 import { randomBelow } from '../lib/rng.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
@@ -181,7 +182,10 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         }
         const clearedIndex  = run.currentMarkerIndex - 1;
         const clearedTarget = GAUNTLET[clearedIndex]?.targetCents ?? GAUNTLET[0]!.targetCents;
-        const hireCost      = getCrewHireCost(crewDef.rarity as CrewRarity, clearedTarget);
+        // FB-041: the opening pub's pick (marker 0, nothing cleared yet) is on the house.
+        const hireCost      = isOpeningPub(run.currentMarkerIndex)
+          ? 0
+          : getCrewHireCost(crewDef.rarity as CrewRarity, clearedTarget);
 
         if (run.bankrollCents < hireCost) {
           return reply.status(422).send({

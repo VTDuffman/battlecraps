@@ -13,6 +13,7 @@ import { runs, crewDefinitions } from '../db/schema.js';
 import type { RunRow, StoredCrewSlots, UserRow } from '../db/schema.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
+import { OPENING_BANKROLL_CENTS, TUTORIAL_BANKROLL_CENTS } from '@battlecraps/shared';
 
 const EMPTY_CREW_SLOTS: StoredCrewSlots = [null, null, null, null, null];
 
@@ -137,13 +138,18 @@ export async function bootstrapPlugin(app: FastifyInstance): Promise<void> {
       const user = await resolveUserByClerkId(req.clerkId);
       if (!user) return reply.status(401).send({ error: 'User not found — please re-sign in.' });
 
+      // FB-041: after the tutorial, a run starts with $40 and opens on the
+      // opening pub (status TRANSITION at marker 0) for a free Starter pick.
+      // A tutorial run keeps $30 at the table — its scripted dice need it.
+      const opensAtPub = user.tutorialCompleted;
+
       const inserted = await db
         .insert(runs)
         .values({
           userId:        user.id,
-          status:        'IDLE_TABLE',
+          status:        opensAtPub ? 'TRANSITION' : 'IDLE_TABLE',
           phase:         'COME_OUT',
-          bankrollCents: 3000,   // $30 starting bankroll — below the $50 Loading Dock marker 0 so the tutorial beats play out correctly
+          bankrollCents: opensAtPub ? OPENING_BANKROLL_CENTS : TUTORIAL_BANKROLL_CENTS,
           shooters:      5,
           hype:          1.0,
           crewSlots:     EMPTY_CREW_SLOTS,

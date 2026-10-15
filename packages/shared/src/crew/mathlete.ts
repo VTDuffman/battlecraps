@@ -64,7 +64,7 @@ export const mathlete: CrewMember = {
     // so we must restore it to keep the bet alive on the table.
     const restoredHardways = { ...ctx.resolvedBets.hardways, [betKey]: ctx.bets.hardways[betKey] };
 
-    const maxBet = Math.floor(ctx.markerTargetCents * 0.10);
+    const maxBet = ctx.crewCashBaseCents;  // FB-041: table max × the floor's crew-cash scale
     const additive = Math.round(SAVE_BONUS_MULT * maxBet / 100) * 100;
 
     return {

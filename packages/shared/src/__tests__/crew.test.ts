@@ -1474,3 +1474,21 @@ describe('Contrarian (ID 30)', () => {
     expect(result.context.additives).toBe(1_100);
   });
 });
+
+// ---------------------------------------------------------------------------
+// FB-041 — cash crew pay from TurnContext.crewCashBaseCents (the tapered base)
+// ---------------------------------------------------------------------------
+
+describe('Crew-cash taper (FB-041)', () => {
+  it('Doorman pays 0.25× the crew-cash base, not 10% of the target', () => {
+    // Target $100 (untapered base $10) but a tapered base of $7 → round(0.25 × 700 / 100) × 100 = 200.
+    const ctx = makeCtx({ rollResult: 'NATURAL', additives: 0, markerTargetCents: TARGET, crewCashBaseCents: 700 });
+    expect(doorman.execute(ctx, neverCalledRng).context.additives).toBe(200);
+  });
+
+  it('Grinder pays 0.15× the crew-cash base', () => {
+    // round(0.15 × 2000 / 100) × 100 = 300 (untapered target would give 200).
+    const ctx = makeCtx({ rollResult: 'NO_RESOLUTION', activePoint: 6, additives: 0, markerTargetCents: TARGET, crewCashBaseCents: 2000 });
+    expect(grinder.execute(ctx, neverCalledRng).context.additives).toBe(300);
+  });
+});

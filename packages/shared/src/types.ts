@@ -344,6 +344,14 @@ export interface TurnContext {
   readonly markerTargetCents: number;
 
   /**
+   * FB-041: the base floor-scaled cash crew multiply by their ADDITIVE_MULT —
+   * the marker's table max × the floor's crew-cash scale
+   * (getCrewCashBaseCents(markerIndex)). Injected by the roll route; crew must
+   * read this, never compute 10% of markerTargetCents themselves.
+   */
+  readonly crewCashBaseCents: number;
+
+  /**
    * Shooter lives remaining at the START of this roll (before any resolution).
    * Used by TABLE crew (e.g., Floor Walker) to distinguish a mid-run seven-out
    * (where a refund is meaningful) from a last-shooter seven-out (where the run

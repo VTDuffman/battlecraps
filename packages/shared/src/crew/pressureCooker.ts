@@ -38,7 +38,7 @@ export const pressureCooker: CrewMember = {
     }
 
     const newHype = Math.round((ctx.hype + HYPE_BOOST) * 10_000) / 10_000;
-    const maxBet = Math.floor(ctx.markerTargetCents * 0.10);
+    const maxBet = ctx.crewCashBaseCents;  // FB-041: table max × the floor's crew-cash scale
     const additive = Math.round(ADDITIVE_MULT * maxBet / 100) * 100;
 
     return {

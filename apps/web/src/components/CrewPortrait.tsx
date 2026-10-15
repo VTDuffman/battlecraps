@@ -21,7 +21,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { MARKER_TARGETS } from '@battlecraps/shared';
+import { getCrewCashBaseCents } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
 import { playCharmDaze } from '../hooks/useCrowdAudio.js';
 
@@ -113,12 +113,13 @@ const CREW_ADDITIVE_TRIGGERS: Record<number, string> = {
   30: "when this roll's total is lower than the last",
 };
 
-function getAbilityDesc(crewId: number, markerTargetCents: number): string {
+function getAbilityDesc(crewId: number, markerIndex: number): string {
   const mult    = CREW_ADDITIVE_MULTS[crewId];
   const trigger = CREW_ADDITIVE_TRIGGERS[crewId];
   if (mult !== undefined && trigger !== undefined) {
-    const maxBetCents  = Math.floor(markerTargetCents * 0.10);
-    const amountCents  = Math.round(mult * maxBetCents / 100) * 100;
+    // FB-041: same tapered base the server's cascade uses (crew cash cools off on Floors 5–9).
+    const baseCents    = getCrewCashBaseCents(markerIndex);
+    const amountCents  = Math.round(mult * baseCents / 100) * 100;
     const dollars      = amountCents / 100;
     return `Adds $${dollars} ${trigger}.`;
   }
@@ -242,7 +243,6 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
   const charmedCrewSlot    = useGameStore((s) => s.charmedCrewSlot);
   const charmFlightTo      = useGameStore((s) => s.charmFlight?.to ?? null);
-  const markerTargetCents  = MARKER_TARGETS[currentMarkerIndex] ?? 5000;
 
   // ── Emoji pulse tier — scales with hype, suppressed while triggering/cooldown
   const onCooldownNow = cooldownState > 0;
@@ -414,7 +414,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
           `}
         >
           <div className="font-pixel text-r-7 text-gold/70 mb-1">{crewName}</div>
-          {getAbilityDesc(crewId, markerTargetCents)}
+          {getAbilityDesc(crewId, currentMarkerIndex)}
         </div>
       )}
 

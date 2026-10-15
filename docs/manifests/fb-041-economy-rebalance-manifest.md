@@ -136,6 +136,16 @@
 
 **Prompt:** "Implement FB-041 Phase 2 per the design doc § Change 2. Add `CREW_CASH_SCALE_BY_FLOOR` + `getCrewCashBaseCents(markerIndex)` to shared config. Add `crewCashBaseCents` to TurnContext via resolveRoll's state (default `floor(markerTargetCents*0.10)`). Pass it from rolls.ts. In the 12 listed crew files swap the 10%-of-target line for `ctx.crewCashBaseCents`. Update CrewPortrait's tooltip amounts to use the helper, and update/add the tests listed."
 
+--- Implemented (2026-10-15):
+- **Shared `config.ts`:** `CREW_CASH_SCALE_BY_FLOOR` = [1, 1, 1, 1, 0.8, 0.7, 0.6, 0.5, 0.45] with the A+ curve in its comment, and `getCrewCashBaseCents(markerIndex)`.
+- **`TurnContext.crewCashBaseCents`** via `resolveRoll` state (default: the untapered 10% of the target). `rolls.ts` injects the helper.
+- **12 cash crew** read `ctx.crewCashBaseCents`. No crew file references `markerTargetCents` any more.
+- **`CrewPortrait`** tooltips use the helper. The test helper `makeCtx` derives the base from `markerTargetCents` unless set, so existing crew tests are unchanged.
+- **Tests:** shared +9 (config taper, Doorman/Grinder pay from the base, resolveRoll pass-through/default), so 498. Integration +3 (`crewCashTaper.test.ts`: a Doorman point-set pays ×1.0 on Floor 4, ×0.7 on Floor 6, ×0.45 on Floor 9), so 164.
+- **Escrow tests re-baselined:** the Hierophant / Emissary expectations moved to tapered amounts (Ace 320k at ×0.8; Ace 30M and Shark 48.75M at ×0.5).
+- **CLAUDE.md** FB-024 line updated.
+- **Sim:** `gauntlet-economy-sim.mjs` doesn't pass the base yet, so it still models pre-FB-041 crew cash until Phase 4. ---
+
 🛑 **Gate:** typecheck/build/test + integration pass. In Dev Mode, a Floor 8 jump shows tooltips at half today's amounts.
 
 ---

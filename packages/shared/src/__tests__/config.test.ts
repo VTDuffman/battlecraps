@@ -9,6 +9,8 @@ import {
   getBossEntryCounter,
   getBossPayoffCents,
   getCrewHireCost,
+  getCrewCashBaseCents,
+  CREW_CASH_SCALE_BY_FLOOR,
   getBaseHypeTick,
   RARITY_COST_MULTIPLIERS,
   STREAK_BASE_TICK,
@@ -375,5 +377,35 @@ describe('getTideStage', () => {
     expect(getTideStage(params, 0).rule).toBe('NO ODDS BETS');
     expect(getTideStage(params, 1).rule).toBe('A SEVEN-OUT TAKES 35% OF YOUR BANKROLL');
     expect(getTideStage(params, 2).rule).toBe('A SEVEN-OUT DROWNS 2 SHOOTERS');
+  });
+});
+
+describe('Crew-cash taper (FB-041)', () => {
+  it('has one scale per floor: full strength on Floors 1–4, never rising after', () => {
+    expect(CREW_CASH_SCALE_BY_FLOOR).toHaveLength(9);
+    expect(CREW_CASH_SCALE_BY_FLOOR.slice(0, 4)).toEqual([1, 1, 1, 1]);
+    for (let f = 1; f < CREW_CASH_SCALE_BY_FLOOR.length; f++) {
+      expect(CREW_CASH_SCALE_BY_FLOOR[f]!).toBeLessThanOrEqual(CREW_CASH_SCALE_BY_FLOOR[f - 1]!);
+    }
+  });
+
+  it('ships the gentler curve: ×0.8 / 0.7 / 0.6 / 0.5 / 0.45 on Floors 5–9', () => {
+    expect(CREW_CASH_SCALE_BY_FLOOR.slice(4)).toEqual([0.8, 0.7, 0.6, 0.5, 0.45]);
+  });
+
+  it('equals the table max on Floors 1–4', () => {
+    for (let m = 0; m < 12; m++) expect(getCrewCashBaseCents(m)).toBe(getMaxBet(m));
+  });
+
+  it('is the table max × the floor scale on Floors 5–9', () => {
+    expect(getCrewCashBaseCents(12)).toBe(Math.floor(getMaxBet(12) * 0.8));   // Floor 5
+    expect(getCrewCashBaseCents(17)).toBe(Math.floor(getMaxBet(17) * 0.7));   // Floor 6 boss
+    expect(getCrewCashBaseCents(20)).toBe(Math.floor(getMaxBet(20) * 0.6));   // Floor 7 boss
+    expect(getCrewCashBaseCents(23)).toBe(Math.floor(getMaxBet(23) * 0.5));   // Floor 8 boss
+    expect(getCrewCashBaseCents(26)).toBe(Math.floor(getMaxBet(26) * 0.45));  // Floor 9 boss
+  });
+
+  it('clamps out-of-range markers to the last floor', () => {
+    expect(getCrewCashBaseCents(99)).toBe(getCrewCashBaseCents(26));
   });
 });

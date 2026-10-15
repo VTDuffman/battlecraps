@@ -446,6 +446,11 @@ export function resolveRoll(
     pointPhaseBlankStreak: number;
     /** Target bankroll in cents for the current gauntlet marker. Defaults to 0 when not provided (e.g., in tests). */
     markerTargetCents?: number;
+    /**
+     * FB-041: crew-cash base (getCrewCashBaseCents(markerIndex)). Defaults to the
+     * untapered table max, floor(markerTargetCents × 0.10), when not provided.
+     */
+    crewCashBaseCents?: number;
     /** Shooter lives remaining. Defaults to 5 when not provided (e.g., in tests). */
     shooters?: number;
     /** Number of active crew slots for this run. Defaults to 5 when not provided (e.g., in tests). */
@@ -538,6 +543,7 @@ export function resolveRoll(
     shooterRollCount:      state.shooterRollCount,
     pointPhaseBlankStreak: state.pointPhaseBlankStreak,
     markerTargetCents:     state.markerTargetCents ?? 0,
+    crewCashBaseCents:     state.crewCashBaseCents ?? Math.floor((state.markerTargetCents ?? 0) * 0.10),
     shooters:              state.shooters ?? 5,
     unlockedSlots:         state.unlockedSlots ?? 5,
   };

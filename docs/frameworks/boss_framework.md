@@ -97,7 +97,7 @@ export interface BossRuleState {
 | `disableCrew.ts` | `DISABLE_CREW` | `modifyCascadeOrder` | Every slot except the charmed one (`bossPointHits`) |
 | `tidalSurge.ts` | `TIDAL_SURGE` | `validateBet` | Come-out Pass Line below the current tide minimum → rejected (422) |
 | `tribute.ts` | `TRIBUTE` | *(none)* | Escrow + seizure inline in `rolls.ts` |
-| `orbitalDecay.ts` | `ORBITAL_DECAY` | *(none)* | Tiered decay + death spiral inline in `rolls.ts` |
+| `orbitalDecay.ts` | `ORBITAL_DECAY` | *(none)* | Orbital bleed inline in `rolls.ts` (FB-038) |
 | `firstContactProtocol.ts` | `CROSS_CALIBRATION`, `TRANSMISSION_DELAY`, `FIRST_CONTACT_PROTOCOL` (retired) | *(none)* | Shared empty hooks object; logic inline in `rolls.ts` |
 | `convergence.ts` | `CONVERGENCE` | *(none)* | Demolition + load-bearing inline in `rolls.ts`; removed crew are null in `crew_slots` |
 
@@ -116,11 +116,10 @@ Every marker-entry write uses `getBossEntryCounter(markerIndex)` (2 for The Exec
 ### Server execution order (`apps/api/src/routes/rolls.ts`)
 
 ```
-1.  Bet validation      table max (10%, Old Pro 15%; floored at 5× the Sovereign's tide min;
-                        halved by the Commander's death spiral below 0.5× hype), regular min,
-                        then bossHooks.validateBet() — come-out only
+1.  Bet validation      table max (10%, Old Pro 15%), regular min, the Sovereign's Dead Calm
+                        (no odds), then bossHooks.validateBet() — come-out only
 2.  Dice                server RNG (or tutorial/dev forced dice)
-3.  Death spiral        Commander, hype < 0.75× → one fewer active crew slot this roll
+3.  (removed — the Commander's death spiral went in FB-038)
 4.  resolveRoll()       classify + base payouts (Mechanic freeze applied here)
 5.  Base hype tick      Point Hit +0.15–0.30, Natural +0.10, Craps Out −0.05 (skipped if Poseidon blocks)
 6.  modifyOutcome()     (unused)
@@ -315,24 +314,12 @@ ruleParams: {
 
 **Rule:** `ORBITAL_DECAY` | **Target:** $3,000,000 | **Index:** 20
 
-Each Seven-Out drains Hype by a tier-scaled amount (based on Hype before the roll), and Hype can fall below 1.0× to a floor of 0.25×:
+**Orbital bleed (FB-038).** After every roll that isn't a Seven-Out (and doesn't clear the marker), Hype above 1.0× loses `bleedPct` (20%) of its height: `hype = 1 + (hype − 1) × 0.8`, applied after the state machine — the roll is paid at its full Hype, the bleed is what's carried forward. A Seven-Out resets Hype to 1.0× (plus crew Hype gained that roll); The Keepsake doesn't apply in his fight. Hype never drops below 1.0×. `turn:settled` carries `orbit { bleed, hype }`; the receipt notes "Orbital decay: −0.40× → 2.60×".
 
-| Hype before 7-out | Decay |
-|---|---|
-| ≥ 2.5× (On Fire) | −0.8× |
-| ≥ 1.5× (Heating Up) | −0.6× |
-| < 1.5× | −0.4× |
-
-`nextHype = max(0.25, hype − decay + cascadeHypeDelta)`. The Keepsake does not apply.
-
-**Death spiral** (checked from the stored Hype at the start of each roll):
-- Hype < 0.75× → one fewer active cascade slot.
-- Hype < 0.5× → max bet halved (snapped to $5).
-
-`BossRoomHeader` shows the decay the next Seven-Out will cost, and the death-spiral warnings at those thresholds.
+He is the fight against **hype builds** (The Hierophant is the fight against cash builds). The old rule — a tiered Seven-Out drain (0.4/0.6/0.8×) down to 0.25× plus a "death spiral" (−1 crew slot below 0.75×, max bet halved below 0.5×) — simulated **backwards**: cash crews −18 pts, hype crews +3. The bleed (`scripts/sim/commander-decay-sim.mjs`): hype crew ≈ −16, mixed ≈ −1.5, cash 0.
 
 ```typescript
-ruleParams: { rule: 'ORBITAL_DECAY', baseDecay: 0.40, heatingUpDecay: 0.60, onFireDecay: 0.80, hypeFloor: 0.25 }
+ruleParams: { rule: 'ORBITAL_DECAY', bleedPct: 0.20 }
 ```
 
 **Comp:** Cargo Hold — `unlockedSlots` becomes 5.
@@ -387,7 +374,7 @@ export type BossRuleParams =
   | { rule: 'CROSS_CALIBRATION' }
   | { rule: 'TRIBUTE';            escrowSeizurePct: number }
   | { rule: 'TIDAL_SURGE';        stageMultipliers: readonly [number, number, number, number]; stageLabels: readonly [string, string, string, string] }
-  | { rule: 'ORBITAL_DECAY';      baseDecay: number; heatingUpDecay: number; onFireDecay: number; hypeFloor: number }
+  | { rule: 'ORBITAL_DECAY';      bleedPct: number }
   | { rule: 'FIRST_CONTACT_PROTOCOL' }   // retired
   | { rule: 'TRANSMISSION_DELAY' }
   | { rule: 'CONVERGENCE' };

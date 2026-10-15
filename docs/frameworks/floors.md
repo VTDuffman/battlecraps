@@ -233,7 +233,7 @@ Mechanics are documented in full in [`boss_framework.md`](boss_framework.md), wh
 | `CROSS_CALIBRATION` | The Executive (4) | Performance rating 0–4; +15% at Exceptional; bad roll at Action Required ends the run |
 | `TRIBUTE` | The Hierophant (5) | Crew cash held until a win, paid with Hype; 75% seized on Seven-Out |
 | `TIDAL_SURGE` | The Sovereign (6) | Tide LOW/EBB/HIGH/FLOW: Dead Calm (no odds) / Undertow (7-out takes 35%) / High Tide (7-out drowns 2) |
-| `ORBITAL_DECAY` | The Commander (7) | Tiered Seven-Out Hype drain (0.4/0.6/0.8×), floor 0.25×, death spiral below 0.75× / 0.5× |
+| `ORBITAL_DECAY` | The Commander (7) | Orbital bleed: Hype above 1.0× loses 20% of its height every roll; a 7-out resets to 1.0× |
 | `TRANSMISSION_DELAY` | The Emissary (8) | Crew cash held one roll; all of it evaporates on Seven-Out |
 | `CONVERGENCE` | The Architect (9) | Each Seven-Out removes the last crew member to fire; 15% compounding cash cut |
 
@@ -638,18 +638,18 @@ card, docs) lives in [`boss_framework.md` § Adding a New Boss](boss_framework.m
 |---|---|
 | **Title** | Station Chief, Table Authority |
 | **Venue** | The Station — The Command Module |
-| **Teaser** | Every seven-out drains your hype multiplier. There is no floor — until there is. |
-| **Dread tagline** | MOMENTUM DECAYS. |
+| **Teaser** | Every roll, your orbit slips. Feed your hype or watch it fall — and up here, no one can hear the crowd. |
+| **Dread tagline** | IN SPACE, NO ONE CAN HEAR YOU SCREAM. |
 | **Rule** | `ORBITAL_DECAY` |
 | **Comp reward** | `CARGO_HOLD` — Cargo Hold: A fifth crew slot unlocks. Full crew capacity reached. |
 | **Comp perk ID** | 0 (slot comp — enforced via `unlockedSlots`) |
 
-**Rule effect:** Each Seven-Out drains Hype by 0.4× (below 1.5×), 0.6× (Heating Up) or 0.8× (On Fire), down to a floor of 0.25×. Death spiral: below 0.75× one crew slot stops firing; below 0.5× the max bet is halved.
+**Rule effect:** Orbital decay — after every roll, Hype above 1.0× loses 20% of its height. A Seven-Out resets Hype to 1.0× (The Keepsake doesn't apply).
 
 **Entry lines:**
 > Eleven months up here. I don't miss the ground.
-> Your hype is a resource. In this environment, resources decay faster at altitude.
-> The higher you climb, the steeper the fall. There is no floor — until there is.
+> Your hype is a resource. Up here, resources decay.
+> Every roll, your orbit slips. Keep burning, or fall.
 
 **Victory quote:** *"…orbital mechanics didn't account for you. Gravity's compliments."*
 

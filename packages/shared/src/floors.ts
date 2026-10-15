@@ -366,7 +366,7 @@ export const FLOORS: readonly FloorConfig[] = [
     bossName:   'The Commander',
     bossTitle:  'Station Chief, Table Authority',
     bossVenue:  'The Station — The Command Module',
-    bossTeaser: 'Every seven-out drains your hype multiplier. There is no floor — until there is.',
+    bossTeaser: 'Every roll, your orbit slips. Feed your hype or watch it fall — and up here, no one can hear the crowd.',
     atmosphere: 'cosmic',
   },
 

@@ -133,32 +133,22 @@ export const BossRoomHeader: React.FC = () => {
           })()
         ) : isOrbitalDecay ? (
           (() => {
-            const decay = boss.ruleParams as Extract<BossRuleParams, { rule: 'ORBITAL_DECAY' }>;
-            // Seven-out decay is tiered by the current Hype tier.
-            const nextDecay = currentHype >= 2.5 ? decay.onFireDecay
-              : currentHype >= 1.5 ? decay.heatingUpDecay
-              : decay.baseDecay;
-            const hypeStr   = currentHype.toFixed(2) + '×';
-            // Death spiral: below 0.75× you lose a cascade slot; below 0.5× max bet is halved.
-            const inDeathSpiral  = currentHype < 0.75;
-            const isWarning = currentHype < 1.0 && !inDeathSpiral;
-            const hypeColor = inDeathSpiral ? '#ef4444' : isWarning ? '#fbbf24' : '#c8d8e8';
-            const penaltyLabel = currentHype < 0.5 ? '⚠ −1 SLOT · MAX BET ½'
-              : inDeathSpiral ? '⚠ −1 CREW SLOT'
-              : `−${nextDecay.toFixed(1)}× ON 7-OUT`;
+            // FB-038: the orbital bleed (the orbit gauge takes over in Phase 3).
+            const orbit = boss.ruleParams as Extract<BossRuleParams, { rule: 'ORBITAL_DECAY' }>;
+            const aloft = currentHype > 1.0;
             return (
               <div className="flex-none text-right">
                 <div className="font-pixel text-[7.5px] tracking-widest leading-none"
                   style={{ color: 'rgba(200,216,232,0.60)' }}>
-                  HYPE DECAY
+                  ORBIT
                 </div>
                 <div className="font-pixel text-r-15 leading-tight"
-                  style={{ color: hypeColor }}>
-                  {hypeStr}
+                  style={{ color: aloft ? '#fbbf24' : '#c8d8e8' }}>
+                  {currentHype.toFixed(2)}×
                 </div>
                 <div className="font-pixel text-[7.5px] leading-none mt-0.5"
-                  style={{ color: inDeathSpiral ? '#ef4444' : 'rgba(200,216,232,0.45)' }}>
-                  {penaltyLabel}
+                  style={{ color: 'rgba(200,216,232,0.45)' }}>
+                  −{Math.round(orbit.bleedPct * 100)}% / ROLL ABOVE 1×
                 </div>
               </div>
             );

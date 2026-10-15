@@ -234,10 +234,12 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     point:         6,
   },
   {
-    name:        'Commander — hype 0.80× (death-spiral edge)',
+    // On Fire in orbit: every roll the bleed takes 20% of the height above 1.0×.
+    name:        'Commander — On Fire, point on',
     markerIndex: COMMANDER,
     crew:        STARTER_CREW,
-    hype:        0.8,
+    hype:        3.0,
+    point:       6,
   },
   {
     name:        'Architect — 4 seven-outs, one crew left',

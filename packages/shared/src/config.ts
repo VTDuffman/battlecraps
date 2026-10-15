@@ -51,7 +51,7 @@ export type BossRuleType =
   | 'CROSS_CALIBRATION'      // Floor 4 — The Executive: performance review rating tracks roll outcomes
   | 'TRIBUTE'                // Floor 5 — The Hierophant: crew additives held until a win, paid with Hype; 75% seized on 7-out
   | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: 4-stage tide — Dead Calm (no odds) / Undertow (7-out drags bankroll) / High Tide (7-out drowns 2)
-  | 'ORBITAL_DECAY'          // Floor 7 — The Commander: tiered seven-out hype drain (0.4/0.6/0.8×), floor 0.25×
+  | 'ORBITAL_DECAY'          // Floor 7 — The Commander: orbital bleed — every roll hype above 1.0× loses 20% of its height (FB-038)
   | 'FIRST_CONTACT_PROTOCOL' // Floor 8 — retired mechanic; kept in union for historical safety
   | 'TRANSMISSION_DELAY'     // Floor 8 — The Emissary: crew additives held one roll; evaporate on 7-out
   | 'CONVERGENCE';           // Floor 9 — The Architect: each seven-out removes the last crew member to fire
@@ -82,15 +82,9 @@ export type BossRuleParams =
   | { rule: 'TRIBUTE';            escrowSeizurePct: number }
   | { rule: 'TIDAL_SURGE'; stageLabels: readonly [string, string, string, string]; stageEffects: readonly ['DEAD_CALM' | 'UNDERTOW' | 'HIGH_TIDE', 'DEAD_CALM' | 'UNDERTOW' | 'HIGH_TIDE', 'DEAD_CALM' | 'UNDERTOW' | 'HIGH_TIDE', 'DEAD_CALM' | 'UNDERTOW' | 'HIGH_TIDE']; undertowPct: number; waveShooters: number }
   | {
-      rule:            'ORBITAL_DECAY';
-      /** Hype decay on 7-out when hype < 1.5× (below Heating Up). */
-      baseDecay:       number;
-      /** Hype decay on 7-out when 1.5× ≤ hype < 2.5× (Heating Up tier). */
-      heatingUpDecay:  number;
-      /** Hype decay on 7-out when hype ≥ 2.5× (On Fire tier). */
-      onFireDecay:     number;
-      /** Absolute minimum hype — never goes below this value. */
-      hypeFloor:       number;
+      rule:     'ORBITAL_DECAY';
+      /** FB-038: share of the hype above 1.0× lost after every roll (not on a Seven-Out). */
+      bleedPct: number;
     }
   | { rule: 'FIRST_CONTACT_PROTOCOL' }   // Floor 8 — retired; kept for historical safety
   | { rule: 'TRANSMISSION_DELAY' }       // Floor 8 — no params; escrow logic is inline in rolls.ts
@@ -685,24 +679,22 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       title: 'Station Chief, Table Authority',
       sigil: '🎖️',
       // Vibe
-      dreadTagline:        'MOMENTUM DECAYS.',
+      dreadTagline:        'IN SPACE, NO ONE CAN HEAR YOU SCREAM.',
       entryLines: [
         "Eleven months up here. I don't miss the ground.",
-        "Your hype is a resource. In this environment, resources decay faster at altitude.",
-        "The higher you climb, the steeper the fall. There is no floor — until there is.",
+        "Your hype is a resource. Up here, resources decay.",
+        "Every roll, your orbit slips. Keep burning, or fall.",
       ],
-      ruleBlurb:          "Seven-out drains your Hype — and the higher you fly, the harder you fall. On Fire costs 0.8× per seven-out. Heating Up costs 0.6×. Below 1.5× costs 0.4×. Below 0.75× you lose a cascade slot. Below 0.5× your max bet is halved.",
+      ruleBlurb:          "Orbital decay: after every roll, your Hype above 1.0× loses 20% of its height — feed it or watch it fall. A Seven-Out resets Hype to 1.0×, and The Keepsake doesn't work up here. In space, no one can hear the crowd.",
       victoryQuote:       "…orbital mechanics didn't account for you. Gravity's compliments.",
       defeatAnnouncement: 'ORBITAL AUTHORITY LOST',
       // Mechanic
       rule:           'ORBITAL_DECAY',
-      ruleHeaderText: 'ON FIRE 7-OUT: −0.8× HYPE | HEATING UP: −0.6× | BELOW 1.5×: −0.4×',
+      ruleHeaderText: 'ORBITAL DECAY — HYPE ABOVE 1.0× LOSES 20% EVERY ROLL · 7-OUT RESETS',
       ruleParams:     {
-        rule:           'ORBITAL_DECAY',
-        baseDecay:       0.40,
-        heatingUpDecay:  0.60,
-        onFireDecay:     0.80,
-        hypeFloor:       0.25,
+        rule:     'ORBITAL_DECAY',
+        // FB-038 (tuned with scripts/sim/commander-decay-sim.mjs)
+        bleedPct: 0.20,
       },
       // Comp
       compReward:      'CARGO_HOLD',

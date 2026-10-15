@@ -989,3 +989,59 @@ describe('TIDAL_SURGE — The Sovereign: Dead Calm · Undertow · High Tide (FB-
     expect((body['roll'] as Record<string, unknown>)['tide']).toEqual({ stage: 1, nextStage: 1 });
   });
 });
+
+// ---------------------------------------------------------------------------
+// ORBITAL_DECAY — The Commander's orbital bleed (FB-038), marker 20
+//
+// Target 300_000_000¢ → max bet 30_000_000¢, min bet 5_000_000¢. After every
+// roll that isn't a Seven-Out, Hype above 1.0× loses 20% of its height; a
+// Seven-Out resets to 1.0× (no Keepsake in his fight).
+// ---------------------------------------------------------------------------
+
+describe('ORBITAL_DECAY — The Commander: the orbital bleed (FB-038)', () => {
+  const PASS = 5_000_000;
+  const orbitRun = (hype: number, overrides: Record<string, unknown> = {}) => createRun(userId, {
+    currentMarkerIndex: 20,
+    bankrollCents:      100_000_000,
+    status:             'POINT_ACTIVE',
+    phase:              'POINT_ACTIVE',
+    currentPoint:       6,
+    hype,
+    bets:               PASS_ONLY(PASS),
+    ...overrides,
+  });
+
+  it('a blank at 2.0× bleeds 20% of the height above 1.0× → 1.80×', async () => {
+    const run = await orbitRun(2.0);
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(PASS), 2, 3);
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect((body['run'] as Record<string, unknown>)['hype']).toBeCloseTo(1.8, 4);
+    expect((body['roll'] as Record<string, unknown>)['orbit']).toEqual({ bleed: 0.2, hype: 1.8 });
+  });
+
+  it('at 1.0× there is nothing to bleed', async () => {
+    const run = await orbitRun(1.0);
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(PASS), 2, 3);
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect((body['run'] as Record<string, unknown>)['hype']).toBe(1.0);
+    expect((body['roll'] as Record<string, unknown>)['orbit']).toEqual({ bleed: 0, hype: 1.0 });
+  });
+
+  it('a point hit pays at full Hype, then the orbit bleeds what is carried forward', async () => {
+    const run = await orbitRun(2.0);
+    // 4+2 = 6 → POINT_HIT; Hype ticks 2.0 → 2.15, then bleeds to 1 + 1.15 × 0.8 = 1.92.
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(PASS), 4, 2);
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect((body['run'] as Record<string, unknown>)['hype']).toBeCloseTo(1.92, 4);
+    // Paid at 2.15×: 5_000_000 stake + floor(5_000_000 × 2.15).
+    expect((body['roll'] as Record<string, unknown>)['bankrollDelta']).toBe(5_000_000 + 10_750_000);
+  });
+
+  it('a Seven-Out resets to 1.0× — The Keepsake does not apply up here', async () => {
+    const run = await orbitRun(3.0, { compPerkIds: [2] });
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(PASS), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    expect((body['run'] as Record<string, unknown>)['hype']).toBe(1.0);
+    expect(((body['roll'] as Record<string, unknown>)['orbit'] as Record<string, unknown>)['bleed']).toBe(0);
+  });
+});

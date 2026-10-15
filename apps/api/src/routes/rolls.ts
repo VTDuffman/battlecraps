@@ -285,6 +285,8 @@ interface WsTurnSettledPayload {
   covenantSaved?: true;
   /** FB-037: The Sovereign's tide — stage this roll was played at, the stage now, and what it took. */
   tide?: TidePayload;
+  /** FB-038: The Commander's orbital bleed — hype lost after this roll (0 when none). */
+  orbit?: { bleed: number; hype: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -529,14 +531,7 @@ async function rollHandler(
   const hasOldPro = (run.crewSlots as StoredCrewSlots).some((c) => c?.crewId === OLD_PRO_ID);
   const maxBet = getMaxBet(run.currentMarkerIndex, run.bossPointHits, hasOldPro ? 0.15 : 0.10);
 
-  // ── Death Spiral: The Commander halves max bet when hype < 0.5× ──────────
-  const isDeathSpiralHalving =
-    activeBossRule === 'ORBITAL_DECAY' &&
-    isBossMarker(run.currentMarkerIndex) &&
-    run.hype < 0.5;
-  const effectiveMaxBet = isDeathSpiralHalving
-    ? Math.floor(maxBet / 2 / 500) * 500   // halved, snapped to nearest $5
-    : maxBet;
+  const effectiveMaxBet = maxBet;
 
   if (incomingBets.passLine > effectiveMaxBet) {
     return reply.status(422).send({
@@ -633,14 +628,7 @@ async function rollHandler(
   }
 
   // ── 7. Resolve roll — classify outcome and compute base payouts ────────────
-  // ── Death Spiral — cascade slot penalty at hype < 0.75× ──────────────────
-  const isDeathSpiralSlotPenalty =
-    activeBossRule === 'ORBITAL_DECAY' &&
-    isBossMarker(run.currentMarkerIndex) &&
-    run.hype < 0.75;
-  const effectiveUnlockedSlots = isDeathSpiralSlotPenalty
-    ? Math.max(1, (run.unlockedSlots as number) - 1) as 3 | 4 | 5
-    : run.unlockedSlots as 3 | 4 | 5;
+  const effectiveUnlockedSlots = run.unlockedSlots as 3 | 4 | 5;
 
   const initialCtx = resolveRoll(dice, {
     phase:                 run.phase as 'COME_OUT' | 'POINT_ACTIVE',
@@ -1017,9 +1005,26 @@ async function rollHandler(
     ? (isHierophantEscrow ? escrowWithHype(escrowCarried) : escrowCarried)
     : 0;
   const pendingAdditiveToPersist = clearsMarkerNow ? 0 : escrowCarried;
-  const finalNextState = escrowPaidOnClear > 0
+  const escrowAdjustedState = escrowPaidOnClear > 0
     ? { ...pipAdjustedState, bankrollCents: pipAdjustedState.bankrollCents + escrowPaidOnClear }
     : pipAdjustedState;
+
+  // ── FB-038: The Commander's orbital bleed ──────────────────────────────────
+  // After a roll that isn't a Seven-Out (and doesn't clear the marker — hype
+  // resets there anyway), hype above 1.0× loses bleedPct of its height. This
+  // roll was already paid at its full hype; the bleed is what's carried forward.
+  const orbitParams = isOrbitalDecay
+    ? (bossParams as Extract<BossRuleParams, { rule: 'ORBITAL_DECAY' }>)
+    : null;
+  const bleedsNow = orbitParams !== null
+    && viggedContext.rollResult !== 'SEVEN_OUT'
+    && escrowAdjustedState.currentMarkerIndex === run.currentMarkerIndex
+    && escrowAdjustedState.hype > 1.0;
+  const bledHype = bleedsNow
+    ? Math.round((1 + (escrowAdjustedState.hype - 1) * (1 - orbitParams!.bleedPct)) * 10_000) / 10_000
+    : escrowAdjustedState.hype;
+  const orbitBleed = bleedsNow ? Math.round((escrowAdjustedState.hype - bledHype) * 10_000) / 10_000 : 0;
+  const finalNextState = bleedsNow ? { ...escrowAdjustedState, hype: bledHype } : escrowAdjustedState;
 
   // Settled bankroll for this roll, including escrow paid out on a marker clear.
   const settledBankroll = postTideBankroll + escrowPaidOnClear;
@@ -1080,19 +1085,8 @@ async function rollHandler(
     hypeResetNote = 'Marker Cleared — Hype resets to 1.00×';
   } else if (finalContext.rollResult === 'SEVEN_OUT') {
     if (isOrbitalDecay && isBossMarker(run.currentMarkerIndex)) {
-      const decayParams = GAUNTLET[run.currentMarkerIndex]!.boss!.ruleParams as
-        Extract<BossRuleParams, { rule: 'ORBITAL_DECAY' }>;
-      const decayAmount =
-        run.hype >= 2.5 ? decayParams.onFireDecay
-        : run.hype >= 1.5 ? decayParams.heatingUpDecay
-        : decayParams.baseDecay;
-      const cascadeHypeDelta = Math.max(0, finalContext.hype - run.hype);
-      const nextHype = Math.max(
-        decayParams.hypeFloor,
-        Math.round((run.hype - decayAmount + cascadeHypeDelta) * 10_000) / 10_000,
-      );
-      const tier = run.hype >= 2.5 ? 'On Fire' : run.hype >= 1.5 ? 'Heating Up' : 'Below 1.5×';
-      hypeResetNote = `Commander: −${decayAmount.toFixed(2)}× (${tier}) → ${nextHype.toFixed(2)}×`;
+      // FB-038: in his fight a Seven-Out resets hype — no Keepsake.
+      hypeResetNote = 'Seven Out — Hype resets to 1.00× (no Keepsake in orbit)';
     } else if (hasSeaLegs) {
       const nextHype = Math.round((1.0 + (finalContext.hype - 1.0) / 2) * 10_000) / 10_000;
       hypeResetNote = `Seven Out — The Keepsake: Hype holds at ${nextHype.toFixed(2)}×`;
@@ -1102,6 +1096,9 @@ async function rollHandler(
     if (clockExpired) hypeResetNote = `Time's up! ${hypeResetNote}`;
     if (isWave && !covenantSaved) hypeResetNote = `High Tide — the wave drowns ${sevenOutShooters} shooters. ${hypeResetNote}`;
     if (covenantSaved) hypeResetNote = `The Covenant — the order protects: your shooter stays${isWave ? ' (the wave is turned back)' : ''}. ${hypeResetNote}`;
+  } else if (orbitBleed > 0) {
+    // FB-038: The Commander's orbital bleed.
+    hypeResetNote = `Orbital decay: −${orbitBleed.toFixed(2)}× → ${finalNextState.hype.toFixed(2)}×`;
   }
 
   const receipt = buildRollReceipt(
@@ -1303,6 +1300,7 @@ async function rollHandler(
     ...(escrowPayload !== undefined && { escrow: escrowPayload }),
     ...(covenantSaved && { covenantSaved: true as const }),
     ...(tidePayload !== undefined && { tide: tidePayload }),
+    ...(orbitParams !== null && { orbit: { bleed: orbitBleed, hype: finalNextState.hype } }),
     ...(isDisableCrewBoss && { charmedCrewSlot: persistedBossPointHits }),
     ...(charmedWouldHaveFired && { charmFired: true }),
     ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
@@ -1350,6 +1348,7 @@ async function rollHandler(
       ...(escrowPayload !== undefined && { escrow: escrowPayload }),
       ...(covenantSaved && { covenantSaved: true as const }),
       ...(tidePayload !== undefined && { tide: tidePayload }),
+      ...(orbitParams !== null && { orbit: { bleed: orbitBleed, hype: finalNextState.hype } }),
       ...(removedSlotIndex !== null && { removedCrewSlot: removedSlotIndex }),
     },
   });
@@ -1654,16 +1653,9 @@ function computeNextState(
       const cascadeHypeDelta = Math.max(0, finalCtx.hype - run.hype);
       let nextHype: number;
       if (isOrbitalDecay) {
-        const decayParams = GAUNTLET[currentMarkerIndex]!.boss!.ruleParams as
-          Extract<BossRuleParams, { rule: 'ORBITAL_DECAY' }>;
-        const decayAmount =
-          run.hype >= 2.5 ? decayParams.onFireDecay
-          : run.hype >= 1.5 ? decayParams.heatingUpDecay
-          : decayParams.baseDecay;
-        nextHype = Math.max(
-          decayParams.hypeFloor,
-          Math.round((run.hype - decayAmount + cascadeHypeDelta) * 10_000) / 10_000,
-        );
+        // FB-038: The Commander — a Seven-Out resets hype (no Keepsake in his
+        // fight); the orbital bleed is applied after the state machine.
+        nextHype = Math.max(1.0, 1.0 + cascadeHypeDelta);
       } else {
         const seaLegsBaseline = hasSeaLegs ? 1.0 + (run.hype - 1.0) / 2 : 1.0;
         nextHype = Math.max(1.0, seaLegsBaseline + cascadeHypeDelta);

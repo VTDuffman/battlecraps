@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-038 The Commander Boss Moments
 
 **Design doc:** `docs/design/fb-038-commander-boss-moments-design.md`
-**Status:** Pending approval.
+**Status:** Phase 1 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -15,6 +15,8 @@
 5. **Tests:** integration — bleed amounts, no bleed at 1.0×, Seven-Out reset, no spiral.
 
 🛑 **Gate:** play the Commander locally.
+
+--- Implemented locally (2026-10-14): `ORBITAL_DECAY` params → `{ bleedPct: 0.20 }`; server bleed after the state machine (not on a Seven-Out or a marker clear), Seven-Out → 1.0× (+ crew hype; no Keepsake), death-spiral slot/max-bet code removed; `orbit { bleed, hype }` on the payload; receipt "Orbital decay: −X× → Y×". Header readout: ORBIT · hype · −20% / ROLL ABOVE 1×. Copy: dread tagline "IN SPACE, NO ONE CAN HEAR YOU SCREAM.", entry lines, blurb, header text, floor teaser; dev preset → "On Fire, point on"; dev hype presets 1/2/3×. Docs. Integration 147 (4 new). ---
 
 ## Phase 2: Barks
 `orbitLost`, `peakHype` always; `decaying` 35%; win/loss by chance (design §5). Tests.

@@ -27,13 +27,15 @@
    - D2: Hype values as in the table.
    - D3: the gentler taper A (A+ is ready to pull).
    - D4: two releases.
-2. Run and save the baseline outputs (scratch, not committed):
+2. Run and save the baseline outputs to `scripts/sim/baselines/pre-fb-041/` (committed, so Phase 4 can compare from any session):
    - `npm run build -w @battlecraps/shared`
    - `SIM_N=4000 node scripts/sim/gauntlet-economy-sim.mjs early`
    - `… options`
    - `… packages`
 
 🛑 **Gate:** baseline saved.
+
+--- Implemented (2026-10-15): baseline captured at `main` 1deed07 in `scripts/sim/baselines/pre-fb-041/` (`early.txt`, `options.txt`, `packages.txt` + README with the key numbers). Today: reach Floor 4 13% / 11% (cash / mixed · pass); finish given Floor 5 73% / 73%; whole run 8% / 6%. Matches the audit within ±2. ---
 
 ---
 

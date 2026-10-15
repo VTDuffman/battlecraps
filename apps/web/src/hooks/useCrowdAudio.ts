@@ -1238,6 +1238,48 @@ function playThrustersSting(ctx: AudioContext, dest: AudioNode): void {
   seaNoise(ctx, dest, t0, 0.6, { type: 'bandpass', from: 400, to: 1800, q: 0.9 }, 0.12, 0.08);
 }
 
+/** FB-038 win: the main engines — a building roar with a deep rumble under it (≈3 s). */
+function playEngineRoarSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 3.0, { type: 'bandpass', from: 180, to: 1400, q: 0.7 }, 0.22, 1.6);
+  const rumble = ctx.createOscillator();
+  rumble.type = 'sawtooth';
+  rumble.frequency.setValueAtTime(42, t0);
+  rumble.frequency.linearRampToValueAtTime(70, t0 + 2.8);
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 160;
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.18, t0 + 1.2);
+  env.gain.setValueAtTime(0.18, t0 + 2.6);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 3.0);
+  rumble.connect(lp);
+  lp.connect(env);
+  env.connect(dest);
+  rumble.start(t0);
+  rumble.stop(t0 + 3.05);
+}
+
+/** FB-038 win: the jump — a rising whoosh that snaps into a deep boom and a shimmer (≈2 s). */
+function playHyperJumpSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 0.5, { type: 'highpass', from: 400, to: 6000 }, 0.16, 0.45);
+  const boom = ctx.createOscillator();
+  boom.type = 'sine';
+  boom.frequency.setValueAtTime(110, t0 + 0.5);
+  boom.frequency.exponentialRampToValueAtTime(28, t0 + 1.4);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0 + 0.5);
+  env.gain.exponentialRampToValueAtTime(0.32, t0 + 0.52);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.5);
+  boom.connect(env);
+  env.connect(dest);
+  boom.start(t0 + 0.5);
+  boom.stop(t0 + 1.55);
+  [1567.98, 2093, 2637].forEach((f, i) => strikeBell(ctx, dest, f, t0 + 0.6 + i * 0.12, 0.03, 1.3));
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -1425,6 +1467,16 @@ export function playOrbitDecay(): void {
 /** FB-038: hype rises in orbit — a thruster burn. */
 export function playThrusters(): void {
   playStandalone(playThrustersSting);
+}
+
+/** FB-038 win: the main engines ignite. */
+export function playEngineRoar(): void {
+  playStandalone(playEngineRoarSting);
+}
+
+/** FB-038 win: the jump to hyperspace. */
+export function playHyperJump(): void {
+  playStandalone(playHyperJumpSting);
 }
 
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */

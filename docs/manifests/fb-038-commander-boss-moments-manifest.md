@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-038 The Commander Boss Moments
 
 **Design doc:** `docs/design/fb-038-commander-boss-moments-design.md`
-**Status:** Phases 1–3 done locally (not pushed).
+**Status:** Phases 1–4 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -38,6 +38,8 @@
 `ESCAPE_VELOCITY` cinematic + hold.
 
 🛑 **Gate:** beat the Commander locally.
+
+--- Implemented locally (2026-10-14): 🚀 in low orbit over a huge planet; ignition (`playEngineRoar()`, engine flame flicker); the ship powers away and shrinks into the distance while the planet falls away; 70 stars stretch into hyperspace streaks from the centre; the jump (white flash, `playHyperJump()` whoosh + boom + shimmer); quiet stars; his line. ~8.0 s (≈3.2 s to read), hold 8.4 s. ---
 
 ## Phase 5: Re-entry → Loss of Signal (defeat)
 `LOSS_OF_SIGNAL` cinematic (roar → total silence → static → line).

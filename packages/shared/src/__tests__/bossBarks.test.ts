@@ -68,7 +68,7 @@ describe('pickBossBark', () => {
   });
 
   it('bosses with no barks stay silent', () => {
-    expect(pickBossBark({ ...base, markerIndex: 20, bankrollDelta: 400 }, always)).toBeNull(); // The Commander (no barks yet)
+    expect(pickBossBark({ ...base, markerIndex: 23, bankrollDelta: 400 }, always)).toBeNull(); // The Emissary (no barks yet)
   });
 });
 
@@ -232,6 +232,34 @@ describe('The Sovereign (FB-037): tide events', () => {
 
   it('a wave that ends the run is silent (the defeat moment owns it)', () => {
     expect(selectBossBarkTrigger({ ...sov, isLoss: true, isGameOver: true, tide: { stage: 2, nextStage: 3, waveShooters: 2 } }, always)).toBeNull();
+  });
+});
+
+describe('The Commander (FB-038): orbit events', () => {
+  const CMD = 20;
+  const cmd: BossBarkInput = { ...base, markerIndex: CMD };
+
+  it('a Seven-Out from a high orbit always speaks', () => {
+    expect(selectBossBarkTrigger({ ...cmd, isLoss: true, rollResult: 'SEVEN_OUT', hypeBefore: 2.2, orbit: { bleed: 0, hype: 1 }, barkShowing: true }, never)).toBe('orbitLost');
+  });
+
+  it('a Seven-Out from a low orbit is just a loss', () => {
+    expect(deriveBossBarkEvents({ ...cmd, rollResult: 'SEVEN_OUT', hypeBefore: 1.2, orbit: { bleed: 0, hype: 1 } })).toEqual([]);
+  });
+
+  it('reaching On Fire always speaks (judged at the hype the roll paid at)', () => {
+    // paid at 2.6×, bled to 2.28× — still the moment you hit On Fire
+    expect(selectBossBarkTrigger({ ...cmd, bankrollDelta: 500, rollResult: 'POINT_HIT', hypeBefore: 2.35, orbit: { bleed: 0.32, hype: 2.28 } }, never)).toBe('peakHype');
+  });
+
+  it('an ordinary bleed speaks about a third of the time', () => {
+    const bleed = { ...cmd, rollResult: 'NO_RESOLUTION' as const, hypeBefore: 2.0, orbit: { bleed: 0.2, hype: 1.8 } };
+    expect(selectBossBarkTrigger(bleed, always)).toBe('decaying');
+    expect(selectBossBarkTrigger(bleed, never)).toBeNull();
+  });
+
+  it('a tiny bleed derives nothing', () => {
+    expect(deriveBossBarkEvents({ ...cmd, rollResult: 'NO_RESOLUTION', hypeBefore: 1.1, orbit: { bleed: 0.02, hype: 1.08 } })).toEqual([]);
   });
 });
 

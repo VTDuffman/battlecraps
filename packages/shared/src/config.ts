@@ -105,7 +105,8 @@ export type BossBarkTrigger =
   | 'charmed' | 'charmFired'
   | 'promoted' | 'finalWarning' | 'bonusPaid' | 'ratingUp' | 'ratingDown'
   | 'tributeSeized' | 'bigOffering' | 'escrowReleased'
-  | 'waveHit' | 'undertowHit' | 'highTide';
+  | 'waveHit' | 'undertowHit' | 'highTide'
+  | 'orbitLost' | 'peakHype' | 'decaying';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
 export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS' | 'THE_WAVE';
@@ -688,6 +689,14 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       ruleBlurb:          "Orbital decay: after every roll, your Hype above 1.0× loses 20% of its height — feed it or watch it fall. A Seven-Out resets Hype to 1.0×, and The Keepsake doesn't work up here. In space, no one can hear the crowd.",
       victoryQuote:       "…orbital mechanics didn't account for you. Gravity's compliments.",
       defeatAnnouncement: 'ORBITAL AUTHORITY LOST',
+      // FB-038 barks — clipped mission-control speak. In space, no one can hear you scream.
+      barks: {
+        orbitLost: ["Mission control, we have a problem.", "In space, no one can hear you scream."],
+        peakHype:  ["Cheer all you like. There's no air up here.", "Enjoy the view. It won't last."],
+        decaying:  ["Orbit decaying.", "You're losing altitude."],
+        win:       ["Acceptable trajectory.", "Burn logged."],
+        loss:      ["Gravity always wins.", "Correcting course. Yours, not mine."],
+      },
       // Mechanic
       rule:           'ORBITAL_DECAY',
       ruleHeaderText: 'ORBITAL DECAY — HYPE ABOVE 1.0× LOSES 20% EVERY ROLL · 7-OUT RESETS',

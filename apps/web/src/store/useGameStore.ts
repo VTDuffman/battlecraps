@@ -2209,6 +2209,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       ...(p.escrow && { escrow: p.escrow }),
       // FB-037: the Sovereign's tide.
       ...(p.tide && { tide: p.tide }),
+      // FB-038: the Commander's orbit.
+      hypeBefore: oldHype,
+      ...(p.orbit && { orbit: p.orbit }),
       ...(p.bossCut && {
         cut: { before: cutBefore, after: p.bossCut.total, payoff: p.bossCut.payoff, paidOff: p.bossCut.paidOff },
       }),

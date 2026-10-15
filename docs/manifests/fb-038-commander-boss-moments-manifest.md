@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-038 The Commander Boss Moments
 
 **Design doc:** `docs/design/fb-038-commander-boss-moments-design.md`
-**Status:** Phase 1 done locally (not pushed).
+**Status:** Phases 1–2 done locally (not pushed). Orbit gauge pulled forward from Phase 3.
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -22,6 +22,8 @@
 `orbitLost`, `peakHype` always; `decaying` 35%; win/loss by chance (design §5). Tests.
 
 🛑 **Gate:** play locally.
+
+--- Implemented locally (2026-10-14): shared ORBITAL_DECAY events — orbitLost (Seven-Out from ≥ 1.5×) and peakHype (reaching ≥ 2.5×, judged at the hype the roll paid at) always; decaying (bleed ≥ 0.2×) 35%; win/loss lines. Store passes hypeBefore + orbit. Shared 477 tests. ---
 
 ## Phase 3: The orbit gauge + no one can hear you scream
 1. **`OrbitGauge`** under the marker progress bar (planet horizon, ship altitude = hype, sinks by the bleed, thrusters on gains); replaces the header readout.

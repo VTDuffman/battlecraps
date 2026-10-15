@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-039 The Emissary Boss Moments
 
 **Design doc:** `docs/design/fb-039-emissary-boss-moments-design.md`
-**Status:** Phases 1–4 done locally (not pushed).
+**Status:** Phases 1–5 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -34,6 +34,8 @@ Front and center: crew → receiver line, packets in transit, landing pops, stat
 --- Implemented locally (2026-10-14): `MessageReceivedCinematic` (`MESSAGE_RECEIVED`, hold 8.8 s). Dark screen, faint falling green/magenta glyph columns + scanlines; "◌ INCOMING TRANSMISSION" flickers in (`playIncomingTransmission()`); his line appears as cycling alien glyphs and decodes left to right over ~3 s (`playDecodeTick()` every 3rd character); "▣ MESSAGE RECEIVED" locks in with a chord (`playMessageReceived()`) and "— THE EMISSARY"; fades at 8.0 s. Reduced motion: no rain, the line shows decoded. ---
 
 ## Phase 5: Translated (defeat)
+
+--- Implemented locally (2026-10-14): `TranslatedCinematic` (`TRANSLATED`, line "[Translation complete. You will be studied.]"). Green-dark dim + scanlines; the bankroll and each crew portrait (measured from the rail, then hidden) dissolve into glyph clusters with a flash + `playGlyphDissolve()`, and the felt flickers with loose glyph motes; a green tractor beam opens (`playTractorBeam()` — pulsing hum + rising theremin tone) and every glyph is drawn into it and up; the beam snaps shut, a sea of untranslatable glyphs fills the screen (`playTranslationComplete()`), then "▣ TRANSLATED" + the line. ~8.3 s, under the 9 s safety net. Reduced motion: no flights. ---
 
 ## Phase 6: Dev Mode + docs
 Presets: "Emissary — signal in transit, point on", "Emissary — blackout (3 rolls left)", "Emissary — one win from contact", "Emissary — last shooter, point on". Docs: boss_framework, CLAUDE.md, backlog.

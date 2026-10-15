@@ -110,7 +110,7 @@ export type BossBarkTrigger =
   | 'signalLost' | 'contactRestored' | 'received';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
-export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS' | 'THE_WAVE' | 'LOSS_OF_SIGNAL';
+export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS' | 'THE_WAVE' | 'LOSS_OF_SIGNAL' | 'TRANSLATED';
 
 /** FB-033: boss victory moments (one component each in the web registry). */
 export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP' | 'THE_EYE_CLOSES' | 'THE_CROWN_SINKS' | 'ESCAPE_VELOCITY' | 'MESSAGE_RECEIVED';
@@ -754,6 +754,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       victoryQuote:       "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]",
       victoryCinematic:   { id: 'MESSAGE_RECEIVED', line: "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]" },
       defeatAnnouncement: 'SIGNAL LOST',
+      defeatCinematic:    { id: 'TRANSLATED', line: "[Translation complete. You will be studied.]" },
       // FB-039 barks — translated alien text, in brackets. Cold, literal.
       barks: {
         signalLost:      ["[Signal lost. Your crew cannot hear you.]", "[Contact terminated. Recalibrating.]"],

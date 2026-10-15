@@ -1403,6 +1403,69 @@ function playMessageReceivedSting(ctx: AudioContext, dest: AudioNode): void {
   beep(ctx, dest, 1760, t0, 0.08, 0.03);
 }
 
+/** FB-039 loss: one piece of the table dissolves into glyphs — a glittery down-sweep. */
+function playGlyphDissolveSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 0.35, { type: 'bandpass', from: 5200, to: 1800, q: 4 }, 0.06, 0.005);
+  for (let i = 0; i < 4; i++) beep(ctx, dest, 2400 - i * 380 + Math.random() * 120, t0 + i * 0.05, 0.03, 0.014);
+}
+
+/** FB-039 loss: the tractor beam — a pulsing low hum with a rising, wavering tone over `seconds`. */
+function makeTractorBeamSting(seconds: number): (ctx: AudioContext, dest: AudioNode) => void {
+  return (ctx, dest) => {
+    const t0 = ctx.currentTime + 0.01;
+    const t1 = t0 + seconds;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, t0);
+    out.gain.exponentialRampToValueAtTime(0.09, t0 + 0.6);
+    out.gain.setValueAtTime(0.09, t1 - 0.5);
+    out.gain.exponentialRampToValueAtTime(0.0001, t1);
+    out.connect(dest);
+    // pulsing hum
+    const hum = ctx.createOscillator();
+    hum.type = 'sawtooth';
+    hum.frequency.value = 55;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 320;
+    const pulse = ctx.createGain();
+    pulse.gain.value = 0.5;
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 6;
+    const lfoAmt = ctx.createGain();
+    lfoAmt.gain.value = 0.4;
+    lfo.connect(lfoAmt);
+    lfoAmt.connect(pulse.gain);
+    hum.connect(lp);
+    lp.connect(pulse);
+    pulse.connect(out);
+    // rising, wavering tone (theremin-ish)
+    const tone = ctx.createOscillator();
+    tone.type = 'sine';
+    tone.frequency.setValueAtTime(330, t0);
+    tone.frequency.exponentialRampToValueAtTime(1320, t1);
+    const vib = ctx.createOscillator();
+    vib.frequency.value = 5.5;
+    const vibAmt = ctx.createGain();
+    vibAmt.gain.value = 18;
+    vib.connect(vibAmt);
+    vibAmt.connect(tone.frequency);
+    const toneGain = ctx.createGain();
+    toneGain.gain.value = 0.35;
+    tone.connect(toneGain);
+    toneGain.connect(out);
+    [hum, lfo, tone, vib].forEach((o) => { o.start(t0); o.stop(t1 + 0.05); });
+  };
+}
+
+/** FB-039 loss: translation complete — a cold, dissonant low cluster. */
+function playTranslationCompleteSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [98, 103.8, 146.8, 207.7].forEach((f, i) => strikeBell(ctx, dest, f * 2, t0 + i * 0.03, 0.05, 2.6));
+  beep(ctx, dest, 2960, t0, 0.05, 0.02);
+  beep(ctx, dest, 2960, t0 + 0.12, 0.05, 0.02);
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -1635,6 +1698,21 @@ export function playDecodeTick(): void {
 /** FB-039 win: the message is decoded. */
 export function playMessageReceived(): void {
   playStandalone(playMessageReceivedSting);
+}
+
+/** FB-039 loss: a piece of the table is translated into glyphs. */
+export function playGlyphDissolve(): void {
+  playStandalone(playGlyphDissolveSting);
+}
+
+/** FB-039 loss: the tractor beam, for `seconds`. */
+export function playTractorBeam(seconds: number): void {
+  playStandalone(makeTractorBeamSting(seconds));
+}
+
+/** FB-039 loss: translation complete. */
+export function playTranslationComplete(): void {
+  playStandalone(playTranslationCompleteSting);
 }
 
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */

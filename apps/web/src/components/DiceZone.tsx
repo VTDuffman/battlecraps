@@ -14,7 +14,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useGameStore, selectHypeTier, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 import { useParticleEmitter } from '../hooks/useParticleEmitter.js';
-import { isBossMarker, getBossMinBet, getMinBet } from '@battlecraps/shared';
+import { isBossMarker, getBossMinBet, getMinBet, GAUNTLET } from '@battlecraps/shared';
 import { getFloorIndex } from '../lib/floorThemes.js';
 
 // ---------------------------------------------------------------------------
@@ -138,7 +138,9 @@ export const DiceZone: React.FC = () => {
   const containerRef  = useRef<HTMLDivElement>(null);
   const dicePairRef   = useRef<HTMLDivElement>(null);
   const particleActive    = hypeTier >= 2 && throwPhase !== 'idle';
-  const particleCanvasRef = useParticleEmitter(dicePairRef, particleActive, hypeTier);
+  // FB-038: in The Commander's fight there's no oxygen — the flames gutter.
+  const isCommanderFight  = useGameStore((s) => GAUNTLET[s.currentMarkerIndex]?.boss?.rule === 'ORBITAL_DECAY');
+  const particleCanvasRef = useParticleEmitter(dicePairRef, particleActive, hypeTier, isCommanderFight);
 
   // ── Lefty McGuffin dread→relief cinematic ────────────────────────────────
   // dreadDiceRef mirrors the store value so onLandEnd (a callback) can read it

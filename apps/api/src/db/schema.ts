@@ -273,6 +273,15 @@ export const runs = pgTable(
      */
     covenantSpentMarker: integer('covenant_spent_marker'),
 
+    /**
+     * FB-039: The Emissary's signal lag — the crew effects from the last roll,
+     * in transit, landing on the next roll: { additives (cents), hype, multipliers }.
+     * NULL when nothing is in transit (and outside his fight).
+     */
+    signalTransit: jsonb('signal_transit').$type<{ additives: number; hype: number; multipliers: number[] } | null>(),
+    /** FB-039: rolls left in The Emissary's crew blackout after a Seven-Out (0 = in contact). */
+    signalDarkRolls: integer('signal_dark_rolls').notNull().default(0),
+
     // ── Shooter lives ──────────────────────────────────────────────────────
 
     /** Remaining shooter lives. Game over at 0. Starts at 5. */
@@ -318,7 +327,7 @@ export const runs = pgTable(
      *   DOUBLE_TIME (Sarge):     point-phase rolls used against the clock.
      *   DISABLE_CREW (Le Prix):  charmed slot index.
      *   CROSS_CALIBRATION:       Executive rating 0–4 (enters at 2).
-     *   TIDAL_SURGE (Sovereign): tide stage — drives getBossMinBet().
+     *   TIDAL_SURGE (Sovereign): tide stage (FB-037: Dead Calm / Undertow / High Tide).
      *   CONVERGENCE (Architect): seven-out count.
      * Set on every marker entry via getBossEntryCounter(); 0 outside boss fights.
      */

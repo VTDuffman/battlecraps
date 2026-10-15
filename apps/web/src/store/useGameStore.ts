@@ -248,6 +248,12 @@ interface TurnSettledPayload {
   escrow?:                 { heldCents: number; releasedCents: number; seizedCents: number };
   /** FB-036: The Covenant kept the shooter on this Seven-Out. */
   covenantSaved?:          boolean;
+  /** FB-037: The Sovereign's tide this roll. */
+  tide?:                   { stage: number; nextStage: number; undertowCents?: number; waveShooters?: number };
+  /** FB-038: The Commander's orbital bleed this roll. */
+  orbit?:                  { bleed: number; hype: number };
+  /** FB-039: The Emissary's signal this roll. */
+  signal?:                 { landed: { additives: number; hype: number; multipliers: number[] }; sent: { additives: number; hype: number; multipliers: number[] }; dropped: boolean; darkRolls: number; wasDark: boolean };
   /** True when Poseidon's Favor cancelled the shooter's first-roll craps-out (rollResult is NO_RESOLUTION). */
   crapsOutBlocked?:        boolean;
   /** The Architect (CONVERGENCE): crew slot index permanently removed by this seven-out. */
@@ -312,7 +318,7 @@ export interface GameState {
 
   /**
    * Per-boss-fight counter; meaning depends on the boss rule (Sarge: clock rolls
-   * used, Sovereign: tide stage — drives getBossMinBet(), Executive: rating, …).
+   * used, Sovereign: tide stage (getTideStage), Executive: rating, …).
    * 0 outside boss fights. Synced from the server via turn:settled and recruit responses.
    */
   bossPointHits: number;
@@ -799,6 +805,14 @@ export interface GameState {
   lastEscrow: { heldCents: number; releasedCents: number; seizedCents: number; key: number } | null;
   /** FB-036: bumps each time The Covenant saves a shooter (drives CovenantFlash). */
   _covenantKey: number;
+  /** FB-037: the latest roll's tide facts + a key (drives the water line). */
+  lastTide: { stage: number; nextStage: number; undertowCents?: number; waveShooters?: number; key: number } | null;
+  /** FB-038: the latest roll's orbital bleed (The Commander) + a key (drives the orbit gauge). */
+  lastOrbit: { bleed: number; hype: number; key: number } | null;
+  /** FB-039: rolls left in The Emissary's crew blackout (0 = in contact). */
+  signalDarkRolls: number;
+  /** FB-039: the latest roll's signal facts + a key (drives the transmission line). */
+  lastSignal: ({ landed: { additives: number; hype: number; multipliers: number[] }; sent: { additives: number; hype: number; multipliers: number[] }; dropped: boolean; darkRolls: number; wasDark: boolean } & { key: number }) | null;
   /** The latest roll's Cut (drives the register's ka-ching / stamp). Null when none. */
   lastBossCut: BossCut | null;
   /** Increments on every roll that adds to the Cut — keys the ka-ching animation. */
@@ -866,6 +880,8 @@ export interface DevRunPayload {
   compPerkIds:           number[];
   pendingAdditiveCents:  number;
   bossProgressCents:     number;
+  /** FB-039: The Emissary's crew blackout (rolls left). */
+  signalDarkRolls?:      number;
   isDevRun:              boolean;
 }
 
@@ -1209,6 +1225,9 @@ const VICTORY_HOLD_MS_BY_ID: Readonly<Record<BossVictoryCinematicId, number>> = 
   THE_ROSE:             6100,  // FB-034: Mme. Le Prix (~5.7s)
   NAMEPLATE_SWAP:       6300,  // FB-035: The Executive (~5.9s)
   THE_EYE_CLOSES:       8600,  // FB-036: The Hierophant (~8.2s — his line is long)
+  THE_CROWN_SINKS:      9600,  // FB-037: The Sovereign (~9.2s — the sea floods in first)
+  ESCAPE_VELOCITY:      8400,  // FB-038: The Commander (~8.0s)
+  MESSAGE_RECEIVED:     8800,  // FB-039: The Emissary (~8.4s)
 };
 
 /**
@@ -1339,6 +1358,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   escrowHeldCents:         0,
   lastEscrow:              null,
   _covenantKey:            0,
+  lastTide:                null,
+  lastOrbit:               null,
+  signalDarkRolls:         0,
+  lastSignal:              null,
   lastBossCut:             null,
   _cutKey:                 0,
   payoffAt:                null,
@@ -1433,6 +1456,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bossProgressCents: 0,
       escrowHeldCents:   0,
       lastEscrow:        null,
+      lastTide:          null,
+      lastOrbit:         null,
+      signalDarkRolls:   0,
+      lastSignal:        null,
       lastBossCut:    null,
       payoffAt:       null,
       bossBark:       null,
@@ -1629,6 +1656,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bossProgressCents:   0,
       escrowHeldCents:     0,
       lastEscrow:          null,
+      lastTide:            null,
+      lastOrbit:           null,
+      signalDarkRolls:     0,
+      lastSignal:          null,
       lastBossCut:         null,
       payoffAt:            null,
       bossBark:            null,
@@ -2192,6 +2223,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // FB-036: the Hierophant's offering bowl.
       escrowBeforeCents: escrowBefore,
       ...(p.escrow && { escrow: p.escrow }),
+      // FB-037: the Sovereign's tide.
+      ...(p.tide && { tide: p.tide }),
+      // FB-038: the Commander's orbit.
+      hypeBefore: oldHype,
+      ...(p.orbit && { orbit: p.orbit }),
+      // FB-039: the Emissary's signal.
+      ...(p.signal && { signal: p.signal }),
       ...(p.bossCut && {
         cut: { before: cutBefore, after: p.bossCut.total, payoff: p.bossCut.payoff, paidOff: p.bossCut.paidOff },
       }),
@@ -2264,6 +2302,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       escrowHeldCents:       p.escrow ? p.escrow.heldCents : 0,
       lastEscrow:            p.escrow ? { ...p.escrow, key: (oldLastEscrow?.key ?? 0) + 1 } : oldLastEscrow,
       _covenantKey:          p.covenantSaved === true ? get()._covenantKey + 1 : get()._covenantKey,
+      lastTide:              p.tide ? { ...p.tide, key: (get().lastTide?.key ?? 0) + 1 } : get().lastTide,
+      lastOrbit:             p.orbit ? { ...p.orbit, key: (get().lastOrbit?.key ?? 0) + 1 } : get().lastOrbit,
+      signalDarkRolls:       p.signal ? p.signal.darkRolls : 0,
+      lastSignal:            p.signal ? { ...p.signal, key: (get().lastSignal?.key ?? 0) + 1 } : get().lastSignal,
       lastBossCut:           p.bossCut ?? null,
       _cutKey:               p.bossCut && p.bossCut.amount > 0 ? get()._cutKey + 1 : get()._cutKey,
       payoffAt:              p.bossCut?.paidOff === true ? Date.now() : get().payoffAt,
@@ -2530,6 +2572,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           exceptionalBonusCents?: number;
           escrow?: { heldCents: number; releasedCents: number; seizedCents: number };
           covenantSaved?: boolean;
+          tide?: { stage: number; nextStage: number; undertowCents?: number; waveShooters?: number };
+          orbit?: { bleed: number; hype: number };
+          signal?: { landed: { additives: number; hype: number; multipliers: number[] }; sent: { additives: number; hype: number; multipliers: number[] }; dropped: boolean; darkRolls: number; wasDark: boolean };
           crapsOutBlocked?: boolean;
           clockExpired?: boolean;
           removedCrewSlot?: number;
@@ -2568,6 +2613,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           ...(data.roll.exceptionalBonusCents !== undefined && { exceptionalBonusCents: data.roll.exceptionalBonusCents }),
           ...(data.roll.escrow !== undefined && { escrow: data.roll.escrow }),
           ...(data.roll.covenantSaved === true && { covenantSaved: true }),
+          ...(data.roll.tide !== undefined && { tide: data.roll.tide }),
+          ...(data.roll.orbit !== undefined && { orbit: data.roll.orbit }),
+          ...(data.roll.signal !== undefined && { signal: data.roll.signal }),
         };
         set({ pendingSettlement: autoSettlement });
         get().applyPendingSettlement();
@@ -2603,6 +2651,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ...(data.roll.exceptionalBonusCents !== undefined && { exceptionalBonusCents: data.roll.exceptionalBonusCents }),
         ...(data.roll.escrow !== undefined && { escrow: data.roll.escrow }),
         ...(data.roll.covenantSaved === true && { covenantSaved: true }),
+        ...(data.roll.tide !== undefined && { tide: data.roll.tide }),
+        ...(data.roll.orbit !== undefined && { orbit: data.roll.orbit }),
+        ...(data.roll.signal !== undefined && { signal: data.roll.signal }),
         ...(data.roll.crapsOutBlocked === true      && { crapsOutBlocked: true as const              }),
         ...(data.roll.clockExpired    === true      && { clockExpired:    true as const              }),
         ...(data.roll.removedCrewSlot !== undefined && { removedCrewSlot: data.roll.removedCrewSlot  }),
@@ -2951,6 +3002,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       consecutivePointHits: payload.consecutivePointHits,
       bossProgressCents:    payload.bossProgressCents ?? 0,
       escrowHeldCents:      payload.pendingAdditiveCents ?? 0,
+      signalDarkRolls:      payload.signalDarkRolls ?? 0,
       isDevRun:             payload.isDevRun,
     };
 

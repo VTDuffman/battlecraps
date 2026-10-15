@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getBossMinBet, GAUNTLET, isBossMarker, type BossRuleParams } from '@battlecraps/shared';
+import { GAUNTLET, isBossMarker, type BossRuleParams } from '@battlecraps/shared';
 import { BossBarkFloat } from './BossBarkFloat.js';
 import { SargeClock } from './SargeClock.js';
 import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
@@ -34,7 +34,6 @@ export const BossRoomHeader: React.FC = () => {
 
   const theme = getFloorTheme(currentMarkerIndex);
 
-  const currentMinBet = getBossMinBet(currentMarkerIndex, bossPointHits);
 
   const isTidalSurge        = boss.rule === 'TIDAL_SURGE';
   const isOrbitalDecay      = boss.rule === 'ORBITAL_DECAY';
@@ -42,16 +41,6 @@ export const BossRoomHeader: React.FC = () => {
   const isConvergence       = boss.rule === 'CONVERGENCE';
   const isExecutive         = boss.rule === 'CROSS_CALIBRATION';
   const isDoubleTime        = boss.rule === 'DOUBLE_TIME';
-  const tidalParams = isTidalSurge
-    ? (boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>)
-    : null;
-  const stageCount      = tidalParams !== null ? tidalParams.stageMultipliers.length : 0;
-  const stageIndex      = tidalParams !== null ? bossPointHits % stageCount : 0;
-  const stageLabel      = tidalParams !== null ? (tidalParams.stageLabels[stageIndex] ?? 'LOW TIDE') : '';
-  const stageMultiplier = tidalParams !== null ? (tidalParams.stageMultipliers[stageIndex] ?? 1) : 1;
-  const inHighTide      = stageMultiplier > 1;
-  const nextStageIndex  = tidalParams !== null ? (stageIndex + 1) % stageCount : 0;
-  const nextStageLabel  = tidalParams !== null ? (tidalParams.stageLabels[nextStageIndex] ?? 'LOW TIDE') : '';
 
   return (
     <div
@@ -104,39 +93,8 @@ export const BossRoomHeader: React.FC = () => {
 
         {/* Right: tide state / min-bet / rule indicator */}
         {/* The Executive's rating lives in the PerformanceMeter (FB-035), front and center. */}
-        {isExecutive ? null : isTidalSurge && tidalParams !== null ? (
-          <div className="flex-none text-right">
-            <div className="font-pixel text-[7.5px] tracking-widest leading-none"
-              style={{ color: inHighTide ? '#fbbf24' : 'rgba(0,201,160,0.70)' }}>
-              {inHighTide ? `⚠ ${stageLabel}` : stageLabel}
-            </div>
-            {inHighTide && currentMinBet !== null ? (
-              <div className="font-pixel text-r-12 leading-tight"
-                style={{ color: '#fbbf24' }}>
-                MIN ${(currentMinBet / 100).toLocaleString()}
-              </div>
-            ) : null}
-            <div className="font-pixel text-[7.5px] leading-none mt-0.5"
-              style={{ color: inHighTide ? 'rgba(251,191,36,0.70)' : 'rgba(0,201,160,0.55)' }}>
-              NEXT: {nextStageLabel}
-            </div>
-          </div>
-        ) : isTransmissionDelay ? (
-          <div className="flex-none text-right">
-            <div className="font-pixel text-[7.5px] tracking-widest leading-none"
-              style={{ color: 'rgba(57,255,20,0.60)' }}>
-              SIGNAL DELAY
-            </div>
-            <div className="font-pixel text-r-12 leading-tight"
-              style={{ color: '#39ff14' }}>
-              ADDITIVES HELD
-            </div>
-            <div className="font-pixel text-[7.5px] leading-none mt-0.5"
-              style={{ color: 'rgba(57,255,20,0.45)' }}>
-              7-OUT: EVAPORATE
-            </div>
-          </div>
-        ) : isConvergence ? (
+        {/* The Executive's rating and the Sovereign's tide live front and center (PerformanceMeter, TideDial). */}
+        {isExecutive || isTidalSurge || isTransmissionDelay ? null : isConvergence ? (
           (() => {
             // Each seven-out permanently removes one crew member, so count who's left.
             const activeCrewCount = crewSlots.slice(0, unlockedSlots).filter((c) => c !== null).length;
@@ -158,39 +116,7 @@ export const BossRoomHeader: React.FC = () => {
               </div>
             );
           })()
-        ) : isOrbitalDecay ? (
-          (() => {
-            const decay = boss.ruleParams as Extract<BossRuleParams, { rule: 'ORBITAL_DECAY' }>;
-            // Seven-out decay is tiered by the current Hype tier.
-            const nextDecay = currentHype >= 2.5 ? decay.onFireDecay
-              : currentHype >= 1.5 ? decay.heatingUpDecay
-              : decay.baseDecay;
-            const hypeStr   = currentHype.toFixed(2) + '×';
-            // Death spiral: below 0.75× you lose a cascade slot; below 0.5× max bet is halved.
-            const inDeathSpiral  = currentHype < 0.75;
-            const isWarning = currentHype < 1.0 && !inDeathSpiral;
-            const hypeColor = inDeathSpiral ? '#ef4444' : isWarning ? '#fbbf24' : '#c8d8e8';
-            const penaltyLabel = currentHype < 0.5 ? '⚠ −1 SLOT · MAX BET ½'
-              : inDeathSpiral ? '⚠ −1 CREW SLOT'
-              : `−${nextDecay.toFixed(1)}× ON 7-OUT`;
-            return (
-              <div className="flex-none text-right">
-                <div className="font-pixel text-[7.5px] tracking-widest leading-none"
-                  style={{ color: 'rgba(200,216,232,0.60)' }}>
-                  HYPE DECAY
-                </div>
-                <div className="font-pixel text-r-15 leading-tight"
-                  style={{ color: hypeColor }}>
-                  {hypeStr}
-                </div>
-                <div className="font-pixel text-[7.5px] leading-none mt-0.5"
-                  style={{ color: inDeathSpiral ? '#ef4444' : 'rgba(200,216,232,0.45)' }}>
-                  {penaltyLabel}
-                </div>
-              </div>
-            );
-          })()
-        ) : isDoubleTime ? (
+        ) : isOrbitalDecay ? null /* FB-038: the orbit gauge lives front and center */ : isDoubleTime ? (
           <SargeClock
             rollLimit={boss.ruleParams.rule === 'DOUBLE_TIME' ? boss.ruleParams.rollLimit : 6}
             labelColor={`${theme.bossStarColor}b3`}

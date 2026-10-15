@@ -1083,6 +1083,389 @@ function playDoorsOpenSting(ctx: AudioContext, dest: AudioNode): void {
   thud.stop(t0 + 2.0);
 }
 
+/** A band of filtered noise with an envelope — the building block of the sea sounds. */
+function seaNoise(
+  ctx: AudioContext, dest: AudioNode, start: number, dur: number,
+  filter: { type: BiquadFilterType; from: number; to: number; q?: number },
+  peak: number, attack: number,
+): void {
+  const src = ctx.createBufferSource();
+  src.buffer = makeNoiseBuf(ctx, dur + 0.05);
+  const f = ctx.createBiquadFilter();
+  f.type = filter.type;
+  f.Q.value = filter.q ?? 0.7;
+  f.frequency.setValueAtTime(filter.from, start);
+  f.frequency.exponentialRampToValueAtTime(filter.to, start + dur);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, start);
+  env.gain.exponentialRampToValueAtTime(peak, start + attack);
+  env.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  src.connect(f);
+  f.connect(env);
+  env.connect(dest);
+  src.start(start);
+  src.stop(start + dur + 0.05);
+}
+
+/** FB-037: the tide turns — a slow swell washing in and out (≈1.8 s). */
+function playSwellSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 1.8, { type: 'lowpass', from: 300, to: 900 }, 0.16, 0.8);
+  seaNoise(ctx, dest, t0 + 0.6, 1.2, { type: 'highpass', from: 2500, to: 5000 }, 0.03, 0.4);   // foam
+}
+
+/** FB-037: the Undertow drags — a deep draining whoosh pulling away (≈1.5 s). */
+function playUndertowSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 1.5, { type: 'lowpass', from: 1400, to: 120 }, 0.24, 0.12);
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(110, t0);
+  sub.frequency.exponentialRampToValueAtTime(40, t0 + 1.3);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.14, t0 + 0.1);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.4);
+  sub.connect(env);
+  env.connect(dest);
+  sub.start(t0);
+  sub.stop(t0 + 1.45);
+}
+
+/** FB-037: High Tide's wave breaks — a roaring build, a crash and a long hiss (≈2.4 s). */
+function playWaveCrashSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 0.7, { type: 'bandpass', from: 300, to: 1600, q: 0.6 }, 0.12, 0.65);       // the build
+  seaNoise(ctx, dest, t0 + 0.65, 1.8, { type: 'lowpass', from: 6000, to: 400 }, 0.34, 0.02);         // the crash
+  const boom = ctx.createOscillator();
+  boom.type = 'sine';
+  boom.frequency.setValueAtTime(80, t0 + 0.65);
+  boom.frequency.exponentialRampToValueAtTime(32, t0 + 1.2);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0 + 0.65);
+  env.gain.exponentialRampToValueAtTime(0.3, t0 + 0.68);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.3);
+  boom.connect(env);
+  env.connect(dest);
+  boom.start(t0 + 0.65);
+  boom.stop(t0 + 1.35);
+}
+
+/** FB-037 win: deep water — a muffled rumble with bubbles plopping up through it (≈5 s). */
+function playUnderwaterSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 5.0, { type: 'lowpass', from: 260, to: 160 }, 0.12, 1.2);
+  for (let i = 0; i < 14; i++) {
+    const at   = t0 + 0.3 + i * 0.32 + ((i * 37) % 10) / 50;
+    const base = 300 + ((i * 53) % 9) * 60;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(base, at);
+    osc.frequency.exponentialRampToValueAtTime(base * 2.4, at + 0.06);   // a bubble's rising "bloop"
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, at);
+    env.gain.exponentialRampToValueAtTime(0.035, at + 0.01);
+    env.gain.exponentialRampToValueAtTime(0.0001, at + 0.08);
+    osc.connect(env);
+    env.connect(dest);
+    osc.start(at);
+    osc.stop(at + 0.09);
+  }
+}
+
+/** FB-037 win: the crown settles in the sand — a soft muffled thud and a sandy puff. */
+function playSandThudSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  const thud = ctx.createOscillator();
+  thud.type = 'sine';
+  thud.frequency.setValueAtTime(95, t0);
+  thud.frequency.exponentialRampToValueAtTime(45, t0 + 0.2);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.22, t0 + 0.01);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+  thud.connect(env);
+  env.connect(dest);
+  thud.start(t0);
+  thud.stop(t0 + 0.32);
+  seaNoise(ctx, dest, t0, 0.6, { type: 'lowpass', from: 900, to: 200 }, 0.08, 0.03);
+}
+
+/** FB-037 win: a sunken chime — slow, glassy bell notes drifting down into a held chord (≈3 s). */
+function playSunkenChimeSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [1567.98, 1318.51, 1046.5, 783.99].forEach((f, i) => strikeBell(ctx, dest, f, t0 + i * 0.32, 0.045, 1.6));
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => strikeBell(ctx, dest, f, t0 + 1.4 + i * 0.05, 0.04, 2.2));
+}
+
+/**
+ * FB-038: the crowd as heard through a helmet in a vacuum — a low-pass that
+ * strips the air out of it, and a level that rises a little with your hype
+ * (0.25 at 1.0× up to 0.6 at On Fire).
+ */
+function muffledDest(ctx: AudioContext, dest: AudioNode, hype: number): AudioNode {
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 420;
+  lp.Q.value = 0.5;
+  const level = ctx.createGain();
+  level.gain.value = Math.min(0.6, 0.25 + 0.14 * Math.max(0, hype - 1));
+  lp.connect(level);
+  level.connect(dest);
+  return lp;
+}
+
+/** FB-038: the orbit decays — a soft sonar ping that slides down (≈0.7 s). */
+function playOrbitDecaySting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(1180, t0);
+  osc.frequency.exponentialRampToValueAtTime(620, t0 + 0.6);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.06, t0 + 0.01);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.7);
+  osc.connect(env);
+  env.connect(dest);
+  osc.start(t0);
+  osc.stop(t0 + 0.72);
+}
+
+/** FB-038: a thruster burn — a short rising rush of filtered noise (≈0.6 s). */
+function playThrustersSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 0.6, { type: 'bandpass', from: 400, to: 1800, q: 0.9 }, 0.12, 0.08);
+}
+
+/** FB-038 win: the main engines — a building roar with a deep rumble under it (≈3 s). */
+function playEngineRoarSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 3.0, { type: 'bandpass', from: 180, to: 1400, q: 0.7 }, 0.22, 1.6);
+  const rumble = ctx.createOscillator();
+  rumble.type = 'sawtooth';
+  rumble.frequency.setValueAtTime(42, t0);
+  rumble.frequency.linearRampToValueAtTime(70, t0 + 2.8);
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 160;
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.18, t0 + 1.2);
+  env.gain.setValueAtTime(0.18, t0 + 2.6);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 3.0);
+  rumble.connect(lp);
+  lp.connect(env);
+  env.connect(dest);
+  rumble.start(t0);
+  rumble.stop(t0 + 3.05);
+}
+
+/** FB-038 win: the jump — a rising whoosh that snaps into a deep boom and a shimmer (≈2 s). */
+function playHyperJumpSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 0.5, { type: 'highpass', from: 400, to: 6000 }, 0.16, 0.45);
+  const boom = ctx.createOscillator();
+  boom.type = 'sine';
+  boom.frequency.setValueAtTime(110, t0 + 0.5);
+  boom.frequency.exponentialRampToValueAtTime(28, t0 + 1.4);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0 + 0.5);
+  env.gain.exponentialRampToValueAtTime(0.32, t0 + 0.52);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.5);
+  boom.connect(env);
+  env.connect(dest);
+  boom.start(t0 + 0.5);
+  boom.stop(t0 + 1.55);
+  [1567.98, 2093, 2637].forEach((f, i) => strikeBell(ctx, dest, f, t0 + 0.6 + i * 0.12, 0.03, 1.3));
+}
+
+/**
+ * FB-038 loss: re-entry — a roar of plasma that builds and crackles for
+ * `seconds`, then CUTS to dead silence (a hard stop, no fade: in space, no one
+ * can hear you scream).
+ */
+function makeReentryRoarSting(seconds: number): (ctx: AudioContext, dest: AudioNode) => void {
+  return (ctx, dest) => {
+    const t0  = ctx.currentTime + 0.01;
+    const end = t0 + seconds;
+    const bus = ctx.createGain();
+    bus.gain.setValueAtTime(1, t0);
+    bus.gain.setValueAtTime(1, end - 0.005);
+    bus.gain.linearRampToValueAtTime(0, end);           // the cut
+    bus.connect(dest);
+    // the roar — rising, brightening
+    const roar = ctx.createBufferSource();
+    roar.buffer = makeNoiseBuf(ctx, seconds + 0.1);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(200, t0);
+    lp.frequency.exponentialRampToValueAtTime(3200, end);
+    const rEnv = ctx.createGain();
+    rEnv.gain.setValueAtTime(0.0001, t0);
+    rEnv.gain.exponentialRampToValueAtTime(0.34, end - 0.2);
+    roar.connect(lp);
+    lp.connect(rEnv);
+    rEnv.connect(bus);
+    roar.start(t0);
+    roar.stop(end + 0.05);
+    // the hull groaning under it
+    const groan = ctx.createOscillator();
+    groan.type = 'sawtooth';
+    groan.frequency.setValueAtTime(48, t0);
+    groan.frequency.linearRampToValueAtTime(90, end);
+    const gLp = ctx.createBiquadFilter();
+    gLp.type = 'lowpass';
+    gLp.frequency.value = 220;
+    const gEnv = ctx.createGain();
+    gEnv.gain.setValueAtTime(0.0001, t0);
+    gEnv.gain.exponentialRampToValueAtTime(0.16, end - 0.3);
+    groan.connect(gLp);
+    gLp.connect(gEnv);
+    gEnv.connect(bus);
+    groan.start(t0);
+    groan.stop(end + 0.05);
+    // crackle — the heat shield splitting
+    for (let i = 0; i < 18; i++) {
+      const at = t0 + seconds * (0.25 + 0.72 * (i / 18)) + ((i * 37) % 10) / 120;
+      if (at >= end) break;
+      seaNoise(ctx, bus, at, 0.06, { type: 'highpass', from: 2500, to: 4000 }, 0.05 + i * 0.004, 0.003);
+    }
+  };
+}
+
+/** One short square-wave beep. */
+function beep(ctx: AudioContext, dest: AudioNode, freq: number, start: number, dur: number, peak: number): void {
+  const osc = ctx.createOscillator();
+  osc.type = 'square';
+  osc.frequency.value = freq;
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 3000;
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, start);
+  env.gain.exponentialRampToValueAtTime(peak, start + 0.005);
+  env.gain.setValueAtTime(peak, start + dur - 0.01);
+  env.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  osc.connect(lp);
+  lp.connect(env);
+  env.connect(dest);
+  osc.start(start);
+  osc.stop(start + dur + 0.02);
+}
+
+/** FB-039: the signal is lost — a harsh burst of static that crackles out (≈0.9 s). */
+function playStaticBurstSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 0.9, { type: 'highpass', from: 1200, to: 3500 }, 0.2, 0.01);
+  for (let i = 0; i < 6; i++) seaNoise(ctx, dest, t0 + 0.1 + i * 0.12, 0.04, { type: 'bandpass', from: 2400, to: 2400, q: 2 }, 0.08, 0.002);
+}
+
+/** FB-039: a packet lands — a soft two-tone receive chirp. */
+function playSignalPingSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  beep(ctx, dest, 1320, t0, 0.07, 0.035);
+  beep(ctx, dest, 1760, t0 + 0.09, 0.09, 0.035);
+}
+
+/** FB-039: contact restored — three rising beeps. */
+function playContactRestoredSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [880, 1175, 1568].forEach((f, i) => beep(ctx, dest, f, t0 + i * 0.13, 0.1, 0.04));
+}
+
+/** FB-039 win: incoming transmission — an alien chirp sequence over a carrier hum (≈1.2 s). */
+function playIncomingTransmissionSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  const hum = ctx.createOscillator();
+  hum.type = 'sine';
+  hum.frequency.value = 110;
+  const hEnv = ctx.createGain();
+  hEnv.gain.setValueAtTime(0.0001, t0);
+  hEnv.gain.exponentialRampToValueAtTime(0.05, t0 + 0.2);
+  hEnv.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.2);
+  hum.connect(hEnv);
+  hEnv.connect(dest);
+  hum.start(t0);
+  hum.stop(t0 + 1.25);
+  [1568, 2093, 1319, 2349, 1760, 2637].forEach((f, i) => beep(ctx, dest, f, t0 + 0.1 + i * 0.14, 0.06, 0.03));
+}
+
+/** FB-039 win: a decode tick — one very short click-beep. */
+function playDecodeTickSting(ctx: AudioContext, dest: AudioNode): void {
+  beep(ctx, dest, 2600 + Math.random() * 600, ctx.currentTime + 0.005, 0.025, 0.018);
+}
+
+/** FB-039 win: message received — a bright, glassy major chord. */
+function playMessageReceivedSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [1046.5, 1318.51, 1567.98, 2093].forEach((f, i) => strikeBell(ctx, dest, f, t0 + i * 0.04, 0.05, 1.8));
+  beep(ctx, dest, 1760, t0, 0.08, 0.03);
+}
+
+/** FB-039 loss: one piece of the table dissolves into glyphs — a glittery down-sweep. */
+function playGlyphDissolveSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 0.35, { type: 'bandpass', from: 5200, to: 1800, q: 4 }, 0.06, 0.005);
+  for (let i = 0; i < 4; i++) beep(ctx, dest, 2400 - i * 380 + Math.random() * 120, t0 + i * 0.05, 0.03, 0.014);
+}
+
+/** FB-039 loss: the tractor beam — a pulsing low hum with a rising, wavering tone over `seconds`. */
+function makeTractorBeamSting(seconds: number): (ctx: AudioContext, dest: AudioNode) => void {
+  return (ctx, dest) => {
+    const t0 = ctx.currentTime + 0.01;
+    const t1 = t0 + seconds;
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(0.0001, t0);
+    out.gain.exponentialRampToValueAtTime(0.09, t0 + 0.6);
+    out.gain.setValueAtTime(0.09, t1 - 0.5);
+    out.gain.exponentialRampToValueAtTime(0.0001, t1);
+    out.connect(dest);
+    // pulsing hum
+    const hum = ctx.createOscillator();
+    hum.type = 'sawtooth';
+    hum.frequency.value = 55;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 320;
+    const pulse = ctx.createGain();
+    pulse.gain.value = 0.5;
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 6;
+    const lfoAmt = ctx.createGain();
+    lfoAmt.gain.value = 0.4;
+    lfo.connect(lfoAmt);
+    lfoAmt.connect(pulse.gain);
+    hum.connect(lp);
+    lp.connect(pulse);
+    pulse.connect(out);
+    // rising, wavering tone (theremin-ish)
+    const tone = ctx.createOscillator();
+    tone.type = 'sine';
+    tone.frequency.setValueAtTime(330, t0);
+    tone.frequency.exponentialRampToValueAtTime(1320, t1);
+    const vib = ctx.createOscillator();
+    vib.frequency.value = 5.5;
+    const vibAmt = ctx.createGain();
+    vibAmt.gain.value = 18;
+    vib.connect(vibAmt);
+    vibAmt.connect(tone.frequency);
+    const toneGain = ctx.createGain();
+    toneGain.gain.value = 0.35;
+    tone.connect(toneGain);
+    toneGain.connect(out);
+    [hum, lfo, tone, vib].forEach((o) => { o.start(t0); o.stop(t1 + 0.05); });
+  };
+}
+
+/** FB-039 loss: translation complete — a cold, dissonant low cluster. */
+function playTranslationCompleteSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [98, 103.8, 146.8, 207.7].forEach((f, i) => strikeBell(ctx, dest, f * 2, t0 + i * 0.03, 0.05, 2.6));
+  beep(ctx, dest, 2960, t0, 0.05, 0.02);
+  beep(ctx, dest, 2960, t0 + 0.12, 0.05, 0.02);
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -1232,6 +1615,106 @@ export function playDoorsOpen(): void {
   playStandalone(playDoorsOpenSting);
 }
 
+/** FB-037: the tide turns. */
+export function playSwell(): void {
+  playStandalone(playSwellSting);
+}
+
+/** FB-037: the Undertow drags your bankroll. */
+export function playUndertow(): void {
+  playStandalone(playUndertowSting);
+}
+
+/** FB-037: High Tide's wave breaks over your shooters. */
+export function playWaveCrash(): void {
+  playStandalone(playWaveCrashSting);
+}
+
+/** FB-037 win: the throne room under water. */
+export function playUnderwater(): void {
+  playStandalone(playUnderwaterSting);
+}
+
+/** FB-037 win: the crown lands in the sand. */
+export function playSandThud(): void {
+  playStandalone(playSandThudSting);
+}
+
+/** FB-037 win: the sunken chime under the Sovereign's line. */
+export function playSunkenChime(): void {
+  playStandalone(playSunkenChimeSting);
+}
+
+/** FB-038: the Commander's orbit decays a notch. */
+export function playOrbitDecay(): void {
+  playStandalone(playOrbitDecaySting);
+}
+
+/** FB-038: hype rises in orbit — a thruster burn. */
+export function playThrusters(): void {
+  playStandalone(playThrustersSting);
+}
+
+/** FB-038 win: the main engines ignite. */
+export function playEngineRoar(): void {
+  playStandalone(playEngineRoarSting);
+}
+
+/** FB-038 win: the jump to hyperspace. */
+export function playHyperJump(): void {
+  playStandalone(playHyperJumpSting);
+}
+
+/** FB-038 loss: re-entry, cut dead after `seconds`. */
+export function playReentryRoar(seconds: number): void {
+  playStandalone(makeReentryRoarSting(seconds));
+}
+
+/** FB-039: the Emissary — signal lost (static). */
+export function playStaticBurst(): void {
+  playStandalone(playStaticBurstSting);
+}
+
+/** FB-039: a crew packet lands. */
+export function playSignalPing(): void {
+  playStandalone(playSignalPingSting);
+}
+
+/** FB-039: contact with the crew is restored. */
+export function playContactRestored(): void {
+  playStandalone(playContactRestoredSting);
+}
+
+/** FB-039 win: incoming transmission. */
+export function playIncomingTransmission(): void {
+  playStandalone(playIncomingTransmissionSting);
+}
+
+/** FB-039 win: one character decodes. */
+export function playDecodeTick(): void {
+  playStandalone(playDecodeTickSting);
+}
+
+/** FB-039 win: the message is decoded. */
+export function playMessageReceived(): void {
+  playStandalone(playMessageReceivedSting);
+}
+
+/** FB-039 loss: a piece of the table is translated into glyphs. */
+export function playGlyphDissolve(): void {
+  playStandalone(playGlyphDissolveSting);
+}
+
+/** FB-039 loss: the tractor beam, for `seconds`. */
+export function playTractorBeam(seconds: number): void {
+  playStandalone(makeTractorBeamSting(seconds));
+}
+
+/** FB-039 loss: translation complete. */
+export function playTranslationComplete(): void {
+  playStandalone(playTranslationCompleteSting);
+}
+
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */
 export function playHarpFlourish(): void {
   playStandalone(playHarpFlourishSting);
@@ -1298,6 +1781,14 @@ export function useCrowdAudio(): {
   const isNullSpaceRef = useRef(false);
   isNullSpaceRef.current = GAUNTLET[currentMarkerIndex]?.floor === 9;
 
+  // FB-038: in The Commander's fight the crowd is muffled — "in space, no one
+  // can hear you scream" — and fainter the thinner your hype.
+  const hype          = useGameStore((s) => s.hype);
+  const isCommanderRef = useRef(false);
+  isCommanderRef.current = GAUNTLET[currentMarkerIndex]?.boss?.rule === 'ORBITAL_DECAY';
+  const hypeRef = useRef(hype);
+  hypeRef.current = hype;
+
   // flashType ref: keeps the _flashKey effect from capturing a stale value
   const flashTypeRef = useRef(flashType);
   flashTypeRef.current = flashType;
@@ -1362,8 +1853,9 @@ export function useCrowdAudio(): {
     const ctx = getCtx();
     if (!ctx) return;
     const ft = flashTypeRef.current;
-    if (ft === 'win')  playCheer(ctx, getDest(ctx));
-    if (ft === 'lose') playGroan(ctx, getDest(ctx));
+    const dest = isCommanderRef.current ? muffledDest(ctx, getDest(ctx), hypeRef.current) : getDest(ctx);
+    if (ft === 'win')  playCheer(ctx, dest);
+    if (ft === 'lose') playGroan(ctx, dest);
   }, [_flashKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Dice rattle on throw ────────────────────────────────────────────────

@@ -347,7 +347,7 @@ export const FLOORS: readonly FloorConfig[] = [
     bossName:   'The Sovereign',
     bossTitle:  'Last King of Atlantis',
     bossVenue:  'Atlantis — The Throne Room',
-    bossTeaser: 'The tides have always obeyed the Sovereign. So will your minimum bets.',
+    bossTeaser: 'The tides have always obeyed the Sovereign. Calm, undertow, high water — every turn of the tide wants something from you.',
     atmosphere: 'ancient',
   },
 
@@ -366,7 +366,7 @@ export const FLOORS: readonly FloorConfig[] = [
     bossName:   'The Commander',
     bossTitle:  'Station Chief, Table Authority',
     bossVenue:  'The Station — The Command Module',
-    bossTeaser: 'Every seven-out drains your hype multiplier. There is no floor — until there is.',
+    bossTeaser: 'Every roll, your orbit slips. Feed your hype or watch it fall — and up here, no one can hear the crowd.',
     atmosphere: 'cosmic',
   },
 
@@ -381,12 +381,12 @@ export const FLOORS: readonly FloorConfig[] = [
     introLines: [
       'The table is here. The felt, the chips, the dice — all correct. The geometry of the room is not correct. The light arrives from the wrong direction.',
       'The Emissary studied the transmission for eleven years. It reconstructed the game faithfully, except for one concept it could not translate.',
-      "What it couldn't translate was delay. Your crew's earnings don't pay out immediately — they arrive one roll later. Seven-out before then, and the signal is lost entirely.",
+      "What it couldn't translate was delay. Everything your crew does arrives one roll later. Seven out and the signal is lost entirely — and your crew go dark.",
     ],
     bossName:   'The Emissary',
     bossTitle:  'First Point of Contact',
     bossVenue:  'The Signal — The Receiving Chamber',
-    bossTeaser: "The Emissary understands the game. It simply can't process your crew's earnings in real time.",
+    bossTeaser: "The Emissary understands the game. It simply can't hear your crew in real time — and when the shooter dies, it can't hear them at all.",
     atmosphere: 'alien',
   },
 

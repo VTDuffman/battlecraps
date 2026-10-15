@@ -97,7 +97,7 @@ export interface BossRuleState {
 | `disableCrew.ts` | `DISABLE_CREW` | `modifyCascadeOrder` | Every slot except the charmed one (`bossPointHits`) |
 | `tidalSurge.ts` | `TIDAL_SURGE` | `validateBet` | Come-out Pass Line below the current tide minimum → rejected (422) |
 | `tribute.ts` | `TRIBUTE` | *(none)* | Escrow + seizure inline in `rolls.ts` |
-| `orbitalDecay.ts` | `ORBITAL_DECAY` | *(none)* | Tiered decay + death spiral inline in `rolls.ts` |
+| `orbitalDecay.ts` | `ORBITAL_DECAY` | *(none)* | Orbital bleed inline in `rolls.ts` (FB-038) |
 | `firstContactProtocol.ts` | `CROSS_CALIBRATION`, `TRANSMISSION_DELAY`, `FIRST_CONTACT_PROTOCOL` (retired) | *(none)* | Shared empty hooks object; logic inline in `rolls.ts` |
 | `convergence.ts` | `CONVERGENCE` | *(none)* | Demolition + load-bearing inline in `rolls.ts`; removed crew are null in `crew_slots` |
 
@@ -116,11 +116,10 @@ Every marker-entry write uses `getBossEntryCounter(markerIndex)` (2 for The Exec
 ### Server execution order (`apps/api/src/routes/rolls.ts`)
 
 ```
-1.  Bet validation      table max (10%, Old Pro 15%; floored at 5× the Sovereign's tide min;
-                        halved by the Commander's death spiral below 0.5× hype), regular min,
-                        then bossHooks.validateBet() — come-out only
+1.  Bet validation      table max (10%, Old Pro 15%), regular min, the Sovereign's Dead Calm
+                        (no odds), then bossHooks.validateBet() — come-out only
 2.  Dice                server RNG (or tutorial/dev forced dice)
-3.  Death spiral        Commander, hype < 0.75× → one fewer active crew slot this roll
+3.  (removed — the Commander's death spiral went in FB-038)
 4.  resolveRoll()       classify + base payouts (Mechanic freeze applied here)
 5.  Base hype tick      Point Hit +0.15–0.30, Natural +0.10, Craps Out −0.05 (skipped if Poseidon blocks)
 6.  modifyOutcome()     (unused)
@@ -128,7 +127,7 @@ Every marker-entry write uses `getBossEntryCounter(markerIndex)` (2 for The Exec
 8.  resolveCascade()    bossHooks.modifyCascadeOrder() (Le Prix)
 8b. Sarge's clock       DOUBLE_TIME: blank on the last allowed roll → SEVEN_OUT (clockExpired)
 9.  Boss bookkeeping    Executive PIP check; Le Prix charm reselection
-10. Additive pipeline   The Vig ×1.2 → Architect load-bearing ×0.85^N → escrow hold (Hierophant/Emissary)
+10. Additive pipeline   The Vig ×1.2 → Architect load-bearing ×0.85^N → escrow hold (Hierophant) → signal lag (Emissary: land last roll's packet, send this roll's)
 11. settleTurn()        then bossHooks.modifyPayout() (Foreman), then Executive +15% at Exceptional
 12. Bankroll extras     The Frequency bonus → escrow release/seizure
 13. computeNextState()  boss counters, Commander decay / The Keepsake, Architect demolition,
@@ -280,15 +279,32 @@ ruleParams: { rule: 'TRIBUTE', escrowSeizurePct: 0.75 }
 
 **Rule:** `TIDAL_SURGE` | **Target:** $500,000 | **Index:** 17
 
-The table runs on a four-stage tide that advances on every come-out resolution: **LOW (1×) → EBB (2×) → HIGH (3×) → FLOW (2×)**, then repeats. At LOW TIDE the normal table minimum applies; otherwise the come-out Pass Line minimum is `getMinBet × multiplier`, snapped to the nearest $5. An under-minimum come-out bet is **rejected** (422) — unlike Sarge, there's no fine path. The table max is floored at 5× the tide minimum.
+**The tide rhythm (FB-037).** The table runs on a four-stage tide — **LOW → EBB → HIGH → FLOW**, then repeats — that advances each time a come-out cycle resolves (Natural, Craps Out, Point Hit, Seven-Out); a point set at a stage stays at that stage until it resolves. Each stage is its own challenge (shared `getTideStage()`; enforced inline in `rolls.ts`):
+
+| Stage | Name | Rule |
+|---|---|---|
+| LOW | **Dead Calm** | No odds bets — adding odds is rejected (422); the client disables the odds zone. |
+| EBB / FLOW | **The Undertow** | A Seven-Out drags `undertowPct` (35%) of the bankroll — after the roll's settlement, rounded down to the dollar — out to sea. Applied before the state machine, so a drag below the minimum ends the run. A bankroll loss: The Covenant doesn't stop it. |
+| HIGH | **High Tide** | A Seven-Out drowns `waveShooters` (2) shooters; can end the run. The Covenant (unused this marker) cancels the whole wave; Lefty re-rolling out of the 7 means no Seven-Out at all. |
+
+`turn:settled` carries `tide { stage, nextStage, undertowCents?, waveShooters? }`; the receipt shows "The Sovereign: $X undertow" and a High Tide note. The old stage minimum bets (1×/2×/3×/2×) were removed — simulated cost ~0. Tuned with `scripts/sim/sovereign-tide-sim.mjs`: about −6 pts (cash crew), −5 (mixed), −14 (hype), pass-line players with Floor-6 comps.
 
 ```typescript
 ruleParams: {
   rule: 'TIDAL_SURGE',
-  stageMultipliers: [1, 2, 3, 2],
-  stageLabels: ['LOW TIDE', 'EBB', 'HIGH TIDE', 'FLOW'],
+  stageLabels:  ['LOW TIDE', 'EBB', 'HIGH TIDE', 'FLOW'],
+  stageEffects: ['DEAD_CALM', 'UNDERTOW', 'HIGH_TIDE', 'UNDERTOW'],
+  undertowPct:  0.35,
+  waveShooters: 2,
 }
 ```
+
+**Boss moments (FB-037):**
+- **Barks** (regal, ancient, slow — he speaks like the sea): `waveHit` and `undertowHit` always; `highTide` (the tide turns to HIGH) 50%; win / loss by chance. A wave The Covenant turned back is silent; a run-ending wave is left to the defeat cinematic.
+- **Tide dial** (`TideDial.tsx`, under the marker progress bar): LOW · EBB · HIGH · FLOW with the current stage lit and the next marked, the stage name (teal / amber ⚠ / red ⚠) and its one-line rule.
+- **The water line** (`TideWater.tsx`, a portal that never blocks input): translucent sea at 3 / 8 / 14 dvh for Dead Calm / Undertow / High Tide with a rolling surface. On a Seven-Out at the Undertow or High Tide the sea fills the whole screen (foam crest) and drains — dragging eight 💵 out of the bankroll readout (`data-bankroll-readout`) or the lost shooter pips (`data-shooter-pip`, swollen and struggling). Dead Calm waterlogs the Odds square. Stands aside on a run-ending roll.
+- **Victory — THE CROWN SINKS** (`victoryCinematic`): the sea floods the screen, then his crown sinks like a pendulum through light shafts and bubbles and settles in the sand; "…the tide will return. It always does." (~9.2 s, hold 9.6 s).
+- **Defeat — THE WAVE** (`defeatCinematic`): a dark wall of water breaks over the table and never drains; your crew and money sink into the deep as the light goes out; "Your run will not outlast this tide." (~8.1 s).
 
 **Comp:** Poseidon's Favor — the shooter's first roll (`shooterRollCount === 0`) can't craps-out. A 2/3/12 becomes `NO_RESOLUTION` with `flags.crapsOutBlocked`: the Pass Line stays up, no −0.05 hype tick, and the run stays on the come-out (`IDLE_TABLE`). The client shows "POSEIDON'S FAVOR". The Grinder ignores this roll.
 
@@ -298,25 +314,20 @@ ruleParams: {
 
 **Rule:** `ORBITAL_DECAY` | **Target:** $3,000,000 | **Index:** 20
 
-Each Seven-Out drains Hype by a tier-scaled amount (based on Hype before the roll), and Hype can fall below 1.0× to a floor of 0.25×:
+**Orbital bleed (FB-038).** After every roll that isn't a Seven-Out (and doesn't clear the marker), Hype above 1.0× loses `bleedPct` (20%) of its height: `hype = 1 + (hype − 1) × 0.8`, applied after the state machine — the roll is paid at its full Hype, the bleed is what's carried forward. A Seven-Out resets Hype to 1.0× (plus crew Hype gained that roll); The Keepsake doesn't apply in his fight. Hype never drops below 1.0×. `turn:settled` carries `orbit { bleed, hype }`; the receipt notes "Orbital decay: −0.40× → 2.60×".
 
-| Hype before 7-out | Decay |
-|---|---|
-| ≥ 2.5× (On Fire) | −0.8× |
-| ≥ 1.5× (Heating Up) | −0.6× |
-| < 1.5× | −0.4× |
-
-`nextHype = max(0.25, hype − decay + cascadeHypeDelta)`. The Keepsake does not apply.
-
-**Death spiral** (checked from the stored Hype at the start of each roll):
-- Hype < 0.75× → one fewer active cascade slot.
-- Hype < 0.5× → max bet halved (snapped to $5).
-
-`BossRoomHeader` shows the decay the next Seven-Out will cost, and the death-spiral warnings at those thresholds.
+He is the fight against **hype builds** (The Hierophant is the fight against cash builds). The old rule — a tiered Seven-Out drain (0.4/0.6/0.8×) down to 0.25× plus a "death spiral" (−1 crew slot below 0.75×, max bet halved below 0.5×) — simulated **backwards**: cash crews −18 pts, hype crews +3. The bleed (`scripts/sim/commander-decay-sim.mjs`): hype crew ≈ −16, mixed ≈ −1.5, cash 0.
 
 ```typescript
-ruleParams: { rule: 'ORBITAL_DECAY', baseDecay: 0.40, heatingUpDecay: 0.60, onFireDecay: 0.80, hypeFloor: 0.25 }
+ruleParams: { rule: 'ORBITAL_DECAY', bleedPct: 0.20 }
 ```
+
+**Boss moments (FB-038)** — theme thread *"In space, no one can hear you scream"*:
+- **Barks** (clipped mission-control speak): `orbitLost` (a Seven-Out from ≥ 1.5×) and `peakHype` (reaching On Fire, judged at the hype the roll paid at) always; `decaying` (bleed ≥ 0.2×) 35%; win / loss by chance.
+- **Orbit gauge** (`OrbitGauge.tsx`, under the marker progress bar): a planet; your ship circles it on an orbit whose radius is your hype (sprung), faster the lower it gets; 1.5×/2.5× rings; "▲ BURN" (thruster flare + rush) and "▼ ORBIT DECAY" (descending ping) each roll.
+- **No one can hear you scream:** dread tagline "IN SPACE, NO ONE CAN HEAR YOU SCREAM."; the crowd cheer/groan are muffled in his fight (`muffledDest`: low-pass 420 Hz, 0.25 → 0.6 with hype); the dice flames gutter at On Fire (`useParticleEmitter(…, guttering)`).
+- **Victory — ESCAPE VELOCITY** (`victoryCinematic`): engines ignite, the ship breaks orbit, the planet falls away, stars streak into hyperspace, the jump; "…orbital mechanics didn't account for you. Gravity's compliments." (~8 s, hold 8.4 s).
+- **Defeat — LOSS OF SIGNAL** (`defeatCinematic`): MASTER CAUTION, re-entry (glow, plasma, shaking, a roar that **hard-cuts**), silent static, LOSS OF SIGNAL, "In space, no one can hear you scream." (~8.3 s).
 
 **Comp:** Cargo Hold — `unlockedSlots` becomes 5.
 
@@ -326,13 +337,21 @@ ruleParams: { rule: 'ORBITAL_DECAY', baseDecay: 0.40, heatingUpDecay: 0.60, onFi
 
 **Rule:** `TRANSMISSION_DELAY` | **Target:** $15,000,000 | **Index:** 23
 
-**Transmission delay.** Same escrow mechanism as The Hierophant (`pending_additive_cents`), but harsher: on a Seven-Out the **entire** escrow — previous roll's and that roll's bonuses — evaporates. Bonuses held on a marker-clearing roll are paid out. Naturals resolve normally.
+**Signal lag + blackout (FB-039).** The crew fire as normal (dice and rescue effects — Lefty, the Mechanic, Floor Walker — act on the roll), but what they *add* — cash bonuses (after The Vig), Hype boosts and multipliers — is held **in transit** (`runs.signal_transit`) and **lands on the next roll** (that roll's settlement and the Hype it carries forward). On a **Seven-Out** the signal is lost: everything in transit (last roll's and this roll's) is dropped, and the whole crew goes **dark** for `blackoutRolls` (6) rolls — the cascade runs with no crew and cooldowns don't move (`runs.signal_dark_rolls`). A marker-clearing roll pays the cash in transit. `turn:settled` carries `signal { landed, sent, dropped, darkRolls, wasDark }`; the receipt shows crew cash "→ in transit", "Signal received" and "SIGNAL LOST".
 
-**History:** originally `FIRST_CONTACT_PROTOCOL` (come-out naturals nullified to blank rolls), retired in FB-026. The rule type and empty hooks remain for historical safety.
+Replaced a one-roll cash escrow (simulated ≈ −1 to −3 — a weaker copy of The Hierophant). Tuned with `scripts/sim/emissary-delay-sim.mjs`: ≈ −13 (cash), −14 (mixed), −18 (hype), pass-line players with Floor-8 comps — the boss who fights your crew itself. (The Architect's crew demolition is slated for a Convergence redesign, FB-040, so the two don't overlap.)
+
+**History:** originally `FIRST_CONTACT_PROTOCOL` (come-out naturals nullified), retired in FB-026; then the one-roll escrow, replaced in FB-039.
 
 ```typescript
-ruleParams: { rule: 'TRANSMISSION_DELAY' }
+ruleParams: { rule: 'TRANSMISSION_DELAY', blackoutRolls: 6 }
 ```
+
+**Boss moments (FB-039)** — translated alien text, in brackets:
+- **Barks:** `signalLost` (a Seven-Out) and `contactRestored` (the blackout ends) always; `received` (a packet lands) 30%; win / loss by chance.
+- **Transmission line** (`TransmissionLine.tsx`, under the marker progress bar): CREW 👥 → TABLE 🎲 over a scrolling sine wave; the packet waits mid-line "IN TRANSIT +$X · +0.30×" and pops "RECEIVED …" (ping) next roll; a Seven-Out turns the line to red static ("SIGNAL LOST", static burst) with "NO SIGNAL · n" counting down, then "CONTACT RESTORED". While dark the crew rail greys out under scanline static.
+- **Victory — MESSAGE RECEIVED** (`victoryCinematic`): dark screen, falling glyphs, INCOMING TRANSMISSION, his line decodes from cycling alien glyphs one character at a time, MESSAGE RECEIVED locks in; "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]" (~8.4 s, hold 8.8 s).
+- **Defeat — TRANSLATED** (`defeatCinematic`): your bankroll and crew dissolve into glyphs, a green tractor beam draws them up and out, the screen is left a sea of symbols; "[Translation complete. You will be studied.]" (~8.3 s).
 
 **Comp:** The Frequency — every Natural on the come-out awards a flat 3% of the current marker target, for the rest of the run.
 
@@ -370,9 +389,9 @@ export type BossRuleParams =
   | { rule: 'CROSS_CALIBRATION' }
   | { rule: 'TRIBUTE';            escrowSeizurePct: number }
   | { rule: 'TIDAL_SURGE';        stageMultipliers: readonly [number, number, number, number]; stageLabels: readonly [string, string, string, string] }
-  | { rule: 'ORBITAL_DECAY';      baseDecay: number; heatingUpDecay: number; onFireDecay: number; hypeFloor: number }
+  | { rule: 'ORBITAL_DECAY';      bleedPct: number }
   | { rule: 'FIRST_CONTACT_PROTOCOL' }   // retired
-  | { rule: 'TRANSMISSION_DELAY' }
+  | { rule: 'TRANSMISSION_DELAY'; blackoutRolls: number }
   | { rule: 'CONVERGENCE' };
 ```
 
@@ -419,12 +438,14 @@ TypeScript narrows the type inside each hook file via the `rule` discriminant. T
 | Hierophant fight, crew bonus earned | Held in `pendingAdditiveCents` until a winning roll |
 | Hierophant fight, Natural / Point Hit | Everything held (incl. this roll's) paid, × Hype |
 | Hierophant fight, seven-out | Everything held (incl. this roll's) settles now, × Hype, 75% seized |
-| Hierophant/Emissary fight, marker-clearing roll | Bonuses held that roll are paid out; `pendingAdditiveCents` → 0 |
+| Hierophant fight, marker-clearing roll | Bonuses held that roll are paid out; `pendingAdditiveCents` → 0 |
+| Emissary fight, marker-clearing roll | The cash in transit is paid out; `signalTransit` → null, `signalDarkRolls` → 0 |
 | Sovereign fight, tide stage | Advances on each come-out resolution: LOW → EBB → HIGH → FLOW |
 | Sovereign fight, come-out under the tide minimum | Rejected (422) |
-| Commander fight, seven-out at 2.0× hype | Hype → 1.4× (−0.6) |
-| Commander fight, hype < 0.75× / < 0.5× | One fewer cascade slot / max bet halved; header warns |
-| Emissary fight, seven-out | All escrow evaporates; `pendingAdditiveCents` → 0 |
+| Commander fight, roll at 2.0× hype (no Seven-Out) | Paid at 2.0×; carried forward as 1.8× (−20% of the height above 1.0×) |
+| Commander fight, seven-out | Hype → 1.0× (The Keepsake doesn't apply) |
+| Emissary fight, any roll | Crew cash / Hype / multipliers go into `signalTransit`; last roll's land on this one |
+| Emissary fight, seven-out | Everything in transit dropped; `signalDarkRolls` → 6; crew don't fire until it counts down to 0 |
 | Architect fight, seven-out | Last-fired crew (or highest occupied slot) removed; `removedCrewSlot` emitted; header "N CREW LEFT" |
 | Architect fight, crew in slot 5 after a seven-out | Still fires (no shrinking window) |
 | Architect boss defeat | Transitions to GAME_OVER (no comp awarded, no pub visit) |

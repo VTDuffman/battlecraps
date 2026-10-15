@@ -76,6 +76,7 @@ interface RunStateData {
   consecutivePointHits?: number;
   bossProgressCents?:    number;
   pendingAdditiveCents?: number;
+  signalDarkRolls?:      number;
 }
 
 interface CreateRunResponse {
@@ -254,6 +255,7 @@ const AuthenticatedApp: React.FC = () => {
             ...(data.consecutivePointHits !== undefined && { consecutivePointHits: data.consecutivePointHits }),
             ...(data.bossProgressCents !== undefined && { bossProgressCents: data.bossProgressCents }),
             ...(data.pendingAdditiveCents !== undefined && { escrowHeldCents: data.pendingAdditiveCents }),
+            ...(data.signalDarkRolls !== undefined && { signalDarkRolls: data.signalDarkRolls }),
           });
           setLoading(false);
           return;

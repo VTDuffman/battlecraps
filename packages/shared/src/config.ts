@@ -50,10 +50,10 @@ export type BossRuleType =
   | 'DISABLE_CREW'           // Floor 3 — Mme. Le Prix: one crew member enchanted per come-out
   | 'CROSS_CALIBRATION'      // Floor 4 — The Executive: performance review rating tracks roll outcomes
   | 'TRIBUTE'                // Floor 5 — The Hierophant: crew additives held until a win, paid with Hype; 75% seized on 7-out
-  | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: 4-stage tide (1×/2×/3×/2× min bet), advances each come-out
-  | 'ORBITAL_DECAY'          // Floor 7 — The Commander: tiered seven-out hype drain (0.4/0.6/0.8×), floor 0.25×
+  | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: 4-stage tide — Dead Calm (no odds) / Undertow (7-out drags bankroll) / High Tide (7-out drowns 2)
+  | 'ORBITAL_DECAY'          // Floor 7 — The Commander: orbital bleed — every roll hype above 1.0× loses 20% of its height (FB-038)
   | 'FIRST_CONTACT_PROTOCOL' // Floor 8 — retired mechanic; kept in union for historical safety
-  | 'TRANSMISSION_DELAY'     // Floor 8 — The Emissary: crew additives held one roll; evaporate on 7-out
+  | 'TRANSMISSION_DELAY'     // Floor 8 — The Emissary: signal lag (crew effects land a roll late) + a crew blackout after a 7-out (FB-039)
   | 'CONVERGENCE';           // Floor 9 — The Architect: each seven-out removes the last crew member to fire
 
 /** The permanent comp perk awarded for defeating a boss. */
@@ -80,20 +80,14 @@ export type BossRuleParams =
   | { rule: 'DISABLE_CREW' }
   | { rule: 'CROSS_CALIBRATION' }
   | { rule: 'TRIBUTE';            escrowSeizurePct: number }
-  | { rule: 'TIDAL_SURGE'; stageMultipliers: readonly [number, number, number, number]; stageLabels: readonly [string, string, string, string] }
+  | { rule: 'TIDAL_SURGE'; stageLabels: readonly [string, string, string, string]; stageEffects: readonly ['DEAD_CALM' | 'UNDERTOW' | 'HIGH_TIDE', 'DEAD_CALM' | 'UNDERTOW' | 'HIGH_TIDE', 'DEAD_CALM' | 'UNDERTOW' | 'HIGH_TIDE', 'DEAD_CALM' | 'UNDERTOW' | 'HIGH_TIDE']; undertowPct: number; waveShooters: number }
   | {
-      rule:            'ORBITAL_DECAY';
-      /** Hype decay on 7-out when hype < 1.5× (below Heating Up). */
-      baseDecay:       number;
-      /** Hype decay on 7-out when 1.5× ≤ hype < 2.5× (Heating Up tier). */
-      heatingUpDecay:  number;
-      /** Hype decay on 7-out when hype ≥ 2.5× (On Fire tier). */
-      onFireDecay:     number;
-      /** Absolute minimum hype — never goes below this value. */
-      hypeFloor:       number;
+      rule:     'ORBITAL_DECAY';
+      /** FB-038: share of the hype above 1.0× lost after every roll (not on a Seven-Out). */
+      bleedPct: number;
     }
   | { rule: 'FIRST_CONTACT_PROTOCOL' }   // Floor 8 — retired; kept for historical safety
-  | { rule: 'TRANSMISSION_DELAY' }       // Floor 8 — no params; escrow logic is inline in rolls.ts
+  | { rule: 'TRANSMISSION_DELAY'; blackoutRolls: number }   // Floor 8 — FB-039; logic inline in rolls.ts
   | { rule: 'CONVERGENCE' };             // Floor 9 — no params; counter tracked via bossPointHits
 
 /** Full descriptor for a boss fight. Only present on markers where isBoss is true. */
@@ -110,13 +104,16 @@ export type BossBarkTrigger =
   | 'pointSet' | 'clockLow' | 'lastRoll' | 'beatClock' | 'timeUp'
   | 'charmed' | 'charmFired'
   | 'promoted' | 'finalWarning' | 'bonusPaid' | 'ratingUp' | 'ratingDown'
-  | 'tributeSeized' | 'bigOffering' | 'escrowReleased';
+  | 'tributeSeized' | 'bigOffering' | 'escrowReleased'
+  | 'waveHit' | 'undertowHit' | 'highTide'
+  | 'orbitLost' | 'peakHype' | 'decaying'
+  | 'signalLost' | 'contactRestored' | 'received';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
-export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS';
+export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS' | 'THE_WAVE' | 'LOSS_OF_SIGNAL' | 'TRANSLATED';
 
 /** FB-033: boss victory moments (one component each in the web registry). */
-export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP' | 'THE_EYE_CLOSES';
+export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP' | 'THE_EYE_CLOSES' | 'THE_CROWN_SINKS' | 'ESCAPE_VELOCITY' | 'MESSAGE_RECEIVED';
 
 export interface BossConfig {
   // ── Identity ──────────────────────────────────────────────────────────────
@@ -621,19 +618,32 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       dreadTagline:        'THE TIDE TURNS.',
       entryLines: [
         "Three thousand years. Every empire above you has collapsed from here.",
-        "My table runs on a tide. It turns with every come-out.",
+        "My table runs on a tide. Calm, undertow, high water — it turns with every come-out.",
         "You can see it coming. That was never the point.",
       ],
-      ruleBlurb:          "The tide runs a four-stage cycle — LOW, EBB, HIGH, FLOW — and advances on every come-out roll. LOW TIDE is the standard table minimum. EBB and FLOW hold at 2×. High Tide demands 3×. The rhythm is visible. The rhythm is inevitable.",
+      ruleBlurb:          "The tide turns LOW → EBB → HIGH → FLOW each time a come-out resolves, and every stage is its own challenge. DEAD CALM (low tide): no odds bets. THE UNDERTOW (ebb and flow): a Seven-Out drags 35% of your bankroll out to sea. HIGH TIDE: a Seven-Out drowns two shooters. You can see it coming.",
       victoryQuote:       "…the tide will return. It always does.",
+      victoryCinematic:   { id: 'THE_CROWN_SINKS', line: "…the tide will return. It always does." },
+      defeatCinematic:    { id: 'THE_WAVE', line: "Your run will not outlast this tide." },
       defeatAnnouncement: 'THE TIDE RECEDES',
+      // FB-037 barks — regal, ancient, slow; he speaks like the sea.
+      barks: {
+        waveHit:     ["The deep keeps what it takes.", "Two more for the sea."],
+        undertowHit: ["The tide takes its share.", "Everything returns to the sea."],
+        highTide:    ["The sea rises for its king.", "Hear it coming?"],
+        win:         ["Even kings must wait for the tide.", "A ripple. Nothing more."],
+        loss:        ["Another empire, gone under.", "The current is patient."],
+      },
       // Mechanic
       rule:           'TIDAL_SURGE',
-      ruleHeaderText: 'TIDE CYCLES EACH COME-OUT: LOW (1×) → EBB (2×) → HIGH (3×) → FLOW (2×)',
+      ruleHeaderText: 'DEAD CALM: NO ODDS · UNDERTOW: 7-OUT TAKES 35% · HIGH TIDE: 7-OUT DROWNS 2',
       ruleParams:     {
-        rule:             'TIDAL_SURGE',
-        stageMultipliers: [1, 2, 3, 2] as const,
-        stageLabels:      ['LOW TIDE', 'EBB', 'HIGH TIDE', 'FLOW'] as const,
+        rule:         'TIDAL_SURGE',
+        stageLabels:  ['LOW TIDE', 'EBB', 'HIGH TIDE', 'FLOW'] as const,
+        // FB-037 (tuned with scripts/sim/sovereign-tide-sim.mjs)
+        stageEffects: ['DEAD_CALM', 'UNDERTOW', 'HIGH_TIDE', 'UNDERTOW'] as const,
+        undertowPct:  0.35,
+        waveShooters: 2,
       },
       // Comp
       compReward:      'POSEIDONS_FAVOR',
@@ -671,24 +681,32 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       title: 'Station Chief, Table Authority',
       sigil: '🎖️',
       // Vibe
-      dreadTagline:        'MOMENTUM DECAYS.',
+      dreadTagline:        'IN SPACE, NO ONE CAN HEAR YOU SCREAM.',
       entryLines: [
         "Eleven months up here. I don't miss the ground.",
-        "Your hype is a resource. In this environment, resources decay faster at altitude.",
-        "The higher you climb, the steeper the fall. There is no floor — until there is.",
+        "Your hype is a resource. Up here, resources decay.",
+        "Every roll, your orbit slips. Keep burning, or fall.",
       ],
-      ruleBlurb:          "Seven-out drains your Hype — and the higher you fly, the harder you fall. On Fire costs 0.8× per seven-out. Heating Up costs 0.6×. Below 1.5× costs 0.4×. Below 0.75× you lose a cascade slot. Below 0.5× your max bet is halved.",
+      ruleBlurb:          "Orbital decay: after every roll, your Hype above 1.0× loses 20% of its height — feed it or watch it fall. A Seven-Out resets Hype to 1.0×, and The Keepsake doesn't work up here. In space, no one can hear the crowd.",
       victoryQuote:       "…orbital mechanics didn't account for you. Gravity's compliments.",
+      victoryCinematic:   { id: 'ESCAPE_VELOCITY', line: "…orbital mechanics didn't account for you. Gravity's compliments." },
+      defeatCinematic:    { id: 'LOSS_OF_SIGNAL', line: "In space, no one can hear you scream." },
       defeatAnnouncement: 'ORBITAL AUTHORITY LOST',
+      // FB-038 barks — clipped mission-control speak. In space, no one can hear you scream.
+      barks: {
+        orbitLost: ["Mission control, we have a problem.", "In space, no one can hear you scream."],
+        peakHype:  ["Cheer all you like. There's no air up here.", "Enjoy the view. It won't last."],
+        decaying:  ["Orbit decaying.", "You're losing altitude."],
+        win:       ["Acceptable trajectory.", "Burn logged."],
+        loss:      ["Gravity always wins.", "Correcting course. Yours, not mine."],
+      },
       // Mechanic
       rule:           'ORBITAL_DECAY',
-      ruleHeaderText: 'ON FIRE 7-OUT: −0.8× HYPE | HEATING UP: −0.6× | BELOW 1.5×: −0.4×',
+      ruleHeaderText: 'ORBITAL DECAY — HYPE ABOVE 1.0× LOSES 20% EVERY ROLL · 7-OUT RESETS',
       ruleParams:     {
-        rule:           'ORBITAL_DECAY',
-        baseDecay:       0.40,
-        heatingUpDecay:  0.60,
-        onFireDecay:     0.80,
-        hypeFloor:       0.25,
+        rule:     'ORBITAL_DECAY',
+        // FB-038 (tuned with scripts/sim/commander-decay-sim.mjs)
+        bleedPct: 0.20,
       },
       // Comp
       compReward:      'CARGO_HOLD',
@@ -730,15 +748,25 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       entryLines: [
         "The table is here. The felt, the chips, the dice. All correct.",
         "Your crew's signals arrive one step behind. Everything echoes.",
-        "It has no concept of free money. When the shooter dies, the echo dies with them.",
+        "Seven out and the signal is lost. Your crew will not hear you for a while.",
       ],
-      ruleBlurb:          "The Emissary doesn't understand delay. Your crew's cash bonuses from each roll are held until the next. Seven-out and they vanish — untranslatable. Naturals resolve normally; The Emissary has simply never understood them.",
+      ruleBlurb:          "Signal lag: everything your crew does — cash bonuses, Hype boosts, multipliers — arrives one roll late. Seven out and the signal is lost: whatever was in transit vanishes, and your whole crew goes dark for six rolls.",
       victoryQuote:       "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]",
+      victoryCinematic:   { id: 'MESSAGE_RECEIVED', line: "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]" },
       defeatAnnouncement: 'SIGNAL LOST',
+      defeatCinematic:    { id: 'TRANSLATED', line: "[Translation complete. You will be studied.]" },
+      // FB-039 barks — translated alien text, in brackets. Cold, literal.
+      barks: {
+        signalLost:      ["[Signal lost. Your crew cannot hear you.]", "[Contact terminated. Recalibrating.]"],
+        contactRestored: ["[Contact restored. This changes nothing.]", "[Your crew has returned. Briefly.]"],
+        received:        ["[Message received. Delayed. As intended.]", "[Delay is a human superstition.]"],
+        win:             ["[Outcome noted.]", "[Anomalous. Logging.]"],
+        loss:            ["[Predicted.]", "[As modeled.]"],
+      },
       // Mechanic
       rule:           'TRANSMISSION_DELAY',
-      ruleHeaderText: 'CREW ADDITIVES HELD ONE ROLL — EVAPORATE ENTIRELY ON SEVEN-OUT',
-      ruleParams:     { rule: 'TRANSMISSION_DELAY' },
+      ruleHeaderText: 'CREW EFFECTS LAND ONE ROLL LATE · 7-OUT: SIGNAL LOST, CREW DARK FOR 6 ROLLS',
+      ruleParams:     { rule: 'TRANSMISSION_DELAY', blackoutRolls: 6 },   // FB-039 (tuned with scripts/sim/emissary-delay-sim.mjs)
       // Comp
       compReward:      'THE_FREQUENCY',
       compPerkId:      COMP_PERK_IDS.THE_FREQUENCY,
@@ -746,7 +774,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compDescription: 'Come-out natural 7s and 11s award a flat bonus equal to 3% of the current marker target for the rest of the run.',
       compFanLabel:    'FREQ.',
       // Legacy
-      flavorText: "Your crew's signals arrive one step behind. Seven-out and the echo dies with them.",
+      flavorText: "Your crew's signals arrive one step behind. Seven-out and the echo dies with them — and so does contact.",
     },
   },
 
@@ -879,26 +907,11 @@ export function pickEntryCharmSlot(
  * Returns the boss-raised minimum Pass Line bet (in cents) for the current boss
  * encounter, or null when no boss minimum applies.
  *
- * Only TIDAL_SURGE (The Sovereign) raises the minimum: EBB/FLOW 2×, HIGH TIDE 3×
- * the regular table minimum, snapped to $5. LOW TIDE returns null.
- *
- * @param markerIndex   0-based index into GAUNTLET.
- * @param bossPointHits The boss counter (tide stage for TIDAL_SURGE).
+ * No boss raises the minimum today — The Sovereign's tide used to (2×/3× at
+ * EBB/HIGH/FLOW) until FB-037 gave each tide stage its own challenge. Kept as
+ * the single place a boss minimum would go (getMaxBet, the client bet checks).
  */
-export function getBossMinBet(markerIndex: number, bossPointHits: number): number | null {
-  const config = GAUNTLET[markerIndex];
-  if (!config?.isBoss || !config.boss) return null;
-
-  const boss = config.boss;
-
-  if (boss.rule === 'TIDAL_SURGE') {
-    const params = boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>;
-    const stageIndex = bossPointHits % params.stageMultipliers.length;
-    const multiplier = params.stageMultipliers[stageIndex] ?? 1;
-    if (multiplier <= 1) return null; // LOW TIDE — no min-bet override
-    return Math.round(getMinBet(markerIndex) * multiplier / 500) * 500;
-  }
-
+export function getBossMinBet(_markerIndex: number, _bossPointHits: number): number | null {
   return null;
 }
 

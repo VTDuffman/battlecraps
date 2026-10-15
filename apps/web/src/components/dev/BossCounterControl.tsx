@@ -99,9 +99,9 @@ export const BossCounterControl: React.FC<BossCounterControlProps> = ({
       );
     case 'ORBITAL_DECAY':
       return (
-        <DevRow label="Hype presets" hint="death spiral below 0.75×">
+        <DevRow label="Hype presets" hint="orbital bleed: −20% of the height above 1.0× per roll">
           <div className="flex gap-1">
-            {[1.0, 0.8, 0.7].map((h) => (
+            {[1.0, 2.0, 3.0].map((h) => (
               <button key={h} type="button" onClick={() => onHype(h)}
                 className="border border-white/20 rounded px-2 py-1 text-xs text-white/80">{h.toFixed(2)}×</button>
             ))}

@@ -15,7 +15,9 @@ interface Particle {
 export function useParticleEmitter(
   diceRef: RefObject<HTMLDivElement | null>,
   active: boolean,
-  tier: number
+  tier: number,
+  /** FB-038: no oxygen (The Commander) — fewer flames that sputter and die fast. */
+  guttering = false,
 ): RefObject<HTMLCanvasElement> {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
@@ -68,6 +70,8 @@ export function useParticleEmitter(
         const cy = rect.top + rect.height * 0.5;
         const count = tier === 4 ? 6 : tier === 3 ? 4 : 2;
         for (let i = 0; i < count; i++) {
+          // Guttering: most sparks never catch.
+          if (guttering && Math.random() > 0.3) continue;
           emit(cx1, cy, tier);
           emit(cx2, cy, tier);
         }
@@ -81,7 +85,7 @@ export function useParticleEmitter(
           x: p.x + p.vx * dtNorm,
           y: p.y + p.vy * dtNorm,
           vy: p.vy + 0.1 * dtNorm,
-          life: p.life - (dt / 1000) * 1.5,
+          life: p.life - (dt / 1000) * (guttering ? 3.6 : 1.5),
         }))
         .filter(p => p.life > 0);
 
@@ -111,7 +115,7 @@ export function useParticleEmitter(
 
     animFrameId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animFrameId);
-  }, [active, tier, diceRef]);
+  }, [active, tier, diceRef, guttering]);
 
   return canvasRef;
 }

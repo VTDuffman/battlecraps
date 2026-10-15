@@ -1893,3 +1893,56 @@ Bring the boss whose Pink Slip inspired the pattern up to its current scale: mig
 ### Solution
 
 His escrow is invisible today. Make it physical with an **offering bowl** (held / released / seized, with candles, bell and choir), give him liturgical event barks, **The Eye Closes** as his win moment and **The Order Collects** as his loss moment. Redesign his dead comp, The Covenant, as **The Order Protects**: once per marker, your first Seven Out doesn't cost a shooter.
+
+---
+
+## FB-037 — The Sovereign Boss Moments (boss pattern #6)
+
+**Type:** Boss rule redesign (sim-tuned) + presentation (barks, water line, victory + defeat cinematics)
+**Area:** `apps/api/src/routes/rolls.ts`, `packages/shared/src/config.ts`, `packages/shared/src/bossRules/tidalSurge.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`
+**Status:** Implemented (2026-10-14) — tide rhythm (Dead Calm / Undertow 35% / High Tide wave), barks, tide dial, water line, THE CROWN SINKS, THE WAVE, Dev presets
+**Design:** `docs/design/fb-037-sovereign-boss-moments-design.md`
+**Manifest:** `docs/manifests/fb-037-sovereign-boss-moments-manifest.md`
+
+### Solution
+
+His tide only raised minimum bets (simulated cost ~0). Make each stage its own challenge — **Dead Calm** (LOW: no odds), **The Undertow** (EBB/FLOW: a Seven-Out drags 35% of the bankroll), **High Tide** (a Seven-Out drowns two shooters; The Covenant cancels it). Add regal barks, a rising water line + tide dial, **The Crown Sinks** win and **The Wave** loss. Tuned with `scripts/sim/sovereign-tide-sim.mjs`. Late-game economy is being audited separately and may retune him.
+
+---
+
+## FB-038 — The Commander Boss Moments (boss pattern #7)
+
+**Type:** Boss rule redesign (sim-tuned) + presentation (barks, orbit gauge, muffled crowd, victory + defeat cinematics)
+**Area:** `apps/api/src/routes/rolls.ts`, `packages/shared/src/config.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`, `apps/web/src/hooks/useCrowdAudio.ts`
+**Status:** Implemented (2026-10-14) — orbital bleed, barks, orbit gauge, muffled crowd + guttering flames, ESCAPE VELOCITY, LOSS OF SIGNAL, Dev presets
+**Design:** `docs/design/fb-038-commander-boss-moments-design.md`
+**Manifest:** `docs/manifests/fb-038-commander-boss-moments-manifest.md`
+
+### Solution
+
+His Orbital Decay was backwards (simulated: cash crews −18, hype crews +3). Replace it with an **orbital bleed** — every roll, hype above 1.0× loses 20% of its height; a Seven-Out resets to 1.0× — so he counters hype builds (≈ −16) and leaves cash builds alone, mirroring The Hierophant. Theme thread: *"In space, no one can hear you scream"* — dread tagline, muffled crowd, guttering flames, an orbit gauge, **Escape Velocity** win, **Re-entry → Loss of Signal** loss ending in silence. Tuned with `scripts/sim/commander-decay-sim.mjs`.
+
+---
+
+## FB-039 — The Emissary Boss Moments (boss pattern #8)
+
+**Type:** Boss rule redesign (sim-tuned) + presentation (barks, transmission line, victory + defeat cinematics)
+**Area:** `apps/api/src/routes/rolls.ts`, `apps/api/src/db/schema.ts`, `packages/shared/src/config.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`
+**Status:** Implemented (2026-10-14) — signal lag + blackout, barks, transmission line, MESSAGE RECEIVED, TRANSLATED, Dev presets
+**Design:** `docs/design/fb-039-emissary-boss-moments-design.md`
+**Manifest:** `docs/manifests/fb-039-emissary-boss-moments-manifest.md`
+
+### Solution
+
+His one-roll cash escrow was soft (simulated ≈ −1 to −3) and a weaker copy of The Hierophant. New rule — **signal lag + blackout**: every crew effect (cash, hype, multipliers) lands one roll late; a Seven-Out drops what's in transit and the whole crew goes dark for 6 rolls. Simulated ≈ −13 / −14 / −18 (cash / mixed / hype) — the boss who fights your crew itself. Presentation: bracketed alien barks, a transmission line, **Message Received** win, **Translated** loss. Tuned with `scripts/sim/emissary-delay-sim.mjs`.
+
+---
+
+## FB-040 — The Architect: Convergence (final boss redesign)
+
+**Type:** Boss rule redesign (idea) + presentation
+**Status:** Idea (2026-10-14) — design when the roll-out reaches him
+
+### Idea
+
+The Architect built every room you've been in. In his fight the rooms **converge**: each new shooter faces a rule from a boss you've already beaten (The Foreman's skim, Sarge's clock, Le Prix's charm, The Executive's review, The Hierophant's offering, The Sovereign's tide, The Commander's orbit, The Emissary's signal) — a final exam of the run, with the room visibly rebuilding as each boss's. Replaces his crew demolition (which overlaps The Emissary's blackout). Needs each rule to run inside his fight, plus a sim to tune the rotation.

@@ -68,7 +68,7 @@ describe('pickBossBark', () => {
   });
 
   it('bosses with no barks stay silent', () => {
-    expect(pickBossBark({ ...base, markerIndex: 17, bankrollDelta: 400 }, always)).toBeNull(); // The Sovereign (no barks yet)
+    expect(pickBossBark({ ...base, markerIndex: 26, bankrollDelta: 400 }, always)).toBeNull(); // The Architect (no barks yet)
   });
 });
 
@@ -204,6 +204,86 @@ describe('The Hierophant (FB-036): offering bowl events', () => {
 
   it('no escrow movement falls back to chance win / loss', () => {
     expect(selectBossBarkTrigger({ ...hiero, bankrollDelta: 300_000, escrow: escrow(0, 0, 0) }, always)).toBe('win');
+  });
+});
+
+describe('The Sovereign (FB-037): tide events', () => {
+  const SOV = 17;
+  const sov: BossBarkInput = { ...base, markerIndex: SOV };
+
+  it('the wave and the undertow always speak, even over a showing bark', () => {
+    expect(selectBossBarkTrigger({ ...sov, isLoss: true, tide: { stage: 2, nextStage: 3, waveShooters: 2 }, barkShowing: true }, never)).toBe('waveHit');
+    expect(selectBossBarkTrigger({ ...sov, isLoss: true, tide: { stage: 1, nextStage: 2, undertowCents: 7_000_000 }, barkShowing: true }, never)).toBe('undertowHit');
+  });
+
+  it('a wave The Covenant turned back is silent about the wave', () => {
+    expect(deriveBossBarkEvents({ ...sov, tide: { stage: 2, nextStage: 3, waveShooters: 0 } })).toEqual([]);
+  });
+
+  it('the turn to High Tide speaks half the time', () => {
+    const turning = { ...sov, bankrollDelta: 500, tide: { stage: 1, nextStage: 2 } };
+    expect(selectBossBarkTrigger(turning, always)).toBe('highTide');
+    expect(selectBossBarkTrigger(turning, never)).toBeNull();
+  });
+
+  it('a stage that holds (a blank or a point set) derives nothing', () => {
+    expect(deriveBossBarkEvents({ ...sov, tide: { stage: 2, nextStage: 2 } })).toEqual([]);
+  });
+
+  it('a wave that ends the run is silent (the defeat moment owns it)', () => {
+    expect(selectBossBarkTrigger({ ...sov, isLoss: true, isGameOver: true, tide: { stage: 2, nextStage: 3, waveShooters: 2 } }, always)).toBeNull();
+  });
+});
+
+describe('The Commander (FB-038): orbit events', () => {
+  const CMD = 20;
+  const cmd: BossBarkInput = { ...base, markerIndex: CMD };
+
+  it('a Seven-Out from a high orbit always speaks', () => {
+    expect(selectBossBarkTrigger({ ...cmd, isLoss: true, rollResult: 'SEVEN_OUT', hypeBefore: 2.2, orbit: { bleed: 0, hype: 1 }, barkShowing: true }, never)).toBe('orbitLost');
+  });
+
+  it('a Seven-Out from a low orbit is just a loss', () => {
+    expect(deriveBossBarkEvents({ ...cmd, rollResult: 'SEVEN_OUT', hypeBefore: 1.2, orbit: { bleed: 0, hype: 1 } })).toEqual([]);
+  });
+
+  it('reaching On Fire always speaks (judged at the hype the roll paid at)', () => {
+    // paid at 2.6×, bled to 2.28× — still the moment you hit On Fire
+    expect(selectBossBarkTrigger({ ...cmd, bankrollDelta: 500, rollResult: 'POINT_HIT', hypeBefore: 2.35, orbit: { bleed: 0.32, hype: 2.28 } }, never)).toBe('peakHype');
+  });
+
+  it('an ordinary bleed speaks about a third of the time', () => {
+    const bleed = { ...cmd, rollResult: 'NO_RESOLUTION' as const, hypeBefore: 2.0, orbit: { bleed: 0.2, hype: 1.8 } };
+    expect(selectBossBarkTrigger(bleed, always)).toBe('decaying');
+    expect(selectBossBarkTrigger(bleed, never)).toBeNull();
+  });
+
+  it('a tiny bleed derives nothing', () => {
+    expect(deriveBossBarkEvents({ ...cmd, rollResult: 'NO_RESOLUTION', hypeBefore: 1.1, orbit: { bleed: 0.02, hype: 1.08 } })).toEqual([]);
+  });
+});
+
+describe('The Emissary (FB-039): signal events', () => {
+  const EMI = 23;
+  const emi: BossBarkInput = { ...base, markerIndex: EMI };
+  const none = { additives: 0, hype: 0, multipliers: [] as number[] };
+
+  it('losing the signal always speaks, even over a showing bark', () => {
+    expect(selectBossBarkTrigger({ ...emi, isLoss: true, rollResult: 'SEVEN_OUT', signal: { landed: none, dropped: true, darkRolls: 6, wasDark: false }, barkShowing: true }, never)).toBe('signalLost');
+  });
+
+  it('contact coming back always speaks', () => {
+    expect(selectBossBarkTrigger({ ...emi, rollResult: 'NO_RESOLUTION', signal: { landed: none, dropped: false, darkRolls: 0, wasDark: true } }, never)).toBe('contactRestored');
+  });
+
+  it('a packet landing speaks about a third of the time', () => {
+    const landed = { ...emi, bankrollDelta: 600, rollResult: 'NO_RESOLUTION' as const, signal: { landed: { additives: 60_000_000, hype: 0, multipliers: [] }, dropped: false, darkRolls: 0, wasDark: false } };
+    expect(selectBossBarkTrigger(landed, always)).toBe('received');
+    expect(selectBossBarkTrigger(landed, never)).toBeNull();
+  });
+
+  it('a dark roll that is not the last derives nothing', () => {
+    expect(deriveBossBarkEvents({ ...emi, rollResult: 'NO_RESOLUTION', signal: { landed: none, dropped: false, darkRolls: 3, wasDark: true } })).toEqual([]);
   });
 });
 

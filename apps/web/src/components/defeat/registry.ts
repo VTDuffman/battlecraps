@@ -14,6 +14,9 @@ import { DishonorableDischargeCinematic } from './DishonorableDischargeCinematic
 import { SheTakesTheCrewCinematic } from './SheTakesTheCrewCinematic.js';
 import { TerminatedCinematic } from './TerminatedCinematic.js';
 import { TheOrderCollectsCinematic } from './TheOrderCollectsCinematic.js';
+import { TheWaveCinematic } from './TheWaveCinematic.js';
+import { LossOfSignalCinematic } from './LossOfSignalCinematic.js';
+import { TranslatedCinematic } from './TranslatedCinematic.js';
 
 export interface DefeatCinematicProps {
   /** The boss's parting line (config.ts defeatCinematic.line). */
@@ -32,4 +35,7 @@ export const DEFEAT_CINEMATICS: Record<BossDefeatCinematicId, React.ComponentTyp
   SHE_TAKES_THE_CREW:     SheTakesTheCrewCinematic,
   TERMINATED:             TerminatedCinematic,
   THE_ORDER_COLLECTS:     TheOrderCollectsCinematic,
+  THE_WAVE:               TheWaveCinematic,
+  LOSS_OF_SIGNAL:         LossOfSignalCinematic,
+  TRANSLATED:             TranslatedCinematic,
 };

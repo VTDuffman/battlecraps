@@ -34,6 +34,9 @@ import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortabl
 import { GAUNTLET, MARKER_TARGETS, getMaxBet, isBossMarker, getBossPayoffCents } from '@battlecraps/shared';
 import { PerformanceMeter } from './PerformanceMeter.js';
 import { OfferingBowl } from './OfferingBowl.js';
+import { TideDial } from './TideDial.js';
+import { OrbitGauge } from './OrbitGauge.js';
+import { TransmissionLine } from './TransmissionLine.js';
 import { HowToPlayScreen } from './tutorial/HowToPlayScreen.js';
 import { FeedbackModal }   from './FeedbackModal.js';
 import { DevRunBadge }     from './DevRunBadge.js';
@@ -53,6 +56,7 @@ import { DefeatCinematicHost } from './defeat/DefeatCinematicHost.js';
 import { VictoryCinematicHost } from './victory/VictoryCinematicHost.js';
 import { CharmFlight } from './CharmFlight.js';
 import { CovenantFlash } from './CovenantFlash.js';
+import { TideWater } from './TideWater.js';
 import { DiceZone }      from './DiceZone.js';
 import { CrewPortrait }  from './CrewPortrait.js';
 import { RollLog }       from './RollLog.js';
@@ -84,6 +88,8 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
   const charmingSlot      = useGameStore((s) => s.charmingSlot);
   const clearCharmingSlot = useGameStore((s) => s.clearCharmingSlot);
   const charmedCrewSlot   = useGameStore((s) => s.charmedCrewSlot);
+  // FB-039: The Emissary's blackout — the crew are out of contact.
+  const crewDark          = useGameStore((s) => s.signalDarkRolls > 0 && GAUNTLET[s.currentMarkerIndex]?.boss?.rule === 'TRANSMISSION_DELAY');
   // True while cascade portrait animations are running (NOT including charm — charm
   // waits for cascade to finish before starting its own portrait expansion).
   const cascadeRunning    = useGameStore((s) => s.cascadeQueue.length > 0);
@@ -406,9 +412,10 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
         </div>
 
         {/* Active portrait slots (unlockedSlots count — 3, 4, or 5) */}
+        <div className="relative">
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
           <SortableContext items={slotIds} strategy={horizontalListSortingStrategy}>
-            <div className="flex justify-around items-end gap-1">
+            <div className="flex justify-around items-end gap-1" style={crewDark ? { filter: 'grayscale(1) brightness(0.5)', transition: 'filter 400ms' } : { transition: 'filter 400ms' }}>
               {crewSlots.slice(0, unlockedSlots).map((slot, i) => {
                 // FB-034 charm heartbeat — the charmed crew (the ❤️ still shows
                 // the old slot) tried to fire. Waits for the cascade to finish;
@@ -443,6 +450,15 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
             </div>
           </SortableContext>
         </DndContext>
+        {/* FB-039: static over the dark rail */}
+        {crewDark && (
+          <div className="animate-signal-static pointer-events-none absolute inset-0 flex items-center justify-center rounded" style={{
+            backgroundImage: 'repeating-linear-gradient(0deg, rgba(244,63,94,0.10) 0 1px, transparent 1px 3px)',
+          }}>
+            <span className="font-pixel text-r-9 font-bold tracking-widest" style={{ color: '#f43f5e', textShadow: '0 0 8px #f43f5e' }}>NO SIGNAL</span>
+          </div>
+        )}
+        </div>
       </section>
 
       {/* ── QA TRANSACTION LOG — tab sits in-flow below crew rail ──────────── */}
@@ -488,6 +504,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
       <VictoryCinematicHost />
       <CharmFlight />
       <CovenantFlash />
+      <TideWater />
 
       {/* ── Feedback modal ────────────────────────────────────────────────── */}
       <FeedbackModal isOpen={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
@@ -747,7 +764,7 @@ const GameStatus: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
           {/* Bankroll — directly beneath logo */}
           <div className="mt-0.5 text-center">
             <div className="font-pixel text-r-7 mb-0.5" style={{ color: isNullSpace ? 'rgba(0,0,0,0.50)' : 'rgba(255,255,255,0.40)' }}>BANKROLL</div>
-            <div data-testid="bankroll" className={`font-pixel text-r-13 transition-colors duration-150 ${bankrollColor}`}>
+            <div data-testid="bankroll" data-bankroll-readout="" className={`font-pixel text-r-13 transition-colors duration-150 ${bankrollColor}`}>
               {bankrollStr}
             </div>
           </div>
@@ -792,6 +809,7 @@ const GameStatus: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
                 return Array.from({ length: shooterCapacity }, (_, i) => (
                   <div
                     key={i}
+                    data-shooter-pip={i}
                     className={[
                       'w-2 h-2 rounded-full border',
                       i < shooters ? 'bg-gold border-gold/80' : 'bg-transparent',
@@ -946,6 +964,27 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
       {GAUNTLET[markerIndex]?.boss?.rule === 'CROSS_CALIBRATION' && !isCleared && (
         <div className="pt-1.5">
           <PerformanceMeter />
+        </div>
+      )}
+
+      {/* FB-039: the Emissary's transmission line */}
+      {GAUNTLET[markerIndex]?.boss?.rule === 'TRANSMISSION_DELAY' && !isCleared && (
+        <div className="pt-1.5">
+          <TransmissionLine />
+        </div>
+      )}
+
+      {/* FB-038: the Commander's orbit */}
+      {GAUNTLET[markerIndex]?.boss?.rule === 'ORBITAL_DECAY' && !isCleared && (
+        <div className="pt-1.5">
+          <OrbitGauge />
+        </div>
+      )}
+
+      {/* FB-037: the Sovereign's tide */}
+      {GAUNTLET[markerIndex]?.boss?.rule === 'TIDAL_SURGE' && !isCleared && (
+        <div className="pt-1.5">
+          <TideDial />
         </div>
       )}
 

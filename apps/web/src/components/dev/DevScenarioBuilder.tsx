@@ -57,6 +57,8 @@ interface FormState {
   compPerkIds:     number[];
   bossCounter:     number | null; // null = use the real entry value (or random charm)
   ignoreUnlocks:   boolean;
+  /** FB-039: Emissary signal — carried from a preset (no form inputs). */
+  signal:          Pick<DevScenario, 'signalTransitCents' | 'signalTransitHype' | 'signalDarkRolls'>;
 }
 
 function formFromMarker(markerIndex: number, keep?: Pick<FormState, 'crew' | 'ignoreUnlocks'>): FormState {
@@ -77,6 +79,7 @@ function formFromMarker(markerIndex: number, keep?: Pick<FormState, 'crew' | 'ig
     compPerkIds:   d.compPerkIds,
     bossCounter:   null,
     ignoreUnlocks: keep?.ignoreUnlocks ?? false,
+    signal:        {},
   };
 }
 
@@ -100,6 +103,11 @@ function formFromPreset(preset: DevScenario): FormState {
     compPerkIds:   preset.compPerkIds ?? base.compPerkIds,
     bossCounter:   preset.bossCounter ?? null,
     ignoreUnlocks: preset.ignoreUnlocks ?? false,
+    signal:        {
+      ...(preset.signalTransitCents !== undefined ? { signalTransitCents: preset.signalTransitCents } : {}),
+      ...(preset.signalTransitHype  !== undefined ? { signalTransitHype:  preset.signalTransitHype }  : {}),
+      ...(preset.signalDarkRolls    !== undefined ? { signalDarkRolls:    preset.signalDarkRolls }    : {}),
+    },
   };
 }
 
@@ -114,6 +122,7 @@ function toScenario(f: FormState): DevScenario {
     crew:          f.crew.slice(0, f.unlockedSlots),
     compPerkIds:   f.compPerkIds,
     ignoreUnlocks: f.ignoreUnlocks,
+    ...f.signal,
   };
   if (f.presetName)          scenario.name = f.presetName;
   if (f.escrow > 0)          scenario.pendingAdditiveCents = Math.round(f.escrow * 100);

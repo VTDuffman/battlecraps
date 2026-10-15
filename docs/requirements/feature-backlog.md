@@ -1946,3 +1946,28 @@ His one-roll cash escrow was soft (simulated ≈ −1 to −3) and a weaker copy
 ### Idea
 
 The Architect built every room you've been in. In his fight the rooms **converge**: each new shooter faces a rule from a boss you've already beaten (The Foreman's skim, Sarge's clock, Le Prix's charm, The Executive's review, The Hierophant's offering, The Sovereign's tide, The Commander's orbit, The Emissary's signal) — a final exam of the run, with the room visibly rebuilding as each boss's. Replaces his crew demolition (which overlaps The Emissary's blackout). Needs each rule to run inside his fight, plus a sim to tune the rotation.
+
+---
+
+## FB-041 — Economy Rebalance: Opening Fix, Crew-Cash Taper, Crew Hype ×1.5
+
+**Type:** Balance (sim-driven)
+**Area:** `apps/api/src/routes/runs.ts`, `pubDraft.ts`, `recruit.ts`, `rolls.ts`, `packages/shared/src/config.ts`, `packages/shared/src/crew/`, `apps/web/src/components/PubScreen.tsx`, `CrewPortrait.tsx`
+**Status:** Planned (2026-10-15)
+**Design:** `docs/design/fb-041-economy-rebalance-design.md`
+**Manifest:** `docs/manifests/fb-041-economy-rebalance-manifest.md`
+**Evidence:** `docs/design/gauntlet-difficulty-audit.md`
+
+### Solution
+
+The difficulty audit found three problems.
+- **The opening is the real wall.** A new run clears marker 0 just 36% of the time, and only ~12% of runs reach Floor 4.
+- **The late game is soft.** Crew cash scales with the target and pays even on losing rolls.
+- **All-in cash is as strong as mixed crews.**
+
+Three changes fix them:
+1. **Opening:** post-tutorial runs start with **$40 and a free Starter** picked at a marker-0 pub ("First Round's on the House"). The tutorial stays at $30.
+2. **Crew-cash taper:** crew cash scales ×0.8 → ×0.45 over Floors 5–9 (`getCrewCashBaseCents`).
+3. **Crew Hype ×1.5:** every Hype crew member's boost goes up by half.
+
+**Simulated:** reach Floor 4 ~12% → ~40%; finish from Floor 5 mixed 63% / cash 45% (today 73 / 72). Mixed crews become the best build; pure hype isn't a target.

@@ -24,6 +24,7 @@ const ATLANTIS_1 = 15;   // first marker after the Hierophant — The Covenant i
 const NO_COVENANT = [COMP_PERK_IDS.THE_VIG, COMP_PERK_IDS.MEMBER_JACKET, COMP_PERK_IDS.SEA_LEGS];
 const SOVEREIGN  = 17;
 const COMMANDER  = 20;
+const EMISSARY   = 23;
 const ARCHITECT  = 26;
 
 // Lookout, Ace McGee, Close Call, Momentum, Echo — a generic starter lineup.
@@ -260,6 +261,44 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     hype:        2.0,
     point:       6,
     compPerkIds: [COMP_PERK_IDS.THE_VIG, COMP_PERK_IDS.MEMBER_JACKET, COMP_PERK_IDS.SEA_LEGS, COMP_PERK_IDS.POSEIDONS_FAVOR],
+  },
+  {
+    // Point on, crew cash + Hype in transit: the next roll lands it ("RECEIVED")
+    // and this roll's effects go back into transit on the transmission line.
+    name:               'Emissary — signal in transit, point on',
+    markerIndex:        EMISSARY,
+    crew:               STARTER_CREW,
+    hype:               1.5,
+    point:              6,
+    signalTransitCents: 500_000,
+    signalTransitHype:  0.3,
+  },
+  {
+    // Blacked out: the crew rail is dark, NO SIGNAL · 3 counts down, then
+    // CONTACT RESTORED.
+    name:            'Emissary — blackout (3 rolls left)',
+    markerIndex:     EMISSARY,
+    crew:            STARTER_CREW,
+    signalDarkRolls: 3,
+  },
+  {
+    // Point on, one min-bet win short of his target: hit the point → MESSAGE RECEIVED.
+    name:          'Emissary — one win from contact',
+    markerIndex:   EMISSARY,
+    crew:          STARTER_CREW,
+    bankrollCents: target(EMISSARY) - getMinBet(EMISSARY),
+    point:         6,
+  },
+  {
+    // Last shooter, point on, something in transit: a seven-out → SIGNAL LOST →
+    // TRANSLATED. (The Covenant is held at Floor 8, so it's left out here.)
+    name:               'Emissary — last shooter, point on',
+    markerIndex:        EMISSARY,
+    crew:               STARTER_CREW,
+    shooters:           1,
+    point:              6,
+    signalTransitCents: 500_000,
+    compPerkIds:        [COMP_PERK_IDS.THE_VIG, COMP_PERK_IDS.MEMBER_JACKET, COMP_PERK_IDS.SEA_LEGS, COMP_PERK_IDS.POSEIDONS_FAVOR],
   },
   {
     name:        'Architect — 4 seven-outs, one crew left',

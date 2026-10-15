@@ -34,8 +34,14 @@ export interface DevScenario {
   compPerkIds?:          number[];
   /** Raw bossPointHits override — meaning depends on the boss rule (see clampBossCounter). */
   bossCounter?:          number;
-  /** Hierophant escrow / Emissary transmission buffer, in cents. */
+  /** Hierophant escrow, in cents. */
   pendingAdditiveCents?: number;
+  /** FB-039 Emissary: crew cash in transit (lands next roll), in cents. Emissary marker only. */
+  signalTransitCents?:   number;
+  /** FB-039 Emissary: crew Hype gain in transit (lands next roll). Emissary marker only. */
+  signalTransitHype?:    number;
+  /** FB-039 Emissary: blackout rolls left (crew dark). Emissary marker only. */
+  signalDarkRolls?:      number;
   /** FB-032: The Foreman's Cut so far, in cents (payoff markers only; ignored elsewhere). */
   bossProgressCents?:    number;
   /**
@@ -68,6 +74,9 @@ export interface DevRunState {
   bossPointHits:        number;
   pendingAdditiveCents: number;
   bossProgressCents:    number;
+  /** FB-039: what's in transit at The Emissary's table (null elsewhere / nothing). */
+  signalTransit:        { additives: number; hype: number; multipliers: number[] } | null;
+  signalDarkRolls:      number;
 }
 
 export const EMPTY_DEV_BETS: Bets = {
@@ -126,7 +135,7 @@ function beatenBosses(markerIndex: number) {
 }
 
 /** What a real player would plausibly have on arriving at `markerIndex`. */
-export function getRealisticDefaults(markerIndex: number): Required<Omit<DevScenario, 'name' | 'point' | 'crew' | 'ignoreUnlocks'>> {
+export function getRealisticDefaults(markerIndex: number): Required<Omit<DevScenario, 'name' | 'point' | 'crew' | 'ignoreUnlocks' | 'signalTransitCents' | 'signalTransitHype' | 'signalDarkRolls'>> {
   const idx    = clampMarkerIndex(markerIndex);
   const target = MARKER_TARGETS[idx] ?? 0;
   const bosses = beatenBosses(idx);
@@ -196,7 +205,20 @@ export function buildDevRunState(scenario: DevScenario): DevRunState {
     bossPointHits:        clampBossCounter(idx, unlockedSlots, scenario.bossCounter ?? defaults.bossCounter),
     pendingAdditiveCents: Math.max(0, Math.round(scenario.pendingAdditiveCents ?? 0)),
     bossProgressCents:    getBossPayoffCents(idx) !== null ? Math.max(0, Math.round(scenario.bossProgressCents ?? 0)) : 0,
+    ...buildSignalState(idx, scenario),
   };
+}
+
+/** FB-039: The Emissary's signal (transit + blackout); empty at every other marker. */
+function buildSignalState(idx: number, scenario: DevScenario): Pick<DevRunState, 'signalTransit' | 'signalDarkRolls'> {
+  const params = GAUNTLET[idx]?.boss?.ruleParams;
+  if (params?.rule !== 'TRANSMISSION_DELAY') return { signalTransit: null, signalDarkRolls: 0 };
+  const darkRolls = clamp(Math.trunc(scenario.signalDarkRolls ?? 0), 0, params.blackoutRolls);
+  const additives = Math.max(0, Math.round((scenario.signalTransitCents ?? 0) / 100) * 100);
+  const hype      = Math.max(0, scenario.signalTransitHype ?? 0);
+  // Nothing is in transit while the crew are dark.
+  const transit   = darkRolls === 0 && (additives > 0 || hype > 0) ? { additives, hype, multipliers: [] } : null;
+  return { signalTransit: transit, signalDarkRolls: darkRolls };
 }
 
 /**
@@ -229,5 +251,7 @@ export function buildTransitionEntryState(scenario: DevScenario): DevRunState | 
     bossPointHits:        getBossEntryCounter(prevIdx),
     consecutivePointHits: 0,
     bossProgressCents:    0,
+    signalTransit:        null,
+    signalDarkRolls:      0,
   };
 }

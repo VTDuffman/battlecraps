@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-039 The Emissary Boss Moments
 
 **Design doc:** `docs/design/fb-039-emissary-boss-moments-design.md`
-**Status:** Phases 1–5 done locally (not pushed).
+**Status:** Complete (2026-10-14).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -39,5 +39,7 @@ Front and center: crew → receiver line, packets in transit, landing pops, stat
 
 ## Phase 6: Dev Mode + docs
 Presets: "Emissary — signal in transit, point on", "Emissary — blackout (3 rolls left)", "Emissary — one win from contact", "Emissary — last shooter, point on". Docs: boss_framework, CLAUDE.md, backlog.
+
+--- Implemented (2026-10-14): DevScenario `signalTransitCents` / `signalTransitHype` / `signalDarkRolls` (Emissary marker only; nothing in transit while dark; carried through the Scenario Builder); the four presets (34 total). Docs: boss_framework Emissary moments + test-plan rows (and stale Commander rows), CLAUDE.md, backlog FB-039 → Implemented. ---
 
 🛑 **Gate:** FB-039 complete → push.

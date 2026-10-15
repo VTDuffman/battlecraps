@@ -124,6 +124,23 @@ describe('DEV_SCENARIOS presets', () => {
   });
 });
 
+describe('Emissary signal (FB-039)', () => {
+  it('sets transit and blackout only at The Emissary', () => {
+    const s = buildDevRunState({ markerIndex: 23, signalTransitCents: 500_000, signalTransitHype: 0.3 });
+    expect(s.signalTransit).toEqual({ additives: 500_000, hype: 0.3, multipliers: [] });
+    expect(s.signalDarkRolls).toBe(0);
+    const elsewhere = buildDevRunState({ markerIndex: 20, signalTransitCents: 500_000, signalDarkRolls: 3 });
+    expect(elsewhere.signalTransit).toBeNull();
+    expect(elsewhere.signalDarkRolls).toBe(0);
+  });
+
+  it('clamps the blackout and holds nothing in transit while dark', () => {
+    const s = buildDevRunState({ markerIndex: 23, signalDarkRolls: 99, signalTransitCents: 500_000 });
+    expect(s.signalDarkRolls).toBe(6);
+    expect(s.signalTransit).toBeNull();
+  });
+});
+
 describe('pickEntryCharmSlot', () => {
   const slot = (crewId: number) => ({ crewId });
 

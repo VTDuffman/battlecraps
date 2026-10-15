@@ -1,6 +1,6 @@
 # FB-039: The Emissary Boss Moments (Design)
 
-**Status:** Design agreed 2026-10-14. Ready for implementation.
+**Status:** Implemented 2026-10-14 (loss line: "[Translation complete. You will be studied.]").
 **Pattern:** boss #8 of the per-boss "moments" roll-out (FB-032 Foreman → FB-038 Commander). Big wins, big losses. Includes a rule redesign, tuned by simulation.
 
 ---

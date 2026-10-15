@@ -127,7 +127,7 @@ Every marker-entry write uses `getBossEntryCounter(markerIndex)` (2 for The Exec
 8.  resolveCascade()    bossHooks.modifyCascadeOrder() (Le Prix)
 8b. Sarge's clock       DOUBLE_TIME: blank on the last allowed roll → SEVEN_OUT (clockExpired)
 9.  Boss bookkeeping    Executive PIP check; Le Prix charm reselection
-10. Additive pipeline   The Vig ×1.2 → Architect load-bearing ×0.85^N → escrow hold (Hierophant/Emissary)
+10. Additive pipeline   The Vig ×1.2 → Architect load-bearing ×0.85^N → escrow hold (Hierophant) → signal lag (Emissary: land last roll's packet, send this roll's)
 11. settleTurn()        then bossHooks.modifyPayout() (Foreman), then Executive +15% at Exceptional
 12. Bankroll extras     The Frequency bonus → escrow release/seizure
 13. computeNextState()  boss counters, Commander decay / The Keepsake, Architect demolition,
@@ -347,6 +347,12 @@ Replaced a one-roll cash escrow (simulated ≈ −1 to −3 — a weaker copy of
 ruleParams: { rule: 'TRANSMISSION_DELAY', blackoutRolls: 6 }
 ```
 
+**Boss moments (FB-039)** — translated alien text, in brackets:
+- **Barks:** `signalLost` (a Seven-Out) and `contactRestored` (the blackout ends) always; `received` (a packet lands) 30%; win / loss by chance.
+- **Transmission line** (`TransmissionLine.tsx`, under the marker progress bar): CREW 👥 → TABLE 🎲 over a scrolling sine wave; the packet waits mid-line "IN TRANSIT +$X · +0.30×" and pops "RECEIVED …" (ping) next roll; a Seven-Out turns the line to red static ("SIGNAL LOST", static burst) with "NO SIGNAL · n" counting down, then "CONTACT RESTORED". While dark the crew rail greys out under scanline static.
+- **Victory — MESSAGE RECEIVED** (`victoryCinematic`): dark screen, falling glyphs, INCOMING TRANSMISSION, his line decodes from cycling alien glyphs one character at a time, MESSAGE RECEIVED locks in; "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]" (~8.4 s, hold 8.8 s).
+- **Defeat — TRANSLATED** (`defeatCinematic`): your bankroll and crew dissolve into glyphs, a green tractor beam draws them up and out, the screen is left a sea of symbols; "[Translation complete. You will be studied.]" (~8.3 s).
+
 **Comp:** The Frequency — every Natural on the come-out awards a flat 3% of the current marker target, for the rest of the run.
 
 ---
@@ -432,12 +438,14 @@ TypeScript narrows the type inside each hook file via the `rule` discriminant. T
 | Hierophant fight, crew bonus earned | Held in `pendingAdditiveCents` until a winning roll |
 | Hierophant fight, Natural / Point Hit | Everything held (incl. this roll's) paid, × Hype |
 | Hierophant fight, seven-out | Everything held (incl. this roll's) settles now, × Hype, 75% seized |
-| Hierophant/Emissary fight, marker-clearing roll | Bonuses held that roll are paid out; `pendingAdditiveCents` → 0 |
+| Hierophant fight, marker-clearing roll | Bonuses held that roll are paid out; `pendingAdditiveCents` → 0 |
+| Emissary fight, marker-clearing roll | The cash in transit is paid out; `signalTransit` → null, `signalDarkRolls` → 0 |
 | Sovereign fight, tide stage | Advances on each come-out resolution: LOW → EBB → HIGH → FLOW |
 | Sovereign fight, come-out under the tide minimum | Rejected (422) |
-| Commander fight, seven-out at 2.0× hype | Hype → 1.4× (−0.6) |
-| Commander fight, hype < 0.75× / < 0.5× | One fewer cascade slot / max bet halved; header warns |
-| Emissary fight, seven-out | All escrow evaporates; `pendingAdditiveCents` → 0 |
+| Commander fight, roll at 2.0× hype (no Seven-Out) | Paid at 2.0×; carried forward as 1.8× (−20% of the height above 1.0×) |
+| Commander fight, seven-out | Hype → 1.0× (The Keepsake doesn't apply) |
+| Emissary fight, any roll | Crew cash / Hype / multipliers go into `signalTransit`; last roll's land on this one |
+| Emissary fight, seven-out | Everything in transit dropped; `signalDarkRolls` → 6; crew don't fire until it counts down to 0 |
 | Architect fight, seven-out | Last-fired crew (or highest occupied slot) removed; `removedCrewSlot` emitted; header "N CREW LEFT" |
 | Architect fight, crew in slot 5 after a seven-out | Still fires (no shrinking window) |
 | Architect boss defeat | Transitions to GAME_OVER (no comp awarded, no pub visit) |

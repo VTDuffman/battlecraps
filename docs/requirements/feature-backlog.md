@@ -1928,7 +1928,7 @@ His Orbital Decay was backwards (simulated: cash crews −18, hype crews +3). Re
 
 **Type:** Boss rule redesign (sim-tuned) + presentation (barks, transmission line, victory + defeat cinematics)
 **Area:** `apps/api/src/routes/rolls.ts`, `apps/api/src/db/schema.ts`, `packages/shared/src/config.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`
-**Status:** Designed (2026-10-14); pending implementation
+**Status:** Implemented (2026-10-14) — signal lag + blackout, barks, transmission line, MESSAGE RECEIVED, TRANSLATED, Dev presets
 **Design:** `docs/design/fb-039-emissary-boss-moments-design.md`
 **Manifest:** `docs/manifests/fb-039-emissary-boss-moments-manifest.md`
 

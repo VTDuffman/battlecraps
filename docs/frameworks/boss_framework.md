@@ -300,6 +300,13 @@ ruleParams: {
 }
 ```
 
+**Boss moments (FB-037):**
+- **Barks** (regal, ancient, slow — he speaks like the sea): `waveHit` and `undertowHit` always; `highTide` (the tide turns to HIGH) 50%; win / loss by chance. A wave The Covenant turned back is silent; a run-ending wave is left to the defeat cinematic.
+- **Tide dial** (`TideDial.tsx`, under the marker progress bar): LOW · EBB · HIGH · FLOW with the current stage lit and the next marked, the stage name (teal / amber ⚠ / red ⚠) and its one-line rule.
+- **The water line** (`TideWater.tsx`, a portal that never blocks input): translucent sea at 3 / 8 / 14 dvh for Dead Calm / Undertow / High Tide with a rolling surface. On a Seven-Out at the Undertow or High Tide the sea fills the whole screen (foam crest) and drains — dragging eight 💵 out of the bankroll readout (`data-bankroll-readout`) or the lost shooter pips (`data-shooter-pip`, swollen and struggling). Dead Calm waterlogs the Odds square. Stands aside on a run-ending roll.
+- **Victory — THE CROWN SINKS** (`victoryCinematic`): the sea floods the screen, then his crown sinks like a pendulum through light shafts and bubbles and settles in the sand; "…the tide will return. It always does." (~9.2 s, hold 9.6 s).
+- **Defeat — THE WAVE** (`defeatCinematic`): a dark wall of water breaks over the table and never drains; your crew and money sink into the deep as the light goes out; "Your run will not outlast this tide." (~8.1 s).
+
 **Comp:** Poseidon's Favor — the shooter's first roll (`shooterRollCount === 0`) can't craps-out. A 2/3/12 becomes `NO_RESOLUTION` with `flags.crapsOutBlocked`: the Pass Line stays up, no −0.05 hype tick, and the run stays on the come-out (`IDLE_TABLE`). The client shows "POSEIDON'S FAVOR". The Grinder ignores this roll.
 
 ---

@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-037 The Sovereign Boss Moments
 
 **Design doc:** `docs/design/fb-037-sovereign-boss-moments-design.md`
-**Status:** Phases 1–5 done locally (not pushed).
+**Status:** Complete (2026-10-14) — all six phases done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -52,3 +52,5 @@
 Presets: "Sovereign — Dead Calm, point on", "Sovereign — Undertow, point on", "Sovereign — High Tide, last two shooters", "Sovereign — one win from the crown". Docs: boss_framework, CLAUDE.md, backlog.
 
 🛑 **Gate:** FB-037 complete → push.
+
+--- Implemented locally (2026-10-14): presets "Dead Calm, point on", "Undertow, point on", "High Tide, point on (no Covenant)", "High Tide, last two shooters" (both without The Covenant so the wave lands), "one win from the crown" — replacing "entering HIGH tide"; 28 presets. Docs: boss_framework Sovereign moments, CLAUDE.md (next boss: The Commander), backlog. ---

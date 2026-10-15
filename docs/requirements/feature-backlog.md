@@ -1900,7 +1900,7 @@ His escrow is invisible today. Make it physical with an **offering bowl** (held 
 
 **Type:** Boss rule redesign (sim-tuned) + presentation (barks, water line, victory + defeat cinematics)
 **Area:** `apps/api/src/routes/rolls.ts`, `packages/shared/src/config.ts`, `packages/shared/src/bossRules/tidalSurge.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`
-**Status:** Designed (2026-10-14); pending implementation
+**Status:** Implemented (2026-10-14) — tide rhythm (Dead Calm / Undertow 35% / High Tide wave), barks, tide dial, water line, THE CROWN SINKS, THE WAVE, Dev presets
 **Design:** `docs/design/fb-037-sovereign-boss-moments-design.md`
 **Manifest:** `docs/manifests/fb-037-sovereign-boss-moments-manifest.md`
 

@@ -9,7 +9,7 @@
 // Crew uses Starter roster ids (16–30) so presets work on any account.
 // =============================================================================
 
-import { MARKER_TARGETS, getMaxBet, getMinBet } from './config.js';
+import { MARKER_TARGETS, COMP_PERK_IDS, getMaxBet, getMinBet } from './config.js';
 import type { DevScenario } from './devScenario.js';
 
 // Marker indices of each boss fight (every third marker).
@@ -19,6 +19,9 @@ const LE_PRIX    = 8;
 const EXECUTIVE  = 11;
 const HIEROPHANT = 14;
 const ATLANTIS_1 = 15;   // first marker after the Hierophant — The Covenant is held
+
+// Floor-6 comps WITHOUT The Covenant, so High Tide's wave isn't turned back.
+const NO_COVENANT = [COMP_PERK_IDS.THE_VIG, COMP_PERK_IDS.MEMBER_JACKET, COMP_PERK_IDS.SEA_LEGS];
 const SOVEREIGN  = 17;
 const COMMANDER  = 20;
 const ARCHITECT  = 26;
@@ -186,11 +189,49 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     shooters:    1,
     point:       6,
   },
+  // The Sovereign's tide (FB-037): boss counter LOW 0 · EBB 1 · HIGH 2 · FLOW 3.
   {
-    name:        'Sovereign — entering HIGH tide',
+    // Dead Calm: the Odds square is waterlogged; no odds bets.
+    name:        'Sovereign — Dead Calm, point on',
     markerIndex: SOVEREIGN,
     crew:        STARTER_CREW,
-    bossCounter: 2, // LOW 0 · EBB 1 · HIGH 2 · FLOW 3
+    point:       6,
+    bossCounter: 0,
+  },
+  {
+    // The Undertow: a seven-out → the sea fills, drains, drags 35% of the bankroll.
+    name:        'Sovereign — Undertow, point on',
+    markerIndex: SOVEREIGN,
+    crew:        STARTER_CREW,
+    point:       6,
+    bossCounter: 1,
+  },
+  {
+    // High Tide, no Covenant: a seven-out → the wave drowns two shooters.
+    name:        'Sovereign — High Tide, point on (no Covenant)',
+    markerIndex: SOVEREIGN,
+    crew:        STARTER_CREW,
+    point:       6,
+    bossCounter: 2,
+    compPerkIds: NO_COVENANT,
+  },
+  {
+    // High Tide on the last two shooters, no Covenant: a seven-out → THE WAVE.
+    name:        'Sovereign — High Tide, last two shooters',
+    markerIndex: SOVEREIGN,
+    crew:        STARTER_CREW,
+    shooters:    2,
+    point:       6,
+    bossCounter: 2,
+    compPerkIds: NO_COVENANT,
+  },
+  {
+    // Point on, one min-bet win short of his target: hit the point → THE CROWN SINKS.
+    name:          'Sovereign — one win from the crown',
+    markerIndex:   SOVEREIGN,
+    crew:          STARTER_CREW,
+    bankrollCents: target(SOVEREIGN) - getMinBet(SOVEREIGN),
+    point:         6,
   },
   {
     name:        'Commander — hype 0.80× (death-spiral edge)',

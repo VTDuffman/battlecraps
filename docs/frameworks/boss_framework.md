@@ -322,6 +322,13 @@ He is the fight against **hype builds** (The Hierophant is the fight against cas
 ruleParams: { rule: 'ORBITAL_DECAY', bleedPct: 0.20 }
 ```
 
+**Boss moments (FB-038)** — theme thread *"In space, no one can hear you scream"*:
+- **Barks** (clipped mission-control speak): `orbitLost` (a Seven-Out from ≥ 1.5×) and `peakHype` (reaching On Fire, judged at the hype the roll paid at) always; `decaying` (bleed ≥ 0.2×) 35%; win / loss by chance.
+- **Orbit gauge** (`OrbitGauge.tsx`, under the marker progress bar): a planet; your ship circles it on an orbit whose radius is your hype (sprung), faster the lower it gets; 1.5×/2.5× rings; "▲ BURN" (thruster flare + rush) and "▼ ORBIT DECAY" (descending ping) each roll.
+- **No one can hear you scream:** dread tagline "IN SPACE, NO ONE CAN HEAR YOU SCREAM."; the crowd cheer/groan are muffled in his fight (`muffledDest`: low-pass 420 Hz, 0.25 → 0.6 with hype); the dice flames gutter at On Fire (`useParticleEmitter(…, guttering)`).
+- **Victory — ESCAPE VELOCITY** (`victoryCinematic`): engines ignite, the ship breaks orbit, the planet falls away, stars streak into hyperspace, the jump; "…orbital mechanics didn't account for you. Gravity's compliments." (~8 s, hold 8.4 s).
+- **Defeat — LOSS OF SIGNAL** (`defeatCinematic`): MASTER CAUTION, re-entry (glow, plasma, shaking, a roar that **hard-cuts**), silent static, LOSS OF SIGNAL, "In space, no one can hear you scream." (~8.3 s).
+
 **Comp:** Cargo Hold — `unlockedSlots` becomes 5.
 
 ---

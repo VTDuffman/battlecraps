@@ -1914,7 +1914,7 @@ His tide only raised minimum bets (simulated cost ~0). Make each stage its own c
 
 **Type:** Boss rule redesign (sim-tuned) + presentation (barks, orbit gauge, muffled crowd, victory + defeat cinematics)
 **Area:** `apps/api/src/routes/rolls.ts`, `packages/shared/src/config.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`, `apps/web/src/hooks/useCrowdAudio.ts`
-**Status:** Designed (2026-10-14); pending implementation
+**Status:** Implemented (2026-10-14) — orbital bleed, barks, orbit gauge, muffled crowd + guttering flames, ESCAPE VELOCITY, LOSS OF SIGNAL, Dev presets
 **Design:** `docs/design/fb-038-commander-boss-moments-design.md`
 **Manifest:** `docs/manifests/fb-038-commander-boss-moments-manifest.md`
 

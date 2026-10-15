@@ -234,12 +234,32 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     point:         6,
   },
   {
-    // On Fire in orbit: every roll the bleed takes 20% of the height above 1.0×.
+    // On Fire in orbit: every roll the bleed takes 20% of the height above 1.0×;
+    // guttering flames, the muffled crowd, a high fast-decaying orbit.
     name:        'Commander — On Fire, point on',
     markerIndex: COMMANDER,
     crew:        STARTER_CREW,
     hype:        3.0,
     point:       6,
+  },
+  {
+    // Point on, one min-bet win short of his target: hit the point → ESCAPE VELOCITY.
+    name:          'Commander — one win from escape',
+    markerIndex:   COMMANDER,
+    crew:          STARTER_CREW,
+    bankrollCents: target(COMMANDER) - getMinBet(COMMANDER),
+    point:         6,
+  },
+  {
+    // Last shooter, high orbit, point on: a seven-out → "we have a problem" →
+    // LOSS OF SIGNAL. (The Covenant is held at Floor 7, so it's left out here.)
+    name:        'Commander — last shooter, point on',
+    markerIndex: COMMANDER,
+    crew:        STARTER_CREW,
+    shooters:    1,
+    hype:        2.0,
+    point:       6,
+    compPerkIds: [COMP_PERK_IDS.THE_VIG, COMP_PERK_IDS.MEMBER_JACKET, COMP_PERK_IDS.SEA_LEGS, COMP_PERK_IDS.POSEIDONS_FAVOR],
   },
   {
     name:        'Architect — 4 seven-outs, one crew left',

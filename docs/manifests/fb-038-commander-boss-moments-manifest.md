@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-038 The Commander Boss Moments
 
 **Design doc:** `docs/design/fb-038-commander-boss-moments-design.md`
-**Status:** Phases 1–5 done locally (not pushed).
+**Status:** Complete (2026-10-14) — all six phases done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -52,3 +52,5 @@
 Presets: "Commander — On Fire, point on", "Commander — one win from escape", "Commander — last shooter, point on". Docs: boss_framework, CLAUDE.md, backlog.
 
 🛑 **Gate:** FB-038 complete → push.
+
+--- Implemented locally (2026-10-14): presets "On Fire, point on" (annotated), new "one win from escape", new "last shooter, point on" (2.0× hype, The Covenant left out so the run can end); 30 presets. Docs: boss_framework Commander moments, CLAUDE.md (next boss: The Emissary), backlog. ---

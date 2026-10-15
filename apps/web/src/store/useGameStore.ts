@@ -2227,6 +2227,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // FB-038: the Commander's orbit.
       hypeBefore: oldHype,
       ...(p.orbit && { orbit: p.orbit }),
+      // FB-039: the Emissary's signal.
+      ...(p.signal && { signal: p.signal }),
       ...(p.bossCut && {
         cut: { before: cutBefore, after: p.bossCut.total, payoff: p.bossCut.payoff, paidOff: p.bossCut.paidOff },
       }),

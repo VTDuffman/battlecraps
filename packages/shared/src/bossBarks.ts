@@ -38,6 +38,7 @@ export const EVENT_BARK_CHANCE: Readonly<Partial<Record<BossBarkTrigger, number>
   escrowReleased: 0.3,
   highTide:       0.5,
   decaying:       0.35,
+  received:       0.3,
 };
 
 /** The Hierophant: a held escrow at least this share of the marker target is a "big offering". */
@@ -78,6 +79,8 @@ export interface BossBarkInput {
   /** The Commander: hype before this roll, and the orbit after it (bleed taken, hype carried). */
   hypeBefore?: number;
   orbit?: { bleed: number; hype: number };
+  /** The Emissary: the signal this roll. */
+  signal?: { landed: { additives: number; hype: number; multipliers: number[] }; dropped: boolean; darkRolls: number; wasDark: boolean };
   /** Payoff fights: Cut before and after this roll, the Payoff, and whether it was reached. */
   cut?:          { before: number; after: number; payoff: number; paidOff: boolean };
   /** A bark is still showing — skip chance-based barks. */
@@ -185,6 +188,17 @@ export function deriveBossBarkEvents(input: BossBarkInput): BossBarkTrigger[] {
       const peak = o.hype + o.bleed;   // the hype this roll was paid at
       if (before < 2.5 && peak >= 2.5) events.push('peakHype');
       if (o.bleed >= 0.2) events.push('decaying');
+      break;
+    }
+
+    // The Emissary: the signal. Losing it and getting it back always speak;
+    // a packet landing sometimes does.
+    case 'TRANSMISSION_DELAY': {
+      const sig = input.signal;
+      if (!sig) break;
+      if (input.rollResult === 'SEVEN_OUT') events.push('signalLost');
+      if (sig.wasDark && sig.darkRolls === 0) events.push('contactRestored');
+      if (sig.landed.additives > 0 || sig.landed.hype > 0 || sig.landed.multipliers.length > 0) events.push('received');
       break;
     }
 

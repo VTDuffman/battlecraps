@@ -68,7 +68,7 @@ describe('pickBossBark', () => {
   });
 
   it('bosses with no barks stay silent', () => {
-    expect(pickBossBark({ ...base, markerIndex: 23, bankrollDelta: 400 }, always)).toBeNull(); // The Emissary (no barks yet)
+    expect(pickBossBark({ ...base, markerIndex: 26, bankrollDelta: 400 }, always)).toBeNull(); // The Architect (no barks yet)
   });
 });
 
@@ -260,6 +260,30 @@ describe('The Commander (FB-038): orbit events', () => {
 
   it('a tiny bleed derives nothing', () => {
     expect(deriveBossBarkEvents({ ...cmd, rollResult: 'NO_RESOLUTION', hypeBefore: 1.1, orbit: { bleed: 0.02, hype: 1.08 } })).toEqual([]);
+  });
+});
+
+describe('The Emissary (FB-039): signal events', () => {
+  const EMI = 23;
+  const emi: BossBarkInput = { ...base, markerIndex: EMI };
+  const none = { additives: 0, hype: 0, multipliers: [] as number[] };
+
+  it('losing the signal always speaks, even over a showing bark', () => {
+    expect(selectBossBarkTrigger({ ...emi, isLoss: true, rollResult: 'SEVEN_OUT', signal: { landed: none, dropped: true, darkRolls: 6, wasDark: false }, barkShowing: true }, never)).toBe('signalLost');
+  });
+
+  it('contact coming back always speaks', () => {
+    expect(selectBossBarkTrigger({ ...emi, rollResult: 'NO_RESOLUTION', signal: { landed: none, dropped: false, darkRolls: 0, wasDark: true } }, never)).toBe('contactRestored');
+  });
+
+  it('a packet landing speaks about a third of the time', () => {
+    const landed = { ...emi, bankrollDelta: 600, rollResult: 'NO_RESOLUTION' as const, signal: { landed: { additives: 60_000_000, hype: 0, multipliers: [] }, dropped: false, darkRolls: 0, wasDark: false } };
+    expect(selectBossBarkTrigger(landed, always)).toBe('received');
+    expect(selectBossBarkTrigger(landed, never)).toBeNull();
+  });
+
+  it('a dark roll that is not the last derives nothing', () => {
+    expect(deriveBossBarkEvents({ ...emi, rollResult: 'NO_RESOLUTION', signal: { landed: none, dropped: false, darkRolls: 3, wasDark: true } })).toEqual([]);
   });
 });
 

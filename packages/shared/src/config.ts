@@ -106,7 +106,8 @@ export type BossBarkTrigger =
   | 'promoted' | 'finalWarning' | 'bonusPaid' | 'ratingUp' | 'ratingDown'
   | 'tributeSeized' | 'bigOffering' | 'escrowReleased'
   | 'waveHit' | 'undertowHit' | 'highTide'
-  | 'orbitLost' | 'peakHype' | 'decaying';
+  | 'orbitLost' | 'peakHype' | 'decaying'
+  | 'signalLost' | 'contactRestored' | 'received';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
 export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS' | 'THE_WAVE' | 'LOSS_OF_SIGNAL';
@@ -752,6 +753,14 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       ruleBlurb:          "Signal lag: everything your crew does — cash bonuses, Hype boosts, multipliers — arrives one roll late. Seven out and the signal is lost: whatever was in transit vanishes, and your whole crew goes dark for six rolls.",
       victoryQuote:       "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]",
       defeatAnnouncement: 'SIGNAL LOST',
+      // FB-039 barks — translated alien text, in brackets. Cold, literal.
+      barks: {
+        signalLost:      ["[Signal lost. Your crew cannot hear you.]", "[Contact terminated. Recalibrating.]"],
+        contactRestored: ["[Contact restored. This changes nothing.]", "[Your crew has returned. Briefly.]"],
+        received:        ["[Message received. Delayed. As intended.]", "[Delay is a human superstition.]"],
+        win:             ["[Outcome noted.]", "[Anomalous. Logging.]"],
+        loss:            ["[Predicted.]", "[As modeled.]"],
+      },
       // Mechanic
       rule:           'TRANSMISSION_DELAY',
       ruleHeaderText: 'CREW EFFECTS LAND ONE ROLL LATE · 7-OUT: SIGNAL LOST, CREW DARK FOR 6 ROLLS',

@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-039 The Emissary Boss Moments
 
 **Design doc:** `docs/design/fb-039-emissary-boss-moments-design.md`
-**Status:** Phase 1 done locally (not pushed).
+**Status:** Phases 1–2 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -21,6 +21,8 @@
 
 ## Phase 2: Barks
 `signalLost`, `contactRestored` always; `received` 30%; win/loss by chance. Tests.
+
+--- Implemented locally (2026-10-14): shared TRANSMISSION_DELAY events + bracketed lines; store passes `signal`. Shared 483 tests. ---
 
 ## Phase 3: The transmission line
 Front and center: crew → receiver line, packets in transit, landing pops, static + dark rail + NO SIGNAL countdown, CONTACT RESTORED.

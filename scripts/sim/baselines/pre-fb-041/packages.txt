@@ -1,0 +1,12 @@
+N = 4000 runs per row. Start: Floor 1 (marker 0), $30, no crew, 3 slots; one hire per pub.
+
+## Packages — whole runs from a new run ($30, no crew)
+Each cell: reach Floor 4 (cleared Le Prix) / reach Floor 5 / finish given Floor 5 / finish (beat The Architect).
+
+| Package | cash · pass | mixed · pass | hype · pass | mixed · odds1x |
+|---|---|---|---|---|
+| Today | 13% / 11% / 71% / 8% | 11% / 8% / 72% / 6% | 1% / 1% / 19% / 0% | 17% / 13% / 66% / 8% |
+| Opening fix (1 free crew + $40) | 41% / 32% / 74% / 24% | 36% / 29% / 74% / 21% | 4% / 2% / 19% / 0% | 31% / 23% / 63% / 15% |
+| A + H (late cash taper + Hype ×1.5) | 12% / 10% / 44% / 4% | 12% / 9% / 63% / 6% | 2% / 2% / 24% / 0% | 17% / 13% / 53% / 7% |
+| Opening fix + A + H | 42% / 33% / 48% / 16% | 39% / 30% / 65% / 20% | 8% / 5% / 23% / 1% | 33% / 26% / 54% / 14% |
+| Opening fix + A+ + H | 41% / 32% / 37% / 12% | 40% / 32% / 62% / 20% | 9% / 6% / 30% / 2% | 33% / 27% / 50% / 13% |

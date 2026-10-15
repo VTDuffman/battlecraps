@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-038 The Commander Boss Moments
 
 **Design doc:** `docs/design/fb-038-commander-boss-moments-design.md`
-**Status:** Phases 1–4 done locally (not pushed).
+**Status:** Phases 1–5 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -45,6 +45,8 @@
 `LOSS_OF_SIGNAL` cinematic (roar → total silence → static → line).
 
 🛑 **Gate:** lose to the Commander locally.
+
+--- Implemented locally (2026-10-14): MASTER CAUTION flashes; re-entry for 3.2 s — edges glowing orange, a plasma glow rising from the bottom, 28 plasma streaks, shaking that grows — under `playReentryRoar(3.2)` (roar + hull groan + crackle, hard-cut, no fade); then black and silence, ~0.7 s of silent static (canvas), LOSS OF SIGNAL flickering on, "In space, no one can hear you scream." ~8.3 s, under the 9 s net. ---
 
 ## Phase 6: Dev Mode + docs
 Presets: "Commander — On Fire, point on", "Commander — one win from escape", "Commander — last shooter, point on". Docs: boss_framework, CLAUDE.md, backlog.

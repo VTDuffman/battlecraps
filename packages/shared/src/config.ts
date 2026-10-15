@@ -109,7 +109,7 @@ export type BossBarkTrigger =
   | 'orbitLost' | 'peakHype' | 'decaying';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
-export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS' | 'THE_WAVE';
+export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS' | 'THE_WAVE' | 'LOSS_OF_SIGNAL';
 
 /** FB-033: boss victory moments (one component each in the web registry). */
 export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP' | 'THE_EYE_CLOSES' | 'THE_CROWN_SINKS' | 'ESCAPE_VELOCITY';
@@ -689,6 +689,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       ruleBlurb:          "Orbital decay: after every roll, your Hype above 1.0× loses 20% of its height — feed it or watch it fall. A Seven-Out resets Hype to 1.0×, and The Keepsake doesn't work up here. In space, no one can hear the crowd.",
       victoryQuote:       "…orbital mechanics didn't account for you. Gravity's compliments.",
       victoryCinematic:   { id: 'ESCAPE_VELOCITY', line: "…orbital mechanics didn't account for you. Gravity's compliments." },
+      defeatCinematic:    { id: 'LOSS_OF_SIGNAL', line: "In space, no one can hear you scream." },
       defeatAnnouncement: 'ORBITAL AUTHORITY LOST',
       // FB-038 barks — clipped mission-control speak. In space, no one can hear you scream.
       barks: {

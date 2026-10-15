@@ -1281,6 +1281,60 @@ function playHyperJumpSting(ctx: AudioContext, dest: AudioNode): void {
 }
 
 /**
+ * FB-038 loss: re-entry — a roar of plasma that builds and crackles for
+ * `seconds`, then CUTS to dead silence (a hard stop, no fade: in space, no one
+ * can hear you scream).
+ */
+function makeReentryRoarSting(seconds: number): (ctx: AudioContext, dest: AudioNode) => void {
+  return (ctx, dest) => {
+    const t0  = ctx.currentTime + 0.01;
+    const end = t0 + seconds;
+    const bus = ctx.createGain();
+    bus.gain.setValueAtTime(1, t0);
+    bus.gain.setValueAtTime(1, end - 0.005);
+    bus.gain.linearRampToValueAtTime(0, end);           // the cut
+    bus.connect(dest);
+    // the roar — rising, brightening
+    const roar = ctx.createBufferSource();
+    roar.buffer = makeNoiseBuf(ctx, seconds + 0.1);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(200, t0);
+    lp.frequency.exponentialRampToValueAtTime(3200, end);
+    const rEnv = ctx.createGain();
+    rEnv.gain.setValueAtTime(0.0001, t0);
+    rEnv.gain.exponentialRampToValueAtTime(0.34, end - 0.2);
+    roar.connect(lp);
+    lp.connect(rEnv);
+    rEnv.connect(bus);
+    roar.start(t0);
+    roar.stop(end + 0.05);
+    // the hull groaning under it
+    const groan = ctx.createOscillator();
+    groan.type = 'sawtooth';
+    groan.frequency.setValueAtTime(48, t0);
+    groan.frequency.linearRampToValueAtTime(90, end);
+    const gLp = ctx.createBiquadFilter();
+    gLp.type = 'lowpass';
+    gLp.frequency.value = 220;
+    const gEnv = ctx.createGain();
+    gEnv.gain.setValueAtTime(0.0001, t0);
+    gEnv.gain.exponentialRampToValueAtTime(0.16, end - 0.3);
+    groan.connect(gLp);
+    gLp.connect(gEnv);
+    gEnv.connect(bus);
+    groan.start(t0);
+    groan.stop(end + 0.05);
+    // crackle — the heat shield splitting
+    for (let i = 0; i < 18; i++) {
+      const at = t0 + seconds * (0.25 + 0.72 * (i / 18)) + ((i * 37) % 10) / 120;
+      if (at >= end) break;
+      seaNoise(ctx, bus, at, 0.06, { type: 'highpass', from: 2500, to: 4000 }, 0.05 + i * 0.004, 0.003);
+    }
+  };
+}
+
+/**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
  * which mounts the hook, is unmounted). Silent when muted.
@@ -1477,6 +1531,11 @@ export function playEngineRoar(): void {
 /** FB-038 win: the jump to hyperspace. */
 export function playHyperJump(): void {
   playStandalone(playHyperJumpSting);
+}
+
+/** FB-038 loss: re-entry, cut dead after `seconds`. */
+export function playReentryRoar(seconds: number): void {
+  playStandalone(makeReentryRoarSting(seconds));
 }
 
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */

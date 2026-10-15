@@ -144,7 +144,9 @@ export const BattleCrapsRulesSection: React.FC = () => {
       {/* ── Marker System ─────────────────────────────────────────────────── */}
       <SectionHeader>Marker System</SectionHeader>
       <div className="py-2 space-y-1">
-        <Row label="Starting bankroll" value="$30.00" />
+        <Row label="Starting bankroll" value="$40.00" />
+        <Row label="First crew member" value="Free (pick 1 of 3 Starters)" />
+        <Row label="Tutorial run" value="$30.00, no crew" />
         <Row label="Bet max" value="10% of marker target" />
         <Row label="Odds cap (4/10)" value="3× Pass Line" />
         <Row label="Odds cap (5/9)" value="4× Pass Line" />

@@ -22,6 +22,10 @@ export {
   STREAK_CAP,
   RARITY_COST_MULTIPLIERS,
   getCrewHireCost,
+  TUTORIAL_BANKROLL_CENTS,
+  OPENING_BANKROLL_CENTS,
+  isOpeningPub,
+  isStarterOnlyPub,
 } from './config.js';
 
 export type {

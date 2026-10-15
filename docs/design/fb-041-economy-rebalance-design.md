@@ -50,6 +50,8 @@ The tutorial run is unchanged ($30, no crew, scripted dice). Its $30 start exist
   - Verify the TransitionOrchestrator order: today a new run plays the title → marker intro.
 - **Copy:** `GameOverScreen` "NEW RUN · $30 BANKROLL" → $40 · ONE CREW ON THE HOUSE; How to Play "Starting bankroll $30.00". Sal's tutorial text is unchanged; the tutorial still starts at $30.
 
+**Added after playtest (2026-10-15):** a run's **first pub is always Starter-only**, including the tutorial run's pub after marker 0 (normal price there). Rule: `isStarterOnlyPub(markerIndex)` = markers 0–1. Guaranteed unlocks earned that early wait for the next pub.
+
 **Decided (D1):** the player picks from 3 random Starters on the normal pub screen. The sim assumed the player gets the crew member their build wants; a 3-from-Starters draft may land a few points lower, and Phase 4 checks this.
 
 ---

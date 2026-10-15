@@ -19,6 +19,10 @@
 //     is fire-and-forget) is appended to the saved draft on the next fetch.
 //   - Random pool is rarity-gated by floor: up to Uncommon on F1–F2, Rare on
 //     F3–F4, Epic on F5–F6, Legendary on F7–F9. Guaranteed crew bypass this gate.
+//   - FB-041: a run's first pub offers 3 random crew from the Starter roster
+//     only — no unlocked or guaranteed crew (guaranteed unlocks wait for the
+//     next pub). That's the opening pub (marker 0, hired free) and the pub
+//     after marker 0 (the tutorial run's first pub, normal price).
 //
 // Guaranteed IDs are treated as available regardless of users.unlockedCrewIds
 // state to avoid a race between the fire-and-forget evaluateUnlocks() write
@@ -29,7 +33,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, crewDefinitions, type StoredPubDraft } from '../db/schema.js';
-import { GAUNTLET, getCrewHireCost, type CrewRarity } from '@battlecraps/shared';
+import { GAUNTLET, getCrewHireCost, isOpeningPub, isStarterOnlyPub, type CrewRarity } from '@battlecraps/shared';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
 
@@ -130,9 +134,16 @@ export async function pubDraftPlugin(app: FastifyInstance): Promise<void> {
       // currentMarkerIndex was already incremented by rolls.ts on TRANSITION.
       const clearedIndex  = run.currentMarkerIndex - 1;
       const clearedTarget = GAUNTLET[clearedIndex]?.targetCents ?? GAUNTLET[0]!.targetCents;
+      // FB-041: a run's first pub is Starter-only; the opening pub's pick is free.
+      const opening       = isOpeningPub(run.currentMarkerIndex);
+      const starterOnly   = isStarterOnlyPub(run.currentMarkerIndex);
+      const hireCostOf    = (rarity: string): number =>
+        opening ? 0 : getCrewHireCost(rarity as CrewRarity, clearedTarget);
 
       // ── 3. Determine guaranteed crew ─────────────────────────────────────────
-      const guaranteedIds = new Set(run.guaranteedPubDraftIds);
+      // A Starter-only pub ignores guaranteed unlocks; they stay queued on the
+      // run (not cleared below) and appear at the next pub.
+      const guaranteedIds = new Set(starterOnly ? [] : run.guaranteedPubDraftIds);
 
       // ── 3b. Collect crew IDs already seated in the squad ─────────────────────
       const occupiedIds = new Set(
@@ -159,8 +170,9 @@ export async function pubDraftPlugin(app: FastifyInstance): Promise<void> {
         c =>
           !guaranteedIds.has(c.id) &&
           !occupiedIds.has(c.id) &&
-          isAvailable(c.id, c.isStarterRoster) &&
-          (RARITY_TIER[c.rarity] ?? 99) <= maxRarityTier,
+          (starterOnly
+            ? c.isStarterRoster
+            : isAvailable(c.id, c.isStarterRoster) && (RARITY_TIER[c.rarity] ?? 99) <= maxRarityTier),
       );
 
       // ── 6. Saved draft: return it (plus any late guaranteed unlocks) ────────
@@ -169,7 +181,7 @@ export async function pubDraftPlugin(app: FastifyInstance): Promise<void> {
         saved.crewIds
           .map((id) => byId.get(id))
           .filter((c): c is NonNullable<typeof c> => c !== undefined)
-          .map((c) => ({ ...toDraftEntry(c, clearedTarget), isGuaranteed: saved.guaranteedIds.includes(c.id) }));
+          .map((c) => ({ ...toDraftEntry(c, hireCostOf(c.rarity)), isGuaranteed: saved.guaranteedIds.includes(c.id) }));
 
       if (run.pubDraft) {
         const late = guaranteedCrew.map((c) => c.id).filter((id) => !run.pubDraft!.crewIds.includes(id));
@@ -205,7 +217,7 @@ export async function pubDraftPlugin(app: FastifyInstance): Promise<void> {
       // save different drafts; the loser returns the winner's draft.
       const saved = await db
         .update(runs)
-        .set({ pubDraft: newDraft, guaranteedPubDraftIds: [] })
+        .set({ pubDraft: newDraft, guaranteedPubDraftIds: starterOnly ? run.guaranteedPubDraftIds : [] })
         .where(and(eq(runs.id, runId), isNull(runs.pubDraft)))
         .returning({ pubDraft: runs.pubDraft });
 
@@ -220,14 +232,14 @@ export async function pubDraftPlugin(app: FastifyInstance): Promise<void> {
 
 function toDraftEntry(
   c: typeof crewDefinitions.$inferSelect,
-  clearedMarkerTargetCents: number,
+  hireCostCents: number,
 ): Omit<PubDraftEntry, 'isGuaranteed'> {
   return {
     id:                  c.id,
     name:                c.name,
     abilityCategory:     c.abilityCategory,
     cooldownType:        c.cooldownType,
-    hireCostCents:       getCrewHireCost(c.rarity as CrewRarity, clearedMarkerTargetCents),
+    hireCostCents,
     visualId:            c.visualId,
     rarity:              c.rarity,
     briefDescription:    c.briefDescription,

@@ -236,7 +236,7 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ onPlayAgain }) =
         </button>
 
         <p className="mt-3 text-center font-pixel text-r-8 text-red-900/60 tracking-wider">
-          NEW RUN · $30 BANKROLL · FRESH CREW SLOTS
+          NEW RUN · $40 BANKROLL · FIRST CREW ON THE HOUSE
         </p>
       </footer>
     </div>

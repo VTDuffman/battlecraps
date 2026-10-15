@@ -1199,6 +1199,46 @@ function playSunkenChimeSting(ctx: AudioContext, dest: AudioNode): void {
 }
 
 /**
+ * FB-038: the crowd as heard through a helmet in a vacuum — a low-pass that
+ * strips the air out of it, and a level that rises a little with your hype
+ * (0.25 at 1.0× up to 0.6 at On Fire).
+ */
+function muffledDest(ctx: AudioContext, dest: AudioNode, hype: number): AudioNode {
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 420;
+  lp.Q.value = 0.5;
+  const level = ctx.createGain();
+  level.gain.value = Math.min(0.6, 0.25 + 0.14 * Math.max(0, hype - 1));
+  lp.connect(level);
+  level.connect(dest);
+  return lp;
+}
+
+/** FB-038: the orbit decays — a soft sonar ping that slides down (≈0.7 s). */
+function playOrbitDecaySting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(1180, t0);
+  osc.frequency.exponentialRampToValueAtTime(620, t0 + 0.6);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, t0);
+  env.gain.exponentialRampToValueAtTime(0.06, t0 + 0.01);
+  env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.7);
+  osc.connect(env);
+  env.connect(dest);
+  osc.start(t0);
+  osc.stop(t0 + 0.72);
+}
+
+/** FB-038: a thruster burn — a short rising rush of filtered noise (≈0.6 s). */
+function playThrustersSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 0.6, { type: 'bandpass', from: 400, to: 1800, q: 0.9 }, 0.12, 0.08);
+}
+
+/**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
  * which mounts the hook, is unmounted). Silent when muted.
@@ -1377,6 +1417,16 @@ export function playSunkenChime(): void {
   playStandalone(playSunkenChimeSting);
 }
 
+/** FB-038: the Commander's orbit decays a notch. */
+export function playOrbitDecay(): void {
+  playStandalone(playOrbitDecaySting);
+}
+
+/** FB-038: hype rises in orbit — a thruster burn. */
+export function playThrusters(): void {
+  playStandalone(playThrustersSting);
+}
+
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */
 export function playHarpFlourish(): void {
   playStandalone(playHarpFlourishSting);
@@ -1443,6 +1493,14 @@ export function useCrowdAudio(): {
   const isNullSpaceRef = useRef(false);
   isNullSpaceRef.current = GAUNTLET[currentMarkerIndex]?.floor === 9;
 
+  // FB-038: in The Commander's fight the crowd is muffled — "in space, no one
+  // can hear you scream" — and fainter the thinner your hype.
+  const hype          = useGameStore((s) => s.hype);
+  const isCommanderRef = useRef(false);
+  isCommanderRef.current = GAUNTLET[currentMarkerIndex]?.boss?.rule === 'ORBITAL_DECAY';
+  const hypeRef = useRef(hype);
+  hypeRef.current = hype;
+
   // flashType ref: keeps the _flashKey effect from capturing a stale value
   const flashTypeRef = useRef(flashType);
   flashTypeRef.current = flashType;
@@ -1507,8 +1565,9 @@ export function useCrowdAudio(): {
     const ctx = getCtx();
     if (!ctx) return;
     const ft = flashTypeRef.current;
-    if (ft === 'win')  playCheer(ctx, getDest(ctx));
-    if (ft === 'lose') playGroan(ctx, getDest(ctx));
+    const dest = isCommanderRef.current ? muffledDest(ctx, getDest(ctx), hypeRef.current) : getDest(ctx);
+    if (ft === 'win')  playCheer(ctx, dest);
+    if (ft === 'lose') playGroan(ctx, dest);
   }, [_flashKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Dice rattle on throw ────────────────────────────────────────────────

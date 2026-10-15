@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-038 The Commander Boss Moments
 
 **Design doc:** `docs/design/fb-038-commander-boss-moments-design.md`
-**Status:** Phases 1–2 done locally (not pushed). Orbit gauge pulled forward from Phase 3.
+**Status:** Phases 1–3 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -31,6 +31,8 @@
 3. Audio: `playThrusters()`, `playOrbitDecay()` (a soft descending ping).
 
 🛑 **Gate:** does it feel like the air's gone out of the room?
+
+--- Implemented locally (2026-10-14): `OrbitGauge` (shipped early): planet, ship on an elliptical orbit with radius = hype (sprung), angular speed ∝ r^-1.5, 1.5×/2.5× rings, burn flare + "▲ BURN" / "▼ ORBIT DECAY" (both on a point hit). Muffled crowd: in his fight the cheer/groan route through `muffledDest` (low-pass 420 Hz, level 0.25 → 0.6 with hype). Guttering flames: `useParticleEmitter(…, guttering)` — 70% of sparks don't catch, life decays 2.4× faster. Audio: `playOrbitDecay()` (descending ping), `playThrusters()`. ---
 
 ## Phase 4: Escape Velocity (victory)
 `ESCAPE_VELOCITY` cinematic + hold.

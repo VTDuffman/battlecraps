@@ -11,12 +11,14 @@
 // Faint rings mark Heating Up (1.5×) and On Fire (2.5×).
 //
 // Driven by the store's hype + lastOrbit (bleed / gain events). The ship's
-// motion runs on an animation frame; nothing sounds here (Phase 3 audio).
+// motion runs on an animation frame. A bleed pings (playOrbitDecay); a gain
+// fires the thrusters (playThrusters).
 // =============================================================================
 
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useAnimationFrame, useMotionValue, useReducedMotion, useSpring } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore.js';
+import { playOrbitDecay, playThrusters } from '../hooks/useCrowdAudio.js';
 
 const W = 360, H = 124;
 const CX = W / 2, CY = H / 2;
@@ -69,13 +71,20 @@ export const OrbitGauge: React.FC = () => {
   // Events (only rolls after mount): a bleed tightens the orbit; a gain fires the thrusters.
   const mountKey = useRef(lastOrbit?.key ?? 0);
   const prevHype = useRef(hype);
-  const [event, setEvent] = useState<{ kind: 'bleed' | 'burn'; amount: number; key: number } | null>(null);
+  const [event, setEvent] = useState<{ gain: number; bleed: number; key: number } | null>(null);
   useEffect(() => {
     const before = prevHype.current;
     prevHype.current = hype;
     if (!lastOrbit || lastOrbit.key === mountKey.current) return;
-    if (lastOrbit.bleed > 0) setEvent({ kind: 'bleed', amount: lastOrbit.bleed, key: lastOrbit.key });
-    else if (hype > before) setEvent({ kind: 'burn', amount: hype - before, key: lastOrbit.key });
+    // The roll paid at hype + bleed; anything above where it started was a burn.
+    const gain  = Math.max(0, lastOrbit.hype + lastOrbit.bleed - before);
+    const bleed = lastOrbit.bleed;
+    if (gain < 0.005 && bleed <= 0) return;
+    setEvent({ gain, bleed, key: lastOrbit.key });
+    const timers: number[] = [];
+    if (gain >= 0.005) playThrusters();
+    if (bleed > 0) timers.push(window.setTimeout(playOrbitDecay, gain >= 0.005 ? 550 : 0));
+    return () => timers.forEach((t) => window.clearTimeout(t));
   }, [lastOrbit?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const color = tierColor(hype);
@@ -114,7 +123,7 @@ export const OrbitGauge: React.FC = () => {
         {/* the ship */}
         <motion.g style={{ x: shipX, y: shipY }}>
           <AnimatePresence>
-            {event?.kind === 'burn' && !reduceMotion && (
+            {event !== null && event.gain >= 0.005 && !reduceMotion && (
               <motion.circle key={`burn-${event.key}`} r={7} fill="#fb923c"
                 initial={{ opacity: 0.9, scale: 0.5 }} animate={{ opacity: 0, scale: 2.4 }} exit={{ opacity: 0 }}
                 transition={{ duration: 0.8 }} />
@@ -139,14 +148,16 @@ export const OrbitGauge: React.FC = () => {
         {event !== null && (
           <motion.div
             key={`ev-${event.key}`}
-            className="pointer-events-none absolute right-2 top-1.5 font-pixel text-r-9 font-bold"
-            style={{ color: event.kind === 'bleed' ? '#94a3b8' : '#fb923c' }}
+            className="pointer-events-none absolute right-2 top-1.5 text-right font-pixel text-r-9 font-bold leading-snug"
+            style={{ color: event.gain >= 0.005 ? '#fb923c' : '#94a3b8' }}
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: [0, 1, 1, 0], y: [-4, 0, 2, 8] }}
             transition={{ duration: 1.8, times: [0, 0.12, 0.7, 1] }}
             onAnimationComplete={() => setEvent(null)}
           >
-            {event.kind === 'bleed' ? `▼ ORBIT DECAY −${event.amount.toFixed(2)}×` : `▲ BURN +${event.amount.toFixed(2)}×`}
+            {event.gain >= 0.005 && <span>▲ BURN +{event.gain.toFixed(2)}×</span>}
+            {event.gain >= 0.005 && event.bleed > 0 && <br />}
+            {event.bleed > 0 && <span style={{ color: '#94a3b8' }}>▼ ORBIT DECAY −{event.bleed.toFixed(2)}×</span>}
           </motion.div>
         )}
       </AnimatePresence>

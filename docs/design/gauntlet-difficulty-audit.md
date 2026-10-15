@@ -35,7 +35,7 @@
 6. **Whole-run recommendation: opening fix + A + H.** From a new run:
    - Reach Floor 4: ~40% (today ~11%).
    - Finish: mixed **20%**, cash **15%**, mixed with 1× odds **15%** (today 6–7%).
-   - Pure hype stays a hard mode early: it reaches Floor 4 only ~8% of the time under every fix tested. See §4.
+   - Pure hype stays non-viable (reaches Floor 4 ~8% of the time). **Decided 2026-10-15: that's fine.** Pure hype builds aren't a balance target; Hype is a multiplier and needs crew cash to multiply.
 
 ---
 
@@ -234,7 +234,7 @@ The player arrives with 1.1× the previous target and a full crew for the slots 
 
 ## 4. Build balance: making mixed crews the best
 
-Agreed direction: going all-in on one mechanic should present problems, and a mixed crew should be the strongest build.
+**Design decision (2026-10-15):** going all-in on one mechanic should present problems, and a mixed crew should be the strongest build. Pure hype builds are **not** a balance target: Hype multiplies profit, so a crew with no cash has nothing to multiply. Balance work targets mixed crews first, then pure cash.
 
 **Today it isn't** (finish | F5, pass line, from Floor 4):
 - **Pure cash:** 72%, about equal to mixed (74%). All-in cash barely pays a price; its only counters are The Hierophant and The Emissary.
@@ -363,7 +363,7 @@ Agreed direction: going all-in on one mechanic should present problems, and a mi
 ### Hype builds early
 Pure hype crews reach Floor 4 only 1–8% of the time under every option tested. They need a few markers of crew before Hype has anything to multiply, and Sarge's clock (−13) hits them hardest.
 
-Under the "mixed is best" principle a hard pure-hype mode is acceptable, but this is close to non-viable. If that's not intended, a small early-only help is the next thing to test: e.g. Hype crew also pay a little cash on Floors 1–3, or Sarge's clock counts only blanks after the come-out.
+That's accepted: pure hype isn't a balance target. No early hype helper is planned. The hype crew rows remain in the tables as a reference point only.
 
 ---
 
@@ -395,12 +395,12 @@ Chained from a brand-new run ($30, no crew). Each cell: reach Floor 4 / reach Fl
 4. **Hold off on the comp trim (B).** It overshoots with A and hurts hype builds as much as cash.
 5. **Don't lower the table max or steepen targets.** Both mostly punish hype builds.
 6. **A boss rule that should threaten cash and mixed builds has to take crew cash or end the run** (the Hierophant / Emissary / Executive pattern). Rules that only touch Hype, or that wait for a 7-out, cost those builds 0–5 points.
-7. **Decide whether pure hype should be viable early.** It's ~1–8% to reach Floor 4 under every fix. If that's too harsh, test a Floors 1–3 hype helper next (§4).
+7. **Pure hype builds are not a target (decided).** Keep the Hype buff (H) for what it does for mixed crews; don't tune for pure hype.
 8. **Later, consider making crew cash at risk** (e.g. crew cash on a 7-out roll is lost). The Emissary shows how effective that is.
 
 **Suggested target bands** (my proposal, not a decided goal):
 - Reach Floor 4 from a new run: ~40%.
-- Finish given Floor 5: 50–65% for mixed crews, 35–50% for one-mechanic crews.
+- Finish given Floor 5: 50–65% for mixed crews, 35–50% for pure cash crews. Pure hype isn't a target.
 
 ---
 

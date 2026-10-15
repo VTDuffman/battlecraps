@@ -35,6 +35,7 @@ import { GAUNTLET, MARKER_TARGETS, getMaxBet, isBossMarker, getBossPayoffCents }
 import { PerformanceMeter } from './PerformanceMeter.js';
 import { OfferingBowl } from './OfferingBowl.js';
 import { TideDial } from './TideDial.js';
+import { OrbitGauge } from './OrbitGauge.js';
 import { HowToPlayScreen } from './tutorial/HowToPlayScreen.js';
 import { FeedbackModal }   from './FeedbackModal.js';
 import { DevRunBadge }     from './DevRunBadge.js';
@@ -950,6 +951,13 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
       {GAUNTLET[markerIndex]?.boss?.rule === 'CROSS_CALIBRATION' && !isCleared && (
         <div className="pt-1.5">
           <PerformanceMeter />
+        </div>
+      )}
+
+      {/* FB-038: the Commander's orbit */}
+      {GAUNTLET[markerIndex]?.boss?.rule === 'ORBITAL_DECAY' && !isCleared && (
+        <div className="pt-1.5">
+          <OrbitGauge />
         </div>
       )}
 

@@ -250,6 +250,8 @@ interface TurnSettledPayload {
   covenantSaved?:          boolean;
   /** FB-037: The Sovereign's tide this roll. */
   tide?:                   { stage: number; nextStage: number; undertowCents?: number; waveShooters?: number };
+  /** FB-038: The Commander's orbital bleed this roll. */
+  orbit?:                  { bleed: number; hype: number };
   /** True when Poseidon's Favor cancelled the shooter's first-roll craps-out (rollResult is NO_RESOLUTION). */
   crapsOutBlocked?:        boolean;
   /** The Architect (CONVERGENCE): crew slot index permanently removed by this seven-out. */
@@ -803,6 +805,8 @@ export interface GameState {
   _covenantKey: number;
   /** FB-037: the latest roll's tide facts + a key (drives the water line). */
   lastTide: { stage: number; nextStage: number; undertowCents?: number; waveShooters?: number; key: number } | null;
+  /** FB-038: the latest roll's orbital bleed (The Commander) + a key (drives the orbit gauge). */
+  lastOrbit: { bleed: number; hype: number; key: number } | null;
   /** The latest roll's Cut (drives the register's ka-ching / stamp). Null when none. */
   lastBossCut: BossCut | null;
   /** Increments on every roll that adds to the Cut — keys the ka-ching animation. */
@@ -1345,6 +1349,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   lastEscrow:              null,
   _covenantKey:            0,
   lastTide:                null,
+  lastOrbit:               null,
   lastBossCut:             null,
   _cutKey:                 0,
   payoffAt:                null,
@@ -1440,6 +1445,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       escrowHeldCents:   0,
       lastEscrow:        null,
       lastTide:          null,
+      lastOrbit:         null,
       lastBossCut:    null,
       payoffAt:       null,
       bossBark:       null,
@@ -1637,6 +1643,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       escrowHeldCents:     0,
       lastEscrow:          null,
       lastTide:            null,
+      lastOrbit:           null,
       lastBossCut:         null,
       payoffAt:            null,
       bossBark:            null,
@@ -2275,6 +2282,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastEscrow:            p.escrow ? { ...p.escrow, key: (oldLastEscrow?.key ?? 0) + 1 } : oldLastEscrow,
       _covenantKey:          p.covenantSaved === true ? get()._covenantKey + 1 : get()._covenantKey,
       lastTide:              p.tide ? { ...p.tide, key: (get().lastTide?.key ?? 0) + 1 } : get().lastTide,
+      lastOrbit:             p.orbit ? { ...p.orbit, key: (get().lastOrbit?.key ?? 0) + 1 } : get().lastOrbit,
       lastBossCut:           p.bossCut ?? null,
       _cutKey:               p.bossCut && p.bossCut.amount > 0 ? get()._cutKey + 1 : get()._cutKey,
       payoffAt:              p.bossCut?.paidOff === true ? Date.now() : get().payoffAt,
@@ -2542,6 +2550,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           escrow?: { heldCents: number; releasedCents: number; seizedCents: number };
           covenantSaved?: boolean;
           tide?: { stage: number; nextStage: number; undertowCents?: number; waveShooters?: number };
+          orbit?: { bleed: number; hype: number };
           crapsOutBlocked?: boolean;
           clockExpired?: boolean;
           removedCrewSlot?: number;
@@ -2581,6 +2590,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           ...(data.roll.escrow !== undefined && { escrow: data.roll.escrow }),
           ...(data.roll.covenantSaved === true && { covenantSaved: true }),
           ...(data.roll.tide !== undefined && { tide: data.roll.tide }),
+          ...(data.roll.orbit !== undefined && { orbit: data.roll.orbit }),
         };
         set({ pendingSettlement: autoSettlement });
         get().applyPendingSettlement();
@@ -2617,6 +2627,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ...(data.roll.escrow !== undefined && { escrow: data.roll.escrow }),
         ...(data.roll.covenantSaved === true && { covenantSaved: true }),
         ...(data.roll.tide !== undefined && { tide: data.roll.tide }),
+        ...(data.roll.orbit !== undefined && { orbit: data.roll.orbit }),
         ...(data.roll.crapsOutBlocked === true      && { crapsOutBlocked: true as const              }),
         ...(data.roll.clockExpired    === true      && { clockExpired:    true as const              }),
         ...(data.roll.removedCrewSlot !== undefined && { removedCrewSlot: data.roll.removedCrewSlot  }),

@@ -131,29 +131,7 @@ export const BossRoomHeader: React.FC = () => {
               </div>
             );
           })()
-        ) : isOrbitalDecay ? (
-          (() => {
-            // FB-038: the orbital bleed (the orbit gauge takes over in Phase 3).
-            const orbit = boss.ruleParams as Extract<BossRuleParams, { rule: 'ORBITAL_DECAY' }>;
-            const aloft = currentHype > 1.0;
-            return (
-              <div className="flex-none text-right">
-                <div className="font-pixel text-[7.5px] tracking-widest leading-none"
-                  style={{ color: 'rgba(200,216,232,0.60)' }}>
-                  ORBIT
-                </div>
-                <div className="font-pixel text-r-15 leading-tight"
-                  style={{ color: aloft ? '#fbbf24' : '#c8d8e8' }}>
-                  {currentHype.toFixed(2)}×
-                </div>
-                <div className="font-pixel text-[7.5px] leading-none mt-0.5"
-                  style={{ color: 'rgba(200,216,232,0.45)' }}>
-                  −{Math.round(orbit.bleedPct * 100)}% / ROLL ABOVE 1×
-                </div>
-              </div>
-            );
-          })()
-        ) : isDoubleTime ? (
+        ) : isOrbitalDecay ? null /* FB-038: the orbit gauge lives front and center */ : isDoubleTime ? (
           <SargeClock
             rollLimit={boss.ruleParams.rule === 'DOUBLE_TIME' ? boss.ruleParams.rollLimit : 6}
             labelColor={`${theme.bossStarColor}b3`}

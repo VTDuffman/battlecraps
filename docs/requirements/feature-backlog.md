@@ -1907,3 +1907,17 @@ His escrow is invisible today. Make it physical with an **offering bowl** (held 
 ### Solution
 
 His tide only raised minimum bets (simulated cost ~0). Make each stage its own challenge — **Dead Calm** (LOW: no odds), **The Undertow** (EBB/FLOW: a Seven-Out drags 35% of the bankroll), **High Tide** (a Seven-Out drowns two shooters; The Covenant cancels it). Add regal barks, a rising water line + tide dial, **The Crown Sinks** win and **The Wave** loss. Tuned with `scripts/sim/sovereign-tide-sim.mjs`. Late-game economy is being audited separately and may retune him.
+
+---
+
+## FB-038 — The Commander Boss Moments (boss pattern #7)
+
+**Type:** Boss rule redesign (sim-tuned) + presentation (barks, orbit gauge, muffled crowd, victory + defeat cinematics)
+**Area:** `apps/api/src/routes/rolls.ts`, `packages/shared/src/config.ts`, `packages/shared/src/bossBarks.ts`, `apps/web/src/components/`, `apps/web/src/hooks/useCrowdAudio.ts`
+**Status:** Designed (2026-10-14); pending implementation
+**Design:** `docs/design/fb-038-commander-boss-moments-design.md`
+**Manifest:** `docs/manifests/fb-038-commander-boss-moments-manifest.md`
+
+### Solution
+
+His Orbital Decay was backwards (simulated: cash crews −18, hype crews +3). Replace it with an **orbital bleed** — every roll, hype above 1.0× loses 20% of its height; a Seven-Out resets to 1.0× — so he counters hype builds (≈ −16) and leaves cash builds alone, mirroring The Hierophant. Theme thread: *"In space, no one can hear you scream"* — dread tagline, muffled crowd, guttering flames, an orbit gauge, **Escape Velocity** win, **Re-entry → Loss of Signal** loss ending in silence. Tuned with `scripts/sim/commander-decay-sim.mjs`.

@@ -10,22 +10,27 @@
 //   isolated each marker on its own, arriving with 1.1× the previous target (no carry)
 //   options  rebalance options — before/after clear-rate curves for each
 //   levers   one lever at a time — how much each comp / knob is worth
-//   all      chain + isolated + levers + options
+//   compare  the FB-037/038/039 boss reworks (Sovereign / Commander / Emissary) vs the rules they replaced
+//   all      chain + isolated + levers + options + compare
 // Env: SIM_N (samples per row, default 4000), SIM_SEED (deterministic RNG).
 //
 // Modelled per rolls.ts: Poseidon's Favor (before the cascade), The Vig (after),
-// Load-Bearing (Architect, after Vig), escrow (Hierophant / Emissary), The Frequency,
-// The Executive's rating / PIP / +15%, The Sovereign's tide min bet (and the 5×-min
-// max-bet floor it implies), The Commander's decay + death spiral, The Architect's
-// demolition, The Covenant, The Keepsake, Member's Jacket, hype reset per marker,
-// shooters reset per marker. Marker clear = bankroll + chips on the table ≥ target
+// Load-Bearing (Architect, after Vig), The Hierophant's escrow, The Frequency,
+// The Executive's rating / PIP / +15%, The Sovereign's tide (Dead Calm: no odds ·
+// Undertow: a 7-out takes 35% of the bankroll · High Tide: a 7-out drowns 2 shooters),
+// The Commander's orbital bleed (hype above 1.0× loses 20% after every roll), The
+// Emissary's signal lag (crew cash / hype / multipliers land a roll late, a 7-out drops
+// them) + 6-roll crew blackout after a 7-out, The Architect's demolition, The Covenant,
+// The Keepsake, Member's Jacket, hype reset per marker, shooters reset per marker.
+// `bossVersion: 'legacy'` swaps in the pre-FB-037/038/039 rules for Floors 6–8 (tide
+// minimum bets; tiered 7-out hype decay + death spiral; one-roll crew-cash delay). Marker clear = bankroll + chips on the table ≥ target
 // (the pre-roll auto-clear), checked after every roll.
 // Simplifications: fixed betting strategy, no hardways, Starter crew only, the pub
 // only charges for filling a newly opened slot (Starter = 2 × the cleared max bet),
 // Le Prix/Sarge/Foreman not simulated (the run starts on Floor 4 with their comps).
 import {
   resolveRoll, resolveCascade, settleTurn, getBaseHypeTick,
-  getMaxBet, getMinBet, getBossMinBet, GAUNTLET,
+  getMaxBet, getMinBet, getBossMinBet, getTideStage, GAUNTLET,
   doorman, grinder, aceMcgee, closeCall, evenKeel,
   lookout, momentum, handicapper, echo, oddCouple,
 } from '../../packages/shared/dist/index.js';
@@ -69,14 +74,16 @@ const BASE_LEVERS = {
   frequencyPct: 0.03,
   bossRules:    true,
   hires:        'slots',     // 'slots' = pay only to fill a new slot; 'floor' = also one hire per floor
+  bossVersion:  'current',   // 'legacy' = the Floor 6–8 boss rules before FB-037/038/039
 };
 
 const LATE = (m) => m >= 12;   // Floors 5–9
 const targetOf = (m, L) => Math.round(GAUNTLET[m].targetCents * L.targetMult(m));
 const normalMaxBet = (m, L) => Math.floor(targetOf(m, L) * L.maxBetPct(m));
 const minBetOf = (m, L) => Math.max(500, Math.round(normalMaxBet(m, L) / 6 / 500) * 500);
+// Legacy Sovereign only: the tide's raised minimum bet (removed in FB-037).
 function tideMin(m, L, stage) {
-  if (m !== BOSS.SOV || !L.bossRules) return null;
+  if (m !== BOSS.SOV || !L.bossRules || L.bossVersion !== 'legacy') return null;
   const mult = [1, 2, 3, 2][stage % 4];
   return mult <= 1 ? null : Math.round(minBetOf(m, L) * mult / 500) * 500;
 }
@@ -84,6 +91,15 @@ const maxBetOf = (m, L, stage = 0) => {
   const bm = tideMin(m, L, stage);
   return bm === null ? normalMaxBet(m, L) : Math.max(normalMaxBet(m, L), bm * 5);
 };
+
+// Current boss parameters, straight from config.
+const SOV_PARAMS  = GAUNTLET[BOSS.SOV].boss.ruleParams;    // TIDAL_SURGE
+const CMDR_PARAMS = GAUNTLET[BOSS.CMDR].boss.ruleParams;   // ORBITAL_DECAY
+const EMI_PARAMS  = GAUNTLET[BOSS.EMI].boss.ruleParams;    // TRANSMISSION_DELAY
+if (SOV_PARAMS.rule !== 'TIDAL_SURGE' || !SOV_PARAMS.stageEffects) throw new Error('Sovereign params changed — update the sim');
+if (CMDR_PARAMS.rule !== 'ORBITAL_DECAY' || typeof CMDR_PARAMS.bleedPct !== 'number') throw new Error('Commander params changed — update the sim');
+if (EMI_PARAMS.rule !== 'TRANSMISSION_DELAY' || typeof EMI_PARAMS.blackoutRolls !== 'number') throw new Error('Emissary params changed — update the sim');
+const EMPTY_PACKET = { additives: 0, hype: 0, multipliers: [] };
 
 // Sanity: the identity levers must reproduce the real config helpers.
 for (let m = 0; m <= LAST; m++) {
@@ -110,24 +126,25 @@ function playMarker(m, st) {
   let bets = { passLine: 0, odds: 0, hardways: { ...NO_HARD } };
   let counter = m === BOSS.EXEC && rules ? 2 : 0;   // getBossEntryCounter
   let pending = 0, covenantSpent = false, rolls = 0;
+  let transit = EMPTY_PACKET, dark = 0;               // current Emissary: signal in transit, blackout rolls left
   const isBoss = (b) => rules && m === b;
+  const legacy = L.bossVersion === 'legacy';
 
   const end = (cleared, death = null) => ({ cleared, bankroll, rolls, shootersUsed: startShooters - shooters, death });
 
   for (let guard = 0; guard < 5000; guard++) {
     // ── Bets ──
     if (phase === 'COME_OUT' && bets.passLine === 0) {
-      // Bet the normal table max. The Sovereign's tide lifts the table max to 5× its
-      // minimum (up to 25% of the target); 'tideMax' bets that too, the others only
-      // raise the stake when the tide minimum forces it.
+      // Bet the normal table max (legacy Sovereign: raised to her tide minimum when it forces it).
       const minBet = (isBoss(BOSS.SOV) ? tideMin(m, L, counter) : null) ?? minBetOf(m, L);
-      let maxBet = st.tideMax ? maxBetOf(m, L, isBoss(BOSS.SOV) ? counter : 0) : Math.max(normalMaxBet(m, L), minBet);
-      if (isBoss(BOSS.CMDR) && hype < 0.5) maxBet = Math.floor(maxBet / 2 / 500) * 500;
+      let maxBet = Math.max(normalMaxBet(m, L), minBet);
+      if (legacy && isBoss(BOSS.CMDR) && hype < 0.5) maxBet = Math.floor(maxBet / 2 / 500) * 500;
       if (bankroll < minBet) return end(false, 'broke');
       const stake = Math.min(maxBet, bankroll);
       bankroll -= stake; bets = { ...bets, passLine: stake };
     }
-    if (strategy !== 'pass' && phase === 'POINT_ACTIVE' && bets.odds === 0 && bets.passLine > 0) {
+    const tide = isBoss(BOSS.SOV) && !legacy ? getTideStage(SOV_PARAMS, counter).effect : null;
+    if (strategy !== 'pass' && tide !== 'DEAD_CALM' && phase === 'POINT_ACTIVE' && bets.odds === 0 && bets.passLine > 0) {
       const mult = strategy === 'maxOdds' ? ODDS[point] : 1;
       const stake = Math.min(bets.passLine * mult, bankroll);
       if (stake > 0) { bankroll -= stake; bets = { ...bets, odds: stake }; }
@@ -135,7 +152,7 @@ function playMarker(m, st) {
 
     // ── Roll ──
     const preHype = hype;
-    const slotsActive = isBoss(BOSS.CMDR) && preHype < 0.75 ? Math.max(1, st.slots - 1) : st.slots;
+    const slotsActive = legacy && isBoss(BOSS.CMDR) && preHype < 0.75 ? Math.max(1, st.slots - 1) : st.slots;
     const dice = [d6(), d6()];
     let ctx = resolveRoll(dice, {
       phase, currentPoint: point, bets, hype, mechanicFreeze: null,
@@ -150,16 +167,31 @@ function playMarker(m, st) {
     if (poseidonBlocks) {
       ctx = { ...ctx, rollResult: 'NO_RESOLUTION', resolvedBets: { ...ctx.resolvedBets, passLine: ctx.bets.passLine } };
     }
-    const cascade = resolveCascade(st.crew, ctx, () => [d6(), d6()]);
+    // Current Emissary: during the blackout the crew don't fire (and cooldowns don't move).
+    const signal = isBoss(BOSS.EMI) && !legacy;
+    const blackedOut = signal && dark > 0;
+    const cascade = resolveCascade(blackedOut ? st.crew.map(() => null) : st.crew, ctx, () => [d6(), d6()]);
     let fc = cascade.finalContext;
-    st.crew = cascade.updatedCrewSlots;
+    if (!blackedOut) st.crew = cascade.updatedCrewSlots;
     const lastSlot = cascade.events.length > 0 ? (cascade.events[cascade.events.length - 1]?.slotIndex ?? null) : null;
 
-    // Vig → Load-Bearing → escrow hold
+    // Vig → (current Emissary: signal lag) → Load-Bearing → escrow hold
     let add = fc.additives;
     if (comps.vig && add > 0) add = Math.round(add * L.vig / 100) * 100;
+    let sent = EMPTY_PACKET;
+    if (signal) {
+      // What the crew added this roll goes into transit; last roll's packet lands now
+      // (a Seven-Out drops it). The base Hype tick isn't crew, so it's never delayed.
+      const sevenOutNow = fc.rollResult === 'SEVEN_OUT';
+      sent = { additives: add, hype: Math.round((fc.hype - ctx.hype) * 10_000) / 10_000, multipliers: fc.multipliers.slice(ctx.multipliers.length) };
+      const landed = sevenOutNow ? EMPTY_PACKET : transit;
+      fc = { ...fc, hype: Math.round((ctx.hype + landed.hype) * 10_000) / 10_000, multipliers: [...ctx.multipliers, ...landed.multipliers] };
+      add = landed.additives;
+      transit = sevenOutNow ? EMPTY_PACKET : sent;
+      dark = sevenOutNow ? EMI_PARAMS.blackoutRolls : Math.max(0, dark - 1);
+    }
     if (isBoss(BOSS.ARCH) && add > 0) add = Math.floor(add * Math.pow(0.85, counter) / 100) * 100;
-    const escrowRule = isBoss(BOSS.HIERO) ? 'hiero' : isBoss(BOSS.EMI) ? 'emi' : null;
+    const escrowRule = isBoss(BOSS.HIERO) ? 'hiero' : legacy && isBoss(BOSS.EMI) ? 'emi' : null;
     const held = escrowRule ? add : 0;
     fc = { ...fc, additives: escrowRule ? 0 : add };
 
@@ -191,10 +223,14 @@ function playMarker(m, st) {
       pending = r === 'SEVEN_OUT' ? 0 : held;
     }
 
+    // Current Sovereign: Undertow — a Seven-Out drags 35% of the bankroll out to sea.
+    if (tide === 'UNDERTOW' && r === 'SEVEN_OUT') bankroll -= Math.floor(bankroll * SOV_PARAMS.undertowPct / 100) * 100;
+
     // ── Advance state ──
     rolls++;
     const sevenOut = r === 'SEVEN_OUT';
     const covenantSaves = sevenOut && comps.covenant && L.covenant && !covenantSpent;
+    const lost = tide === 'HIGH_TIDE' ? SOV_PARAMS.waveShooters : 1;   // High Tide drowns 2 (The Covenant cancels it)
     bets = fc.resolvedBets ?? bets;
     prevTotal = fc.diceTotal; shooterRolls++;
     switch (r) {
@@ -204,16 +240,18 @@ function playMarker(m, st) {
       case 'NO_RESOLUTION': if (phase === 'POINT_ACTIVE') blankStreak++; hype = fc.hype; break;
       case 'SEVEN_OUT': {
         const cascadeDelta = Math.max(0, fc.hype - preHype);
-        if (isBoss(BOSS.CMDR)) {
+        if (legacy && isBoss(BOSS.CMDR)) {
           const decay = preHype >= 2.5 ? 0.80 : preHype >= 1.5 ? 0.60 : 0.40;
           hype = Math.max(0.25, Math.round((preHype - decay + cascadeDelta) * 10_000) / 10_000);
+        } else if (isBoss(BOSS.CMDR)) {
+          hype = Math.max(1.0, 1.0 + cascadeDelta);   // no Keepsake in his fight
         } else {
           const base = comps.keepsake && L.keepsake ? 1.0 + (preHype - 1.0) / 2 : 1.0;
           hype = Math.max(1.0, base + cascadeDelta);
         }
         phase = 'COME_OUT'; point = null; streak = 0; blankStreak = 0;
         if (covenantSaves) covenantSpent = true;
-        else { shooters--; shooterRolls = 0; prevTotal = null; }
+        else { shooters = Math.max(0, shooters - lost); shooterRolls = 0; prevTotal = null; }
         break;
       }
       default: break;
@@ -222,13 +260,18 @@ function playMarker(m, st) {
 
     // Boss counters
     if (isBoss(BOSS.EXEC)) counter = Math.max(0, Math.min(4, counter + (good ? 1 : bad ? -1 : 0)));
-    if (isBoss(BOSS.SOV) && (good || bad)) counter = (counter + 1) % 4;
+    if (isBoss(BOSS.SOV) && (good || bad)) counter = (counter + 1) % 4;   // tide advances per come-out cycle
 
     // Marker clear: bankroll + chips on the table (returned) ≥ target.
     const onTable = bets.passLine + bets.odds;
     if (bankroll + onTable >= target) {
-      bankroll += onTable + (escrowRule === 'hiero' ? withHype(pending) : pending);
+      bankroll += onTable + (escrowRule === 'hiero' ? withHype(pending) : pending) + transit.additives;
       return end(true);
+    }
+
+    // Current Commander: orbital bleed — after a roll that isn't a Seven-Out, hype above 1.0× loses 20%.
+    if (!legacy && isBoss(BOSS.CMDR) && !sevenOut && hype > 1.0) {
+      hype = Math.round((1 + (hype - 1) * (1 - CMDR_PARAMS.bleedPct)) * 10_000) / 10_000;
     }
 
     // The Architect: each Seven-Out demolishes the last crew to fire (else the highest occupied slot).
@@ -260,10 +303,10 @@ const crewFor = (lineup, slots) => {
   return c;
 };
 
-function runGauntlet({ lineup, strategy, levers = BASE_LEVERS, from = FIRST, to = LAST, startBankroll, tideMax = false }) {
+function runGauntlet({ lineup, strategy, levers = BASE_LEVERS, from = FIRST, to = LAST, startBankroll }) {
   const L = { ...BASE_LEVERS, ...levers };
   const st = {
-    L, strategy, tideMax, bankroll: startBankroll ?? Math.round(targetOf(from - 1, L) * 1.1),
+    L, strategy, bankroll: startBankroll ?? Math.round(targetOf(from - 1, L) * 1.1),
     slots: slotsFor(from), crew: crewFor(lineup, slotsFor(from)), comps: compsFor(from),
   };
   const markers = [];
@@ -338,15 +381,15 @@ function isolatedRow(lineup, strategy, levers, n) {
   return row;
 }
 
-function printIsolated(n) {
+function printIsolated(n, levers = BASE_LEVERS) {
   console.log('\n## Isolated markers — arrive with 1.1× the previous target, comps/slots as earned by then');
   console.log('Boss markers show rule-on / rule-off (rule cost in parentheses).\n');
   const ms = []; for (let m = FIRST; m <= LAST; m++) ms.push(m);
   console.log(`| Lineup · bets | ${ms.join(' | ')} |`);
   console.log(`|---|${ms.map(() => '---').join('|')}|`);
   for (const strategy of Object.keys(STRATEGIES)) for (const lineup of Object.keys(LINEUPS)) {
-    const on  = isolatedRow(lineup, strategy, BASE_LEVERS, n);
-    const off = isolatedRow(lineup, strategy, { ...BASE_LEVERS, bossRules: false }, n);
+    const on  = isolatedRow(lineup, strategy, levers, n);
+    const off = isolatedRow(lineup, strategy, { ...levers, bossRules: false }, n);
     const cells = ms.map((m) => GAUNTLET[m].isBoss
       ? `${(100 * on[m]).toFixed(0)}/${(100 * off[m]).toFixed(0)} (${(100 * (on[m] - off[m])).toFixed(0)})`
       : `${(100 * on[m]).toFixed(0)}`);
@@ -455,6 +498,35 @@ function printLevers(n) {
   }
 }
 
+// ── Boss reworks: current vs legacy Floor 6–8 rules ─────────────────────────
+function printCompare(n) {
+  const LEGACY = { ...BASE_LEVERS, bossVersion: 'legacy' };
+  const at = (x, m) => (x.per[m].entered ? x.per[m].cleared / x.per[m].entered : NaN);
+  const f = (x) => (Number.isFinite(x) ? (100 * x).toFixed(1) : '—');
+  console.log('\n## Boss reworks — current (FB-037/038/039) vs legacy Floor 6–8 rules');
+  console.log('Chained runs: Finish | F5 and clear rate (given reached) at The Sovereign (17), The Commander (20), The Emissary (23).');
+  console.log('Isolated: rule cost = clear rate with that boss rule on minus off, arriving with 1.1× the previous target.\n');
+  console.log('| Lineup · bets | Finish \\| F5 legacy → current | Sovereign legacy → current | Commander | Emissary | Rule cost Sov legacy → current | Cmdr | Emi |');
+  console.log('|---|---|---|---|---|---|---|---|');
+  const combos = [['cash', 'pass'], ['mixed', 'pass'], ['hype', 'pass'], ['cash', 'odds1x'], ['mixed', 'odds1x'], ['hype', 'odds1x'], ['cash', 'maxOdds'], ['mixed', 'maxOdds']];
+  for (const [lineup, strategy] of combos) {
+    const cl = chainStats({ lineup, strategy, levers: LEGACY }, n);
+    const cc = chainStats({ lineup, strategy, levers: BASE_LEVERS }, n);
+    const fin = (x) => x.finished / (x.per[12].entered / x.n);
+    const iso = (lv, m) => {
+      let on = 0, off = 0;
+      for (let i = 0; i < n; i++) {
+        if (runGauntlet({ lineup, strategy, levers: lv, from: m, to: m }).markers[0].cleared) on++;
+        if (runGauntlet({ lineup, strategy, levers: { ...lv, bossRules: false }, from: m, to: m }).markers[0].cleared) off++;
+      }
+      return (100 * (on - off) / n).toFixed(1);
+    };
+    const pair = (m) => `${f(at(cl, m))} → ${f(at(cc, m))}`;
+    const cost = (m) => `${iso(LEGACY, m)} → ${iso(BASE_LEVERS, m)}`;
+    console.log(`| ${lineup} · ${strategy} | ${f(fin(cl))} → ${f(fin(cc))} | ${pair(BOSS.SOV)} | ${pair(BOSS.CMDR)} | ${pair(BOSS.EMI)} | ${cost(BOSS.SOV)} | ${cost(BOSS.CMDR)} | ${cost(BOSS.EMI)} |`);
+  }
+}
+
 const mode = process.argv[2] ?? 'chain';
 console.log(`N = ${N} runs per row${process.env.SIM_SEED ? `, seed ${process.env.SIM_SEED}` : ''}. Start: Floor 4 (marker 9) with 1.1× the $4k target, Vig + Jacket + Keepsake, 3 slots.`);
 if (mode === 'chain' || mode === 'all') {
@@ -466,12 +538,8 @@ if (mode === 'chain' || mode === 'all') {
   for (const [lineup, strategy] of [['cash', 'pass'], ['mixed', 'pass'], ['hype', 'pass']]) {
     printChain(`${lineup} crew · ${STRATEGIES[strategy]} · no boss rules`, chainStats({ lineup, strategy, levers: { bossRules: false } }));
   }
-  console.log('\n### The Sovereign, betting the tide-raised table max (5× the tide minimum, up to 25% of the target)');
-  for (const lineup of Object.keys(LINEUPS)) {
-    const s = chainStats({ lineup, strategy: 'pass', tideMax: true });
-    console.log(`- ${lineup} · pass: clears marker 17 ${pct(s.per[17].cleared / s.per[17].entered)} given reached`);
-  }
 }
 if (mode === 'isolated' || mode === 'all') printIsolated(Math.max(500, Math.floor(N / 2)));
 if (mode === 'levers'   || mode === 'all') printLevers(Math.floor(N / 2));
 if (mode === 'options'  || mode === 'all') printOptions(N);
+if (mode === 'compare'  || mode === 'all') printCompare(N);

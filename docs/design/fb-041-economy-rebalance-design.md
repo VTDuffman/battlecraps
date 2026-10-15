@@ -1,6 +1,6 @@
 # FB-041 — Economy Rebalance: Opening Fix, Crew-Cash Taper, Crew Hype ×1.5
 
-> **Status:** Planned (2026-10-15). Not started.
+> **Status:** Planned (2026-10-15). Decisions D1–D4 made 2026-10-15. Not started.
 > **Evidence:** `docs/design/gauntlet-difficulty-audit.md` (all numbers below come from it) and the sim at `scripts/sim/gauntlet-economy-sim.mjs`.
 > **Manifest:** `docs/manifests/fb-041-economy-rebalance-manifest.md`
 
@@ -41,7 +41,7 @@ The tutorial run is unchanged ($30, no crew, scripted dice). Its $30 start exist
 
 ### Design: reuse the pub, at marker 0
 - **`POST /runs`:** when `user.tutorialCompleted`, create the run with `bankrollCents: 4000`, `status: 'TRANSITION'`, `currentMarkerIndex: 0`. The client then opens the existing PubScreen before the table.
-- **`GET /runs/:id/pub-draft`:** at marker 0 (no cleared marker), draft **Starters only**, three offers like a normal visit. Nothing is guaranteed.
+- **`GET /runs/:id/pub-draft`:** at marker 0 (no cleared marker), draft **3 random crew from the Starter roster only**, exactly like a normal pub visit: same screen, saved draft, never re-rolled. No unlocked or guaranteed crew at this pick.
 - **`POST /runs/:id/recruit`:** at marker 0, **hire cost is 0**.
   - Skip everything that keys off `currentMarkerIndex - 1`: the cleared marker, comp slot grants, boss entry and the Le Prix charm.
   - Skipping is allowed (the player keeps the $40, no crew).
@@ -50,7 +50,7 @@ The tutorial run is unchanged ($30, no crew, scripted dice). Its $30 start exist
   - Verify the TransitionOrchestrator order: today a new run plays the title → marker intro.
 - **Copy:** `GameOverScreen` "NEW RUN · $30 BANKROLL" → $40 · ONE CREW ON THE HOUSE; How to Play "Starting bankroll $30.00". Sal's tutorial text is unchanged; the tutorial still starts at $30.
 
-**Fallback (decision D1):** if a marker-0 pub is too disruptive for the transition flow, seat a random Starter automatically and announce it with a toast. Simpler, but the player doesn't choose. The sim's numbers assume the player gets a useful first crew member; a random Starter may land a little lower.
+**Decided (D1):** the player picks from 3 random Starters on the normal pub screen. The sim assumed the player gets the crew member their build wants; a 3-from-Starters draft may land a few points lower, and Phase 4 checks this.
 
 ---
 
@@ -62,7 +62,28 @@ The tutorial run is unchanged ($30, no crew, scripted dice). Its $30 start exist
 |---|---|---|---|---|---|---|
 | Crew cash scale | ×1.0 | ×0.8 | ×0.7 | ×0.6 | ×0.5 | ×0.45 |
 
-**Simulated** (finish given Floor 5): cash 72% → 45%, mixed 73% → 53%. With Change 3: mixed 63%, cash 45%. Use the steeper A+ curve (×0.7 / 0.6 / 0.5 / 0.45 / 0.4) only if the playtest shows the late game still soft (decision D3).
+**Simulated** (finish given Floor 5): cash 72% → 45%, mixed 73% → 53%. With Change 3: mixed 63%, cash 45%.
+
+**Decided (D3):** ship the gentler curve above. The steeper curve below is already analysed; switching is a one-line change.
+
+> ### 🔧 Ready to pull: the steeper taper (A+)
+> If playtests say the late game is still too soft, swap this curve into `CREW_CASH_SCALE_BY_FLOOR` (shared `config.ts`). Nothing else changes, and no new analysis is needed.
+>
+> | Floor | 1–4 | 5 | 6 | 7 | 8 | 9 |
+> |---|---|---|---|---|---|---|
+> | Shipped (A) | ×1.0 | ×0.8 | ×0.7 | ×0.6 | ×0.5 | ×0.45 |
+> | **Steeper (A+)** | ×1.0 | **×0.7** | **×0.6** | **×0.5** | **×0.45** | **×0.4** |
+>
+> Simulated with crew Hype ×1.5 (audit §4–§5, N=4000):
+>
+> | | Shipped A + H | Steeper A+ + H |
+> |---|---|---|
+> | Finish given Floor 5 — mixed · pass | 63% | 58% |
+> | Finish given Floor 5 — cash · pass | 45% | 37% |
+> | Finish given Floor 5 — mixed · 1× odds | 56% | 50% |
+> | Whole run (with the opening fix) — mixed / cash | 20% / 15% | 19% / 12% |
+>
+> Floors 1–4 are unaffected; reaching Floor 4 stays ~40%. The steeper curve widens the gap between mixed and cash crews (+21 points vs +18), in line with "mixed is best". After FB-041 ships, preview it by setting the A+ values and running the sim's `packages` mode.
 
 ### Design: one shared number, injected into the cascade
 - **Shared `config.ts`:**
@@ -106,14 +127,14 @@ The tutorial run is unchanged ($30, no crew, scripted dice). Its $30 start exist
 
 ---
 
-## Decisions for Mike (Phase 0)
+## Decisions (made 2026-10-15)
 
-| # | Question | Recommendation |
+| # | Question | Decision |
 |---|---|---|
-| D1 | Opening pick: player chooses from a Starter draft (pub at marker 0), or a random free Starter? | Player chooses (reuses the pub) |
-| D2 | Unlockable Hype crew values (Holly, Drunk Uncle, Lucky Charm) | As in the table; keep Drunk Uncle's −0.25 and Lucky Charm's +1.0 |
-| D3 | Taper curve: A (×0.8 → ×0.45) or the steeper A+ (×0.7 → ×0.4)? | A; revisit after playtests |
-| D4 | Ship together or in two releases? | Two: Change 1 first (playtesters' pain), then Changes 2 + 3 together. Change 3 without Change 2 makes the late game easier. |
+| D1 | Opening pick: player chooses, or a random free Starter? | Player picks from **3 random Starters** on the normal pub screen |
+| D2 | Unlockable Hype crew values (Holly, Drunk Uncle, Lucky Charm) | As in the table: Holly +0.25, Nervous Intern +0.45, Drunk Uncle +0.75 / −0.25, Lucky Charm unchanged |
+| D3 | Taper curve: A (×0.8 → ×0.45) or the steeper A+ (×0.7 → ×0.4)? | A. A+ is analysed and ready to pull (see Change 2) |
+| D4 | Ship together or in two releases? | Two: Change 1 first, then Changes 2 + 3 together (Change 3 alone makes the late game easier) |
 
 ---
 

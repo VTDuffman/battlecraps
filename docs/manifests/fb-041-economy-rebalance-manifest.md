@@ -22,14 +22,18 @@
 **Goal:** lock D1–D4 from the design doc and record today's sim baseline, for before/after comparison.
 
 **Steps:**
-1. Mike answers D1 (opening pick), D2 (unlockable Hype values), D3 (taper curve) and D4 (release split).
+1. ✅ Decisions made 2026-10-15:
+   - D1: the player picks from 3 random Starters.
+   - D2: Hype values as in the table.
+   - D3: the gentler taper A (A+ is ready to pull).
+   - D4: two releases.
 2. Run and save the baseline outputs (scratch, not committed):
    - `npm run build -w @battlecraps/shared`
    - `SIM_N=4000 node scripts/sim/gauntlet-economy-sim.mjs early`
    - `… options`
    - `… packages`
 
-🛑 **Gate:** decisions written into the design doc's Decisions table.
+🛑 **Gate:** baseline saved.
 
 ---
 
@@ -53,7 +57,7 @@
    - Otherwise: unchanged ($30, IDLE_TABLE).
    - Add `OPENING_BANKROLL_CENTS` (4000) and `TUTORIAL_BANKROLL_CENTS` (3000) to shared `config.ts`; no magic numbers.
 2. **Server, draft:** `GET /runs/:id/pub-draft` at `currentMarkerIndex === 0`.
-   - Draft from Starters only (skip the cleared-marker rarity tier and guaranteed unlocks).
+   - Draft **3 random crew from the Starter roster only** (`isStarterRoster`): the same count and screen as a normal visit. No cleared-marker rarity tier, no unlocked crew, no guaranteed unlocks.
    - Save it to `pub_draft` like any visit; it must not re-roll.
 3. **Server, recruit:** `POST /runs/:id/recruit` at marker 0.
    - `hireCost = 0`.
@@ -78,7 +82,7 @@
    - Skip → $40, no crew.
    - Hiring a non-draft crew → 4xx.
 
-**Prompt:** "Implement FB-041 Phase 1 per `docs/design/fb-041-economy-rebalance-design.md` § Change 1. Post-tutorial `POST /runs` creates a run at marker 0 with $40 (`OPENING_BANKROLL_CENTS`) in status TRANSITION. Tutorial-pending runs stay $30 IDLE_TABLE (`TUTORIAL_BANKROLL_CENTS`). At marker 0: pub-draft offers Starters only (saved, never re-rolled); recruit costs $0 and skips all logic keyed off the cleared marker (comp slots, boss entry, charm); skip allowed. Client: PubScreen 'opening' mode ('FIRST ROUND'S ON THE HOUSE', FREE price) before the marker 0 intro; refresh-safe. Update the $30 copy in GameOverScreen and BattleCrapsRulesSection. Add the integration tests listed in the manifest."
+**Prompt:** "Implement FB-041 Phase 1 per `docs/design/fb-041-economy-rebalance-design.md` § Change 1. Post-tutorial `POST /runs` creates a run at marker 0 with $40 (`OPENING_BANKROLL_CENTS`) in status TRANSITION. Tutorial-pending runs stay $30 IDLE_TABLE (`TUTORIAL_BANKROLL_CENTS`). At marker 0: pub-draft offers 3 random Starter-roster crew only (saved, never re-rolled; no unlocked or guaranteed crew); recruit costs $0 and skips all logic keyed off the cleared marker (comp slots, boss entry, charm); skip allowed. Client: PubScreen 'opening' mode ('FIRST ROUND'S ON THE HOUSE', FREE price) before the marker 0 intro; refresh-safe. Update the $30 copy in GameOverScreen and BattleCrapsRulesSection. Add the integration tests listed in the manifest."
 
 🛑 **Gate:**
 - Locally: a fresh account plays the tutorial unchanged.
@@ -102,7 +106,9 @@
 - `@apps/web/src/components/CrewPortrait.tsx`
 
 **Steps:**
-1. **`config.ts`:** `CREW_CASH_SCALE_BY_FLOOR` (Floors 1–9) and `getCrewCashBaseCents(markerIndex)` = `Math.floor(target × 0.10 × scale)`, guarded for out-of-range indices. Export both from `index.ts`.
+1. **`config.ts`:** `CREW_CASH_SCALE_BY_FLOOR` (Floors 1–9, the shipped curve A).
+   - Right above it, add a comment with the steeper A+ curve, ready to swap in: `// Steeper A+ (analysed in FB-041, ready to pull): 1, 1, 1, 1, 0.7, 0.6, 0.5, 0.45, 0.4 — see fb-041 design doc § Change 2`.
+   - Add `getCrewCashBaseCents(markerIndex)` = `Math.floor(target × 0.10 × scale)`, guarded for out-of-range indices. Export both from `index.ts`.
 2. **`types.ts` / `crapsEngine.ts`:** add `crewCashBaseCents` to `TurnContext`, populated from a new optional `resolveRoll` state field (default `floor(markerTargetCents × 0.10)` so old callers and tests keep today's math).
 3. **`rolls.ts`:** pass `crewCashBaseCents: getCrewCashBaseCents(run.currentMarkerIndex)` at the single `resolveRoll` call.
 4. **12 crew files:** replace `const maxBet = Math.floor(ctx.markerTargetCents * 0.10);` with `const maxBet = ctx.crewCashBaseCents;`. Keep every `ADDITIVE_MULT` and the rounding unchanged.
@@ -159,7 +165,8 @@
    - Reach Floor 4: 35–45% for cash/mixed crews.
    - Finish given Floor 5: mixed 55–65%, cash 40–50%.
    - Whole run: ~15–20%.
-3. **If outside a band, tune only `CREW_CASH_SCALE_BY_FLOOR`** (the single knob) and repeat.
+3. **If outside a band, tune only `CREW_CASH_SCALE_BY_FLOOR`** (the single knob) and repeat. If the late game is too soft, swap in the pre-analysed steeper A+ curve first (design doc § Change 2).
+   - **Opening check:** the sim's pub hires the lineup's next crew member. Add a first hire drawn from 3 random Starters to the harness, and confirm reaching Floor 4 still lands at 35–45%.
 4. Append the before/after table to `gauntlet-difficulty-audit.md`.
 
 🛑 **Gate:** all bands met, then Release 2.

@@ -97,7 +97,8 @@
 - **Tests:** `opening.test.ts` (8): tutorial $30 at the table; post-tutorial $40 at the pub; Starter-only draft, free, stable; unlocked/guaranteed ignored; free hire; skip; non-offered → 403; marker-1 pub still charges.
 - **Results:** shared 489, integration 159.
 - **Side effect:** Lucky Charm's "solo floor" unlock becomes reachable on Floor 1, since a run can start with exactly one crew member.
-- **Playtest fix (2026-10-15):** the tutorial run's first pub (after marker 0) offered Uncommon crew. Now `isStarterOnlyPub` (markers 0–1) makes a run's first pub Starter-only at either point. Guaranteed unlocks stay queued for the next pub. +2 tests; the late-unlock draft test moved to marker 2. Integration 161. ---
+- **Playtest fix (2026-10-15):** the tutorial run's first pub (after marker 0) offered Uncommon crew. Now `isStarterOnlyPub` (markers 0–1) makes a run's first pub Starter-only at either point. Guaranteed unlocks stay queued for the next pub. +2 tests; the late-unlock draft test moved to marker 2. Integration 161.
+- **✅ Gate passed (2026-10-15, Mike, local playtest):** the tutorial plays as before and takes the player to the second marker after the pub. Later runs open on a free crew pick and start on Floor 1 with $40. ---
 
 🛑 **Gate:**
 - Locally: a fresh account plays the tutorial unchanged.

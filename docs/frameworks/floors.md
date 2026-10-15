@@ -234,7 +234,7 @@ Mechanics are documented in full in [`boss_framework.md`](boss_framework.md), wh
 | `TRIBUTE` | The Hierophant (5) | Crew cash held until a win, paid with Hype; 75% seized on Seven-Out |
 | `TIDAL_SURGE` | The Sovereign (6) | Tide LOW/EBB/HIGH/FLOW: Dead Calm (no odds) / Undertow (7-out takes 35%) / High Tide (7-out drowns 2) |
 | `ORBITAL_DECAY` | The Commander (7) | Orbital bleed: Hype above 1.0× loses 20% of its height every roll; a 7-out resets to 1.0× |
-| `TRANSMISSION_DELAY` | The Emissary (8) | Crew cash held one roll; all of it evaporates on Seven-Out |
+| `TRANSMISSION_DELAY` | The Emissary (8) | Signal lag: crew effects land one roll late; a 7-out drops them and the crew go dark for 6 rolls |
 | `CONVERGENCE` | The Architect (9) | Each Seven-Out removes the last crew member to fire; 15% compounding cash cut |
 
 Retired rule types kept in the union for historical safety: `FIRST_CONTACT_PROTOCOL` (old Emissary — naturals nullified). `FOURS_INSTANT_LOSS` (old Executive) has been removed.
@@ -669,7 +669,7 @@ card, docs) lives in [`boss_framework.md` § Adding a New Boss](boss_framework.m
 **Intro lines:**
 1. The table is here. The felt, the chips, the dice — all correct. The geometry of the room is not correct. The light arrives from the wrong direction.
 2. The Emissary studied the transmission for eleven years. It reconstructed the game faithfully, except for one concept it could not translate.
-3. What it couldn't translate was delay. Your crew's earnings don't pay out immediately — they arrive one roll later. Seven-out before then, and the signal is lost entirely.
+3. What it couldn't translate was delay. Everything your crew does arrives one roll later. Seven out and the signal is lost entirely — and your crew go dark.
 
 ### Markers
 
@@ -685,18 +685,18 @@ card, docs) lives in [`boss_framework.md` § Adding a New Boss](boss_framework.m
 |---|---|
 | **Title** | First Point of Contact |
 | **Venue** | The Signal — The Receiving Chamber |
-| **Teaser** | The Emissary understands the game. It simply can't process your crew's earnings in real time. |
+| **Teaser** | The Emissary understands the game. It simply can't hear your crew in real time — and when the shooter dies, it can't hear them at all. |
 | **Dread tagline** | WE SHOULD NOT HAVE ANSWERED. |
 | **Rule** | `TRANSMISSION_DELAY` |
 | **Comp reward** | `THE_FREQUENCY` — The Frequency: Come-out natural 7s and 11s award a flat bonus equal to 3% of the current marker target for the rest of the run. |
 | **Comp perk ID** | 8 |
 
-**Rule effect:** Crew cash bonuses are held one roll. On a Seven-Out the whole escrow — including that roll's bonuses — evaporates. Naturals resolve normally.
+**Rule effect:** Signal lag — every crew effect (cash bonuses, Hype boosts, multipliers) lands one roll late. A Seven-Out drops everything in transit and the whole crew goes dark (doesn't fire) for 6 rolls.
 
 **Entry lines:**
 > The table is here. The felt, the chips, the dice. All correct.
 > Your crew's signals arrive one step behind. Everything echoes.
-> It has no concept of free money. When the shooter dies, the echo dies with them.
+> Seven out and the signal is lost. Your crew will not hear you for a while.
 
 **Victory quote:** *"[The entity pauses for 0.3 seconds. This is the equivalent of applause.]"*
 

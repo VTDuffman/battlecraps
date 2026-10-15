@@ -381,12 +381,12 @@ export const FLOORS: readonly FloorConfig[] = [
     introLines: [
       'The table is here. The felt, the chips, the dice — all correct. The geometry of the room is not correct. The light arrives from the wrong direction.',
       'The Emissary studied the transmission for eleven years. It reconstructed the game faithfully, except for one concept it could not translate.',
-      "What it couldn't translate was delay. Your crew's earnings don't pay out immediately — they arrive one roll later. Seven-out before then, and the signal is lost entirely.",
+      "What it couldn't translate was delay. Everything your crew does arrives one roll later. Seven out and the signal is lost entirely — and your crew go dark.",
     ],
     bossName:   'The Emissary',
     bossTitle:  'First Point of Contact',
     bossVenue:  'The Signal — The Receiving Chamber',
-    bossTeaser: "The Emissary understands the game. It simply can't process your crew's earnings in real time.",
+    bossTeaser: "The Emissary understands the game. It simply can't hear your crew in real time — and when the shooter dies, it can't hear them at all.",
     atmosphere: 'alien',
   },
 

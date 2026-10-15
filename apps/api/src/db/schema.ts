@@ -273,6 +273,15 @@ export const runs = pgTable(
      */
     covenantSpentMarker: integer('covenant_spent_marker'),
 
+    /**
+     * FB-039: The Emissary's signal lag — the crew effects from the last roll,
+     * in transit, landing on the next roll: { additives (cents), hype, multipliers }.
+     * NULL when nothing is in transit (and outside his fight).
+     */
+    signalTransit: jsonb('signal_transit').$type<{ additives: number; hype: number; multipliers: number[] } | null>(),
+    /** FB-039: rolls left in The Emissary's crew blackout after a Seven-Out (0 = in contact). */
+    signalDarkRolls: integer('signal_dark_rolls').notNull().default(0),
+
     // ── Shooter lives ──────────────────────────────────────────────────────
 
     /** Remaining shooter lives. Game over at 0. Starts at 5. */

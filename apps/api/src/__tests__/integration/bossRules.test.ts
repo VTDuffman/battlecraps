@@ -600,46 +600,105 @@ describe('Crew-bonus escrow', () => {
     expectNet(body, 357_900 + 215_000);   // Pass Line profit × 2.15 + the offering × 2.15
   });
 
-  it('Emissary: a seven-out evaporates ALL escrow, including bonuses earned on that roll', async () => {
-    // Marker 23: target 1_500_000_000¢ → max bet 150_000_000¢. Min bet 25_000_000¢.
+  it('Emissary (FB-039): a bonus the crew earns now lands on the NEXT roll', async () => {
+    // Marker 23: target 1_500_000_000¢ → max bet 150_000_000¢. Ace = 0.40 × max = 60_000_000¢.
     const run = await createRun(userId, {
-      currentMarkerIndex:   23,
-      bankrollCents:        200_000_000,
-      status:               'POINT_ACTIVE',
-      phase:                'POINT_ACTIVE',
-      currentPoint:         6,
-      bets:                 PASS_ONLY(25_000_000),
-      crewSlots:            [ACE, null, null, null, null],
-      pendingAdditiveCents: 10_000_000,
+      currentMarkerIndex: 23, bankrollCents: 200_000_000, status: 'POINT_ACTIVE', phase: 'POINT_ACTIVE',
+      currentPoint: 6, bets: PASS_ONLY(25_000_000), crewSlots: [ACE, null, null, null, null],
     });
-
-    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(25_000_000), 1, 6);
+    // 1+2 = 3 → blank; Ace fires on the 1 — into transit, nothing paid now.
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(25_000_000), 1, 2);
     expect(status, JSON.stringify(body)).toBe(200);
     const r = body['run'] as Record<string, unknown>;
     expect(r['bankrollCents']).toBe(200_000_000);
-    expect(r['pendingAdditiveCents']).toBe(0);
+    expect(r['signalTransit']).toEqual({ additives: 60_000_000, hype: 0, multipliers: [] });
+    const signal = (body['roll'] as Record<string, unknown>)['signal'] as Record<string, unknown>;
+    expect(signal['sent']).toEqual({ additives: 60_000_000, hype: 0, multipliers: [] });
+    expect(signal['landed']).toEqual({ additives: 0, hype: 0, multipliers: [] });
   });
 
-  it('Emissary: bonuses held on the roll that clears the marker are paid out', async () => {
+  it('Emissary (FB-039): what was in transit lands — cash and Hype', async () => {
     const run = await createRun(userId, {
-      currentMarkerIndex: 23,
-      bankrollCents:      1_450_000_000,
-      status:             'POINT_ACTIVE',
-      phase:              'POINT_ACTIVE',
-      currentPoint:       6,
-      bets:               PASS_ONLY(25_000_000),
-      crewSlots:          [SHARK, null, null, null, null],
+      currentMarkerIndex: 23, bankrollCents: 200_000_000, status: 'POINT_ACTIVE', phase: 'POINT_ACTIVE',
+      currentPoint: 6, bets: PASS_ONLY(25_000_000), crewSlots: [null, null, null, null, null],
+      signalTransit: { additives: 60_000_000, hype: 0.5, multipliers: [] },
     });
+    // 2+3 = 5 → blank. Lands: 60_000_000 × Hype (1.0 + 0.5 landing now = 1.5).
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(25_000_000), 2, 3);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['bankrollCents']).toBe(290_000_000);
+    expect(r['hype']).toBeCloseTo(1.5, 4);
+    expect(r['signalTransit']).toEqual({ additives: 0, hype: 0, multipliers: [] });
+  });
 
-    // 4+2 = 6 → POINT_HIT. Pass pays stake 25M + floor(25M × 1.15) = 53_750_000 → 1_503_750_000,
-    // which clears the 1_500_000_000 target. Shark's 97_500_000 held this roll must be paid too.
+  it('Emissary (FB-039): a Seven-Out drops the signal and blacks the crew out for 6 rolls', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: 23, bankrollCents: 200_000_000, status: 'POINT_ACTIVE', phase: 'POINT_ACTIVE',
+      currentPoint: 6, bets: PASS_ONLY(25_000_000), crewSlots: [ACE, null, null, null, null],
+      signalTransit: { additives: 60_000_000, hype: 0, multipliers: [] },
+    });
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(25_000_000), 3, 4);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const r = body['run'] as Record<string, unknown>;
+    expect(r['bankrollCents']).toBe(200_000_000);   // nothing landed
+    expect(r['signalTransit']).toBeNull();
+    expect(r['signalDarkRolls']).toBe(6);
+    const signal = (body['roll'] as Record<string, unknown>)['signal'] as Record<string, unknown>;
+    expect(signal['dropped']).toBe(true);
+    expect(signal['darkRolls']).toBe(6);
+  });
+
+  it('Emissary (FB-039): while the crew are dark they do not fire at all', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: 23, bankrollCents: 200_000_000, status: 'POINT_ACTIVE', phase: 'POINT_ACTIVE',
+      currentPoint: 6, bets: PASS_ONLY(25_000_000), crewSlots: [ACE, null, null, null, null],
+      signalDarkRolls: 3,
+    });
+    // 1+2 — Ace would fire on the 1, but there's no signal.
+    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(25_000_000), 1, 2);
+    expect(status, JSON.stringify(body)).toBe(200);
+    const roll = body['roll'] as Record<string, unknown>;
+    expect(roll['cascadeEvents']).toEqual([]);
+    const signal = roll['signal'] as Record<string, unknown>;
+    expect(signal['wasDark']).toBe(true);
+    expect(signal['darkRolls']).toBe(2);
+    expect(signal['sent']).toEqual({ additives: 0, hype: 0, multipliers: [] });
+    // Ace's cooldown didn't move while dark.
+    const slots = (body['run'] as Record<string, unknown>)['crewSlots'] as ({ crewId: number; cooldownState: number } | null)[];
+    expect(slots[0]).toEqual({ crewId: 17, cooldownState: 0 });
+  });
+
+  it('Emissary (FB-039): contact returns after the last dark roll', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: 23, bankrollCents: 200_000_000, status: 'POINT_ACTIVE', phase: 'POINT_ACTIVE',
+      currentPoint: 6, bets: PASS_ONLY(25_000_000), crewSlots: [ACE, null, null, null, null],
+      signalDarkRolls: 1,
+    });
+    const first = await rollWithDice(app, run.id, PASS_ONLY(25_000_000), 2, 3);
+    expect(((first.body['roll'] as Record<string, unknown>)['signal'] as Record<string, unknown>)['darkRolls']).toBe(0);
+    // Next roll: Ace fires again (into transit).
+    const second = await rollWithDice(app, run.id, PASS_ONLY(25_000_000), 1, 2);
+    expect(second.status, JSON.stringify(second.body)).toBe(200);
+    const signal = (second.body['roll'] as Record<string, unknown>)['signal'] as Record<string, unknown>;
+    expect(signal['wasDark']).toBe(false);
+    expect((signal['sent'] as Record<string, unknown>)['additives']).toBe(60_000_000);
+  });
+
+  it('Emissary (FB-039): the roll that clears the marker pays the cash in transit', async () => {
+    const run = await createRun(userId, {
+      currentMarkerIndex: 23, bankrollCents: 1_450_000_000, status: 'POINT_ACTIVE', phase: 'POINT_ACTIVE',
+      currentPoint: 6, bets: PASS_ONLY(25_000_000), crewSlots: [SHARK, null, null, null, null],
+    });
+    // 4+2 = 6 → POINT_HIT clears the marker; Shark's 97_500_000 sent this roll is paid with the clear.
     const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(25_000_000), 4, 2);
     expect(status, JSON.stringify(body)).toBe(200);
     const r = body['run'] as Record<string, unknown>;
     expect(r['status']).toBe('TRANSITION');
     // (1_503_749_900, not …750_000: settleTurn loses $1 to float rounding on 25M × 1.15 — KI-079.)
     expect(r['bankrollCents']).toBe(1_601_249_900);
-    expect(r['pendingAdditiveCents']).toBe(0);
+    expect(r['signalTransit']).toBeNull();
+    expect(r['signalDarkRolls']).toBe(0);
   });
 });
 

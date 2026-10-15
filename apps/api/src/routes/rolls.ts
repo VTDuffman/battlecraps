@@ -287,6 +287,21 @@ interface WsTurnSettledPayload {
   tide?: TidePayload;
   /** FB-038: The Commander's orbital bleed — hype lost after this roll (0 when none). */
   orbit?: { bleed: number; hype: number };
+  /** FB-039: The Emissary's signal — what landed, what's now in transit, a drop, the blackout. */
+  signal?: SignalPayload;
+}
+
+interface SignalPayload {
+  /** Crew effects that landed on this roll (sent last roll). */
+  landed:    { additives: number; hype: number; multipliers: number[] };
+  /** Crew effects sent this roll, in transit to the next. */
+  sent:      { additives: number; hype: number; multipliers: number[] };
+  /** A Seven-Out dropped everything in transit. */
+  dropped:   boolean;
+  /** Rolls of crew blackout left after this roll (0 = in contact). */
+  darkRolls: number;
+  /** The crew were dark on this roll (didn't fire). */
+  wasDark:   boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -454,9 +469,11 @@ async function rollHandler(
     const rawBankroll    = postBetBankroll + remainingBets;
     // FB-036: anything still held in escrow is paid out with the clear — the
     // Hierophant's offering with Hype (as on any win), the Emissary's flat.
-    const escrowOnClear  = activeBossRule === 'TRIBUTE' && isBossMarker(run.currentMarkerIndex)
+    const escrowOnClear  = (activeBossRule === 'TRIBUTE' && isBossMarker(run.currentMarkerIndex)
       ? Math.floor(run.pendingAdditiveCents * run.hype / 100) * 100
-      : run.pendingAdditiveCents;
+      : run.pendingAdditiveCents)
+      // FB-039: the Emissary's crew cash in transit lands with the clear.
+      + (((run.signalTransit as { additives: number } | null)?.additives) ?? 0);
     const bankrollDelta  = sumBets(run.bets as Bets) + escrowOnClear;   // bets returned + escrow paid
     const isLastMarker   = run.currentMarkerIndex >= MARKER_TARGETS.length - 1;
     const nextStatus     = isLastMarker ? 'GAME_OVER' : 'TRANSITION';
@@ -477,6 +494,8 @@ async function rollHandler(
         bossPointHits:         getBossEntryCounter(nextMkrIndex),
         bossProgressCents:     0,
         pendingAdditiveCents:  0,
+        signalTransit:         null,
+        signalDarkRolls:       0,
         pointPhaseBlankStreak: 0,
         mechanicFreeze:        null,
         hype:                  run.hype,
@@ -702,8 +721,16 @@ async function rollHandler(
     ? { ...poseidonCtx, bossSevenOutCount: run.bossPointHits }
     : poseidonCtx;
 
-  const cascadeResult = resolveCascade(crewSlots, preCascadeCtx, rollDice, bossHooks, bossParams, bossState);
-  const { finalContext: cascadeContext, events, updatedCrewSlots } = cascadeResult;
+  // ── FB-039: The Emissary — the crew blackout ──────────────────────────────
+  // After a Seven-Out the crew are out of contact for blackoutRolls rolls:
+  // they don't fire at all (and their cooldowns don't move).
+  const signalDark = isTransmissionDelay && (run.signalDarkRolls as number) > 0;
+  const cascadeResult = resolveCascade(
+    signalDark ? crewSlots.map(() => null) : crewSlots,
+    preCascadeCtx, rollDice, bossHooks, bossParams, bossState,
+  );
+  const { finalContext: cascadeContext, events } = cascadeResult;
+  const updatedCrewSlots = signalDark ? crewSlots : cascadeResult.updatedCrewSlots;
 
   // ── DOUBLE_TIME (Sarge): the roll clock — FB-030 ─────────────────────────
   // bossPointHits = point-phase rolls already used. If this roll is a blank on
@@ -829,9 +856,37 @@ async function rollHandler(
   // Applied post-cascade so individual crew execute() functions stay unaware.
   // Rounds to the nearest dollar (100 cents) per project convention.
   const hasTheVig = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.THE_VIG);
-  const viggedContext = hasTheVig && finalContext.additives > 0
+  const viggedRaw = hasTheVig && finalContext.additives > 0
     ? { ...finalContext, additives: Math.round(finalContext.additives * 1.2 / 100) * 100 }
     : finalContext;
+
+  // ── 8c. FB-039: The Emissary — signal lag ─────────────────────────────────
+  // The crew fire as normal (dice / rescue effects act on this roll), but what
+  // they ADD — cash bonuses, hype boosts, multipliers — goes into transit and
+  // lands on the NEXT roll; last roll's packet lands now instead. A Seven-Out
+  // drops everything in transit (and starts the blackout, below).
+  type SignalPacket = { additives: number; hype: number; multipliers: number[] };
+  const EMPTY_PACKET: SignalPacket = { additives: 0, hype: 0, multipliers: [] };
+  const signalSevenOut = isTransmissionDelay && viggedRaw.rollResult === 'SEVEN_OUT';
+  const signalSent: SignalPacket = isTransmissionDelay
+    ? {
+        additives:   viggedRaw.additives,
+        hype:        Math.round((viggedRaw.hype - preCascadeCtx.hype) * 10_000) / 10_000,
+        multipliers: viggedRaw.multipliers.slice(preCascadeCtx.multipliers.length),
+      }
+    : EMPTY_PACKET;
+  const signalInTransit: SignalPacket = isTransmissionDelay
+    ? ((run.signalTransit as SignalPacket | null) ?? EMPTY_PACKET)
+    : EMPTY_PACKET;
+  const signalLanded: SignalPacket = signalSevenOut ? EMPTY_PACKET : signalInTransit;
+  const viggedContext = isTransmissionDelay
+    ? {
+        ...viggedRaw,
+        additives:   signalLanded.additives,
+        hype:        Math.round((preCascadeCtx.hype + signalLanded.hype) * 10_000) / 10_000,
+        multipliers: [...preCascadeCtx.multipliers, ...signalLanded.multipliers],
+      }
+    : viggedRaw;
 
   // ── 8f. CONVERGENCE (Load-Bearing) — cumulative 15% additive penalty per removed slot ─
   // bossPointHits = number of slots already removed this boss fight (0–5).
@@ -853,15 +908,9 @@ async function rollHandler(
     ? { ...loadBearingContext, additives: 0 }
     : loadBearingContext;
 
-  // ── 8e. TRANSMISSION_DELAY (Emissary) — hold additives; don't pass to settleTurn ─
-  // Additives are zeroed for settlement this roll; stored in pendingAdditiveCents
-  // for release next roll. Unlike Hierophant (held until a win), TD evaporates
-  // 100% of the escrow when the shooter dies. Hierophant and TD are mutually exclusive
-  // (different floors) so chaining escrowContext here is safe.
-  const tdEscrowHeld = isTransmissionDelay ? escrowContext.additives : 0;
-  const tdEscrowContext = isTransmissionDelay
-    ? { ...escrowContext, additives: 0 }
-    : escrowContext;
+  // (8e. The Emissary's old one-roll cash escrow was replaced by the signal lag
+  // above — FB-039.)
+  const tdEscrowContext = escrowContext;
 
   // ── 9. Settle the turn ─────────────────────────────────────────────────────
   //
@@ -923,7 +972,7 @@ async function rollHandler(
   // roll's; on a 7-out the whole escrow (previous AND this roll's) evaporates.
   // Hierophant and TD are mutually exclusive (different floors).
   const isEscrowSevenOut  = finalContext.rollResult === 'SEVEN_OUT';
-  const heldThisRoll      = isTransmissionDelay ? tdEscrowHeld : escrowHeld;
+  const heldThisRoll      = escrowHeld;
   const escrowWithHype    = (cents: number): number => Math.floor(cents * finalContext.hype / 100) * 100;
   let escrowRelease: number;
   let escrowCarried: number;
@@ -946,7 +995,7 @@ async function rollHandler(
   } else {
     // Emissary (and a stray pending balance anywhere else, so it's never stranded).
     const escrowOnTable = run.pendingAdditiveCents + (isEscrowSevenOut ? heldThisRoll : 0);
-    const seizurePct    = isEscrowSevenOut && isTransmissionDelay ? 1 : 0;
+    const seizurePct    = 0;
     escrowRelease = Math.floor(escrowOnTable * (1 - seizurePct) / 100) * 100;
     escrowSeized  = escrowOnTable - escrowRelease;
     // Carried to the next roll — nothing carries past a 7-out.
@@ -1003,6 +1052,18 @@ async function rollHandler(
   const clearsMarkerNow   = pipAdjustedState.currentMarkerIndex > run.currentMarkerIndex;
   const escrowPaidOnClear = clearsMarkerNow
     ? (isHierophantEscrow ? escrowWithHype(escrowCarried) : escrowCarried)
+      // FB-039: the Emissary's crew cash sent this roll lands with the clear.
+      + (isTransmissionDelay && !signalSevenOut ? signalSent.additives : 0)
+    : 0;
+
+  // ── FB-039: The Emissary — what's in transit and the blackout, next roll ──
+  const blackoutRolls = isTransmissionDelay
+    ? (bossParams as Extract<BossRuleParams, { rule: 'TRANSMISSION_DELAY' }>).blackoutRolls
+    : 0;
+  const signalTransitToPersist: SignalPacket | null =
+    isTransmissionDelay && !signalSevenOut && !clearsMarkerNow ? signalSent : null;
+  const signalDarkToPersist = isTransmissionDelay && !clearsMarkerNow
+    ? (signalSevenOut ? blackoutRolls : Math.max(0, (run.signalDarkRolls as number) - 1))
     : 0;
   const pendingAdditiveToPersist = clearsMarkerNow ? 0 : escrowCarried;
   const escrowAdjustedState = escrowPaidOnClear > 0
@@ -1054,7 +1115,7 @@ async function rollHandler(
     ? { amount: cutThisRoll, total: newBossProgress, payoff: payoffCents, paidOff: payoffReached && hitMarker }
     : undefined;
 
-  const escrowPayload: EscrowPayload | undefined = (isHierophantEscrow || isTransmissionDelay)
+  const escrowPayload: EscrowPayload | undefined = isHierophantEscrow
     ? {
         heldCents:     pendingAdditiveToPersist,
         releasedCents: escrowRelease + escrowPaidOnClear,
@@ -1068,6 +1129,17 @@ async function rollHandler(
         nextStage: getTideStage(tidalParams, finalNextState.bossPointHits).index,
         ...(undertowCents > 0 && { undertowCents }),
         ...(isWave && { waveShooters: covenantSaved ? 0 : sevenOutShooters }),
+      }
+    : undefined;
+
+  const signalPayload: SignalPayload | undefined = isTransmissionDelay
+    ? {
+        landed:    signalLanded,
+        sent:      signalSevenOut ? EMPTY_PACKET : signalSent,
+        dropped:   signalSevenOut && (signalInTransit.additives > 0 || signalInTransit.hype > 0 || signalInTransit.multipliers.length > 0
+                                       || signalSent.additives > 0 || signalSent.hype > 0 || signalSent.multipliers.length > 0),
+        darkRolls: signalDarkToPersist,
+        wasDark:   signalDark,
       }
     : undefined;
 
@@ -1114,6 +1186,18 @@ async function rollHandler(
           label:         isHierophantEscrow ? 'The offering' : 'The transmission',
           seizedBy:      bossMarkerConfig.boss.name,
           seizeLabel:    isHierophantEscrow ? 'tribute' : 'lost in transmission',
+        }
+      : undefined,
+    // FB-039: The Emissary — crew cash goes into transit; say what landed / was lost.
+    isTransmissionDelay
+      ? {
+          crewSuffix: '→ in transit',
+          extraLines: [
+            ...(signalDark ? [{ kind: 'info' as const, text: `No signal — your crew are dark (${signalDarkToPersist} roll${signalDarkToPersist === 1 ? '' : 's'} left)` }] : []),
+            ...(signalLanded.additives > 0 ? [{ kind: 'win' as const, text: `Signal received: $${(signalLanded.additives / 100).toFixed(2)} crew cash` }] : []),
+            ...(signalLanded.hype > 0 ? [{ kind: 'info' as const, text: `Signal received: +${signalLanded.hype.toFixed(2)}× Hype` }] : []),
+            ...(signalSevenOut ? [{ kind: 'loss' as const, text: `SIGNAL LOST — what was in transit is gone; your crew go dark for ${blackoutRolls} rolls` }] : []),
+          ],
         }
       : undefined,
   );
@@ -1173,6 +1257,9 @@ async function rollHandler(
       pendingAdditiveCents: pendingAdditiveToPersist,
       // FB-036: remember where The Covenant's save was used (once per marker).
       covenantSpentMarker:  covenantSaved ? run.currentMarkerIndex : run.covenantSpentMarker,
+      // FB-039: The Emissary's signal lag + blackout.
+      signalTransit:        signalTransitToPersist,
+      signalDarkRolls:      signalDarkToPersist,
       updatedAt:             new Date(),
     })
     .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
@@ -1301,6 +1388,7 @@ async function rollHandler(
     ...(covenantSaved && { covenantSaved: true as const }),
     ...(tidePayload !== undefined && { tide: tidePayload }),
     ...(orbitParams !== null && { orbit: { bleed: orbitBleed, hype: finalNextState.hype } }),
+    ...(signalPayload !== undefined && { signal: signalPayload }),
     ...(isDisableCrewBoss && { charmedCrewSlot: persistedBossPointHits }),
     ...(charmedWouldHaveFired && { charmFired: true }),
     ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
@@ -1349,6 +1437,7 @@ async function rollHandler(
       ...(covenantSaved && { covenantSaved: true as const }),
       ...(tidePayload !== undefined && { tide: tidePayload }),
       ...(orbitParams !== null && { orbit: { bleed: orbitBleed, hype: finalNextState.hype } }),
+      ...(signalPayload !== undefined && { signal: signalPayload }),
       ...(removedSlotIndex !== null && { removedCrewSlot: removedSlotIndex }),
     },
   });

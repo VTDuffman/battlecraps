@@ -25,6 +25,7 @@ export const BossRoomHeader: React.FC = () => {
   const crewSlots           = useGameStore((s) => s.crewSlots);
   const unlockedSlots       = useGameStore((s) => s.unlockedSlots);
   const currentHype         = useGameStore((s) => s.hype);
+  const signalDarkRolls     = useGameStore((s) => s.signalDarkRolls);
 
   if (!isBossMarker(currentMarkerIndex)) return null;
 
@@ -95,18 +96,19 @@ export const BossRoomHeader: React.FC = () => {
         {/* The Executive's rating lives in the PerformanceMeter (FB-035), front and center. */}
         {/* The Executive's rating and the Sovereign's tide live front and center (PerformanceMeter, TideDial). */}
         {isExecutive || isTidalSurge ? null : isTransmissionDelay ? (
+          // FB-039: minimal until the transmission line (Phase 3).
           <div className="flex-none text-right">
             <div className="font-pixel text-[7.5px] tracking-widest leading-none"
-              style={{ color: 'rgba(57,255,20,0.60)' }}>
-              SIGNAL DELAY
+              style={{ color: signalDarkRolls > 0 ? 'rgba(244,63,94,0.75)' : 'rgba(57,255,20,0.60)' }}>
+              SIGNAL
             </div>
             <div className="font-pixel text-r-12 leading-tight"
-              style={{ color: '#39ff14' }}>
-              ADDITIVES HELD
+              style={{ color: signalDarkRolls > 0 ? '#f43f5e' : '#39ff14' }}>
+              {signalDarkRolls > 0 ? `NO SIGNAL · ${signalDarkRolls}` : 'ONE ROLL BEHIND'}
             </div>
             <div className="font-pixel text-[7.5px] leading-none mt-0.5"
               style={{ color: 'rgba(57,255,20,0.45)' }}>
-              7-OUT: EVAPORATE
+              {signalDarkRolls > 0 ? 'CREW DARK' : '7-OUT: CREW DARK 6'}
             </div>
           </div>
         ) : isConvergence ? (

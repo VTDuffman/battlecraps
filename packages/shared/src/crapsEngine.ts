@@ -729,6 +729,12 @@ export function buildRollReceipt(
     seizedBy:      string;
     seizeLabel:    string;
   },
+  /**
+   * FB-039: extra notes — relabel the crew cash lines (The Emissary's signal
+   * lag: "→ in transit") and append lines. Doesn't change the math (the
+   * context already carries what actually paid this roll).
+   */
+  notes?: { crewSuffix?: string; extraLines?: RollReceiptLine[] },
 ): RollReceipt {
   const { dice, diceTotal, isHardway, rollResult, activePoint, bets } = ctx;
   const lines: RollReceiptLine[] = [];
@@ -845,7 +851,9 @@ export function buildRollReceipt(
         if (delta > 0) {
           lines.push(escrow
             ? { kind: 'info', text: `${event.crewName}: ${fmtCents(delta)} → ${escrow.label.toLowerCase()}` }
-            : { kind: 'win', text: `${event.crewName}: ${fmtCents(delta)}` });
+            : notes?.crewSuffix
+              ? { kind: 'info', text: `${event.crewName}: ${fmtCents(delta)} ${notes.crewSuffix}` }
+              : { kind: 'win', text: `${event.crewName}: ${fmtCents(delta)}` });
         }
         runningAdditives = event.contextDelta.additives;
       }
@@ -855,6 +863,9 @@ export function buildRollReceipt(
       ? { kind: 'info', text: `Crew Bonus: ${fmtCents(ctx.additives)} → ${escrow.label.toLowerCase()}` }
       : { kind: 'win', text: `Crew Bonus: ${fmtCents(ctx.additives)}` });
   }
+
+  // ── Extra notes (FB-039) ──────────────────────────────────────────────────
+  if (notes?.extraLines) lines.push(...notes.extraLines);
 
   // ── Escrow payout / seizure (FB-036) ──────────────────────────────────────
   if (escrow && escrow.releasedCents > 0) {

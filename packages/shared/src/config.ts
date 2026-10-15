@@ -53,7 +53,7 @@ export type BossRuleType =
   | 'TIDAL_SURGE'            // Floor 6 — The Sovereign: 4-stage tide — Dead Calm (no odds) / Undertow (7-out drags bankroll) / High Tide (7-out drowns 2)
   | 'ORBITAL_DECAY'          // Floor 7 — The Commander: orbital bleed — every roll hype above 1.0× loses 20% of its height (FB-038)
   | 'FIRST_CONTACT_PROTOCOL' // Floor 8 — retired mechanic; kept in union for historical safety
-  | 'TRANSMISSION_DELAY'     // Floor 8 — The Emissary: crew additives held one roll; evaporate on 7-out
+  | 'TRANSMISSION_DELAY'     // Floor 8 — The Emissary: signal lag (crew effects land a roll late) + a crew blackout after a 7-out (FB-039)
   | 'CONVERGENCE';           // Floor 9 — The Architect: each seven-out removes the last crew member to fire
 
 /** The permanent comp perk awarded for defeating a boss. */
@@ -87,7 +87,7 @@ export type BossRuleParams =
       bleedPct: number;
     }
   | { rule: 'FIRST_CONTACT_PROTOCOL' }   // Floor 8 — retired; kept for historical safety
-  | { rule: 'TRANSMISSION_DELAY' }       // Floor 8 — no params; escrow logic is inline in rolls.ts
+  | { rule: 'TRANSMISSION_DELAY'; blackoutRolls: number }   // Floor 8 — FB-039; logic inline in rolls.ts
   | { rule: 'CONVERGENCE' };             // Floor 9 — no params; counter tracked via bossPointHits
 
 /** Full descriptor for a boss fight. Only present on markers where isBoss is true. */
@@ -747,15 +747,15 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       entryLines: [
         "The table is here. The felt, the chips, the dice. All correct.",
         "Your crew's signals arrive one step behind. Everything echoes.",
-        "It has no concept of free money. When the shooter dies, the echo dies with them.",
+        "Seven out and the signal is lost. Your crew will not hear you for a while.",
       ],
-      ruleBlurb:          "The Emissary doesn't understand delay. Your crew's cash bonuses from each roll are held until the next. Seven-out and they vanish — untranslatable. Naturals resolve normally; The Emissary has simply never understood them.",
+      ruleBlurb:          "Signal lag: everything your crew does — cash bonuses, Hype boosts, multipliers — arrives one roll late. Seven out and the signal is lost: whatever was in transit vanishes, and your whole crew goes dark for six rolls.",
       victoryQuote:       "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]",
       defeatAnnouncement: 'SIGNAL LOST',
       // Mechanic
       rule:           'TRANSMISSION_DELAY',
-      ruleHeaderText: 'CREW ADDITIVES HELD ONE ROLL — EVAPORATE ENTIRELY ON SEVEN-OUT',
-      ruleParams:     { rule: 'TRANSMISSION_DELAY' },
+      ruleHeaderText: 'CREW EFFECTS LAND ONE ROLL LATE · 7-OUT: SIGNAL LOST, CREW DARK FOR 6 ROLLS',
+      ruleParams:     { rule: 'TRANSMISSION_DELAY', blackoutRolls: 6 },   // FB-039 (tuned with scripts/sim/emissary-delay-sim.mjs)
       // Comp
       compReward:      'THE_FREQUENCY',
       compPerkId:      COMP_PERK_IDS.THE_FREQUENCY,
@@ -763,7 +763,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compDescription: 'Come-out natural 7s and 11s award a flat bonus equal to 3% of the current marker target for the rest of the run.',
       compFanLabel:    'FREQ.',
       // Legacy
-      flavorText: "Your crew's signals arrive one step behind. Seven-out and the echo dies with them.",
+      flavorText: "Your crew's signals arrive one step behind. Seven-out and the echo dies with them — and so does contact.",
     },
   },
 

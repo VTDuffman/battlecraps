@@ -103,6 +103,7 @@ export async function buildRunStatePayload(run: RunRow, userRow: UserRow) {
     consecutivePointHits:  run.consecutivePointHits,
     compPerkIds:           run.compPerkIds,
     pendingAdditiveCents:  run.pendingAdditiveCents,
+    signalDarkRolls:       run.signalDarkRolls,
     isDevRun:              run.isDevRun,
   };
 }

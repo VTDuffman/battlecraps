@@ -153,7 +153,7 @@ Displayed in the Roll Log UI component (see Section 6).
 | 5 | The Lodge | $30k / $50k / $100k | The Hierophant | Crew cash held until a win (paid with Hype); 75% seized on Seven Out | The Covenant: once per marker, your first Seven Out doesn't cost a shooter |
 | 6 | Atlantis | $150k / $250k / $500k | The Sovereign | Tide: Dead Calm (no odds) / Undertow (7-out takes 35%) / High Tide (7-out drowns 2) | Poseidon's Favor: first-roll craps-out doesn't count |
 | 7 | The Station | $1M / $1.5M / $3M | The Commander | Orbital bleed: Hype above 1.0× loses 20% every roll | Cargo Hold: 5th crew slot |
-| 8 | The Signal | $5M / $7.5M / $15M | The Emissary | Crew cash held one roll; evaporates on Seven Out | The Frequency: Naturals pay 3% of target |
+| 8 | The Signal | $5M / $7.5M / $15M | The Emissary | Signal lag (crew effects land a roll late); a 7-out drops them and the crew go dark for 6 rolls | The Frequency: Naturals pay 3% of target |
 | 9 | The Null Space | $20M / $30M / $60M | The Architect | Seven Out removes the last crew to fire | None (victory) |
 
 5.1.1 Double Time Mechanics (Sarge — Floor 2 Boss) — FB-030

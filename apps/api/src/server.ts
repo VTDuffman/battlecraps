@@ -318,6 +318,16 @@ await db.execute(sql`
 `);
 app.log.info('[migrate] covenant_spent_marker ensured');
 
+// FB-039: The Emissary's signal lag (crew effects in transit) + crew blackout.
+// Mirrors drizzle/0010.
+await db.execute(sql`
+  ALTER TABLE runs ADD COLUMN IF NOT EXISTS signal_transit jsonb
+`);
+await db.execute(sql`
+  ALTER TABLE runs ADD COLUMN IF NOT EXISTS signal_dark_rolls integer NOT NULL DEFAULT 0
+`);
+app.log.info('[migrate] signal_transit / signal_dark_rolls ensured');
+
 // ---------------------------------------------------------------------------
 // Start listening
 // ---------------------------------------------------------------------------

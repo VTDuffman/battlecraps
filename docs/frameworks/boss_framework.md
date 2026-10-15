@@ -337,12 +337,14 @@ ruleParams: { rule: 'ORBITAL_DECAY', bleedPct: 0.20 }
 
 **Rule:** `TRANSMISSION_DELAY` | **Target:** $15,000,000 | **Index:** 23
 
-**Transmission delay.** Same escrow mechanism as The Hierophant (`pending_additive_cents`), but harsher: on a Seven-Out the **entire** escrow — previous roll's and that roll's bonuses — evaporates. Bonuses held on a marker-clearing roll are paid out. Naturals resolve normally.
+**Signal lag + blackout (FB-039).** The crew fire as normal (dice and rescue effects — Lefty, the Mechanic, Floor Walker — act on the roll), but what they *add* — cash bonuses (after The Vig), Hype boosts and multipliers — is held **in transit** (`runs.signal_transit`) and **lands on the next roll** (that roll's settlement and the Hype it carries forward). On a **Seven-Out** the signal is lost: everything in transit (last roll's and this roll's) is dropped, and the whole crew goes **dark** for `blackoutRolls` (6) rolls — the cascade runs with no crew and cooldowns don't move (`runs.signal_dark_rolls`). A marker-clearing roll pays the cash in transit. `turn:settled` carries `signal { landed, sent, dropped, darkRolls, wasDark }`; the receipt shows crew cash "→ in transit", "Signal received" and "SIGNAL LOST".
 
-**History:** originally `FIRST_CONTACT_PROTOCOL` (come-out naturals nullified to blank rolls), retired in FB-026. The rule type and empty hooks remain for historical safety.
+Replaced a one-roll cash escrow (simulated ≈ −1 to −3 — a weaker copy of The Hierophant). Tuned with `scripts/sim/emissary-delay-sim.mjs`: ≈ −13 (cash), −14 (mixed), −18 (hype), pass-line players with Floor-8 comps — the boss who fights your crew itself. (The Architect's crew demolition is slated for a Convergence redesign, FB-040, so the two don't overlap.)
+
+**History:** originally `FIRST_CONTACT_PROTOCOL` (come-out naturals nullified), retired in FB-026; then the one-roll escrow, replaced in FB-039.
 
 ```typescript
-ruleParams: { rule: 'TRANSMISSION_DELAY' }
+ruleParams: { rule: 'TRANSMISSION_DELAY', blackoutRolls: 6 }
 ```
 
 **Comp:** The Frequency — every Natural on the come-out awards a flat 3% of the current marker target, for the rest of the run.
@@ -383,7 +385,7 @@ export type BossRuleParams =
   | { rule: 'TIDAL_SURGE';        stageMultipliers: readonly [number, number, number, number]; stageLabels: readonly [string, string, string, string] }
   | { rule: 'ORBITAL_DECAY';      bleedPct: number }
   | { rule: 'FIRST_CONTACT_PROTOCOL' }   // retired
-  | { rule: 'TRANSMISSION_DELAY' }
+  | { rule: 'TRANSMISSION_DELAY'; blackoutRolls: number }
   | { rule: 'CONVERGENCE' };
 ```
 

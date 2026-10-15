@@ -252,6 +252,8 @@ interface TurnSettledPayload {
   tide?:                   { stage: number; nextStage: number; undertowCents?: number; waveShooters?: number };
   /** FB-038: The Commander's orbital bleed this roll. */
   orbit?:                  { bleed: number; hype: number };
+  /** FB-039: The Emissary's signal this roll. */
+  signal?:                 { landed: { additives: number; hype: number; multipliers: number[] }; sent: { additives: number; hype: number; multipliers: number[] }; dropped: boolean; darkRolls: number; wasDark: boolean };
   /** True when Poseidon's Favor cancelled the shooter's first-roll craps-out (rollResult is NO_RESOLUTION). */
   crapsOutBlocked?:        boolean;
   /** The Architect (CONVERGENCE): crew slot index permanently removed by this seven-out. */
@@ -807,6 +809,10 @@ export interface GameState {
   lastTide: { stage: number; nextStage: number; undertowCents?: number; waveShooters?: number; key: number } | null;
   /** FB-038: the latest roll's orbital bleed (The Commander) + a key (drives the orbit gauge). */
   lastOrbit: { bleed: number; hype: number; key: number } | null;
+  /** FB-039: rolls left in The Emissary's crew blackout (0 = in contact). */
+  signalDarkRolls: number;
+  /** FB-039: the latest roll's signal facts + a key (drives the transmission line). */
+  lastSignal: ({ landed: { additives: number; hype: number; multipliers: number[] }; sent: { additives: number; hype: number; multipliers: number[] }; dropped: boolean; darkRolls: number; wasDark: boolean } & { key: number }) | null;
   /** The latest roll's Cut (drives the register's ka-ching / stamp). Null when none. */
   lastBossCut: BossCut | null;
   /** Increments on every roll that adds to the Cut — keys the ka-ching animation. */
@@ -874,6 +880,8 @@ export interface DevRunPayload {
   compPerkIds:           number[];
   pendingAdditiveCents:  number;
   bossProgressCents:     number;
+  /** FB-039: The Emissary's crew blackout (rolls left). */
+  signalDarkRolls?:      number;
   isDevRun:              boolean;
 }
 
@@ -1351,6 +1359,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   _covenantKey:            0,
   lastTide:                null,
   lastOrbit:               null,
+  signalDarkRolls:         0,
+  lastSignal:              null,
   lastBossCut:             null,
   _cutKey:                 0,
   payoffAt:                null,
@@ -1447,6 +1457,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastEscrow:        null,
       lastTide:          null,
       lastOrbit:         null,
+      signalDarkRolls:   0,
+      lastSignal:        null,
       lastBossCut:    null,
       payoffAt:       null,
       bossBark:       null,
@@ -1645,6 +1657,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastEscrow:          null,
       lastTide:            null,
       lastOrbit:           null,
+      signalDarkRolls:     0,
+      lastSignal:          null,
       lastBossCut:         null,
       payoffAt:            null,
       bossBark:            null,
@@ -2287,6 +2301,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _covenantKey:          p.covenantSaved === true ? get()._covenantKey + 1 : get()._covenantKey,
       lastTide:              p.tide ? { ...p.tide, key: (get().lastTide?.key ?? 0) + 1 } : get().lastTide,
       lastOrbit:             p.orbit ? { ...p.orbit, key: (get().lastOrbit?.key ?? 0) + 1 } : get().lastOrbit,
+      signalDarkRolls:       p.signal ? p.signal.darkRolls : 0,
+      lastSignal:            p.signal ? { ...p.signal, key: (get().lastSignal?.key ?? 0) + 1 } : get().lastSignal,
       lastBossCut:           p.bossCut ?? null,
       _cutKey:               p.bossCut && p.bossCut.amount > 0 ? get()._cutKey + 1 : get()._cutKey,
       payoffAt:              p.bossCut?.paidOff === true ? Date.now() : get().payoffAt,
@@ -2555,6 +2571,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           covenantSaved?: boolean;
           tide?: { stage: number; nextStage: number; undertowCents?: number; waveShooters?: number };
           orbit?: { bleed: number; hype: number };
+          signal?: { landed: { additives: number; hype: number; multipliers: number[] }; sent: { additives: number; hype: number; multipliers: number[] }; dropped: boolean; darkRolls: number; wasDark: boolean };
           crapsOutBlocked?: boolean;
           clockExpired?: boolean;
           removedCrewSlot?: number;
@@ -2595,6 +2612,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           ...(data.roll.covenantSaved === true && { covenantSaved: true }),
           ...(data.roll.tide !== undefined && { tide: data.roll.tide }),
           ...(data.roll.orbit !== undefined && { orbit: data.roll.orbit }),
+          ...(data.roll.signal !== undefined && { signal: data.roll.signal }),
         };
         set({ pendingSettlement: autoSettlement });
         get().applyPendingSettlement();
@@ -2632,6 +2650,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ...(data.roll.covenantSaved === true && { covenantSaved: true }),
         ...(data.roll.tide !== undefined && { tide: data.roll.tide }),
         ...(data.roll.orbit !== undefined && { orbit: data.roll.orbit }),
+        ...(data.roll.signal !== undefined && { signal: data.roll.signal }),
         ...(data.roll.crapsOutBlocked === true      && { crapsOutBlocked: true as const              }),
         ...(data.roll.clockExpired    === true      && { clockExpired:    true as const              }),
         ...(data.roll.removedCrewSlot !== undefined && { removedCrewSlot: data.roll.removedCrewSlot  }),
@@ -2980,6 +2999,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       consecutivePointHits: payload.consecutivePointHits,
       bossProgressCents:    payload.bossProgressCents ?? 0,
       escrowHeldCents:      payload.pendingAdditiveCents ?? 0,
+      signalDarkRolls:      payload.signalDarkRolls ?? 0,
       isDevRun:             payload.isDevRun,
     };
 

@@ -71,6 +71,13 @@
       "when": 1792007967069,
       "tag": "0009_covenant_spent_marker",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1792029729291,
+      "tag": "0010_emissary_signal",
+      "breakpoints": true
     }
   ]
 }

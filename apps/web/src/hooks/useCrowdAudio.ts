@@ -1374,6 +1374,35 @@ function playContactRestoredSting(ctx: AudioContext, dest: AudioNode): void {
   [880, 1175, 1568].forEach((f, i) => beep(ctx, dest, f, t0 + i * 0.13, 0.1, 0.04));
 }
 
+/** FB-039 win: incoming transmission — an alien chirp sequence over a carrier hum (≈1.2 s). */
+function playIncomingTransmissionSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  const hum = ctx.createOscillator();
+  hum.type = 'sine';
+  hum.frequency.value = 110;
+  const hEnv = ctx.createGain();
+  hEnv.gain.setValueAtTime(0.0001, t0);
+  hEnv.gain.exponentialRampToValueAtTime(0.05, t0 + 0.2);
+  hEnv.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.2);
+  hum.connect(hEnv);
+  hEnv.connect(dest);
+  hum.start(t0);
+  hum.stop(t0 + 1.25);
+  [1568, 2093, 1319, 2349, 1760, 2637].forEach((f, i) => beep(ctx, dest, f, t0 + 0.1 + i * 0.14, 0.06, 0.03));
+}
+
+/** FB-039 win: a decode tick — one very short click-beep. */
+function playDecodeTickSting(ctx: AudioContext, dest: AudioNode): void {
+  beep(ctx, dest, 2600 + Math.random() * 600, ctx.currentTime + 0.005, 0.025, 0.018);
+}
+
+/** FB-039 win: message received — a bright, glassy major chord. */
+function playMessageReceivedSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [1046.5, 1318.51, 1567.98, 2093].forEach((f, i) => strikeBell(ctx, dest, f, t0 + i * 0.04, 0.05, 1.8));
+  beep(ctx, dest, 1760, t0, 0.08, 0.03);
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -1591,6 +1620,21 @@ export function playSignalPing(): void {
 /** FB-039: contact with the crew is restored. */
 export function playContactRestored(): void {
   playStandalone(playContactRestoredSting);
+}
+
+/** FB-039 win: incoming transmission. */
+export function playIncomingTransmission(): void {
+  playStandalone(playIncomingTransmissionSting);
+}
+
+/** FB-039 win: one character decodes. */
+export function playDecodeTick(): void {
+  playStandalone(playDecodeTickSting);
+}
+
+/** FB-039 win: the message is decoded. */
+export function playMessageReceived(): void {
+  playStandalone(playMessageReceivedSting);
 }
 
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */

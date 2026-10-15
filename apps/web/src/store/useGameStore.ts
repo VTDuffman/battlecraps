@@ -1227,6 +1227,7 @@ const VICTORY_HOLD_MS_BY_ID: Readonly<Record<BossVictoryCinematicId, number>> = 
   THE_EYE_CLOSES:       8600,  // FB-036: The Hierophant (~8.2s — his line is long)
   THE_CROWN_SINKS:      9600,  // FB-037: The Sovereign (~9.2s — the sea floods in first)
   ESCAPE_VELOCITY:      8400,  // FB-038: The Commander (~8.0s)
+  MESSAGE_RECEIVED:     8800,  // FB-039: The Emissary (~8.4s)
 };
 
 /**

@@ -113,7 +113,7 @@ export type BossBarkTrigger =
 export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS' | 'THE_WAVE' | 'LOSS_OF_SIGNAL';
 
 /** FB-033: boss victory moments (one component each in the web registry). */
-export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP' | 'THE_EYE_CLOSES' | 'THE_CROWN_SINKS' | 'ESCAPE_VELOCITY';
+export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP' | 'THE_EYE_CLOSES' | 'THE_CROWN_SINKS' | 'ESCAPE_VELOCITY' | 'MESSAGE_RECEIVED';
 
 export interface BossConfig {
   // ── Identity ──────────────────────────────────────────────────────────────
@@ -752,6 +752,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       ],
       ruleBlurb:          "Signal lag: everything your crew does — cash bonuses, Hype boosts, multipliers — arrives one roll late. Seven out and the signal is lost: whatever was in transit vanishes, and your whole crew goes dark for six rolls.",
       victoryQuote:       "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]",
+      victoryCinematic:   { id: 'MESSAGE_RECEIVED', line: "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]" },
       defeatAnnouncement: 'SIGNAL LOST',
       // FB-039 barks — translated alien text, in brackets. Cold, literal.
       barks: {

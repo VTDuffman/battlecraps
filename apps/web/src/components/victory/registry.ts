@@ -16,6 +16,7 @@ import { NameplateSwapCinematic } from './NameplateSwapCinematic.js';
 import { TheEyeClosesCinematic } from './TheEyeClosesCinematic.js';
 import { TheCrownSinksCinematic } from './TheCrownSinksCinematic.js';
 import { EscapeVelocityCinematic } from './EscapeVelocityCinematic.js';
+import { MessageReceivedCinematic } from './MessageReceivedCinematic.js';
 
 export interface VictoryCinematicProps {
   /** The boss's line (config.ts victoryCinematic.line). */
@@ -31,4 +32,5 @@ export const VICTORY_CINEMATICS: Record<BossVictoryCinematicId, React.ComponentT
   THE_EYE_CLOSES:       TheEyeClosesCinematic,
   THE_CROWN_SINKS:      TheCrownSinksCinematic,
   ESCAPE_VELOCITY:      EscapeVelocityCinematic,
+  MESSAGE_RECEIVED:     MessageReceivedCinematic,
 };

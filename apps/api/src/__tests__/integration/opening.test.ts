@@ -166,6 +166,40 @@ describe('Opening pub hire', () => {
     expect(status).toBe(403);
   });
 
+  it('the pub after marker 0 (the tutorial run\'s first pub) is Starter-only too, and keeps guaranteed unlocks for later', async () => {
+    await db.update(users).set({ unlockedCrewIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] }).where(eq(users.clerkId, TEST_CLERK_ID));
+    const run = await createRun(userId, {
+      status:                'TRANSITION',
+      currentMarkerIndex:    1,
+      bankrollCents:         6000,
+      guaranteedPubDraftIds: [1],
+    });
+    for (let i = 0; i < 5; i++) {
+      await db.update(runs).set({ pubDraft: null }).where(eq(runs.id, run.id));
+      const { body } = await getPubDraft(app, run.id);
+      const draft = draftOf(body);
+      expect(draft).toHaveLength(3);
+      expect(draft.every((c) => starterIds.has(c.id))).toBe(true);
+      // Normal price here — only the opening pub is free.
+      expect(draft.every((c) => c.hireCostCents === 1000)).toBe(true);
+    }
+    const row = await db.query.runs.findFirst({ where: eq(runs.id, run.id) });
+    expect(row?.guaranteedPubDraftIds).toEqual([1]);
+  });
+
+  it('the pub after marker 1 offers unlocked crew again', async () => {
+    await db.update(users).set({ unlockedCrewIds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] }).where(eq(users.clerkId, TEST_CLERK_ID));
+    const run = await createRun(userId, {
+      status:                'TRANSITION',
+      currentMarkerIndex:    2,
+      bankrollCents:         20000,
+      guaranteedPubDraftIds: [1],
+    });
+    const { body } = await getPubDraft(app, run.id);
+    const draft = draftOf(body);
+    expect(draft.find((c) => c.id === 1)?.isGuaranteed).toBe(true);
+  });
+
   it('a regular pub (marker 1) still charges the hire cost', async () => {
     const run = await createRun(userId, {
       status:             'TRANSITION',

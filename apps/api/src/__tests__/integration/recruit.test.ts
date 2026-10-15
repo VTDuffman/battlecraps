@@ -308,7 +308,8 @@ describe('Pub draft persistence', () => {
   });
 
   it('adds a crew member unlocked after the draft was saved, keeping the rest', async () => {
-    const run = await createTransitionRun({ pubDraft: null, bankrollCents: 50_000 });
+    // Marker 2: the pubs at markers 0–1 are Starter-only (FB-041) and hold unlocks back.
+    const run = await createTransitionRun({ pubDraft: null, bankrollCents: 50_000, currentMarkerIndex: 2 });
     const first = await getPubDraft(app, run.id);
 
     // The unlock lands after the draft was generated (fire-and-forget evaluateUnlocks).

@@ -65,6 +65,16 @@ export function isOpeningPub(markerIndex: number): boolean {
   return markerIndex === 0;
 }
 
+/**
+ * True when the pub at this marker offers Starter-roster crew only: a run's
+ * first pub, whichever it is — the opening pub (marker 0, post-tutorial runs)
+ * or the pub after marker 0 (the tutorial run's first pub). Guaranteed unlocks
+ * wait for the next pub.
+ */
+export function isStarterOnlyPub(markerIndex: number): boolean {
+  return markerIndex <= 1;
+}
+
 // ---------------------------------------------------------------------------
 // Boss rule & reward types
 // ---------------------------------------------------------------------------

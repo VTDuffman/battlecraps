@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-039 The Emissary Boss Moments
 
 **Design doc:** `docs/design/fb-039-emissary-boss-moments-design.md`
-**Status:** Phases 1–2 done locally (not pushed).
+**Status:** Phases 1–3 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Push when Mike says. **All crew/player references gender-neutral.** Big wins, big losses.
 
@@ -26,6 +26,8 @@
 
 ## Phase 3: The transmission line
 Front and center: crew → receiver line, packets in transit, landing pops, static + dark rail + NO SIGNAL countdown, CONTACT RESTORED.
+
+--- Implemented locally (2026-10-14): `TransmissionLine` (CREW 👥 → TABLE 🎲 over a scrolling green sine wave; "IN TRANSIT +$X · +0.30×" packet mid-line; "RECEIVED …" pop + `playSignalPing()`; on a 7-out red static line, "SIGNAL LOST" + `playStaticBurst()`, "NO SIGNAL · n"; "CONTACT RESTORED" + `playContactRestored()`). The crew rail greys out under scanline static + NO SIGNAL while dark. Header readout removed. ---
 
 ## Phase 4: Message Received (victory)
 

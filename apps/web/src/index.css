@@ -699,6 +699,27 @@
 }
 .animate-sea-surface { animation: sea-surface 7s linear infinite; }
 
+/* FB-039: the Emissary's dead signal — jittering static and a flickering label. */
+@keyframes signal-static {
+  0%   { background-position: 0 0;    opacity: 0.9; }
+  25%  { background-position: 3px 1px; opacity: 0.6; }
+  50%  { background-position: -2px 2px; opacity: 1; }
+  75%  { background-position: 1px -1px; opacity: 0.7; }
+  100% { background-position: 0 0;    opacity: 0.9; }
+}
+@keyframes signal-flicker {
+  0%, 100% { opacity: 1; }
+  45%      { opacity: 1; }
+  50%      { opacity: 0.25; }
+  55%      { opacity: 1; }
+  80%      { opacity: 0.6; }
+}
+.animate-signal-static  { animation: signal-static 0.18s steps(2) infinite; }
+.animate-signal-flicker { animation: signal-flicker 1.6s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-signal-static, .animate-signal-flicker { animation: none; }
+}
+
 /* FB-037: Dead Calm — the waterlogged Odds square. */
 @keyframes waterlog-slosh {
   0%, 100% { transform: translateY(0)    rotate(0deg); }

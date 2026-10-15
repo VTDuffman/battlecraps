@@ -1334,6 +1334,46 @@ function makeReentryRoarSting(seconds: number): (ctx: AudioContext, dest: AudioN
   };
 }
 
+/** One short square-wave beep. */
+function beep(ctx: AudioContext, dest: AudioNode, freq: number, start: number, dur: number, peak: number): void {
+  const osc = ctx.createOscillator();
+  osc.type = 'square';
+  osc.frequency.value = freq;
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 3000;
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, start);
+  env.gain.exponentialRampToValueAtTime(peak, start + 0.005);
+  env.gain.setValueAtTime(peak, start + dur - 0.01);
+  env.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  osc.connect(lp);
+  lp.connect(env);
+  env.connect(dest);
+  osc.start(start);
+  osc.stop(start + dur + 0.02);
+}
+
+/** FB-039: the signal is lost — a harsh burst of static that crackles out (≈0.9 s). */
+function playStaticBurstSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 0.9, { type: 'highpass', from: 1200, to: 3500 }, 0.2, 0.01);
+  for (let i = 0; i < 6; i++) seaNoise(ctx, dest, t0 + 0.1 + i * 0.12, 0.04, { type: 'bandpass', from: 2400, to: 2400, q: 2 }, 0.08, 0.002);
+}
+
+/** FB-039: a packet lands — a soft two-tone receive chirp. */
+function playSignalPingSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  beep(ctx, dest, 1320, t0, 0.07, 0.035);
+  beep(ctx, dest, 1760, t0 + 0.09, 0.09, 0.035);
+}
+
+/** FB-039: contact restored — three rising beeps. */
+function playContactRestoredSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [880, 1175, 1568].forEach((f, i) => beep(ctx, dest, f, t0 + i * 0.13, 0.1, 0.04));
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -1536,6 +1576,21 @@ export function playHyperJump(): void {
 /** FB-038 loss: re-entry, cut dead after `seconds`. */
 export function playReentryRoar(seconds: number): void {
   playStandalone(makeReentryRoarSting(seconds));
+}
+
+/** FB-039: the Emissary — signal lost (static). */
+export function playStaticBurst(): void {
+  playStandalone(playStaticBurstSting);
+}
+
+/** FB-039: a crew packet lands. */
+export function playSignalPing(): void {
+  playStandalone(playSignalPingSting);
+}
+
+/** FB-039: contact with the crew is restored. */
+export function playContactRestored(): void {
+  playStandalone(playContactRestoredSting);
 }
 
 /** FB-034: THE ROSE — you beat Mme. Le Prix. */

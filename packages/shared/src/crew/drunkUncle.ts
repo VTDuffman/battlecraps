@@ -4,14 +4,14 @@
 //
 // Category:    HYPE
 // Ability:     33% chance each roll to fire. When he fires, it's either
-//              +0.5 Hype (good uncle) or −0.25 Hype (bad uncle). No cooldown.
+//              +0.75 Hype (good uncle) or −0.25 Hype (bad uncle). No cooldown.
 //
 // Activation uses d1 of a bonus dice roll:
 //   d1 = 1 or 2  → fires (≈33%)
 //   d1 = 3–6     → nothing happens
 //
 // Direction uses d2 of the same roll:
-//   d2 odd  (1, 3, 5) → +0.5 Hype
+//   d2 odd  (1, 3, 5) → +0.75 Hype
 //   d2 even (2, 4, 6) → −0.25 Hype
 //
 // SERVER IMPLEMENTATION NOTE:
@@ -48,8 +48,8 @@ export const drunkUncle: CrewMember = {
       return { context: ctx, newCooldown: 0 };
     }
 
-    // Direction: d2 odd → +0.5 Hype, d2 even → −0.25 Hype.
-    const delta = (d2 % 2 === 1) ? 0.5 : -0.25;
+    // Direction: d2 odd → +0.75 Hype, d2 even → −0.25 Hype.
+    const delta = (d2 % 2 === 1) ? 0.75 : -0.25;  // FB-041: upside ×1.5 (was +0.5); downside unchanged
 
     // Round to 4 decimal places (consistent with other HYPE crew).
     const newHype = Math.round((ctx.hype + delta) * 10_000) / 10_000;

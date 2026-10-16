@@ -3,7 +3,7 @@
 // packages/shared/src/crew/echo.ts
 //
 // Category:    HYPE
-// Ability:     +0.4 Hype when the dice repeat the same total as the last roll.
+// Ability:     +0.6 Hype when the dice repeat the same total as the last roll.
 // Cooldown:    none
 //
 // Trigger: ctx.previousRollTotal !== null && ctx.diceTotal === ctx.previousRollTotal
@@ -13,7 +13,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const HYPE_BOOST = 0.4;
+const HYPE_BOOST = 0.6;  // FB-041: crew Hype ×1.5 (was 0.4)
 
 export const echo: CrewMember = {
   id:               20,

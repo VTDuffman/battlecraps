@@ -663,17 +663,17 @@ describe('Nervous Intern (ID 10)', () => {
     expect(result.context.hype).toBe(1.5);
   });
 
-  it('fires on NATURAL → hype +0.30', () => {
+  it('fires on NATURAL → hype +0.45', () => {
     const ctx = makeCtx({ rollResult: 'NATURAL', hype: 1.0 });
     const result = nervousIntern.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.30, 4);
+    expect(result.context.hype).toBeCloseTo(1.45, 4);
     expect(result.newCooldown).toBe(0);
   });
 
   it('stacks on elevated hype', () => {
     const ctx = makeCtx({ rollResult: 'NATURAL', hype: 1.8 });
     const result = nervousIntern.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(2.10, 4);
+    expect(result.context.hype).toBeCloseTo(2.25, 4);
   });
 
   it('does not call RNG', () => {
@@ -700,21 +700,21 @@ describe('Hype-Train Holly (ID 11)', () => {
     expect(result.context.hype).toBe(1.5);
   });
 
-  it('fires on POINT_HIT → hype +0.15, rounded to 4dp', () => {
+  it('fires on POINT_HIT → hype +0.25, rounded to 4dp', () => {
     const ctx = makeCtx({ rollResult: 'POINT_HIT', hype: 1.0 });
     const result = hypeTrainHolly.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.15, 4);
+    expect(result.context.hype).toBeCloseTo(1.25, 4);
     expect(result.newCooldown).toBe(0);
   });
 
-  it('IEEE-754 accumulation: 1.0 + 0.15 + 0.15 + 0.15 = 1.45 exactly', () => {
+  it('IEEE-754 accumulation: 1.0 + 0.25 + 0.25 + 0.25 = 1.75 exactly', () => {
     // Three consecutive point hits via manual execute() calls
     let ctx = makeCtx({ rollResult: 'POINT_HIT', hype: 1.0 });
     ctx = hypeTrainHolly.execute(ctx, neverCalledRng).context;
     ctx = hypeTrainHolly.execute({ ...ctx, rollResult: 'POINT_HIT' }, neverCalledRng).context;
     ctx = hypeTrainHolly.execute({ ...ctx, rollResult: 'POINT_HIT' }, neverCalledRng).context;
-    // Should be 1.45 — the 4dp rounding prevents floating-point noise
-    expect(ctx.hype).toBeCloseTo(1.45, 4);
+    // Should be 1.75 — the 4dp rounding prevents floating-point noise
+    expect(ctx.hype).toBeCloseTo(1.75, 4);
   });
 });
 
@@ -730,10 +730,10 @@ describe('Drunk Uncle (ID 12)', () => {
     expect(result.context.hype).toBe(1.5);
   });
 
-  it('fires when d1=1, d2 odd → +0.5 hype', () => {
+  it('fires when d1=1, d2 odd → +0.75 hype', () => {
     const ctx = makeCtx({ hype: 1.0 });
     const result = drunkUncle.execute(ctx, fixedDice(1, 3)); // d1=1 (fires), d2=3 (odd)
-    expect(result.context.hype).toBeCloseTo(1.5, 4);
+    expect(result.context.hype).toBeCloseTo(1.75, 4);
   });
 
   it('fires when d1=2, d2 even → −0.25 hype', () => {
@@ -874,27 +874,27 @@ describe('Lookout (ID 16)', () => {
   it('fires when die[0] = 6', () => {
     const ctx = makeCtx({ dice: [6, 2], diceTotal: 8, hype: 1.0 });
     const result = lookout.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.20, 4);
+    expect(result.context.hype).toBeCloseTo(1.30, 4);
     expect(result.newCooldown).toBe(0);
   });
 
   it('fires when die[1] = 6', () => {
     const ctx = makeCtx({ dice: [1, 6], diceTotal: 7, hype: 1.0 });
     const result = lookout.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.20, 4);
+    expect(result.context.hype).toBeCloseTo(1.30, 4);
   });
 
   it('fires on [6,6] (both show 6)', () => {
     const ctx = makeCtx({ dice: [6, 6], diceTotal: 12, hype: 1.0 });
     const result = lookout.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.20, 4);
+    expect(result.context.hype).toBeCloseTo(1.30, 4);
   });
 
   it('rounds to 4 decimal places', () => {
     const ctx = makeCtx({ dice: [6, 1], diceTotal: 7, hype: 1.0 });
     const result = lookout.execute(ctx, neverCalledRng);
-    // 1.0 + 0.20 = 1.20 — check no trailing float noise
-    expect(result.context.hype).toBe(1.20);
+    // 1.0 + 0.30 = 1.30 — check no trailing float noise
+    expect(result.context.hype).toBe(1.30);
   });
 });
 
@@ -996,10 +996,10 @@ describe('Momentum (ID 19)', () => {
     expect(result.context.hype).toBe(1.0);
   });
 
-  it('fires when diceTotal > previousRollTotal → +0.2 hype', () => {
+  it('fires when diceTotal > previousRollTotal → +0.3 hype', () => {
     const ctx = makeCtx({ previousRollTotal: 5, diceTotal: 8, hype: 1.0 });
     const result = momentum.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.2, 4);
+    expect(result.context.hype).toBeCloseTo(1.3, 4);
     expect(result.newCooldown).toBe(0);
   });
 });
@@ -1021,17 +1021,17 @@ describe('Echo (ID 20)', () => {
     expect(result.context.hype).toBe(1.0);
   });
 
-  it('fires when diceTotal === previousRollTotal → +0.4 hype', () => {
+  it('fires when diceTotal === previousRollTotal → +0.6 hype', () => {
     const ctx = makeCtx({ previousRollTotal: 7, diceTotal: 7, hype: 1.0 });
     const result = echo.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.4, 4);
+    expect(result.context.hype).toBeCloseTo(1.6, 4);
     expect(result.newCooldown).toBe(0);
   });
 
   it('rounds to 4 decimal places', () => {
     const ctx = makeCtx({ previousRollTotal: 8, diceTotal: 8, hype: 1.0 });
     const result = echo.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBe(1.4);
+    expect(result.context.hype).toBe(1.6);
   });
 });
 
@@ -1052,17 +1052,17 @@ describe('Silver Lining (ID 21)', () => {
     expect(result.context.hype).toBe(1.0);
   });
 
-  it('fires on CRAPS_OUT → +0.4 hype', () => {
+  it('fires on CRAPS_OUT → +0.6 hype', () => {
     const ctx = makeCtx({ rollResult: 'CRAPS_OUT', hype: 1.0 });
     const result = silverLining.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.4, 4);
+    expect(result.context.hype).toBeCloseTo(1.6, 4);
     expect(result.newCooldown).toBe(0);
   });
 
   it('rounds to 4 decimal places', () => {
     const ctx = makeCtx({ rollResult: 'CRAPS_OUT', hype: 1.0 });
     const result = silverLining.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBe(1.4);
+    expect(result.context.hype).toBe(1.6);
   });
 });
 
@@ -1083,10 +1083,10 @@ describe('Odd Couple (ID 22)', () => {
     expect(result.context.hype).toBe(1.0);
   });
 
-  it('fires when both dice are odd → +0.2 hype', () => {
+  it('fires when both dice are odd → +0.3 hype', () => {
     const ctx = makeCtx({ dice: [1, 3], diceTotal: 4, hype: 1.0 });
     const result = oddCouple.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.2, 4);
+    expect(result.context.hype).toBeCloseTo(1.3, 4);
     expect(result.newCooldown).toBe(0);
   });
 
@@ -1094,7 +1094,7 @@ describe('Odd Couple (ID 22)', () => {
     [[3, 5], [5, 5], [1, 1]].forEach(([d0, d1]) => {
       const ctx = makeCtx({ dice: [d0!, d1!], diceTotal: d0! + d1!, hype: 1.0 });
       const result = oddCouple.execute(ctx, neverCalledRng);
-      expect(result.context.hype).toBeCloseTo(1.2, 4);
+      expect(result.context.hype).toBeCloseTo(1.3, 4);
     });
   });
 });
@@ -1242,46 +1242,46 @@ describe('Handicapper (ID 26)', () => {
     expect(result.context.hype).toBe(1.0);
   });
 
-  it('fires on POINT_SET with point 4 → +0.3 hype', () => {
+  it('fires on POINT_SET with point 4 → +0.45 hype', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [1, 3], diceTotal: 4, hype: 1.0 });
     const result = handicapper.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.3, 4);
+    expect(result.context.hype).toBeCloseTo(1.45, 4);
   });
 
-  it('fires on POINT_SET with point 10 → +0.3 hype', () => {
+  it('fires on POINT_SET with point 10 → +0.45 hype', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [4, 6], diceTotal: 10, hype: 1.0 });
     const result = handicapper.execute(ctx, neverCalledRng);
+    expect(result.context.hype).toBeCloseTo(1.45, 4);
+  });
+
+  it('fires on POINT_SET with point 5 → +0.3 hype', () => {
+    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [2, 3], diceTotal: 5, hype: 1.0 });
+    const result = handicapper.execute(ctx, neverCalledRng);
     expect(result.context.hype).toBeCloseTo(1.3, 4);
   });
 
-  it('fires on POINT_SET with point 5 → +0.2 hype', () => {
-    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [2, 3], diceTotal: 5, hype: 1.0 });
-    const result = handicapper.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.2, 4);
-  });
-
-  it('fires on POINT_SET with point 9 → +0.2 hype', () => {
+  it('fires on POINT_SET with point 9 → +0.3 hype', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [4, 5], diceTotal: 9, hype: 1.0 });
     const result = handicapper.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.2, 4);
+    expect(result.context.hype).toBeCloseTo(1.3, 4);
   });
 
-  it('fires on POINT_SET with point 6 → +0.1 hype', () => {
+  it('fires on POINT_SET with point 6 → +0.15 hype', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [2, 4], diceTotal: 6, hype: 1.0 });
     const result = handicapper.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.1, 4);
+    expect(result.context.hype).toBeCloseTo(1.15, 4);
   });
 
-  it('fires on POINT_SET with point 8 → +0.1 hype', () => {
+  it('fires on POINT_SET with point 8 → +0.15 hype', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [3, 5], diceTotal: 8, hype: 1.0 });
     const result = handicapper.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.1, 4);
+    expect(result.context.hype).toBeCloseTo(1.15, 4);
   });
 
   it('stacks on elevated hype', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [1, 3], diceTotal: 4, hype: 1.5 });
     const result = handicapper.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.8, 4);
+    expect(result.context.hype).toBeCloseTo(1.95, 4);
   });
 
   it('newCooldown is 0', () => {
@@ -1302,23 +1302,23 @@ describe('Mirror (ID 27)', () => {
     expect(result.context.hype).toBe(1.0);
   });
 
-  it('fires on diceTotal=7 (NATURAL come-out) → +0.2 hype', () => {
+  it('fires on diceTotal=7 (NATURAL come-out) → +0.3 hype', () => {
     const ctx = makeCtx({ diceTotal: 7, rollResult: 'NATURAL', hype: 1.0 });
     const result = mirror.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.2, 4);
+    expect(result.context.hype).toBeCloseTo(1.3, 4);
     expect(result.newCooldown).toBe(0);
   });
 
-  it('fires on diceTotal=7 (SEVEN_OUT point phase) → +0.2 hype', () => {
+  it('fires on diceTotal=7 (SEVEN_OUT point phase) → +0.3 hype', () => {
     const ctx = makeCtx({ diceTotal: 7, rollResult: 'SEVEN_OUT', hype: 1.5 });
     const result = mirror.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.7, 4);
+    expect(result.context.hype).toBeCloseTo(1.8, 4);
   });
 
   it('rounds to 4 decimal places', () => {
     const ctx = makeCtx({ diceTotal: 7, rollResult: 'NATURAL', hype: 1.0 });
     const result = mirror.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBe(1.2);
+    expect(result.context.hype).toBe(1.3);
   });
 });
 
@@ -1401,7 +1401,7 @@ describe('Pressure Cooker (ID 29)', () => {
     expect(result.context).toBe(ctx);
   });
 
-  it('fires on NO_RESOLUTION with streak=4 (5th blank) → +0.5 hype + 0.75× additive', () => {
+  it('fires on NO_RESOLUTION with streak=4 (5th blank) → +0.75 hype + 0.75× additive', () => {
     // maxBet=1000, additive=round(0.75*1000/100)*100=round(7.5)*100=800
     const ctx = makeCtx({
       rollResult:            'NO_RESOLUTION',
@@ -1411,7 +1411,7 @@ describe('Pressure Cooker (ID 29)', () => {
       markerTargetCents:     TARGET,
     });
     const result = pressureCooker.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.5, 4);
+    expect(result.context.hype).toBeCloseTo(1.75, 4);
     expect(result.context.additives).toBe(800);
     expect(result.newCooldown).toBe(0);
   });
@@ -1425,7 +1425,7 @@ describe('Pressure Cooker (ID 29)', () => {
       markerTargetCents:     TARGET,
     });
     const result = pressureCooker.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(2.0, 4);
+    expect(result.context.hype).toBeCloseTo(2.25, 4);
   });
 });
 
@@ -1472,5 +1472,23 @@ describe('Contrarian (ID 30)', () => {
     });
     const result = contrarian.execute(ctx, neverCalledRng);
     expect(result.context.additives).toBe(1_100);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FB-041 — cash crew pay from TurnContext.crewCashBaseCents (the tapered base)
+// ---------------------------------------------------------------------------
+
+describe('Crew-cash taper (FB-041)', () => {
+  it('Doorman pays 0.25× the crew-cash base, not 10% of the target', () => {
+    // Target $100 (untapered base $10) but a tapered base of $7 → round(0.25 × 700 / 100) × 100 = 200.
+    const ctx = makeCtx({ rollResult: 'NATURAL', additives: 0, markerTargetCents: TARGET, crewCashBaseCents: 700 });
+    expect(doorman.execute(ctx, neverCalledRng).context.additives).toBe(200);
+  });
+
+  it('Grinder pays 0.15× the crew-cash base', () => {
+    // round(0.15 × 2000 / 100) × 100 = 300 (untapered target would give 200).
+    const ctx = makeCtx({ rollResult: 'NO_RESOLUTION', activePoint: 6, additives: 0, markerTargetCents: TARGET, crewCashBaseCents: 2000 });
+    expect(grinder.execute(ctx, neverCalledRng).context.additives).toBe(300);
   });
 });

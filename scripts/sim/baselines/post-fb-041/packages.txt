@@ -1,0 +1,11 @@
+N = 4000 runs per row. Shipped game (FB-041): a new run starts on Floor 1 with $40 and one free crew member; one hire per pub.
+
+## Packages — whole runs from a new run
+Each cell: reach Floor 4 (cleared Le Prix) / reach Floor 5 / finish given Floor 5 / finish (beat The Architect).
+
+| Package | cash · pass | mixed · pass | hype · pass | mixed · odds1x |
+|---|---|---|---|---|
+| Pre-FB-041 (old game) | 12% / 9% / 73% / 7% | 11% / 8% / 76% / 6% | 1% / 1% / 26% / 0% | 16% / 13% / 64% / 8% |
+| Shipped (FB-041), lineup pick | 40% / 33% / 46% / 15% | 39% / 31% / 64% / 20% | 8% / 5% / 25% / 1% | 34% / 27% / 54% / 15% |
+| Shipped (FB-041), 3-Starter draft | 41% / 32% / 46% / 15% | 41% / 34% / 61% / 21% | 14% / 10% / 48% / 5% | 34% / 27% / 55% / 15% |
+| Shipped + A+ steeper taper | 41% / 32% / 40% / 13% | 40% / 32% / 58% / 18% | 8% / 5% / 26% / 1% | 34% / 27% / 52% / 14% |

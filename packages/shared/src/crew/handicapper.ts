@@ -4,9 +4,9 @@
 //
 // Category:    HYPE
 // Ability:     Adds Hype on POINT_SET — scaled to the difficulty of the point.
-//              Points 4 or 10  → +0.3 Hype
-//              Points 5 or 9   → +0.2 Hype
-//              Points 6 or 8   → +0.1 Hype
+//              Points 4 or 10  → +0.45 Hype
+//              Points 5 or 9   → +0.3 Hype
+//              Points 6 or 8   → +0.15 Hype
 // Cooldown:    none
 //
 // On POINT_SET the run is still in COME_OUT, so resolveRoll() leaves
@@ -36,12 +36,12 @@ export const handicapper: CrewMember = {
 
     let hypeDelta: number;
     if (point === 4 || point === 10) {
-      hypeDelta = 0.3;
+      hypeDelta = 0.45;  // FB-041 ×1.5 (was 0.3)
     } else if (point === 5 || point === 9) {
-      hypeDelta = 0.2;
+      hypeDelta = 0.3;   // FB-041 ×1.5 (was 0.2)
     } else {
       // Points 6 or 8
-      hypeDelta = 0.1;
+      hypeDelta = 0.15;  // FB-041 ×1.5 (was 0.1)
     }
 
     const newHype = Math.round((ctx.hype + hypeDelta) * 10_000) / 10_000;

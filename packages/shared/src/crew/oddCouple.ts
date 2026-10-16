@@ -3,7 +3,7 @@
 // packages/shared/src/crew/oddCouple.ts
 //
 // Category:    HYPE
-// Ability:     +0.2 Hype whenever both dice show odd faces (1, 3, or 5).
+// Ability:     +0.3 Hype whenever both dice show odd faces (1, 3, or 5).
 // Cooldown:    none
 //
 // Trigger: ctx.dice[0] % 2 === 1 && ctx.dice[1] % 2 === 1
@@ -13,7 +13,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const HYPE_BOOST = 0.2;
+const HYPE_BOOST = 0.3;  // FB-041: crew Hype ×1.5 (was 0.2)
 
 export const oddCouple: CrewMember = {
   id:               22,

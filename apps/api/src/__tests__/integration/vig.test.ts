@@ -5,7 +5,7 @@
 // cascade. The crew lines show each bonus as earned, so the Vig's share gets
 // its own receipt line — the money lines must add up to the roll's Net.
 //
-// "Ace" McGee (ID 17) adds 0.40× max bet whenever a 1 shows. Every roll here
+// "Ace" McGee (ID 17) adds 0.40× the crew-cash base (FB-041: max bet × the floor's scale) whenever a 1 shows. Every roll here
 // is a 1+2 blank in the point phase, so the only money is crew cash.
 // =============================================================================
 
@@ -104,37 +104,37 @@ describe('The Vig — receipt line', () => {
   });
 
   it('Hierophant: the Vig share goes to the offering and does not inflate Net', async () => {
-    // Marker 14: max bet 1_000_000¢ → Ace = 400_000¢; Vig → 480_000¢, all held.
+    // Marker 14: max bet 1_000_000¢ × 0.8 (FB-041, Floor 5) → Ace = 320_000¢; Vig → 384_000¢, all held.
     const { run, receipt } = await blankWithAce({
       currentMarkerIndex: 14, bankrollCents: 2_000_000, pendingAdditiveCents: 100_000,
     }, 166_500);
 
-    expect(receipt.lines).toContainEqual({ kind: 'info', text: 'The Vig: $800.00 (+20% crew cash) → the offering' });
+    expect(receipt.lines).toContainEqual({ kind: 'info', text: 'The Vig: $640.00 (+20% crew cash) → the offering' });
     expect(receipt.netDelta).toBe(0);
     expect(sumMoneyLines(receipt)).toBe(0);
-    expect(run['pendingAdditiveCents']).toBe(580_000);
+    expect(run['pendingAdditiveCents']).toBe(484_000);
   });
 
   it('Emissary: the Vig share goes into transit with the crew cash', async () => {
-    // Marker 23: max bet 150_000_000¢ → Ace = 60_000_000¢; Vig → 72_000_000¢ in transit.
+    // Marker 23: max bet 150_000_000¢ × 0.5 (FB-041, Floor 8) → Ace = 30_000_000¢; Vig → 36_000_000¢ in transit.
     const { run, receipt } = await blankWithAce({ currentMarkerIndex: 23, bankrollCents: 200_000_000 }, 25_000_000);
 
-    expect(receipt.lines).toContainEqual({ kind: 'info', text: 'The Vig: $120000.00 (+20% crew cash) → in transit' });
+    expect(receipt.lines).toContainEqual({ kind: 'info', text: 'The Vig: $60000.00 (+20% crew cash) → in transit' });
     expect(receipt.netDelta).toBe(0);
     expect(sumMoneyLines(receipt)).toBe(0);
-    expect(run['signalTransit']).toEqual({ additives: 72_000_000, hype: 0, multipliers: [] });
+    expect(run['signalTransit']).toEqual({ additives: 36_000_000, hype: 0, multipliers: [] });
   });
 
   it('Architect: the load-bearing cut (applied after the Vig) gets its own line', async () => {
-    // Marker 26: max bet 600_000_000¢ → Ace = 240_000_000¢; Vig → 288_000_000¢;
-    // one slot down → × 0.85 = 244_800_000¢ paid (43_200_000¢ cut).
+    // Marker 26: max bet 600_000_000¢ × 0.45 (FB-041, Floor 9) = 270_000_000¢ → Ace = 108_000_000¢;
+    // Vig → 129_600_000¢; one slot down → × 0.85 = 110_160_000¢ paid (19_440_000¢ cut).
     const { receipt } = await blankWithAce({
       currentMarkerIndex: 26, bankrollCents: 500_000_000, unlockedSlots: 5, bossPointHits: 1,
     }, 100_000_000);
 
-    expect(receipt.lines).toContainEqual({ kind: 'win', text: 'The Vig: $480000.00 (+20% crew cash)' });
-    expect(receipt.lines).toContainEqual({ kind: 'loss', text: 'The Architect: $432000.00 load-bearing (crew cash −15%)' });
-    expect(receipt.netDelta).toBe(244_800_000);
+    expect(receipt.lines).toContainEqual({ kind: 'win', text: 'The Vig: $216000.00 (+20% crew cash)' });
+    expect(receipt.lines).toContainEqual({ kind: 'loss', text: 'The Architect: $194400.00 load-bearing (crew cash −15%)' });
+    expect(receipt.netDelta).toBe(110_160_000);
     expect(sumMoneyLines(receipt)).toBe(receipt.netDelta);
   });
 });

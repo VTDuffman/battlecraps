@@ -263,8 +263,8 @@ describe('Pressure Cooker (ID 29)', () => {
     );
     expect(status).toBe(200);
     const r = body['run'] as Record<string, unknown>;
-    // Hype 1.0 + 0.5 = 1.5 → floor(400 × 1.5) = 600¢ paid.
-    expect(r['bankrollCents']).toBe(3100);
+    // Hype 1.0 + 0.75 (FB-041) = 1.75 → floor(400 × 1.75) = 700¢ paid.
+    expect(r['bankrollCents']).toBe(3200);
     expect(r['pointPhaseBlankStreak']).toBe(0);
   });
 });
@@ -327,17 +327,17 @@ describe('Handicapper (ID 26)', () => {
     };
   }
 
-  it('point 4 → +0.3 Hype', async () => {
+  it('point 4 → +0.45 Hype', async () => {
     const r = await setPoint(1, 3);
     expect(r.slots).toContain(0);
-    expect(r.hype).toBeCloseTo(1.3, 4);
+    expect(r.hype).toBeCloseTo(1.45, 4);
   });
 
-  it('point 9 → +0.2 Hype', async () => {
-    expect((await setPoint(4, 5)).hype).toBeCloseTo(1.2, 4);
+  it('point 9 → +0.3 Hype', async () => {
+    expect((await setPoint(4, 5)).hype).toBeCloseTo(1.3, 4);
   });
 
-  it('point 8 → +0.1 Hype', async () => {
-    expect((await setPoint(5, 3)).hype).toBeCloseTo(1.1, 4);
+  it('point 8 → +0.15 Hype', async () => {
+    expect((await setPoint(5, 3)).hype).toBeCloseTo(1.15, 4);
   });
 });

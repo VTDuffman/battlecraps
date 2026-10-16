@@ -32,6 +32,7 @@ import {
   GAUNTLET,
   BOSS_RULE_HOOKS,
   COMP_PERK_IDS,
+  getCrewCashBaseCents,
   getMaxBet,
   getMinBet,
   isBossMarker,
@@ -660,6 +661,8 @@ async function rollHandler(
     shooterRollCount:      run.shooterRollCount,
     pointPhaseBlankStreak: run.pointPhaseBlankStreak,
     markerTargetCents:     GAUNTLET[run.currentMarkerIndex]?.targetCents ?? 0,
+    // FB-041: floor-scaled crew cash cools off on Floors 5–9.
+    crewCashBaseCents:     getCrewCashBaseCents(run.currentMarkerIndex),
     shooters:              run.shooters,
     unlockedSlots:         effectiveUnlockedSlots,
   });

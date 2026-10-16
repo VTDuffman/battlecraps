@@ -1,6 +1,9 @@
 # FB-041 — Economy Rebalance: Opening Fix, Crew-Cash Taper, Crew Hype ×1.5
 
-> **Status:** Planned (2026-10-15). Decisions D1–D4 made 2026-10-15. Not started.
+> **Status:** Implemented (2026-10-15).
+> - **Release 1:** the opening (PR #37).
+> - **Release 2:** Changes 2 + 3 (PR #38).
+> - **Validated:** `gauntlet-economy-sim.mjs validate` meets every target band. See `scripts/sim/baselines/post-fb-041/README.md` and audit doc §7.
 > **Evidence:** `docs/design/gauntlet-difficulty-audit.md` (all numbers below come from it) and the sim at `scripts/sim/gauntlet-economy-sim.mjs`.
 > **Manifest:** `docs/manifests/fb-041-economy-rebalance-manifest.md`
 

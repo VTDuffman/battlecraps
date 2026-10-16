@@ -64,6 +64,8 @@ export function makeCtx(overrides: Partial<TurnContext> = {}): TurnContext {
     shooters:                5,
     unlockedSlots:           5,   // default to 5 so all existing tests remain valid
     ...overrides,
+    // FB-041: untapered crew-cash base unless a test sets it — matches resolveRoll's default.
+    crewCashBaseCents: overrides.crewCashBaseCents ?? Math.floor((overrides.markerTargetCents ?? 0) * 0.10),
   };
 }
 

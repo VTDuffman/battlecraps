@@ -1,0 +1,44 @@
+N = 4000 runs per row. Shipped game (FB-041): a new run starts on Floor 1 with $40 and one free crew member; one hire per pub.
+
+## Floors 1–3 — chained from a new run; clear rate given reached (bosses in bold)
+"Reach F4" = share of new runs that clear Le Prix. Rows marked "no rules" switch every boss rule off.
+
+| Lineup · bets · variant | Reach F4 | 0 | 1 | **2** | 3 | 4 | **5** | 6 | 7 | **8** | Median rolls F1–F3 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| none · pass · shipped | 0.1% | 58 | 35 | 59 | 34 | 41 | 21 | 71 | 80 | 75 | 188 |
+| none · pass · no rules | 0.1% | 59 | 32 | 35 | 53 | 43 | 45 | 65 | 71 | 42 | 218 |
+| cash · pass · shipped | 40.9% | 75 | 74 | 99 | 94 | 97 | 91 | 99 | 99 | 91 | 109 |
+| cash · pass · pre-FB-041 | 11.9% | 36 | 50 | 94 | 89 | 97 | 92 | 99 | 99 | 91 | 132 |
+| cash · pass · no rules | 44.0% | 76 | 75 | 88 | 98 | 98 | 95 | 99 | 100 | 98 | 105 |
+| mixed · pass · shipped | 40.0% | 74 | 79 | 97 | 93 | 96 | 91 | 99 | 99 | 88 | 106 |
+| mixed · pass · pre-FB-041 | 10.9% | 35 | 53 | 98 | 85 | 94 | 88 | 99 | 99 | 88 | 135 |
+| mixed · pass · no rules | 42.0% | 75 | 78 | 86 | 97 | 96 | 94 | 99 | 99 | 97 | 100 |
+| hype · pass · shipped | 9.1% | 75 | 66 | 80 | 75 | 80 | 64 | 87 | 92 | 76 | 123 |
+| hype · pass · pre-FB-041 | 1.3% | 37 | 44 | 70 | 54 | 73 | 57 | 80 | 93 | 70 | 161 |
+| hype · pass · no rules | 10.0% | 75 | 63 | 68 | 83 | 79 | 75 | 88 | 90 | 79 | 117 |
+| mixed · odds1x · shipped | 34.0% | 79 | 79 | 94 | 90 | 93 | 85 | 96 | 98 | 86 | 77 |
+| mixed · odds1x · pre-FB-041 | 16.1% | 58 | 62 | 93 | 80 | 92 | 85 | 96 | 98 | 83 | 93 |
+| mixed · odds1x · no rules | 38.0% | 80 | 77 | 85 | 96 | 93 | 92 | 97 | 98 | 94 | 73 |
+| cash · maxOdds · shipped | 10.8% | 62 | 64 | 83 | 82 | 89 | 72 | 92 | 94 | 72 | 41 |
+| cash · maxOdds · pre-FB-041 | 5.7% | 47 | 53 | 66 | 79 | 90 | 73 | 95 | 93 | 74 | 40 |
+| cash · maxOdds · no rules | 13.7% | 61 | 63 | 73 | 92 | 86 | 81 | 93 | 95 | 84 | 35 |
+
+Where new runs die (cash · pass, today):
+- 0  ($50): reached 100.0%, arrival × 0.80, median rolls 12 — lost: shooters 26.1%
+- 1  ($100): reached 73.9%, arrival × 0.43, median rolls 21 — lost: shooters 18.3%, broke 0.1%
+- 2 The Foreman ($200): reached 55.6%, arrival × 0.41, median rolls 13 — lost: shooters 0.5%
+- 3  ($300): reached 55.0%, arrival × 0.49, median rolls 13 — lost: shooters 2.9%
+- 4  ($500): reached 52.1%, arrival × 0.62, median rolls 9 — lost: shooters 1.3%
+- 5 Sarge ($1k): reached 50.8%, arrival × 0.52, median rolls 12 — lost: shooters 4.4%
+- 6  ($1.5k): reached 46.4%, arrival × 0.69, median rolls 8 — lost: shooters 0.5%
+- 7  ($2k): reached 45.9%, arrival × 0.78, median rolls 6 — lost: shooters 0.1%
+- 8 Mme. Le Prix ($4k): reached 45.7%, arrival × 0.52, median rolls 17 — lost: shooters 4.0%
+
+## Floors 1–3 — fixes for the opening (chained from a new run; "Reach F4" = clears Le Prix; "Finish" = beats The Architect)
+
+| Option | cash · pass: reach F4 / finish | mixed · pass: reach F4 / finish | hype · pass: reach F4 / finish | mixed · odds1x: reach F4 / finish | mixed · pass per marker 0–8 |
+|---|---|---|---|---|---|
+| Shipped (FB-041, lineup pick) | 40.9% / 14.9% | 39.2% / 20.2% | 9.1% / 1.9% | 34.6% / 15.0% | 74 / 78 / 98 / 93 / 97 / 90 / 98 / 99 / 89 |
+| Pre-FB-041 opening ($30, no crew) | 11.9% / 4.2% | 13.1% / 6.4% | 2.9% / 0.4% | 17.1% / 7.4% | 37 / 54 / 96 / 87 / 97 / 91 / 99 / 99 / 89 |
+| Shipped — pick from a 3-Starter draft | 41.5% / 16.2% | 39.7% / 19.7% | 13.2% / 4.4% | 36.1% / 15.2% | 77 / 73 / 98 / 94 / 97 / 90 / 99 / 99 / 90 |
+| Pre-FB-041 game (old opening + old crew) | 13.5% / 7.8% | 11.3% / 6.1% | 1.0% / 0.1% | 14.8% / 7.3% | 37 / 50 / 97 / 87 / 96 / 87 / 98 / 100 / 90 |

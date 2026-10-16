@@ -3,7 +3,7 @@
 // packages/shared/src/crew/momentum.ts
 //
 // Category:    HYPE
-// Ability:     +0.2 Hype whenever this roll's total is higher than the last.
+// Ability:     +0.3 Hype whenever this roll's total is higher than the last.
 // Cooldown:    none
 //
 // Trigger: ctx.previousRollTotal !== null && ctx.diceTotal > ctx.previousRollTotal
@@ -13,7 +13,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const HYPE_BOOST = 0.2;
+const HYPE_BOOST = 0.3;  // FB-041: crew Hype ×1.5 (was 0.2)
 
 export const momentum: CrewMember = {
   id:               19,

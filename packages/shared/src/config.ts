@@ -40,6 +40,37 @@ export function getCrewHireCost(rarity: CrewRarity, clearedMarkerTargetCents: nu
 }
 
 // ---------------------------------------------------------------------------
+// Crew-cash taper (FB-041)
+// ---------------------------------------------------------------------------
+
+/**
+ * Share of the table max that floor-scaled crew cash is based on, per floor
+ * (index 0 = Floor 1 … 8 = Floor 9). Full strength through Floor 4, then it
+ * cools off — crew cash scales with the target and pays on losing rolls, so
+ * without this taper the late game barely pushes back
+ * (docs/design/gauntlet-difficulty-audit.md). Tuned with
+ * scripts/sim/gauntlet-economy-sim.mjs.
+ *
+ * Steeper A+ curve (analysed in FB-041, ready to pull if the late game is still
+ * too soft — no new analysis needed; see the FB-041 design doc § Change 2):
+ *   [1, 1, 1, 1, 0.7, 0.6, 0.5, 0.45, 0.4]
+ */
+export const CREW_CASH_SCALE_BY_FLOOR: readonly number[] = [1, 1, 1, 1, 0.8, 0.7, 0.6, 0.5, 0.45];
+
+/**
+ * The base every floor-scaled cash crew multiplies by its ADDITIVE_MULT:
+ * the marker's table max (10% of the target) × the floor's crew-cash scale.
+ * The only place crew cash is scaled — crew files read it from
+ * TurnContext.crewCashBaseCents and never compute 10% of the target themselves.
+ */
+export function getCrewCashBaseCents(markerIndex: number): number {
+  const target = GAUNTLET[markerIndex]?.targetCents ?? GAUNTLET[GAUNTLET.length - 1]!.targetCents;
+  const floor  = Math.min(Math.max(Math.floor(markerIndex / 3), 0), CREW_CASH_SCALE_BY_FLOOR.length - 1);
+  const scale  = CREW_CASH_SCALE_BY_FLOOR[floor] ?? 1;
+  return Math.floor(Math.floor(target * 0.10) * scale);
+}
+
+// ---------------------------------------------------------------------------
 // The opening — "First Round's on the House" (FB-041)
 // ---------------------------------------------------------------------------
 

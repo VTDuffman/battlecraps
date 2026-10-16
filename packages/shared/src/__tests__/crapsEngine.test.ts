@@ -533,3 +533,23 @@ describe('calcResolvedBets — hardway bets clear on soft rolls during NO_RESOLU
     expect(ctx.resolvedBets.hardways.hard6).toBe(500); // untouched
   });
 });
+
+// ---------------------------------------------------------------------------
+// FB-041 — crewCashBaseCents
+// ---------------------------------------------------------------------------
+
+describe('resolveRoll — crewCashBaseCents (FB-041)', () => {
+  const base = {
+    phase: 'COME_OUT' as const, currentPoint: null, bets: makeBets(), hype: 1.0,
+    previousRollTotal: null, shooterRollCount: 0, pointPhaseBlankStreak: 0,
+    markerTargetCents: 10_000,
+  };
+
+  it('carries the injected crew-cash base through to the TurnContext', () => {
+    expect(resolveRoll([3, 4], { ...base, crewCashBaseCents: 700 }).crewCashBaseCents).toBe(700);
+  });
+
+  it('defaults to the untapered table max (10% of the target)', () => {
+    expect(resolveRoll([3, 4], base).crewCashBaseCents).toBe(1_000);
+  });
+});

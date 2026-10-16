@@ -468,8 +468,9 @@ describe('CROSS_CALIBRATION — The Executive (marker 11)', () => {
 // Crew-bonus escrow — TRIBUTE (Hierophant, marker 14) and TRANSMISSION_DELAY
 // (Emissary, marker 23).
 //
-// "Ace" McGee (ID 17) adds 0.40× max bet whenever a 1 shows; The Shark (ID 8)
-// adds 0.65× max bet on a point hit. Under both bosses those bonuses are held
+// "Ace" McGee (ID 17) adds 0.40× the crew-cash base whenever a 1 shows; The Shark (ID 8)
+// adds 0.65× it on a point hit. FB-041: the base is the max bet × the floor's
+// crew-cash scale — ×0.8 on Floor 5 (Hierophant), ×0.5 on Floor 8 (Emissary). Under both bosses those bonuses are held
 // in escrow (pendingAdditiveCents) instead of paying out on the roll.
 // ---------------------------------------------------------------------------
 
@@ -487,7 +488,7 @@ describe('Crew-bonus escrow', () => {
   };
 
   it('Hierophant: a seven-out seizes 75% of the whole offering, including bonuses earned on that roll', async () => {
-    // Marker 14: target 10_000_000¢ → max bet 1_000_000¢ → Ace = 400_000¢. Min bet 166_500¢.
+    // Marker 14: target 10_000_000¢ → max bet 1_000_000¢ × 0.8 (Floor 5) → Ace = 320_000¢. Min bet 166_500¢.
     const run = await createRun(userId, {
       currentMarkerIndex:   14,
       bankrollCents:        2_000_000,
@@ -499,22 +500,22 @@ describe('Crew-bonus escrow', () => {
       pendingAdditiveCents: 100_000,
     });
 
-    // 1+6 = 7 → SEVEN_OUT; Ace fires on the 1 (400_000¢ held this roll).
+    // 1+6 = 7 → SEVEN_OUT; Ace fires on the 1 (320_000¢ held this roll).
     const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(166_500), 1, 6);
     expect(status, JSON.stringify(body)).toBe(200);
     const r = body['run'] as Record<string, unknown>;
-    // (100_000 + 400_000) × Hype 1.0 = 500_000 offered; 75% seized → 125_000 paid.
-    expect(r['bankrollCents']).toBe(2_125_000);
+    // (100_000 + 320_000) × Hype 1.0 = 420_000 offered; 75% seized → 105_000 paid.
+    expect(r['bankrollCents']).toBe(2_105_000);
     expect(r['pendingAdditiveCents']).toBe(0);
 
     // FB-036: the client is told what happened to the offering…
     const roll = body['roll'] as Record<string, unknown>;
-    expect(roll['escrow']).toEqual({ heldCents: 0, releasedCents: 125_000, seizedCents: 375_000 });
+    expect(roll['escrow']).toEqual({ heldCents: 0, releasedCents: 105_000, seizedCents: 315_000 });
     // …and the receipt shows the real tribute (it used to be computed as 0).
     const receipt = roll['receipt'] as { lines: { text: string }[] };
-    expect(receipt.lines.some((l) => l.text === 'The Hierophant: $3750.00 tribute')).toBe(true);
-    expect(receipt.lines.some((l) => l.text === 'Released from the offering: $1250.00')).toBe(true);
-    expectNet(body, -166_500 + 125_000);   // Pass Line lost + what the offering paid
+    expect(receipt.lines.some((l) => l.text === 'The Hierophant: $3150.00 tribute')).toBe(true);
+    expect(receipt.lines.some((l) => l.text === 'Released from the offering: $1050.00')).toBe(true);
+    expectNet(body, -166_500 + 105_000);   // Pass Line lost + what the offering paid
   });
 
   it('Hierophant: a blank keeps holding — the offering grows (FB-036)', async () => {
@@ -529,16 +530,16 @@ describe('Crew-bonus escrow', () => {
       pendingAdditiveCents: 100_000,
     });
 
-    // 1+2 = 3 → blank in the point phase; Ace fires on the 1 (400_000¢ held).
+    // 1+2 = 3 → blank in the point phase; Ace fires on the 1 (320_000¢ held).
     const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(166_500), 1, 2);
     expect(status, JSON.stringify(body)).toBe(200);
     const roll = body['roll'] as Record<string, unknown>;
-    expect(roll['escrow']).toEqual({ heldCents: 500_000, releasedCents: 0, seizedCents: 0 });
-    expect((body['run'] as Record<string, unknown>)['pendingAdditiveCents']).toBe(500_000);
+    expect(roll['escrow']).toEqual({ heldCents: 420_000, releasedCents: 0, seizedCents: 0 });
+    expect((body['run'] as Record<string, unknown>)['pendingAdditiveCents']).toBe(420_000);
     // Ace's bonus reads as offered, not paid (it used to inflate Net).
     const receipt = roll['receipt'] as { lines: { kind: string; text: string }[] };
-    expect(receipt.lines).toContainEqual({ kind: 'info', text: '"Ace" McGee: $4000.00 → the offering' });
-    expectNet(body, 0);   // nothing won, nothing paid — Ace's $4,000 is in the bowl
+    expect(receipt.lines).toContainEqual({ kind: 'info', text: '"Ace" McGee: $3200.00 → the offering' });
+    expectNet(body, 0);   // nothing won, nothing paid — Ace's $3,200 is in the bowl
   });
 
   it('Hierophant: the ADVANCE clear pays out the offering (with Hype) instead of carrying it', async () => {
@@ -571,11 +572,11 @@ describe('Crew-bonus escrow', () => {
       pendingAdditiveCents: 100_000,
     });
 
-    // 1+1 = 2 → CRAPS_OUT; Ace fires on the 1s (400_000¢ more offered).
+    // 1+1 = 2 → CRAPS_OUT; Ace fires on the 1s (320_000¢ more offered).
     const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(166_500), 1, 1);
     expect(status, JSON.stringify(body)).toBe(200);
     const roll = body['roll'] as Record<string, unknown>;
-    expect(roll['escrow']).toEqual({ heldCents: 500_000, releasedCents: 0, seizedCents: 0 });
+    expect(roll['escrow']).toEqual({ heldCents: 420_000, releasedCents: 0, seizedCents: 0 });
   });
 
   it('Hierophant: hitting the point releases the whole offering multiplied by Hype', async () => {
@@ -601,7 +602,7 @@ describe('Crew-bonus escrow', () => {
   });
 
   it('Emissary (FB-039): a bonus the crew earns now lands on the NEXT roll', async () => {
-    // Marker 23: target 1_500_000_000¢ → max bet 150_000_000¢. Ace = 0.40 × max = 60_000_000¢.
+    // Marker 23: target 1_500_000_000¢ → max bet 150_000_000¢ × 0.5 (Floor 8). Ace = 0.40 × 75_000_000 = 30_000_000¢.
     const run = await createRun(userId, {
       currentMarkerIndex: 23, bankrollCents: 200_000_000, status: 'POINT_ACTIVE', phase: 'POINT_ACTIVE',
       currentPoint: 6, bets: PASS_ONLY(25_000_000), crewSlots: [ACE, null, null, null, null],
@@ -611,9 +612,9 @@ describe('Crew-bonus escrow', () => {
     expect(status, JSON.stringify(body)).toBe(200);
     const r = body['run'] as Record<string, unknown>;
     expect(r['bankrollCents']).toBe(200_000_000);
-    expect(r['signalTransit']).toEqual({ additives: 60_000_000, hype: 0, multipliers: [] });
+    expect(r['signalTransit']).toEqual({ additives: 30_000_000, hype: 0, multipliers: [] });
     const signal = (body['roll'] as Record<string, unknown>)['signal'] as Record<string, unknown>;
-    expect(signal['sent']).toEqual({ additives: 60_000_000, hype: 0, multipliers: [] });
+    expect(signal['sent']).toEqual({ additives: 30_000_000, hype: 0, multipliers: [] });
     expect(signal['landed']).toEqual({ additives: 0, hype: 0, multipliers: [] });
   });
 
@@ -682,7 +683,7 @@ describe('Crew-bonus escrow', () => {
     expect(second.status, JSON.stringify(second.body)).toBe(200);
     const signal = (second.body['roll'] as Record<string, unknown>)['signal'] as Record<string, unknown>;
     expect(signal['wasDark']).toBe(false);
-    expect((signal['sent'] as Record<string, unknown>)['additives']).toBe(60_000_000);
+    expect((signal['sent'] as Record<string, unknown>)['additives']).toBe(30_000_000);
   });
 
   it('Emissary (FB-039): the roll that clears the marker pays the cash in transit', async () => {
@@ -690,13 +691,13 @@ describe('Crew-bonus escrow', () => {
       currentMarkerIndex: 23, bankrollCents: 1_450_000_000, status: 'POINT_ACTIVE', phase: 'POINT_ACTIVE',
       currentPoint: 6, bets: PASS_ONLY(25_000_000), crewSlots: [SHARK, null, null, null, null],
     });
-    // 4+2 = 6 → POINT_HIT clears the marker; Shark's 97_500_000 sent this roll is paid with the clear.
+    // 4+2 = 6 → POINT_HIT clears the marker; Shark's 48_750_000 (0.65 × 75_000_000) sent this roll is paid with the clear.
     const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(25_000_000), 4, 2);
     expect(status, JSON.stringify(body)).toBe(200);
     const r = body['run'] as Record<string, unknown>;
     expect(r['status']).toBe('TRANSITION');
     // (1_503_749_900, not …750_000: settleTurn loses $1 to float rounding on 25M × 1.15 — KI-079.)
-    expect(r['bankrollCents']).toBe(1_601_249_900);
+    expect(r['bankrollCents']).toBe(1_552_499_900);
     expect(r['signalTransit']).toBeNull();
     expect(r['signalDarkRolls']).toBe(0);
   });

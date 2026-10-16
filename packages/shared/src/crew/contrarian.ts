@@ -32,7 +32,7 @@ export const contrarian: CrewMember = {
       return { context: ctx, newCooldown: 0 };
     }
 
-    const maxBet = Math.floor(ctx.markerTargetCents * 0.10);
+    const maxBet = ctx.crewCashBaseCents;  // FB-041: table max × the floor's crew-cash scale
     const additive = Math.round(ADDITIVE_MULT * maxBet / 100) * 100;
 
     return {

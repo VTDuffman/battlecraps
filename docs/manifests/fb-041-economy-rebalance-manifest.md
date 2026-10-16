@@ -136,6 +136,16 @@
 
 **Prompt:** "Implement FB-041 Phase 2 per the design doc § Change 2. Add `CREW_CASH_SCALE_BY_FLOOR` + `getCrewCashBaseCents(markerIndex)` to shared config. Add `crewCashBaseCents` to TurnContext via resolveRoll's state (default `floor(markerTargetCents*0.10)`). Pass it from rolls.ts. In the 12 listed crew files swap the 10%-of-target line for `ctx.crewCashBaseCents`. Update CrewPortrait's tooltip amounts to use the helper, and update/add the tests listed."
 
+--- Implemented (2026-10-15):
+- **Shared `config.ts`:** `CREW_CASH_SCALE_BY_FLOOR` = [1, 1, 1, 1, 0.8, 0.7, 0.6, 0.5, 0.45] with the A+ curve in its comment, and `getCrewCashBaseCents(markerIndex)`.
+- **`TurnContext.crewCashBaseCents`** via `resolveRoll` state (default: the untapered 10% of the target). `rolls.ts` injects the helper.
+- **12 cash crew** read `ctx.crewCashBaseCents`. No crew file references `markerTargetCents` any more.
+- **`CrewPortrait`** tooltips use the helper. The test helper `makeCtx` derives the base from `markerTargetCents` unless set, so existing crew tests are unchanged.
+- **Tests:** shared +9 (config taper, Doorman/Grinder pay from the base, resolveRoll pass-through/default), so 498. Integration +3 (`crewCashTaper.test.ts`: a Doorman point-set pays ×1.0 on Floor 4, ×0.7 on Floor 6, ×0.45 on Floor 9), so 164.
+- **Escrow tests re-baselined:** the Hierophant / Emissary expectations moved to tapered amounts (Ace 320k at ×0.8; Ace 30M and Shark 48.75M at ×0.5).
+- **CLAUDE.md** FB-024 line updated.
+- **Sim:** `gauntlet-economy-sim.mjs` doesn't pass the base yet, so it still models pre-FB-041 crew cash until Phase 4. ---
+
 🛑 **Gate:** typecheck/build/test + integration pass. In Dev Mode, a Floor 8 jump shows tooltips at half today's amounts.
 
 ---
@@ -158,6 +168,17 @@
 4. **Check:** grep `apps/web/src` and `docs` for each old value next to "Hype" to catch stragglers (help sections, Sal).
 
 **Prompt:** "Implement FB-041 Phase 3 per the design doc § Change 3: set the listed crew Hype boosts to the new values, update their tests, and update every player-facing copy source that states a number (seed.ts, CrewPortrait.tsx, crew_framework.md). Don't change base Hype ticks, tier thresholds or The Whale."
+
+--- Implemented (2026-10-15, on the Phase 2 branch / PR #38 so Release 2 ships together):
+- **New values:** Lookout +0.30, Momentum / Odd Couple / Mirror +0.3, Echo / Silver Lining +0.6, Handicapper +0.45 / 0.3 / 0.15, Pressure Cooker +0.75 Hype (cash part unchanged, tapered by Phase 2), Holly +0.25, Nervous Intern +0.45, Drunk Uncle +0.75 / −0.25. Lucky Charm unchanged.
+- **Code comments** updated in each crew file.
+- **Copy:** `seed.ts` (brief + detailed), `CrewPortrait` ability text, `crew_framework.md`. No help or Sal copy states crew Hype numbers.
+- **Tests re-baselined:**
+  - `crew.test.ts`, `crew/handicapper.test.ts`, `cascade.integration.test.ts`, `godBuild.integration.test.ts` (shared, 498).
+  - Integration `cascade.test.ts` Pressure Cooker / Handicapper.
+  - `vig.test.ts` (from #39) rescaled for the Phase 2 taper.
+  - Integration 169.
+- `main` (incl. #39 Vig receipt line) merged into the branch. ---
 
 🛑 **Gate:**
 - Typecheck/build/test pass.
@@ -185,6 +206,18 @@
    - **Opening check:** the sim's pub hires the lineup's next crew member. Add a first hire drawn from 3 random Starters to the harness, and confirm reaching Floor 4 still lands at 35–45%.
 4. Append the before/after table to `gauntlet-difficulty-audit.md`.
 
+--- Implemented (2026-10-15):
+- **Sim defaults = shipped game:** $40 + one free crew member, `crewCashBaseCents` from the engine's taper with a startup check against `getCrewCashBaseCents`, Hype from the crew files.
+- `openingPick: 'draft'` models the 3-random-Starter pick. Crew are seated in the first empty slot.
+- `PRE_FB041` lever set reproduces the old game. OPTIONS / PACKAGES / EARLY_OPTIONS are re-expressed relative to the shipped game (pre-FB-041, A+, comp diet).
+- New `validate` mode.
+- **Results** (`scripts/sim/baselines/post-fb-041/`, N=4000) — **all bands met, no tuning needed:**
+  - Reach Floor 4: cash 42.0%, mixed 40.4%.
+  - Finish | F5: mixed 62.6%, cash 44.3%.
+  - Whole run: cash 16.1%, mixed 20.4% (mixed within noise of the band).
+  - The 3-Starter draft pick performs the same as the lineup pick.
+- **Audit doc § 7** records the before/after. ---
+
 🛑 **Gate:** all bands met, then Release 2.
 
 ---
@@ -205,6 +238,12 @@
 2. **`crew_framework.md`:** the FB-024 formula becomes `MULT × getCrewCashBaseCents(markerIndex)`; new Hype values.
 3. **Backlog:** FB-041 → Implemented. **Audit doc:** status → implemented.
 4. **Release notes** entry (FB-019 process): "Fresh runs start with $40 and a crew member on the house · crew cash cools off on Floors 5–9 · Hype crew hit harder".
+
+--- Implemented (2026-10-15):
+- **CLAUDE.md:** Game Constants gain run start, crew-cash scale and crew Hype values. Current State gains the FB-041 entry. The Sovereign paragraph's "audit may prompt a re-tune" line now points at FB-041. The key constraints were already updated in Phases 1–2.
+- **`crew_framework.md`:** FB-024 formula → `MULT × ctx.crewCashBaseCents`, plus a crew Hype ×1.5 note. Values were updated in Phase 3.
+- **Backlog + design doc** → Implemented; audit doc § 7 written in Phase 4.
+- **Release notes:** generated automatically from `feat:`/`fix:` commit subjects (FB-019). The Phase 1–3 `feat:` commits appear in-game when Release 2 merges, so no separate entry is needed. ---
 
 🛑 **Gate:** FB-041 complete → push.
 

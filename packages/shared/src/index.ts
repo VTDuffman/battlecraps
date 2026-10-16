@@ -26,6 +26,8 @@ export {
   OPENING_BANKROLL_CENTS,
   isOpeningPub,
   isStarterOnlyPub,
+  CREW_CASH_SCALE_BY_FLOOR,
+  getCrewCashBaseCents,
 } from './config.js';
 
 export type {

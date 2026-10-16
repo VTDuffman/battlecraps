@@ -44,7 +44,9 @@ Stakes (1:1 returns) are **never** amplified — only profit above stake is mult
 
 Hire cost is dynamic (FB-023): `getCrewHireCost(rarity, clearedMarkerTargetCents)` in `config.ts` = multiplier × 10% of the target just cleared. The Pub reads `hireCostCents` from `/crew-roster`.
 
-**Floor-scaled additives (FB-024):** cash crew add `Math.round(MULT × floor(markerTargetCents × 0.10) / 100) × 100` — MULT × the current max bet, rounded to the dollar. Additives are amplified by Hype and crew multipliers, ×1.2 with The Vig.
+**Floor-scaled additives (FB-024, tapered in FB-041):** cash crew add `Math.round(MULT × ctx.crewCashBaseCents / 100) × 100`, rounded to the dollar. `crewCashBaseCents = getCrewCashBaseCents(markerIndex)` (shared `config.ts`) = the current max bet × the floor's crew-cash scale: ×1.0 on Floors 1–4, then ×0.8 / 0.7 / 0.6 / 0.5 / 0.45 on Floors 5–9. Crew files never compute 10% of the target themselves. Additives are amplified by Hype and crew multipliers, ×1.2 with The Vig.
+
+**Crew Hype (FB-041):** every Hype crew member's boost was raised ×1.5. The values below are current.
 
 **Source of truth:** player-facing Brief/Detailed/Unlock text below is copied from `apps/api/src/db/seed.ts` (which Render re-seeds on every API deploy); numbers come from each `crew/*.ts` file.
 
@@ -254,10 +256,10 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | **Cooldown** | `none` |
 | **Rarity** | Common |
 | **Unlock Mechanism** | Roll a Natural (7 or 11) while on the first or second marker of a run. |
-| **Brief Description** | Adds +0.30× Hype on every Natural. |
-| **Detailed Description** | Each come-out Natural (7 or 11) pumps global Hype up by 0.30×. Hype persists across rolls and amplifies every payout, so a steady stream of Naturals quietly compounds into a serious multiplier. No cooldown; fires on every Natural. |
+| **Brief Description** | Adds +0.45× Hype on every Natural. |
+| **Detailed Description** | Each come-out Natural (7 or 11) pumps global Hype up by 0.45×. Hype persists across rolls and amplifies every payout, so a steady stream of Naturals quietly compounds into a serious multiplier. No cooldown; fires on every Natural. |
 
-**Ability:** +0.30× Hype on `NATURAL` (7 or 11 on come-out). Adds `0.30` to `ctx.hype`.
+**Ability:** +0.45× Hype on `NATURAL` (7 or 11 on come-out). Adds `0.45` to `ctx.hype`.
 
 ---
 
@@ -272,10 +274,10 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | **Cooldown** | `none` |
 | **Rarity** | Uncommon |
 | **Unlock Mechanism** | Hit the point 3 consecutive times within a single shooter's run. |
-| **Brief Description** | Adds +0.15× Hype on every Point Hit. |
-| **Detailed Description** | Every time the shooter hits their point, Holly adds 0.15× to global Hype. A run of consecutive Point Hits can stack Hype fast, turning every subsequent win into a bigger payout. No cooldown; fires on every Point Hit. |
+| **Brief Description** | Adds +0.25× Hype on every Point Hit. |
+| **Detailed Description** | Every time the shooter hits their point, Holly adds 0.25× to global Hype. A run of consecutive Point Hits can stack Hype fast, turning every subsequent win into a bigger payout. No cooldown; fires on every Point Hit. |
 
-**Ability:** +0.15× Hype on any `POINT_HIT`. Adds `0.15` to `ctx.hype`; rounds to 4 decimal places to prevent IEEE-754 accumulation errors.
+**Ability:** +0.25× Hype on any `POINT_HIT`. Adds `0.25` to `ctx.hype`; rounds to 4 decimal places to prevent IEEE-754 accumulation errors.
 
 ---
 
@@ -290,10 +292,10 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | **Cooldown** | `none` |
 | **Rarity** | Rare |
 | **Unlock Mechanism** | See Hype reach 3.0× in any single run. |
-| **Brief Description** | 33% chance per roll: +0.5× Hype or −0.25× Hype. |
-| **Detailed Description** | Each roll, the Drunk Uncle secretly rolls his own dice. He fires roughly one roll in three — when he does, an odd second die means +0.5× Hype; an even second die means −0.25× Hype. The upside is big, the downside is real, and he's unpredictable. |
+| **Brief Description** | 33% chance per roll: +0.75× Hype or −0.25× Hype. |
+| **Detailed Description** | Each roll, the Drunk Uncle secretly rolls his own dice. He fires roughly one roll in three — when he does, an odd second die means +0.75× Hype; an even second die means −0.25× Hype. The upside is big, the downside is real, and he's unpredictable. |
 
-**Ability:** 33% chance per roll to fire (d1 ∈ {1,2}). When it fires: if d2 is odd → +0.5 Hype; if d2 is even → −0.25 Hype. Uses a separate `rollDice()` call (logged in RNG audit, not the main game dice). Rounds `ctx.hype` to 4 decimal places.
+**Ability:** 33% chance per roll to fire (d1 ∈ {1,2}). When it fires: if d2 is odd → +0.75 Hype; if d2 is even → −0.25 Hype. Uses a separate `rollDice()` call (logged in RNG audit, not the main game dice). Rounds `ctx.hype` to 4 decimal places.
 
 ---
 
@@ -372,9 +374,9 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | 7 | The Big Spender | PAYOUT | Uncommon | 4× | none | Hardway win | Floor-scaled additive (0.75× max bet) |
 | 8 | The Shark | PAYOUT | Rare | 5× | none | POINT_HIT | Floor-scaled additive (0.65× max bet) |
 | 9 | The Whale | PAYOUT | Legendary | 9× | none | Any winning payout | ×1.2 multiplier on all payouts |
-| 10 | The Nervous Intern | HYPE | Common | 3× | none | NATURAL | +0.30× Hype |
-| 11 | "Hype-Train" Holly | HYPE | Uncommon | 4× | none | POINT_HIT | +0.15× Hype |
-| 12 | The Drunk Uncle | HYPE | Rare | 5× | none | 33% per roll | ±Hype (random: +0.5 or −0.25) |
+| 10 | The Nervous Intern | HYPE | Common | 3× | none | NATURAL | +0.45× Hype |
+| 11 | "Hype-Train" Holly | HYPE | Uncommon | 4× | none | POINT_HIT | +0.25× Hype |
+| 12 | The Drunk Uncle | HYPE | Rare | 5× | none | 33% per roll | ±Hype (random: +0.75 or −0.25) |
 | 13 | The Mimic | WILDCARD | Epic | 7× | none | After any firing crew | Copies previous crew's execute() |
 | 14 | The Old Pro | WILDCARD | Epic | 7× | none | Always active | Bet ceiling 15% of marker target (vs. 10%) |
 | 15 | The Lucky Charm | HYPE | Rare | 5× | per_shooter | SEVEN_OUT | First SEVEN_OUT per shooter: +1.0 Hype carried to next shooter |
@@ -453,7 +455,7 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | **Rarity** | Starter |
 | **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Adds Hype whenever a 6 appears on either die. |
-| **Detailed Description** | The Lookout watches for the big number — any roll where at least one die lands on 6 generates +0.20 Hype. Fires on roughly 1 in 3 rolls, making it one of the most consistently active crew members. No conditions beyond the die face; no cooldown. |
+| **Detailed Description** | The Lookout watches for the big number — any roll where at least one die lands on 6 generates +0.30 Hype. Fires on roughly 1 in 3 rolls, making it one of the most consistently active crew members. No conditions beyond the die face; no cooldown. |
 
 **Design Intent:** Trigger on `ctx.dice[0] === 6 || ctx.dice[1] === 6`. Frequency: 11/36 ≈ 31%. Pairs with Ace McGee for 56% combined roll coverage.
 
@@ -512,7 +514,7 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | **Rarity** | Starter |
 | **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Adds Hype whenever this roll's total is higher than the last. |
-| **Detailed Description** | When the dice climb — any roll whose total beats the previous roll's total — the Momentum adds +0.2 Hype. The table reads the dice like a scoreboard. Fires on roughly 45% of rolls after the first of a shooter. Partners with The Echo and The Contrarian to cover nearly every roll with distinct rewards. |
+| **Detailed Description** | When the dice climb — any roll whose total beats the previous roll's total — the Momentum adds +0.3 Hype. The table reads the dice like a scoreboard. Fires on roughly 45% of rolls after the first of a shooter. Partners with The Echo and The Contrarian to cover nearly every roll with distinct rewards. |
 
 **Design Intent:** Trigger on `ctx.diceTotal > ctx.previousRollTotal`.
 
@@ -530,7 +532,7 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | **Rarity** | Starter |
 | **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Pops Hype when the dice repeat the same total as the last roll. |
-| **Detailed Description** | When the total matches the previous roll exactly, the Echo fires a +0.4 Hype burst — bigger than most Hype crew because repetition is rarer. Fires roughly 17% of rolls. Works alongside Momentum and Contrarian to cover almost every roll of a shooter with different rewards. |
+| **Detailed Description** | When the total matches the previous roll exactly, the Echo fires a +0.6 Hype burst — bigger than most Hype crew because repetition is rarer. Fires roughly 17% of rolls. Works alongside Momentum and Contrarian to cover almost every roll of a shooter with different rewards. |
 
 **Design Intent:** Trigger on `ctx.diceTotal === ctx.previousRollTotal`.
 
@@ -548,7 +550,7 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | **Rarity** | Starter |
 | **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Converts a Craps Out into a Hype bump. |
-| **Detailed Description** | When the come-out craps out (2, 3, or 12), the Silver Lining adds +0.4 Hype as consolation. The worst come-out result now builds toward something — turning grief into momentum for the next roll. Fires on every Craps Out; no cooldown. |
+| **Detailed Description** | When the come-out craps out (2, 3, or 12), the Silver Lining adds +0.6 Hype as consolation. The worst come-out result now builds toward something — turning grief into momentum for the next roll. Fires on every Craps Out; no cooldown. |
 
 **Design Intent:** Trigger on `ctx.rollResult === 'CRAPS_OUT'`. Frequency: 4/36 ≈ 11% of come-out rolls.
 
@@ -566,7 +568,7 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | **Rarity** | Starter |
 | **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Adds Hype whenever both dice show odd faces. |
-| **Detailed Description** | When both dice land on odd values (1, 3, or 5), the Odd Couple adds +0.2 Hype. Fires on 25% of all rolls regardless of phase or outcome. Pairs with The Even Keel to cover 50% of rolls between them — Hype on odd rolls, cash on even ones. |
+| **Detailed Description** | When both dice land on odd values (1, 3, or 5), the Odd Couple adds +0.3 Hype. Fires on 25% of all rolls regardless of phase or outcome. Pairs with The Even Keel to cover 50% of rolls between them — Hype on odd rolls, cash on even ones. |
 
 **Design Intent:** Trigger on `ctx.dice[0] % 2 === 1 && ctx.dice[1] % 2 === 1`. Frequency: 9/36 = 25%.
 
@@ -648,7 +650,7 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | **Rarity** | Starter |
 | **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Adds Hype when a point is set — more for harder points. |
-| **Detailed Description** | Every time the come-out establishes a point, the Handicapper adds Hype scaled to difficulty: Point 6 or 8 gives +0.1 Hype, Point 5 or 9 gives +0.2, and Points 4 or 10 give +0.3. The Handicapper makes hard points feel like an opportunity instead of a threat. |
+| **Detailed Description** | Every time the come-out establishes a point, the Handicapper adds Hype scaled to difficulty: Point 6 or 8 gives +0.15 Hype, Point 5 or 9 gives +0.3, and Points 4 or 10 give +0.45. The Handicapper makes hard points feel like an opportunity instead of a threat. |
 
 **Design Intent:** Trigger on `ctx.rollResult === 'POINT_SET'`. Scale Hype delta on the new point — `ctx.diceTotal` (`ctx.activePoint` is still null on the point-setting roll): {4,10} → 0.3, {5,9} → 0.2, {6,8} → 0.1. Frequency: 24/36 ≈ 67% of come-out rolls.
 
@@ -666,7 +668,7 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | **Rarity** | Starter |
 | **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Adds Hype on any roll totalling 7, regardless of phase. |
-| **Detailed Description** | Opposite faces of a real die always sum to 7. When the dice show that balance — Natural on come-out or Seven Out in point phase — the Mirror banks +0.2 Hype regardless. Seven Outs are still costly, but you carry Hype into the next shooter. Naturals get an extra Hype bump on top of the win. |
+| **Detailed Description** | Opposite faces of a real die always sum to 7. When the dice show that balance — Natural on come-out or Seven Out in point phase — the Mirror banks +0.3 Hype regardless. Seven Outs are still costly, but you carry Hype into the next shooter. Naturals get an extra Hype bump on top of the win. |
 
 **Design Intent:** Trigger on `ctx.diceTotal === 7`. Frequency: 6/36 ≈ 17%.
 
@@ -707,7 +709,7 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 | **Rarity** | Starter |
 | **Unlock Mechanism** | None (available from the start) |
 | **Brief Description** | Releases a big payout after 5 consecutive blank point-phase rolls. |
-| **Detailed Description** | Every fifth blank roll in a row during the point phase — no Point Hit, no Seven Out — triggers a release: +0.5 Hype and a floor-scaled cash bonus. Each blank roll builds pressure; every five it releases, so long point phases become something to root for. The count resets whenever the point resolves. |
+| **Detailed Description** | Every fifth blank roll in a row during the point phase — no Point Hit, no Seven Out — triggers a release: +0.75 Hype and a floor-scaled cash bonus. Each blank roll builds pressure; every five it releases, so long point phases become something to root for. The count resets whenever the point resolves. |
 
 **Design Intent:** Track `pointPhaseBlankStreak` (increment on NO_RESOLUTION, reset on any other result). Fire on the 5th blank in a row (streak 4 entering the roll); `rolls.ts` resets the streak to 0 that roll so it fires again on the 10th, 15th…
 
@@ -735,20 +737,20 @@ Two player-facing copy fields are defined per crew member. The canonical strings
 
 | # | Name | Emoji | Category | Rarity | Hire cost | Trigger | Freq. | Effect |
 |---|---|---|---|---|---|---|---|---|
-| 16 | The Lookout | 🔭 | DICE | Starter | 2× | Any die = 6 | 31% | +0.20 Hype |
+| 16 | The Lookout | 🔭 | DICE | Starter | 2× | Any die = 6 | 31% | +0.30 Hype |
 | 17 | "Ace" McGee | 🎯 | DICE | Starter | 2× | Any die = 1 | 31% | Floor-scaled additive (0.40× max bet) |
 | 18 | The Close Call | 😬 | DICE | Starter | 2× | Consecutive faces | 28% | Floor-scaled additive (0.35× max bet) |
-| 19 | The Momentum | 📈 | HYPE | Starter | 2× | Total > last roll | ~45% | +0.2 Hype |
-| 20 | The Echo | 🔁 | HYPE | Starter | 2× | Total = last roll | ~17% | +0.4 Hype |
-| 21 | The Silver Lining | 🌤️ | HYPE | Starter | 2× | CRAPS_OUT | 11%† | +0.4 Hype |
-| 22 | The Odd Couple | 🤪 | HYPE | Starter | 2× | Both dice odd | 25% | +0.2 Hype |
+| 19 | The Momentum | 📈 | HYPE | Starter | 2× | Total > last roll | ~45% | +0.3 Hype |
+| 20 | The Echo | 🔁 | HYPE | Starter | 2× | Total = last roll | ~17% | +0.6 Hype |
+| 21 | The Silver Lining | 🌤️ | HYPE | Starter | 2× | CRAPS_OUT | 11%† | +0.6 Hype |
+| 22 | The Odd Couple | 🤪 | HYPE | Starter | 2× | Both dice odd | 25% | +0.3 Hype |
 | 23 | The Even Keel | ⚖️ | TABLE | Starter | 2× | Both dice even | 25% | Floor-scaled additive (0.50× max bet) |
 | 24 | The Doorman | 🚪 | TABLE | Starter | 2× | Every come-out | ~20%‡ | Floor-scaled additive (0.25× max bet) |
 | 25 | The Grinder | ⚙️ | TABLE | Starter | 2× | NO_RESOLUTION point phase | ~67%§ | Floor-scaled additive (0.15× max bet) |
 | 26 | The Handicapper | 📊 | HYPE | Starter | 2× | POINT_SET | 67%† | +Hype by difficulty |
-| 27 | The Mirror | 🪞 | HYPE | Starter | 2× | Any total = 7 | 17% | +0.2 Hype |
+| 27 | The Mirror | 🪞 | HYPE | Starter | 2× | Any total = 7 | 17% | +0.3 Hype |
 | 28 | The Bookkeeper | 📒 | WILDCARD | Starter | 2× | Every 3rd roll | 33% sched. | Floor-scaled additive (0.25× max bet) |
-| 29 | The Pressure Cooker | 🌡️ | WILDCARD | Starter | 2× | Every 5th blank point-phase roll in a row | per streak | +0.5 Hype + 0.75× max bet |
+| 29 | The Pressure Cooker | 🌡️ | WILDCARD | Starter | 2× | Every 5th blank point-phase roll in a row | per streak | +0.75 Hype + 0.75× max bet |
 | 30 | The Contrarian | 📉 | WILDCARD | Starter | 2× | Total < last roll | ~40% | Floor-scaled additive (0.25× max bet) |
 
 *†of come-out rolls; ‡of all rolls (come-out phase proportion); §of point-phase rolls*

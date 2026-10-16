@@ -48,6 +48,7 @@ import {
   type TurnContext,
   type BossRuleParams,
   type BossRuleState,
+  type RollReceiptLine,
 } from '@battlecraps/shared';
 
 import { db } from '../db/client.js';
@@ -1173,6 +1174,30 @@ async function rollHandler(
     hypeResetNote = `Orbital decay: −${orbitBleed.toFixed(2)}× → ${finalNextState.hype.toFixed(2)}×`;
   }
 
+  // ── Crew-cash adjustments for the receipt ────────────────────────────────
+  // The crew lines show each bonus as the crew earned it; The Vig's +20% and
+  // The Architect's load-bearing cut are applied afterwards, so each gets its
+  // own line and the crew-cash lines add up to what was actually paid. In an
+  // escrow / transit fight the Vig's share follows the crew cash there.
+  const vigBonusCents       = viggedRaw.additives - finalContext.additives;
+  const loadBearingCutCents = viggedContext.additives - loadBearingContext.additives;
+  const fmtDollars = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
+  const crewCashLines: RollReceiptLine[] = [];
+  if (vigBonusCents > 0) {
+    const vigText = `The Vig: ${fmtDollars(vigBonusCents)} (+20% crew cash)`;
+    crewCashLines.push(
+      isHierophantEscrow  ? { kind: 'info', text: `${vigText} → the offering` } :
+      isTransmissionDelay ? { kind: 'info', text: `${vigText} → in transit` } :
+                            { kind: 'win',  text: vigText },
+    );
+  }
+  if (loadBearingCutCents > 0 && bossMarkerConfig?.boss) {
+    crewCashLines.push({
+      kind: 'loss',
+      text: `${bossMarkerConfig.boss.name}: ${fmtDollars(loadBearingCutCents)} load-bearing (crew cash −${Math.round((1 - loadPenaltyFactor) * 100)}%)`,
+    });
+  }
+
   const receipt = buildRollReceipt(
     loadBearingContext,
     events,
@@ -1193,13 +1218,14 @@ async function rollHandler(
       ? {
           crewSuffix: '→ in transit',
           extraLines: [
+            ...crewCashLines,
             ...(signalDark ? [{ kind: 'info' as const, text: `No signal — your crew are dark (${signalDarkToPersist} roll${signalDarkToPersist === 1 ? '' : 's'} left)` }] : []),
             ...(signalLanded.additives > 0 ? [{ kind: 'win' as const, text: `Signal received: $${(signalLanded.additives / 100).toFixed(2)} crew cash` }] : []),
             ...(signalLanded.hype > 0 ? [{ kind: 'info' as const, text: `Signal received: +${signalLanded.hype.toFixed(2)}× Hype` }] : []),
             ...(signalSevenOut ? [{ kind: 'loss' as const, text: `SIGNAL LOST — what was in transit is gone; your crew go dark for ${blackoutRolls} rolls` }] : []),
           ],
         }
-      : undefined,
+      : crewCashLines.length > 0 ? { extraLines: crewCashLines } : undefined,
   );
 
   // ── CONVERGENCE: Targeted Demolition — persist the removed slot as null ───

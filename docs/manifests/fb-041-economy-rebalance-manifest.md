@@ -206,6 +206,18 @@
    - **Opening check:** the sim's pub hires the lineup's next crew member. Add a first hire drawn from 3 random Starters to the harness, and confirm reaching Floor 4 still lands at 35–45%.
 4. Append the before/after table to `gauntlet-difficulty-audit.md`.
 
+--- Implemented (2026-10-15):
+- **Sim defaults = shipped game:** $40 + one free crew member, `crewCashBaseCents` from the engine's taper with a startup check against `getCrewCashBaseCents`, Hype from the crew files.
+- `openingPick: 'draft'` models the 3-random-Starter pick. Crew are seated in the first empty slot.
+- `PRE_FB041` lever set reproduces the old game. OPTIONS / PACKAGES / EARLY_OPTIONS are re-expressed relative to the shipped game (pre-FB-041, A+, comp diet).
+- New `validate` mode.
+- **Results** (`scripts/sim/baselines/post-fb-041/`, N=4000) — **all bands met, no tuning needed:**
+  - Reach Floor 4: cash 42.0%, mixed 40.4%.
+  - Finish | F5: mixed 62.6%, cash 44.3%.
+  - Whole run: cash 16.1%, mixed 20.4% (mixed within noise of the band).
+  - The 3-Starter draft pick performs the same as the lineup pick.
+- **Audit doc § 7** records the before/after. ---
+
 🛑 **Gate:** all bands met, then Release 2.
 
 ---

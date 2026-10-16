@@ -1,10 +1,11 @@
 # Difficulty Audit — the Whole Gauntlet (Floors 1–9)
 
-> **Status:** Analysis and proposal only. No game rules or numbers were changed.
+> **Status:** Recommendations implemented as **FB-041** (opening fix + crew-cash taper + crew Hype ×1.5). §7 has the validated before/after. §§1–6 describe the game *before* FB-041.
 > **History:**
 > - **2026-10-14:** late game (Floors 4–9).
 > - **2026-10-15:** re-run against the reworked Sovereign / Commander / Emissary (FB-037/038/039).
 > - **2026-10-15:** extended to Floors 1–3 from a brand-new run, plus build-balance packages ("mixed crews should be best").
+> - **2026-10-15:** FB-041 implemented and validated (§7). The sim's defaults are now the shipped game; `PRE_FB041` reproduces the old one.
 >
 > **Tool:** `scripts/sim/gauntlet-economy-sim.mjs` (run `npm run build -w @battlecraps/shared` first).
 > - Every table is `SIM_N=4000`; isolated and lever tables use 2,000 per cell.
@@ -404,9 +405,35 @@ Chained from a brand-new run ($30, no crew). Each cell: reach Floor 4 / reach Fl
 
 ---
 
+## 7. After FB-041 — validated (2026-10-15)
+
+FB-041 shipped the recommended package:
+- **Opening fix:** post-tutorial runs start with $40 and one free crew member, picked from 3 random Starters.
+- **Crew-cash taper:** ×0.8 / 0.7 / 0.6 / 0.5 / 0.45 on Floors 5–9.
+- **Crew Hype ×1.5.**
+
+The sim now runs the shipped game by default. `node scripts/sim/gauntlet-economy-sim.mjs validate` prints this table. Saved outputs: `scripts/sim/baselines/post-fb-041/`; the "before" is in `pre-fb-041/`.
+
+| Measure | Pre-FB-041 | Shipped | Target band |
+|---|---|---|---|
+| Reach Floor 4 — cash · pass | 13.6% | **42.0%** | 35–45% ✅ |
+| Reach Floor 4 — mixed · pass | 11.2% | **40.4%** | 35–45% ✅ |
+| Finish \| F5 — mixed · pass | 71.1% | **62.6%** | 55–65% ✅ |
+| Finish \| F5 — cash · pass | 72.4% | **44.3%** | 40–50% ✅ |
+| Whole run — cash · pass | 7.4% | **16.1%** | 15–20% ✅ |
+| Whole run — mixed · pass | 6.0% | **20.4%** | 15–20% (within noise) |
+
+**What else the run showed:**
+- **The realistic opening pick costs nothing.** Picking from a 3-Starter draft performs the same as always getting the build's first crew member (reach Floor 4 41.5% / 39.7% vs 40.9% / 39.2%). Pure-hype runs do better with the draft (9% → 13%), because a free cash Starter often turns up.
+- **Mixed crews are the best build end to end,** as intended. From Floor 5: mixed 63% > cash 44% > hype 29% (hype was 16% before).
+- **Max-odds-every-roll players got harder** (cash · max odds finish | F5 23% → 7%). Their runs already died broke, and the taper removes the crew-cash cushion. That's consistent with "the game rewards the pass line plus crew"; worth watching in playtests.
+- **Steeper A+ curve** (ready to pull, FB-041 design doc § Change 2): finish | F5 mixed 59% / cash 37%; whole run mixed 18% / cash 13%.
+
+---
+
 ## Appendix — reproducing / extending
 
-- **Levers** live in `BASE_LEVERS`: `targetMult`, `maxBetPct`, `additiveMult`, `vig`, `jacket`, `keepsake`, `covenant`, `poseidon`, `frequencyPct`, `bossRules`, `hires`, `bossVersion`, `crewHypeMult`, `startCents`, `startCrew`, `extraShooters`. Per-marker levers are functions of the marker index.
+- **Levers** live in `BASE_LEVERS`: `targetMult`, `maxBetPct`, `additiveMult`, `vig`, `jacket`, `keepsake`, `covenant`, `poseidon`, `frequencyPct`, `bossRules`, `hires`, `bossVersion`, `crewHypeMult`, `startCents`, `startCrew`, `openingPick`, `extraShooters`. Per-marker levers are functions of the marker index. **Since FB-041 the identity levers are the shipped game:** `additiveMult` multiplies *on top of* the game's `CREW_CASH_SCALE_BY_FLOOR`, and `crewHypeMult` on top of the crew files' values. `PRE_FB041` reproduces the old game.
 - **New candidates:** add them to `OPTIONS` (late curves), `LEVERS` (one-row sensitivity), `EARLY_OPTIONS` (opening) or `PACKAGES` (whole runs).
 - **Boss-rule experiments:** add a branch in `playMarker` next to the existing `isBoss(BOSS.…)` branches, then measure with `isolated` mode (rule on vs off). Every boss's parameters come from `GAUNTLET[…].boss.ruleParams`; the script throws if their shape changes.
 - **Sanity check:** at startup the script checks its max/min-bet helpers against `getMaxBet`, `getMinBet` and `getBossMinBet` at identity levers.

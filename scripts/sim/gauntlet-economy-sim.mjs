@@ -1,12 +1,13 @@
 // Late-game economy audit — run: npm run build -w @battlecraps/shared && node scripts/sim/gauntlet-economy-sim.mjs [mode]
 //
-// Monte Carlo of a whole run from Floor 1 (marker 0, $30, no crew) to the end of the gauntlet
+// Monte Carlo of a whole run from Floor 1 to the end of the gauntlet
 // on the REAL shared engine (resolveRoll → base hype tick → resolveCascade with
 // real Starter crew → settleTurn), carrying bankroll between markers, applying
 // comps as they're earned and each boss's current rule as rolls.ts does it.
 //
 // Modes:
 //   chain    (default) one full run per sample, Floor 1 → The Architect; per-marker table
+//   validate FB-041 Phase 4 check: shipped vs pre-FB-041 against the target bands
 //   isolated each marker on its own, arriving with 1.1× the previous target (no carry)
 //   options  rebalance options — before/after clear-rate curves for each
 //   levers   one lever at a time — how much each comp / knob is worth (levers/options/compare start at Floor 4)
@@ -34,11 +35,19 @@
 // (Starter = 2 × the cleared marker's max bet) if the player keeps at least the next min bet.
 // The draft is assumed to offer that crew member. Comps arrive after the boss that awards them.
 // Simplifications: fixed betting strategy, no hardways, Starter crew only, no tutorial dice.
+//
+// FB-041 (Phase 4): the identity levers ARE the shipped game — a post-tutorial run starts with
+// OPENING_BANKROLL_CENTS and one free crew member (openingPick: 'lineup' = the build's first
+// crew; 'draft' = the pick from 3 random Starters, as in the game), crew cash comes from the
+// engine's crewCashBaseCents (getCrewCashBaseCents — the floor taper), and crew Hype values come
+// from the crew files. The PRE_FB041 lever set reproduces the old game for before/after runs;
+// baselines captured before FB-041 live in scripts/sim/baselines/pre-fb-041/.
 import {
   resolveRoll, resolveCascade, settleTurn, getBaseHypeTick,
   getMaxBet, getMinBet, getBossMinBet, getTideStage, pickEntryCharmSlot, BOSS_RULE_HOOKS, GAUNTLET,
-  doorman, grinder, aceMcgee, closeCall, evenKeel,
-  lookout, momentum, handicapper, echo, oddCouple,
+  getCrewCashBaseCents, CREW_CASH_SCALE_BY_FLOOR, OPENING_BANKROLL_CENTS, TUTORIAL_BANKROLL_CENTS,
+  doorman, grinder, aceMcgee, closeCall, evenKeel, bookkeeper, contrarian, pressureCooker,
+  lookout, momentum, handicapper, echo, oddCouple, mirror, silverLining,
 } from '../../packages/shared/dist/index.js';
 
 // ── RNG (optionally seeded so before/after comparisons share luck) ──────────
@@ -51,10 +60,12 @@ const d6 = () => 1 + Math.floor(rand() * 6);
 
 const ODDS    = { 4: 3, 10: 3, 5: 4, 9: 4, 6: 5, 8: 5 };
 const NO_HARD = { hard4: 0, hard6: 0, hard8: 0, hard10: 0 };
-const FIRST   = 0;                      // Floor 1, marker 1 ($50) — runs start with $30 and no crew
+const FIRST   = 0;                      // Floor 1, marker 1 ($50)
 const LAST    = GAUNTLET.length - 1;    // 26 — The Architect
 const BOSS    = { FORE: 2, SARGE: 5, PRIX: 8, EXEC: 11, HIERO: 14, SOV: 17, CMDR: 20, EMI: 23, ARCH: 26 };
-const START_BANKROLL = 3000;            // runs.ts: $30
+// Every Starter-roster crew member — the opening pub drafts 3 of these (FB-041).
+const STARTERS = [doorman, grinder, aceMcgee, closeCall, evenKeel, bookkeeper, contrarian, pressureCooker,
+  lookout, momentum, handicapper, echo, oddCouple, mirror, silverLining];
 const LATE_FROM = 9;                    // levers / options / compare start at Floor 4 (1.1× the $4k target, Floor 1–3 comps)
 
 // Fill order = slot order. Slots 4 and 5 open after The Executive / The Commander.
@@ -70,11 +81,11 @@ const STRATEGIES = {
   maxOdds: 'pass at max + max odds',
 };
 
-// ── Levers (the rebalance knobs). Identity = today's game. ──────────────────
+// ── Levers (the rebalance knobs). Identity = the shipped game (FB-041). ─────
 const BASE_LEVERS = {
   targetMult:   () => 1,     // × GAUNTLET target, per marker
   maxBetPct:    () => 0.10,  // table max as a share of target, per marker
-  additiveMult: () => 1,     // scales the target the crew see → their additives
+  additiveMult: () => 1,     // × the crew-cash base, on top of the game's CREW_CASH_SCALE_BY_FLOOR
   vig:          1.2,
   jacket:       () => 1,     // Member's Jacket: extra shooters at this marker
   keepsake:     true,
@@ -85,8 +96,9 @@ const BASE_LEVERS = {
   hires:        'slots',     // 'slots' = pay only to fill a new slot; 'floor' = also one hire per floor
   bossVersion:  'current',   // 'legacy' = the Floor 6–8 boss rules before FB-037/038/039
   crewHypeMult: 1,           // × the Hype the crew add each roll (all floors) — models raising HYPE_BOOST
-  startCents:   START_BANKROLL, // a new run's bankroll
-  startCrew:    0,           // crew members a new run starts with (free, from the lineup)
+  startCents:   OPENING_BANKROLL_CENTS, // a new (post-tutorial) run's bankroll
+  startCrew:    1,           // free crew members a new run starts with (the opening pub's pick)
+  openingPick:  'lineup',    // 'lineup' = the build's first crew; 'draft' = best of 3 random Starters for the build
   extraShooters: () => 0,    // extra shooters at this marker (on top of Member's Jacket)
 };
 
@@ -120,7 +132,17 @@ if (SARGE_PARAMS.rule !== 'DOUBLE_TIME' || typeof SARGE_PARAMS.rollLimit !== 'nu
 if (PRIX_PARAMS.rule !== 'DISABLE_CREW') throw new Error('Le Prix params changed — update the sim');
 const EMPTY_PACKET = { additives: 0, hype: 0, multipliers: [] };
 
+// Crew-cash base the engine reads (TurnContext.crewCashBaseCents): the table max × the game's
+// floor taper (CREW_CASH_SCALE_BY_FLOOR) × the additiveMult lever.
+function crewCashBase(m, L) {
+  const floor = Math.min(Math.floor(m / 3), CREW_CASH_SCALE_BY_FLOOR.length - 1);
+  return Math.floor(Math.floor(targetOf(m, L) * 0.10) * CREW_CASH_SCALE_BY_FLOOR[floor] * L.additiveMult(m));
+}
+
 // Sanity: the identity levers must reproduce the real config helpers.
+for (let m = 0; m <= LAST; m++) {
+  if (crewCashBase(m, BASE_LEVERS) !== getCrewCashBaseCents(m)) throw new Error(`crew-cash base mismatch at ${m}`);
+}
 for (let m = 0; m <= LAST; m++) {
   for (let st = 0; st < 4; st++) {
     const counter = m === BOSS.SOV ? st : 0;
@@ -136,7 +158,7 @@ function playMarker(m, st) {
   const { L, strategy } = st;
   const rules  = L.bossRules;
   const target = targetOf(m, L);
-  const crewTarget = Math.round(target * L.additiveMult(m));
+  const cashBase = crewCashBase(m, L);
   const comps  = st.comps;
   const startShooters = 5 + (comps.jacket ? L.jacket(m) : 0) + L.extraShooters(m);
 
@@ -180,7 +202,7 @@ function playMarker(m, st) {
     let ctx = resolveRoll(dice, {
       phase, currentPoint: point, bets, hype, mechanicFreeze: null,
       previousRollTotal: prevTotal, shooterRollCount: shooterRolls, pointPhaseBlankStreak: blankStreak,
-      markerTargetCents: crewTarget, shooters, unlockedSlots: slotsActive,
+      markerTargetCents: target, crewCashBaseCents: cashBase, shooters, unlockedSlots: slotsActive,
     });
     const poseidonBlocks = comps.poseidon && L.poseidon && shooterRolls === 0 && ctx.rollResult === 'CRAPS_OUT';
     const tick = ctx.rollResult === 'POINT_HIT' ? getBaseHypeTick(streak)
@@ -346,28 +368,54 @@ const crewFor = (lineup, count) => {
 
 function runGauntlet({ lineup, strategy, levers = BASE_LEVERS, from = FIRST, to = LAST, startBankroll }) {
   const L = { ...BASE_LEVERS, ...levers };
+  const want = LINEUPS[lineup];
   const st = {
     L, strategy,
-    // From marker 0: a new run ($30, no crew). Anywhere else: arrive with 1.1× the previous
-    // target and a full crew for the slots earned by then (the isolated-marker setup).
+    // From marker 0: a new run (L.startCents, L.startCrew free picks). Anywhere else: arrive with
+    // 1.1× the previous target and a full crew for the slots earned by then (the isolated setup).
     bankroll: startBankroll ?? (from === 0 ? L.startCents : Math.round(targetOf(from - 1, L) * 1.1)),
     slots: slotsFor(from), comps: compsFor(from),
-    crew: crewFor(lineup, from === 0 ? L.startCrew : slotsFor(from)),
+    crew: crewFor(lineup, from === 0 ? 0 : slotsFor(from)),
   };
-  let hired = Math.min(from === 0 ? L.startCrew : slotsFor(from), LINEUPS[lineup].length);
+  const seated = () => new Set(st.crew.filter(Boolean).map((c) => c.id));
+  const seat = (member) => {
+    const i = st.crew.findIndex((c, k) => c === null && k < st.slots);
+    if (i >= 0) st.crew = st.crew.map((c, k) => (k === i ? { ...member, cooldownState: 0 } : c));
+  };
+  // The build's next wanted crew member who isn't seated yet.
+  const nextWanted = () => want.find((c) => !seated().has(c.id));
+
+  // The opening pub (FB-041): free pick(s) before marker 0.
+  if (from === 0) {
+    for (let k = 0; k < L.startCrew; k++) {
+      if (L.openingPick === 'draft') {
+        // 3 random Starters; take the build's highest-priority wanted crew if offered,
+        // otherwise the first card (a real player would still take a free crew member).
+        const pool = STARTERS.filter((c) => !seated().has(c.id));
+        for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+        const offer = pool.slice(0, 3);
+        const pick = want.find((c) => !seated().has(c.id) && offer.some((o) => o.id === c.id)) ?? offer[0];
+        if (pick && want.length > 0) seat(pick);
+      } else {
+        const pick = nextWanted();
+        if (pick) seat(pick);
+      }
+    }
+  }
+
   const markers = [];
   for (let m = from; m <= to; m++) {
-    // Pub: fill one empty active slot with the lineup's next crew member (Starter = 2 × the
-    // cleared marker's max bet) if the player still keeps the next marker's min bet.
+    // Pub: fill one empty active slot with the build's next wanted crew member (Starter =
+    // 2 × the cleared marker's max bet) if the player still keeps the next marker's min bet.
     const slots = slotsFor(m);
     st.slots = slots;
     if (m > from) {
       const cost = 2 * Math.floor(targetOf(m - 1, L) * 0.10);
-      if (hired < Math.min(slots, LINEUPS[lineup].length) && st.bankroll - cost >= minBetOf(m, L)) {
+      const hasEmpty = st.crew.some((c, k) => c === null && k < slots);
+      const next = nextWanted();
+      if (hasEmpty && next && st.bankroll - cost >= minBetOf(m, L)) {
         st.bankroll -= cost;
-        const next = LINEUPS[lineup][hired];
-        st.crew = st.crew.map((c, i) => (i === hired ? { ...next, cooldownState: 0 } : c));
-        hired++;
+        seat(next);
       } else if (L.hires === 'floor' && (m % 3) === 0) {
         st.bankroll -= cost;
       }
@@ -453,46 +501,30 @@ const FLOOR_OF = (m) => Math.floor(m / 3) + 1;
 const perFloor = (byFloor) => (m) => byFloor[FLOOR_OF(m)] ?? 1;          // { 5: x, 6: y, … }
 const BOSS_ONLY_JACKET = (m) => (!LATE(m) || GAUNTLET[m].isBoss ? 1 : 0);
 
+// The old game, expressed as levers on the shipped one: untapered crew cash (÷ the taper),
+// old crew Hype (÷ 1.5), and the old opening ($30, no crew).
+const PRE_FB041 = {
+  additiveMult: (m) => 1 / (CREW_CASH_SCALE_BY_FLOOR[Math.min(Math.floor(m / 3), CREW_CASH_SCALE_BY_FLOOR.length - 1)] ?? 1),
+  crewHypeMult: 1 / 1.5,
+  startCents:   TUTORIAL_BANKROLL_CENTS,
+  startCrew:    0,
+};
+// The pre-analysed steeper curve (A+: ×0.7 / 0.6 / 0.5 / 0.45 / 0.4), relative to the shipped A curve.
+const A_PLUS = [1, 1, 1, 1, 0.7, 0.6, 0.5, 0.45, 0.4];
+const STEEPER = { additiveMult: (m) => { const f = Math.min(Math.floor(m / 3), 8); return A_PLUS[f] / (CREW_CASH_SCALE_BY_FLOOR[f] ?? 1); } };
+
 const OPTIONS = {
-  'A · crew-cash taper': {
-    note: 'Crew additives scale off a shrinking share of the target: ADDITIVE_MULT × 0.8 / 0.7 / 0.6 / 0.5 / 0.45 on Floors 5–9',
-    levers: { additiveMult: perFloor({ 5: 0.8, 6: 0.7, 7: 0.6, 8: 0.5, 9: 0.45 }) },
+  'Pre-FB-041 (old game)': {
+    note: 'Untapered crew cash and the old crew Hype values — the game before FB-041',
+    levers: PRE_FB041,
   },
-  'A+ · steeper taper': {
-    note: 'As A but × 0.7 / 0.6 / 0.5 / 0.45 / 0.4',
-    levers: { additiveMult: perFloor({ 5: 0.7, 6: 0.6, 7: 0.5, 8: 0.45, 9: 0.4 }) },
+  'A+ · steeper taper (ready to pull)': {
+    note: 'CREW_CASH_SCALE_BY_FLOOR → [1,1,1,1, 0.7, 0.6, 0.5, 0.45, 0.4] (FB-041 design doc § Change 2)',
+    levers: STEEPER,
   },
   'B · comp diet': {
     note: "The Vig +20% → +10%; Member's Jacket's extra shooter only at boss markers from Floor 5",
     levers: { vig: 1.1, jacket: BOSS_ONLY_JACKET },
-  },
-  'C · steeper targets': {
-    note: 'From Floor 5 every target is × 1.2 per marker on top of today (marker 26 → × 15.4, ≈ $924M)',
-    levers: { targetMult: (m) => (LATE(m) ? Math.pow(1.2, m - 11) : 1) },
-  },
-  'C2 · boss targets × 2': {
-    note: 'Floor 5–9 boss targets doubled (filler targets unchanged) — pressure concentrated on the boss rooms',
-    levers: { targetMult: (m) => (LATE(m) && GAUNTLET[m].isBoss ? 2 : 1) },
-  },
-  'X · late table max 5%': {
-    note: 'From Floor 5 the table max (and min bet) is 5% of the target — shown because it does NOT work',
-    levers: { maxBetPct: (m) => (LATE(m) ? 0.05 : 0.10) },
-  },
-  'H · crew Hype ×1.5': {
-    note: 'Every Hype crew adds 1.5× today (e.g. Lookout/Momentum +0.2 → +0.3, Echo +0.4 → +0.6), on every floor',
-    levers: { crewHypeMult: 1.5 },
-  },
-  'A + H': {
-    note: 'Crew-cash taper A + crew Hype ×1.5 — the "mixed crews are best" package',
-    levers: { additiveMult: perFloor({ 5: 0.8, 6: 0.7, 7: 0.6, 8: 0.5, 9: 0.45 }), crewHypeMult: 1.5 },
-  },
-  'A+ + H': {
-    note: 'Steeper taper A+ + crew Hype ×1.5',
-    levers: { additiveMult: perFloor({ 5: 0.7, 6: 0.6, 7: 0.5, 8: 0.45, 9: 0.4 }), crewHypeMult: 1.5 },
-  },
-  'R · A + B': {
-    note: 'Recommended package: crew-cash taper A + comp diet B',
-    levers: { additiveMult: perFloor({ 5: 0.8, 6: 0.7, 7: 0.6, 8: 0.5, 9: 0.45 }), vig: 1.1, jacket: BOSS_ONLY_JACKET },
   },
 };
 
@@ -508,7 +540,7 @@ function printOptions(n) {
     console.log(`\n### ${lineup} crew · ${STRATEGIES[strategy]}\n`);
     console.log(`| Option | Finish \\| F5 | ${LATE_MS.map((m) => (GAUNTLET[m].isBoss ? `**${m}**` : m)).join(' | ')} | No-rule boss ${BOSS_MS.join('/')} |`);
     console.log(`|---|---|${LATE_MS.map(() => '---').join('|')}|---|`);
-    for (const [label, levers] of [['Today', BASE_LEVERS], ...Object.entries(OPTIONS).map(([k, o]) => [k, { ...BASE_LEVERS, ...o.levers }])]) {
+    for (const [label, levers] of [['Shipped (FB-041)', BASE_LEVERS], ...Object.entries(OPTIONS).map(([k, o]) => [k, { ...BASE_LEVERS, ...o.levers }])]) {
       const s  = chainStats({ lineup, strategy, levers, from: LATE_FROM }, n);
       const s0 = chainStats({ lineup, strategy, levers: { ...levers, bossRules: false }, from: LATE_FROM }, Math.floor(n / 2));
       const at = (x, m) => (x.per[m].entered ? x.per[m].cleared / x.per[m].entered : NaN);
@@ -594,13 +626,9 @@ function printCompare(n) {
 
 // ── Floors 1–3 ───────────────────────────────────────────────────────────────
 const EARLY_OPTIONS = {
-  'E1 · start $40':                 { startCents: 4000 },
-  'E2 · start $50':                 { startCents: 5000 },
-  'E3 · start with 1 free crew':    { startCrew: 1 },
-  'E4 · F1 table max 20%':          { maxBetPct: (m) => (m <= BOSS.FORE ? 0.20 : 0.10) },
-  'E5 · +1 shooter on F1':          { extraShooters: (m) => (m <= BOSS.FORE ? 1 : 0) },
-  'E6 · +1 shooter on markers 0–1': { extraShooters: (m) => (m <= 1 ? 1 : 0) },
-  'E7 · 1 free crew + start $40':   { startCrew: 1, startCents: 4000 },
+  'Pre-FB-041 opening ($30, no crew)': { startCents: TUTORIAL_BANKROLL_CENTS, startCrew: 0 },
+  'Shipped — pick from a 3-Starter draft': { openingPick: 'draft' },
+  'Pre-FB-041 game (old opening + old crew)': PRE_FB041,
 };
 
 function printEarlyOptions(n) {
@@ -609,7 +637,7 @@ function printEarlyOptions(n) {
   const combos = [['cash', 'pass'], ['mixed', 'pass'], ['hype', 'pass'], ['mixed', 'odds1x']];
   console.log(`| Option | ${combos.map(([l, s]) => `${l} · ${s}: reach F4 / finish`).join(' | ')} | mixed · pass per marker 0–8 |`);
   console.log(`|---|${combos.map(() => '---').join('|')}|---|`);
-  for (const [label, lv] of [['Today', {}], ...Object.entries(EARLY_OPTIONS)]) {
+  for (const [label, lv] of [['Shipped (FB-041, lineup pick)', {}], ...Object.entries(EARLY_OPTIONS)]) {
     let perMarker = '';
     const cells = combos.map(([lineup, strategy]) => {
       const s = chainStats({ lineup, strategy, levers: { ...BASE_LEVERS, ...lv } }, n);
@@ -622,14 +650,14 @@ function printEarlyOptions(n) {
 
 function printEarly(n) {
   const EARLY = []; for (let m = 0; m <= BOSS.PRIX; m++) EARLY.push(m);
-  console.log('\n## Floors 1–3 — chained from a new run ($30, no crew); clear rate given reached (bosses in bold)');
+  console.log('\n## Floors 1–3 — chained from a new run; clear rate given reached (bosses in bold)');
   console.log('"Reach F4" = share of new runs that clear Le Prix. Rows marked "no rules" switch every boss rule off.\n');
   console.log(`| Lineup · bets · variant | Reach F4 | ${EARLY.map((m) => (GAUNTLET[m].isBoss ? `**${m}**` : m)).join(' | ')} | Median rolls F1–F3 |`);
   console.log(`|---|---|${EARLY.map(() => '---').join('|')}|---|`);
-  const variants = [['today', {}], ['crew Hype ×1.5', { crewHypeMult: 1.5 }], ['no rules', { bossRules: false }]];
+  const variants = [['shipped', {}], ['pre-FB-041', PRE_FB041], ['no rules', { bossRules: false }]];
   const combos = [['none', 'pass'], ['cash', 'pass'], ['mixed', 'pass'], ['hype', 'pass'], ['mixed', 'odds1x'], ['cash', 'maxOdds']];
   for (const [lineup, strategy] of combos) for (const [vl, lv] of variants) {
-    if (lineup === 'none' && vl === 'crew Hype ×1.5') continue;
+    if (lineup === 'none' && vl === 'pre-FB-041') continue;
     const s = chainStats({ lineup, strategy, levers: { ...BASE_LEVERS, ...lv }, to: BOSS.PRIX }, n);
     const cells = EARLY.map((m) => (s.per[m].entered ? (100 * s.per[m].cleared / s.per[m].entered).toFixed(0) : '—'));
     const rolls = EARLY.reduce((a, m) => a + (median(s.per[m].rolls) || 0), 0);
@@ -645,17 +673,14 @@ function printEarly(n) {
 }
 
 // ── Packages: whole runs from a new run ($30, no crew) ──────────────────────
-const TAPER_A  = perFloor({ 5: 0.8, 6: 0.7, 7: 0.6, 8: 0.5, 9: 0.45 });
-const TAPER_AP = perFloor({ 5: 0.7, 6: 0.6, 7: 0.5, 8: 0.45, 9: 0.4 });
 const PACKAGES = {
-  'Today':                              {},
-  'Opening fix (1 free crew + $40)':    { startCrew: 1, startCents: 4000 },
-  'A + H (late cash taper + Hype ×1.5)': { additiveMult: TAPER_A, crewHypeMult: 1.5 },
-  'Opening fix + A + H':                { startCrew: 1, startCents: 4000, additiveMult: TAPER_A, crewHypeMult: 1.5 },
-  'Opening fix + A+ + H':               { startCrew: 1, startCents: 4000, additiveMult: TAPER_AP, crewHypeMult: 1.5 },
+  'Pre-FB-041 (old game)':               PRE_FB041,
+  'Shipped (FB-041), lineup pick':       {},
+  'Shipped (FB-041), 3-Starter draft':   { openingPick: 'draft' },
+  'Shipped + A+ steeper taper':          STEEPER,
 };
 function printPackages(n) {
-  console.log('\n## Packages — whole runs from a new run ($30, no crew)');
+  console.log('\n## Packages — whole runs from a new run');
   console.log('Each cell: reach Floor 4 (cleared Le Prix) / reach Floor 5 / finish given Floor 5 / finish (beat The Architect).\n');
   const combos = [['cash', 'pass'], ['mixed', 'pass'], ['hype', 'pass'], ['mixed', 'odds1x']];
   console.log(`| Package | ${combos.map(([l, s]) => `${l} · ${s}`).join(' | ')} |`);
@@ -671,8 +696,39 @@ function printPackages(n) {
   }
 }
 
+// ── FB-041 Phase 4: shipped game vs the target bands ────────────────────────
+const BANDS = {
+  reachF4:  { lo: 0.35, hi: 0.45, label: 'Reach Floor 4 (cash / mixed · pass, 3-Starter draft pick)' },
+  mixedF5:  { lo: 0.55, hi: 0.65, label: 'Finish | F5 — mixed · pass' },
+  cashF5:   { lo: 0.40, hi: 0.50, label: 'Finish | F5 — cash · pass' },
+  wholeRun: { lo: 0.15, hi: 0.20, label: 'Whole-run finish (cash / mixed · pass, 3-Starter draft pick)' },
+};
+function printValidate(n) {
+  const f = (x) => (100 * x).toFixed(1) + '%';
+  const band = (b, x) => (x >= b.lo - 0.03 && x <= b.hi + 0.03 ? (x >= b.lo && x <= b.hi ? '✅ in band' : '≈ within ±3 (noise)') : '❌ outside');
+  console.log('\n## FB-041 Phase 4 — validation against the target bands');
+  console.log('Finish | F5 rows start at Floor 4 (1.1× the $4k target, Floor 1–3 comps); reach / whole-run rows start from a new run.\n');
+  console.log('| Measure | Pre-FB-041 | Shipped | Band | Verdict |');
+  console.log('|---|---|---|---|---|');
+  const reach = (lineup, lv) => { const s = chainStats({ lineup, strategy: 'pass', levers: { ...BASE_LEVERS, ...lv }, to: BOSS.PRIX }, n); return s.finished; };
+  const finF5 = (lineup, lv) => { const s = chainStats({ lineup, strategy: 'pass', levers: { ...BASE_LEVERS, ...lv }, from: LATE_FROM }, n); return s.finished / (s.per[12].entered / s.n); };
+  const whole = (lineup, lv) => chainStats({ lineup, strategy: 'pass', levers: { ...BASE_LEVERS, ...lv } }, n).finished;
+  const rows = [
+    ['reachF4', 'cash',  reach], ['reachF4', 'mixed', reach],
+    ['mixedF5', 'mixed', finF5], ['cashF5',  'cash',  finF5],
+    ['wholeRun', 'cash', whole], ['wholeRun', 'mixed', whole],
+  ];
+  for (const [key, lineup, fn] of rows) {
+    const b = BANDS[key];
+    const draft = key === 'reachF4' || key === 'wholeRun' ? { openingPick: 'draft' } : {};
+    const before = fn(lineup, PRE_FB041), after = fn(lineup, draft);
+    console.log(`| ${b.label.replace(/\(cash \/ mixed[^)]*\)/, `(${lineup} · pass)`)} | ${f(before)} | **${f(after)}** | ${f(b.lo)}–${f(b.hi)} | ${band(b, after)} |`);
+  }
+  console.log('\nPure hype (not a balance target): finish | F5 —', f(finF5('hype', PRE_FB041)), '→', f(finF5('hype', {})));
+}
+
 const mode = process.argv[2] ?? 'chain';
-console.log(`N = ${N} runs per row${process.env.SIM_SEED ? `, seed ${process.env.SIM_SEED}` : ''}. Start: Floor 1 (marker 0), $30, no crew, 3 slots; one hire per pub.`);
+console.log(`N = ${N} runs per row${process.env.SIM_SEED ? `, seed ${process.env.SIM_SEED}` : ''}. Shipped game (FB-041): a new run starts on Floor 1 with $${OPENING_BANKROLL_CENTS / 100} and one free crew member; one hire per pub.`);
 if (mode === 'chain' || mode === 'all') {
   console.log('\n## Chained runs — today\'s rules');
   for (const strategy of Object.keys(STRATEGIES)) for (const lineup of Object.keys(LINEUPS)) {
@@ -690,3 +746,4 @@ if (mode === 'options'  || mode === 'all') printOptions(N);
 if (mode === 'compare'  || mode === 'all') printCompare(N);
 if (mode === 'early'    || mode === 'all') { printEarly(N); printEarlyOptions(N); }
 if (mode === 'packages' || mode === 'all') printPackages(N);
+if (mode === 'validate' || mode === 'all') printValidate(N);

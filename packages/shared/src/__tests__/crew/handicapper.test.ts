@@ -54,7 +54,7 @@ describe('Handicapper — activation guard', () => {
   it('fires on POINT_SET with activePoint null, as in real play', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [1, 3], diceTotal: 4, hype: 1.0 });
     const result = fresh.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.3, 4);
+    expect(result.context.hype).toBeCloseTo(1.45, 4);
   });
 });
 
@@ -63,47 +63,47 @@ describe('Handicapper — activation guard', () => {
 // ---------------------------------------------------------------------------
 
 describe('Handicapper — hype bonuses on POINT_SET', () => {
-  it('adds +0.3 hype for point 4', () => {
+  it('adds +0.45 hype for point 4', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [1, 3], diceTotal: 4, hype: 1.0 });
     const result = fresh.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.3, 4);
+    expect(result.context.hype).toBeCloseTo(1.45, 4);
     expect(result.newCooldown).toBe(0);
   });
 
-  it('adds +0.3 hype for point 10', () => {
+  it('adds +0.45 hype for point 10', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [4, 6], diceTotal: 10, hype: 1.0 });
+    const result = fresh.execute(ctx, neverCalledRng);
+    expect(result.context.hype).toBeCloseTo(1.45, 4);
+  });
+
+  it('adds +0.3 hype for point 5', () => {
+    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [2, 3], diceTotal: 5, hype: 1.0 });
     const result = fresh.execute(ctx, neverCalledRng);
     expect(result.context.hype).toBeCloseTo(1.3, 4);
   });
 
-  it('adds +0.2 hype for point 5', () => {
-    const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [2, 3], diceTotal: 5, hype: 1.0 });
-    const result = fresh.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.2, 4);
-  });
-
-  it('adds +0.2 hype for point 9', () => {
+  it('adds +0.3 hype for point 9', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [4, 5], diceTotal: 9, hype: 1.0 });
     const result = fresh.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.2, 4);
+    expect(result.context.hype).toBeCloseTo(1.3, 4);
   });
 
-  it('adds +0.1 hype for point 6', () => {
+  it('adds +0.15 hype for point 6', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [2, 4], diceTotal: 6, hype: 1.0 });
     const result = fresh.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.1, 4);
+    expect(result.context.hype).toBeCloseTo(1.15, 4);
   });
 
-  it('adds +0.1 hype for point 8', () => {
+  it('adds +0.15 hype for point 8', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [3, 5], diceTotal: 8, hype: 1.0 });
     const result = fresh.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(1.1, 4);
+    expect(result.context.hype).toBeCloseTo(1.15, 4);
   });
 
   it('stacks onto existing hype above 1.0', () => {
     const ctx = makeCtx({ rollResult: 'POINT_SET', activePoint: null, dice: [1, 3], diceTotal: 4, hype: 2.5 });
     const result = fresh.execute(ctx, neverCalledRng);
-    expect(result.context.hype).toBeCloseTo(2.8, 4);
+    expect(result.context.hype).toBeCloseTo(2.95, 4);
   });
 
   it('does not mutate other context fields', () => {

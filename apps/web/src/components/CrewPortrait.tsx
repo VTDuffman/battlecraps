@@ -64,20 +64,20 @@ const ABILITY_DESCRIPTIONS: Record<number, string> = {
   4:  'Active Hardway bets survive a soft-number hit — and earn a floor-scaled bonus when they do.',
   5:  'On Seven Out, refunds your Pass Line bet — except on the final shooter.',
   9:  'Multiplies all winning payouts by 1.2× (fires only on rolls with a positive payout).',
-  10: 'Adds +0.30× Hype on every Natural.',
-  11: 'Adds +0.15× Hype on every Point Hit.',
-  12: '33% chance each roll: +0.5× Hype or −0.25× Hype (no Hype floor).',
+  10: 'Adds +0.45× Hype on every Natural.',
+  11: 'Adds +0.25× Hype on every Point Hit.',
+  12: '33% chance each roll: +0.75× Hype or −0.25× Hype (no Hype floor).',
   13: 'Copies the ability of the last crew member that fired.',
   14: 'Raises the table bet ceiling from 10% to 15% of the marker target.',
   15: 'Adds +1.0× Hype on the first Seven Out per shooter — carried over to give the next shooter a head start.',
   // ── IDs 16–30: Starter roster ──────────────────────────────────────────
-  16: 'Adds +0.20× Hype whenever a 6 appears on either die.',
-  19: 'Adds +0.2× Hype whenever this roll\'s total is higher than the last.',
-  20: 'Adds +0.4× Hype whenever the dice repeat the same total as the last roll.',
-  21: 'Adds +0.4× Hype on a Craps Out — turns the worst come-out into a crowd moment.',
-  22: 'Adds +0.2× Hype whenever both dice show odd faces (1, 3, or 5).',
-  26: 'Adds Hype on Point Set, scaled by difficulty: +0.3 for 4/10, +0.2 for 5/9, +0.1 for 6/8.',
-  27: 'Adds +0.2× Hype on any roll totalling 7, come-out or point phase.',
+  16: 'Adds +0.30× Hype whenever a 6 appears on either die.',
+  19: 'Adds +0.3× Hype whenever this roll\'s total is higher than the last.',
+  20: 'Adds +0.6× Hype whenever the dice repeat the same total as the last roll.',
+  21: 'Adds +0.6× Hype on a Craps Out — turns the worst come-out into a crowd moment.',
+  22: 'Adds +0.3× Hype whenever both dice show odd faces (1, 3, or 5).',
+  26: 'Adds Hype on Point Set, scaled by difficulty: +0.45 for 4/10, +0.3 for 5/9, +0.15 for 6/8.',
+  27: 'Adds +0.3× Hype on any roll totalling 7, come-out or point phase.',
 };
 
 // ---------------------------------------------------------------------------
@@ -109,7 +109,7 @@ const CREW_ADDITIVE_TRIGGERS: Record<number, string> = {
   24: 'on every come-out roll',
   25: 'on every blank point-phase roll',
   28: 'on every 3rd roll of the shooter',
-  29: 'on every 5th blank point-phase roll in a row (also +0.5× Hype)',
+  29: 'on every 5th blank point-phase roll in a row (also +0.75× Hype)',
   30: "when this roll's total is lower than the last",
 };
 

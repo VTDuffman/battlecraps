@@ -3,7 +3,7 @@
 // packages/shared/src/crew/pressureCooker.ts
 //
 // Category:    WILDCARD
-// Ability:     +0.5 Hype AND dynamic additive (0.75× max-bet) after 5 consecutive
+// Ability:     +0.75 Hype AND dynamic additive (0.75× max-bet) after 5 consecutive
 //              blank point-phase rolls.
 // Cooldown:    none
 //
@@ -20,7 +20,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const HYPE_BOOST    = 0.5;
+const HYPE_BOOST    = 0.75;  // FB-041: crew Hype ×1.5 (was 0.5)
 const ADDITIVE_MULT = 0.75;  // 0.75× the current marker's max bet
 
 export const pressureCooker: CrewMember = {

@@ -3,7 +3,7 @@
 // packages/shared/src/crew/mirror.ts
 //
 // Category:    HYPE
-// Ability:     +0.2 Hype on any roll totalling 7, regardless of phase.
+// Ability:     +0.3 Hype on any roll totalling 7, regardless of phase.
 // Cooldown:    none
 //
 // Fires on both NATURAL (come-out 7) and SEVEN_OUT (point-phase 7).
@@ -13,7 +13,7 @@
 
 import type { CrewMember, ExecuteResult, RollDiceFn, TurnContext } from '../types.js';
 
-const HYPE_BOOST = 0.2;
+const HYPE_BOOST = 0.3;  // FB-041: crew Hype ×1.5 (was 0.2)
 
 export const mirror: CrewMember = {
   id:               27,

@@ -169,6 +169,17 @@
 
 **Prompt:** "Implement FB-041 Phase 3 per the design doc § Change 3: set the listed crew Hype boosts to the new values, update their tests, and update every player-facing copy source that states a number (seed.ts, CrewPortrait.tsx, crew_framework.md). Don't change base Hype ticks, tier thresholds or The Whale."
 
+--- Implemented (2026-10-15, on the Phase 2 branch / PR #38 so Release 2 ships together):
+- **New values:** Lookout +0.30, Momentum / Odd Couple / Mirror +0.3, Echo / Silver Lining +0.6, Handicapper +0.45 / 0.3 / 0.15, Pressure Cooker +0.75 Hype (cash part unchanged, tapered by Phase 2), Holly +0.25, Nervous Intern +0.45, Drunk Uncle +0.75 / −0.25. Lucky Charm unchanged.
+- **Code comments** updated in each crew file.
+- **Copy:** `seed.ts` (brief + detailed), `CrewPortrait` ability text, `crew_framework.md`. No help or Sal copy states crew Hype numbers.
+- **Tests re-baselined:**
+  - `crew.test.ts`, `crew/handicapper.test.ts`, `cascade.integration.test.ts`, `godBuild.integration.test.ts` (shared, 498).
+  - Integration `cascade.test.ts` Pressure Cooker / Handicapper.
+  - `vig.test.ts` (from #39) rescaled for the Phase 2 taper.
+  - Integration 169.
+- `main` (incl. #39 Vig receipt line) merged into the branch. ---
+
 🛑 **Gate:**
 - Typecheck/build/test pass.
 - Re-seed locally and check the pub/crew tooltips show the new values.

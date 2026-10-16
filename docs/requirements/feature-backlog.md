@@ -1953,7 +1953,11 @@ The Architect built every room you've been in. In his fight the rooms **converge
 
 **Type:** Balance (sim-driven)
 **Area:** `apps/api/src/routes/runs.ts`, `pubDraft.ts`, `recruit.ts`, `rolls.ts`, `packages/shared/src/config.ts`, `packages/shared/src/crew/`, `apps/web/src/components/PubScreen.tsx`, `CrewPortrait.tsx`
-**Status:** Planned (2026-10-15)
+**Status:** Implemented (2026-10-15).
+- **Release 1:** the opening (PR #37).
+- **Release 2:** crew-cash taper + crew Hype ×1.5 (PR #38).
+- **Sim-validated:** every target band met.
+
 **Design:** `docs/design/fb-041-economy-rebalance-design.md`
 **Manifest:** `docs/manifests/fb-041-economy-rebalance-manifest.md`
 **Evidence:** `docs/design/gauntlet-difficulty-audit.md`

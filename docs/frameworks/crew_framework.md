@@ -44,7 +44,9 @@ Stakes (1:1 returns) are **never** amplified — only profit above stake is mult
 
 Hire cost is dynamic (FB-023): `getCrewHireCost(rarity, clearedMarkerTargetCents)` in `config.ts` = multiplier × 10% of the target just cleared. The Pub reads `hireCostCents` from `/crew-roster`.
 
-**Floor-scaled additives (FB-024):** cash crew add `Math.round(MULT × floor(markerTargetCents × 0.10) / 100) × 100` — MULT × the current max bet, rounded to the dollar. Additives are amplified by Hype and crew multipliers, ×1.2 with The Vig.
+**Floor-scaled additives (FB-024, tapered in FB-041):** cash crew add `Math.round(MULT × ctx.crewCashBaseCents / 100) × 100`, rounded to the dollar. `crewCashBaseCents = getCrewCashBaseCents(markerIndex)` (shared `config.ts`) = the current max bet × the floor's crew-cash scale: ×1.0 on Floors 1–4, then ×0.8 / 0.7 / 0.6 / 0.5 / 0.45 on Floors 5–9. Crew files never compute 10% of the target themselves. Additives are amplified by Hype and crew multipliers, ×1.2 with The Vig.
+
+**Crew Hype (FB-041):** every Hype crew member's boost was raised ×1.5. The values below are current.
 
 **Source of truth:** player-facing Brief/Detailed/Unlock text below is copied from `apps/api/src/db/seed.ts` (which Render re-seeds on every API deploy); numbers come from each `crew/*.ts` file.
 

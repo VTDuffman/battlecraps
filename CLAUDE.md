@@ -153,6 +153,9 @@ This project uses strict TypeScript. Whenever you write or modify TypeScript cod
 **Odds:** 4/10 → 3× max, 2:1 | 5/9 → 4× max, 3:2 | 6/8 → 5× max, 6:5
 **Hardways:** 4/10 = 7:1 | 6/8 = 9:1
 **Bet max:** 10% of marker target
+**Run start (FB-041):** post-tutorial runs $40 + one free crew member (opening pub: 3 random Starters); the tutorial run $30, no crew
+**Crew-cash scale (FB-041):** floor-scaled crew cash = ADDITIVE_MULT × max bet × ×1.0 (F1–F4) / ×0.8 / ×0.7 / ×0.6 / ×0.5 / ×0.45 (F5–F9); steeper A+ curve ready to pull (config comment)
+**Crew Hype (FB-041, ×1.5):** Lookout +0.30 · Momentum / Odd Couple / Mirror +0.3 · Echo / Silver Lining +0.6 · Handicapper +0.45/0.3/0.15 · Pressure Cooker +0.75 · Holly +0.25 · Nervous Intern +0.45 · Drunk Uncle +0.75/−0.25 · Lucky Charm +1.0
 **Hype ticks:** POINT_HIT +0.15×–0.30× streak-based (BASE=0.15, +0.05 per consecutive hit, CAP=3) | NATURAL +0.10 | CRAPS_OUT −0.05 (floor 1.0); resets to 1.0× on seven-out and at every marker boundary (hype is built within a marker, not carried forward). Tier thresholds: ≥1.5× = Heating Up, ≥2.5× = On Fire.
 
 ---
@@ -194,11 +197,18 @@ docs/manifests/       # manifest-instruction-prompt.md, implemented/ (FB-009, FB
 
 **The Hierophant boss moments (FB-036) live** — his rule was retuned with `scripts/sim/hierophant-escrow-sim.mjs`: crew cash is now held **until a win** (paid × Hype) and a Seven-Out seizes 75% — he is the fight against additive builds. Escrow made visible with the `OfferingBowl` (server `escrow` facts), liturgical barks, THE EYE CLOSES win and THE ORDER COLLECTS loss. The Covenant redesigned as **The Order Protects** (FB-029 closed). Fixed along the way: KI-083 (roll log counted escrowed crew cash as paid), KI-084 (a failed Lefty re-roll still saved the shooter).
 
-**The Sovereign boss moments (FB-037) live** — his tide minimums (simulated cost ~0) were replaced by a per-stage rhythm, tuned with `scripts/sim/sovereign-tide-sim.mjs`: **Dead Calm** (LOW: no odds) · **The Undertow** (EBB/FLOW: a 7-out drags 35% of the bankroll) · **High Tide** (a 7-out drowns 2 shooters; The Covenant cancels it). Shared `getTideStage()`; `tide` facts on the payload. Tide dial front and center, a rising water line that floods the screen and drags away bills or shooter pips, a waterlogged Odds square, sea barks, THE CROWN SINKS win and THE WAVE loss. A late-game economy audit (PR #34, `scripts/sim/gauntlet-economy-sim.mjs`) recommends tapering crew cash by floor and may prompt a re-tune.
+**The Sovereign boss moments (FB-037) live** — his tide minimums (simulated cost ~0) were replaced by a per-stage rhythm, tuned with `scripts/sim/sovereign-tide-sim.mjs`: **Dead Calm** (LOW: no odds) · **The Undertow** (EBB/FLOW: a 7-out drags 35% of the bankroll) · **High Tide** (a 7-out drowns 2 shooters; The Covenant cancels it). Shared `getTideStage()`; `tide` facts on the payload. Tide dial front and center, a rising water line that floods the screen and drags away bills or shooter pips, a waterlogged Odds square, sea barks, THE CROWN SINKS win and THE WAVE loss. The late-game economy audit (`docs/design/gauntlet-difficulty-audit.md`) led to FB-041.
 
 **The Commander boss moments (FB-038) live** — his Orbital Decay simulated backwards (cash −18, hype +3) and became the **orbital bleed** (hype above 1.0× loses 20% of its height every roll; 7-out resets; death spiral removed) — the hype-build counter, mirroring The Hierophant (`scripts/sim/commander-decay-sim.mjs`). Theme thread "In space, no one can hear you scream": dread tagline, muffled crowd, guttering dice flames, an orbit gauge (ship radius = hype), mission-control barks, ESCAPE VELOCITY win, LOSS OF SIGNAL loss (re-entry roar hard-cut to silence).
 
 **The Emissary boss moments (FB-039) live** — his one-roll cash escrow (simulated ≈ −1 to −3, a weaker Hierophant) became **signal lag + blackout**: every crew effect (cash, Hype, multipliers) lands one roll late (`runs.signal_transit`); a 7-out drops what's in transit and the whole crew goes dark for 6 rolls (`runs.signal_dark_rolls`) — ≈ −13 / −14 / −18 (cash / mixed / hype), tuned with `scripts/sim/emissary-delay-sim.mjs`. `signal` facts on the payload; bracketed alien barks; a `TransmissionLine` front and center (packets in transit, SIGNAL LOST static, NO SIGNAL countdown, dark crew rail); MESSAGE RECEIVED win (his line decodes from alien glyphs) and TRANSLATED loss (table dissolves into glyphs, beamed up). Next boss in the roll-out: The Architect (FB-040 Convergence redesign).
+
+**Economy rebalance (FB-041) live** (2026-10-15) — sim-driven from `docs/design/gauntlet-difficulty-audit.md` (`scripts/sim/gauntlet-economy-sim.mjs`; its defaults are the shipped game, `validate` mode checks the target bands). Three changes:
+- **The opening:** post-tutorial runs start with $40 and a free pick from 3 random Starters. A run's first pub is always Starter-only. Release 1.
+- **Crew-cash taper on Floors 5–9:** via `getCrewCashBaseCents`.
+- **Crew Hype ×1.5.**
+
+The taper and Hype changes shipped together as Release 2. Validated: reach Floor 4 ~40% (was ~12%); finish from Floor 5 mixed 63% / cash 44% (was 71% / 72%); whole run 16–20% (was 6–7%). Mixed crews are the intended best build; pure hype isn't a balance target. Baselines: `scripts/sim/baselines/pre-fb-041/` and `post-fb-041/`.
 
 **Active development:** None currently.
 

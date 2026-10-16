@@ -239,6 +239,12 @@
 3. **Backlog:** FB-041 → Implemented. **Audit doc:** status → implemented.
 4. **Release notes** entry (FB-019 process): "Fresh runs start with $40 and a crew member on the house · crew cash cools off on Floors 5–9 · Hype crew hit harder".
 
+--- Implemented (2026-10-15):
+- **CLAUDE.md:** Game Constants gain run start, crew-cash scale and crew Hype values. Current State gains the FB-041 entry. The Sovereign paragraph's "audit may prompt a re-tune" line now points at FB-041. The key constraints were already updated in Phases 1–2.
+- **`crew_framework.md`:** FB-024 formula → `MULT × ctx.crewCashBaseCents`, plus a crew Hype ×1.5 note. Values were updated in Phase 3.
+- **Backlog + design doc** → Implemented; audit doc § 7 written in Phase 4.
+- **Release notes:** generated automatically from `feat:`/`fix:` commit subjects (FB-019). The Phase 1–3 `feat:` commits appear in-game when Release 2 merges, so no separate entry is needed. ---
+
 🛑 **Gate:** FB-041 complete → push.
 
 ---

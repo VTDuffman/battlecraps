@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-042 Under the Glass
 
 **Design doc:** `docs/design/fb-042-under-the-glass-design.md`
-**Status:** Not started.
+**Status:** Phase 1 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` before a phase is done. Commit locally per phase; push when Mike says. After each phase: explicit test steps (Dev presets) + what to look for, **including a phone-width check**. The dice must always pass over the tracker. All crew/player references gender-neutral.
 
@@ -12,6 +12,8 @@
 2. The glass layer (sheen, inset edge, felt rim); tracker → glass → dice layering; no stacking layer above the dice.
 3. Fit-to-space (`ResizeObserver` scale, max scale).
 4. Move `OrbitGauge` out of `MarkerProgress` into the well; size pass.
+
+--- Implemented locally (2026-10-17): `BossTableWell` (`TABLE_TRACKERS` registry by rule with a design size; `hasTableTracker()`; well inset into the felt + glass sheen/rim; `isolation: isolate` so nothing stacks above the dice; ResizeObserver scale-to-fit, max 1.5×; tracker fades out once the marker is cleared). TableBoard renders it in the green space for boss rooms with a table tracker, `FloorEmblem` otherwise. `OrbitGauge` re-laid out at 360×200 (bigger planet, rounder orbit, bigger readouts) and removed from `MarkerProgress`. ---
 
 🛑 **Gate:** Commander presets on desktop + phone width — dice fly over the gauge, nothing clipped.
 

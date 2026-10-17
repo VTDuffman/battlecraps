@@ -173,6 +173,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
 
   return (
     <div
+      data-table-root=""
       className={[
         'relative w-full max-w-lg mx-auto',
         'h-[100dvh] flex flex-col overflow-hidden',

@@ -38,6 +38,8 @@
 
 --- Review (2026-10-17): the new table just appeared — the rebuild now ERASES and DRAWS. An eraser band sweeps down (crumbs, rubbing) and wipes the old table to bare blueprint behind it (clip-path wipe in, 0–0.8 s); the room locks in under full blueprint (clunk, ~0.85 s; strokes draft, card shows); then a glowing pen line sweeps down and inks the new table in behind it (clip-path wipe out, 1.6–2.6 s; pen scratches). 2.8 s total. ---
 
+--- Review 2 (2026-10-17): the wipes read as a curtain drop. Now the BOARD ITSELF fades: the table root (`[data-table-root]`) is animated with WAAPI — drains of colour, washes out, blurs and fades (0–0.8 s) while the blueprint fades in; the room locks in while it's invisible (strokes, card, clunk); then it returns as a cyan line sketch (invert/sepia/hue-rotate filter) and its colour fills in as it solidifies (1.6–2.7 s) while the blueprint fades out. Eraser band, crumbs and pen line removed. ---
+
 🛑 **Gate:** watch several rebuilds.
 
 ## Phase 4: Barks

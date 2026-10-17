@@ -3,14 +3,15 @@
 // apps/web/src/components/RoomRebuild.tsx
 //
 // Each time The Architect builds a room — after his entry cinematic (the first
-// room) and on every Seven-Out — he erases the table and draws the next one:
-//   ERASE (0–0.8 s): an eraser band sweeps down; behind it the old table is
-//     gone, wiped back to bare blueprint (a cyan drafting grid). Rubbing.
+// room) and on every Seven-Out — he erases the table and draws the next one,
+// on the board itself ([data-table-root], animated with the Web Animations API):
+//   ERASE (0–0.85 s): the table drains of colour, washes out, softens and fades
+//     away while the blueprint (a cyan drafting grid) fades in. Eraser rubs.
 //   LOCK IN (~0.85 s): with a clunk the table is re-dressed as that boss's
-//     floor (setConvergenceThemeRoom) — hidden under the blueprint — while pen
-//     strokes draft its outlines and the room's card shows (sigil, ROOM n, boss).
-//   DRAW (1.6–2.6 s): a glowing pen line sweeps down and inks the new table in
-//     behind it (the blueprint is cleared away top to bottom). Pen scratches.
+//     floor (setConvergenceThemeRoom) while it's invisible; pen strokes draft
+//     its outlines on the blueprint and the room's card shows.
+//   DRAW (1.6–2.7 s): the new table fades back in as a cyan line sketch, then
+//     its colour fills in as it solidifies; the blueprint fades away. Pen scratches.
 //
 // Non-blocking (pointer-events none). Reduced motion: no overlay, the room is
 // dressed at once. The first room builds once nothing else is playing.
@@ -26,10 +27,17 @@ import { playBlueprintRebuild } from '../hooks/useCrowdAudio.js';
 const CYAN    = '#67e8f9';
 const PEAK_MS = 850;
 const TOTAL_S = 2.8;
-// The blueprint's coverage: wiped in top → bottom (erase), held, wiped out top → bottom (draw).
-const ERASE_END = 0.8 / TOTAL_S;
 const DRAW_START = 1.6 / TOTAL_S;
-const DRAW_END   = 2.6 / TOTAL_S;
+// The board's own look through the rebuild (WAAPI keyframes on [data-table-root]).
+const SKETCH = 'grayscale(1) invert(1) sepia(1) hue-rotate(150deg) saturate(4) contrast(1.6) brightness(1.1) blur(0px)';
+const BOARD_KEYFRAMES: Keyframe[] = [
+  { offset: 0,                    opacity: 1, filter: 'grayscale(0) contrast(1) brightness(1) blur(0px)' },
+  { offset: 0.28,                 opacity: 0, filter: 'grayscale(1) contrast(1.5) brightness(1.6) blur(2px)' },   // erased
+  { offset: DRAW_START,           opacity: 0, filter: SKETCH },
+  { offset: DRAW_START + 0.14,    opacity: 0.85, filter: SKETCH },                                              // sketched in
+  { offset: 0.96,                 opacity: 1, filter: 'grayscale(0) invert(0) sepia(0) hue-rotate(0deg) saturate(1) contrast(1) brightness(1) blur(0px)' },   // inked
+  { offset: 1,                    opacity: 1, filter: 'none' },
+];
 
 // Drafting strokes — rough outlines of the table (viewBox 100 × 100).
 const STROKES = [
@@ -42,13 +50,6 @@ const STROKES = [
   'M8 88 H92',                     // the crew rail
   'M50 30 V62 M14 46 H86',         // construction lines
 ];
-
-// Eraser crumbs shed along the sweep (x %, where in the sweep, size px).
-const ERASER_CRUMBS = Array.from({ length: 22 }, (_, i) => ({
-  x:    (i * 37) % 100,
-  at:   (i * 23) % 96,
-  size: 2 + (i % 3),
-}));
 
 interface Build { room: number; index: number; key: number }
 
@@ -90,9 +91,11 @@ export const RoomRebuild: React.FC = () => {
   useEffect(() => {
     if (!build) return;
     playBlueprintRebuild();
+    const board = document.querySelector<HTMLElement>('[data-table-root]');
+    const anim  = board?.animate(BOARD_KEYFRAMES, { duration: TOTAL_S * 1000, easing: 'ease-in-out' });
     const peak = window.setTimeout(() => setThemeRoom(build.room), PEAK_MS);
     const done = window.setTimeout(() => setBuild(null), TOTAL_S * 1000);
-    return () => { window.clearTimeout(peak); window.clearTimeout(done); setThemeRoom(build.room); };
+    return () => { window.clearTimeout(peak); window.clearTimeout(done); anim?.cancel(); setThemeRoom(build.room); };
   }, [build?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const boss = build ? GAUNTLET[build.room]?.boss : undefined;
@@ -109,12 +112,12 @@ export const RoomRebuild: React.FC = () => {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {/* the blueprint — wiped in behind the eraser, wiped out behind the pen */}
+          {/* the blueprint — fades in as the board is erased, out as the new one is inked in */}
           <motion.div
             className="absolute inset-0"
-            initial={{ clipPath: 'inset(0% 0% 100% 0%)' }}
-            animate={{ clipPath: ['inset(0% 0% 100% 0%)', 'inset(0% 0% 0% 0%)', 'inset(0% 0% 0% 0%)', 'inset(100% 0% 0% 0%)'] }}
-            transition={{ duration: TOTAL_S, times: [0, ERASE_END, DRAW_START, DRAW_END], ease: 'linear' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0, 0.92, 0.92, 0.55, 0] }}
+            transition={{ duration: TOTAL_S, times: [0, 0.3, DRAW_START, DRAW_START + 0.16, 0.95], ease: 'easeInOut' }}
           >
             <div
               className="absolute inset-0"
@@ -172,37 +175,6 @@ export const RoomRebuild: React.FC = () => {
             )}
           </motion.div>
 
-          {/* the eraser — a soft rubber band sweeping down, crumbs falling off it */}
-          <motion.div
-            className="absolute inset-x-0 h-5"
-            style={{
-              marginTop: -10,
-              background: 'linear-gradient(180deg, rgba(255,228,230,0) 0%, rgba(255,228,230,0.85) 35%, rgba(254,205,211,0.95) 60%, rgba(255,228,230,0) 100%)',
-              filter: 'blur(1.5px)',
-            }}
-            initial={{ top: '0%', opacity: 1 }}
-            animate={{ top: '100%', opacity: [1, 1, 0] }}
-            transition={{ top: { duration: 0.8, ease: 'linear' }, opacity: { duration: 0.8, times: [0, 0.96, 1] } }}
-          />
-          {ERASER_CRUMBS.map((c, i) => (
-            <motion.span
-              key={`crumb-${i}`}
-              className="absolute block rounded-full"
-              style={{ left: `${c.x}%`, width: c.size, height: c.size, background: 'rgba(254,205,211,0.8)' }}
-              initial={{ top: `${c.at}%`, opacity: 0 }}
-              animate={{ top: [`${c.at}%`, `${c.at + 6}%`], opacity: [0, 0.9, 0] }}
-              transition={{ duration: 0.5, delay: (c.at / 100) * 0.8, ease: 'easeIn' }}
-            />
-          ))}
-
-          {/* the pen — a glowing line inking the new table in, top to bottom */}
-          <motion.div
-            className="absolute inset-x-0 h-0.5"
-            style={{ background: CYAN, boxShadow: `0 0 16px 4px ${CYAN}aa` }}
-            initial={{ top: '0%', opacity: 0 }}
-            animate={{ top: '100%', opacity: [1, 1, 0] }}
-            transition={{ top: { duration: 1.0, delay: 1.6, ease: 'linear' }, opacity: { duration: 1.0, delay: 1.6, times: [0, 0.95, 1] } }}
-          />
         </motion.div>
       )}
     </AnimatePresence>,

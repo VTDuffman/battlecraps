@@ -28,6 +28,7 @@ import { AliasPickerModal }            from './components/AliasPickerModal.js';
 import type { StoredCrewSlots }        from './store/useGameStore.js';
 import type { Bets }                   from '@battlecraps/shared';
 import { getFloorIndex }               from './lib/floorThemes.js';
+import { selectTableMarkerIndex } from './lib/bossRules.js';
 
 const IS_TEST = import.meta.env['VITE_TEST_MODE'] === 'true';
 const TEST_CLERK_ID = 'test_user_e2e';
@@ -102,7 +103,9 @@ const AuthenticatedApp: React.FC = () => {
   // Suppress greyscale only for the cross-floor pub after THE EMISSARY (marker 23):
   // displayMarkerIndex=24 (Floor 9) but the cleared marker was Floor 8, so the pub
   // belongs to THE SIGNAL. Within-Floor-9 pubs (markers 24, 25 cleared) keep the filter.
-  const isNullSpace  = getFloorIndex(displayMarkerIndex) === 8 &&
+  // FB-040: a room of The Architect's wears its own floor — no greyscale.
+  const tableMarkerIndex = useGameStore(selectTableMarkerIndex);
+  const isNullSpace  = getFloorIndex(tableMarkerIndex) === 8 &&
     !(runStatus === 'TRANSITION' && getFloorIndex(displayMarkerIndex - 1) !== 8);
 
   // Inject the Clerk getToken function into the store on mount so all fetch

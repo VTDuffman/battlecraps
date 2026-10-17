@@ -49,6 +49,7 @@ import { BettingGrid, ChipSelector } from './BettingGrid.js';
 import { BossRoomHeader }  from './BossRoomHeader.js';
 import { DefeatCinematicHost } from './defeat/DefeatCinematicHost.js';
 import { VictoryCinematicHost } from './victory/VictoryCinematicHost.js';
+import { RoomRebuild } from './RoomRebuild.js';
 import { CharmFlight } from './CharmFlight.js';
 import { CovenantFlash } from './CovenantFlash.js';
 import { TideWater } from './TideWater.js';
@@ -65,7 +66,7 @@ import { HypeFlash }           from './HypeFlash.js';
 import { FloorEmblem }         from './FloorEmblem.js';
 import { useTutorialContext }  from '../contexts/TutorialContext.js';
 import { getFloorIndex }        from '../lib/floorThemes.js';
-import { isRuleOn } from '../lib/bossRules.js';
+import { isRuleOn, selectTableMarkerIndex } from '../lib/bossRules.js';
 
 const selectFlash    = (s: GameState) => ({ flashType: s.flashType, _flashKey: s._flashKey });
 const selectWallFlash = (s: GameState) => ({ wallFlash: s.wallFlash, _wallFlashKey: s._wallFlashKey });
@@ -109,7 +110,9 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
   const isBossRoom         = isBossMarker(displayMarkerIndex);
   const { muted, toggleMute, sfxVolume, setSfxVolume } = useCrowdAudio();
   // Floor 1–9: Math.ceil((markerIndex+1)/3), clamped.  Floor 9 enforces silence.
-  const currentFloor = Math.max(1, Math.min(9, Math.ceil((displayMarkerIndex + 1) / 3)));
+  // FB-040: in The Architect's fight each room brings its floor's music.
+  const tableMarkerIndex = useGameStore(selectTableMarkerIndex);
+  const currentFloor = Math.max(1, Math.min(9, Math.ceil((tableMarkerIndex + 1) / 3)));
   const { isMusicMuted, toggleMusic, musicVolume, setMusicVolume } = useFloorMusic(currentFloor);
   const theme = useFloorTheme();
 
@@ -506,6 +509,8 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
       {/* ── Boss victory cinematic (FB-033) — plays during the celebration hold ── */}
       <VictoryCinematicHost />
       <CharmFlight />
+      {/* FB-040: The Architect rebuilds a room */}
+      <RoomRebuild />
       <CovenantFlash />
       <TideWater />
 
@@ -647,7 +652,7 @@ const GameStatus: React.FC = () => {
   const autoCollect         = useGameStore((s) => s.autoCollect);
   const isAutoCollecting    = useGameStore((s) => s.isAutoCollecting);
   const theme               = useFloorTheme();
-  const isNullSpace         = getFloorIndex(displayMarkerIndex) === 8;
+  const isNullSpace         = getFloorIndex(useGameStore(selectTableMarkerIndex)) === 8;
 
   const markerTarget  = MARKER_TARGETS[displayMarkerIndex] ?? MARKER_TARGETS[MARKER_TARGETS.length - 1]!;
   const isCleared     = displayMarkerIndex !== currentMarkerIndex;
@@ -909,7 +914,7 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
   const label       = isBoss ? '★ BOSS' : `MARKER ${markerIndex + 1}`;
   const pct         = Math.round(progress * 100);
   const theme       = useFloorTheme();
-  const isNullSpace = getFloorIndex(markerIndex) === 8;
+  const isNullSpace = getFloorIndex(useGameStore(selectTableMarkerIndex)) === 8;
   const cutCents    = useGameStore((s) => s.bossProgressCents);
 
   // FB-032: a payoff marker (The Foreman) is cleared by his Cut, not bankroll,
@@ -985,7 +990,7 @@ const ChipRail: React.FC = () => {
   const bossPointHits      = useGameStore((s) => s.bossPointHits);
   const maxBet             = getMaxBet(currentMarkerIndex, bossPointHits);
   const theme              = useFloorTheme();
-  const isNullSpace        = getFloorIndex(currentMarkerIndex) === 8;
+  const isNullSpace        = getFloorIndex(useGameStore(selectTableMarkerIndex)) === 8;
   const tutorialCtx        = useTutorialContext();
 
   return (
@@ -1067,7 +1072,7 @@ const HypeParticleEl: React.FC<HypeParticleData> = ({ startX, startY, endX, endY
 const HypeFlow: React.FC = () => {
   const lastHypeSource = useGameStore((s) => s.lastHypeSource);
   const _hypeKey       = useGameStore((s) => s._hypeKey);
-  const isNullSpace    = getFloorIndex(useGameStore(selectDisplayMarkerIndex)) === 8;
+  const isNullSpace    = getFloorIndex(useGameStore(selectTableMarkerIndex)) === 8;
   const [particle, setParticle] = useState<HypeParticleData | null>(null);
 
   useEffect(() => {

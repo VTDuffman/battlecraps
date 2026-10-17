@@ -16,7 +16,7 @@ import { useGameStore, selectHypeTier, selectDisplayMarkerIndex } from '../store
 import { useParticleEmitter } from '../hooks/useParticleEmitter.js';
 import { isBossMarker, getBossMinBet, getMinBet, GAUNTLET } from '@battlecraps/shared';
 import { getFloorIndex } from '../lib/floorThemes.js';
-import { isRuleOn } from '../lib/bossRules.js';
+import { isRuleOn, selectTableMarkerIndex } from '../lib/bossRules.js';
 
 // ---------------------------------------------------------------------------
 // Roll result metadata
@@ -125,7 +125,7 @@ export const DiceZone: React.FC = () => {
   const celebrationSnapshot = useGameStore((s) => s.celebrationSnapshot);
   const dreadDice           = useGameStore((s) => s.dreadDice);
   const hypeTier            = useGameStore(selectHypeTier);
-  const isNullSpace         = getFloorIndex(useGameStore(selectDisplayMarkerIndex)) === 8;
+  const isNullSpace         = getFloorIndex(useGameStore(selectTableMarkerIndex)) === 8;
 
   // ── Throw animation state ─────────────────────────────────────────────────
   const [throwPhase, setThrowPhase]   = useState<ThrowPhase>('idle');

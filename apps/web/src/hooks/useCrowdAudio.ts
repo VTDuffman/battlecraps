@@ -26,7 +26,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { GAUNTLET } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
-import { isRuleOn } from '../lib/bossRules.js';
+import { isRuleOn, selectTableMarkerIndex } from '../lib/bossRules.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -1484,6 +1484,41 @@ function playGlassKnockSting(ctx: AudioContext, dest: AudioNode): void {
 }
 
 /** FB-042: THE ROSE — the glass cracks and shatters. */
+/**
+ * FB-040: The Architect rebuilds a room — pen strokes scratching a blueprint, a
+ * rising drafting sweep, and a heavy clunk as the room locks into place (at
+ * ~0.9 s, the rebuild's peak), then a falling shimmer.
+ */
+function playBlueprintRebuildSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  // pen strokes
+  for (let i = 0; i < 7; i++) {
+    seaNoise(ctx, dest, t0 + i * 0.11, 0.07, { type: 'bandpass', from: 2600 + (i % 3) * 500, to: 3400, q: 3 }, 0.07, 0.004);
+  }
+  // the drafting sweep
+  const osc = ctx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(180, t0);
+  osc.frequency.exponentialRampToValueAtTime(1100, t0 + 0.88);
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(600, t0);
+  lp.frequency.exponentialRampToValueAtTime(3200, t0 + 0.88);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.05, t0 + 0.5);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.92);
+  osc.connect(lp); lp.connect(g); g.connect(dest);
+  osc.start(t0); osc.stop(t0 + 0.95);
+  // the clunk
+  const tc = t0 + 0.9;
+  seaNoise(ctx, dest, tc, 0.18, { type: 'lowpass', from: 500, to: 120 }, 0.3, 0.002);
+  strikeBell(ctx, dest, 98, tc, 0.12, 0.8);
+  strikeBell(ctx, dest, 147, tc + 0.01, 0.06, 0.7);
+  // shimmer
+  [2093, 1760, 1568, 1319].forEach((f, i) => strikeBell(ctx, dest, f, tc + 0.12 + i * 0.07, 0.02, 0.9));
+}
+
 function playGlassShatterSting(ctx: AudioContext, dest: AudioNode): void {
   const t0 = ctx.currentTime + 0.01;
   seaNoise(ctx, dest, t0, 0.08, { type: 'highpass', from: 3000, to: 3000 }, 0.22, 0.001);
@@ -1588,6 +1623,11 @@ export function playGlassKnock(): void {
 /** FB-042: THE ROSE — the glass shatters. */
 export function playGlassShatter(): void {
   playStandalone(playGlassShatterSting);
+}
+
+/** FB-040: The Architect rebuilds a room. */
+export function playBlueprintRebuild(): void {
+  playStandalone(playBlueprintRebuildSting);
 }
 
 /** FB-034 defeat: a heart blooms on the i-th crew portrait. */
@@ -1819,7 +1859,8 @@ export function useCrowdAudio(): {
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
 
   const isNullSpaceRef = useRef(false);
-  isNullSpaceRef.current = GAUNTLET[currentMarkerIndex]?.floor === 9;
+  const tableMarker    = useGameStore(selectTableMarkerIndex);   // FB-040: a room of The Architect's isn't the Null Space
+  isNullSpaceRef.current = GAUNTLET[tableMarker]?.floor === 9;
 
   // FB-038: in The Commander's fight the crowd is muffled — "in space, no one
   // can hear you scream" — and fainter the thinner your hype.

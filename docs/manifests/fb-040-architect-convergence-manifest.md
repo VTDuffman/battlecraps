@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-040 The Architect — Convergence
 
 **Design doc:** `docs/design/fb-040-architect-convergence-design.md`
-**Status:** Phases 1–2 done locally (not pushed).
+**Status:** Phases 1–3 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Commit locally per phase; push when Mike says. After each phase: explicit test steps (Dev presets) + what to look for, including a phone-width check. **All crew/player references gender-neutral.** Big wins, big losses — it's the final boss.
 
@@ -33,6 +33,8 @@
 ## Phase 3: The rebuild
 1. The felt / theme follows the newest room's floor (theme override over Floor 9; header stays The Architect's).
 2. The rebuild animation on each new room (and the first at entry): blueprint dissolve → tile lights → room redraws; drafting / construction sound.
+
+--- Implemented locally (2026-10-17): store `convergenceThemeRoom` (+ `setConvergenceThemeRoom`) — the room the table is dressed as; a newly built room is dressed by the rebuild at its peak, a reload restores the newest room, cleared with the fight. `selectTableMarkerIndex` (lib/bossRules) drives `useFloorTheme` (felt, texture, accents, flashes), the Null Space greyscale (App) and its text colours (TableBoard / BettingGrid / DiceZone), the crowd's Null Space handling, and the floor music (each room brings its floor's track). The boss header keeps The Architect's own Null Space styling. `RoomRebuild` (portaled, z-95, non-blocking): cyan blueprint grid, pen strokes drawing the table's outlines, a scan line; at ~0.9 s the room locks in (`playBlueprintRebuild` — pen scratches, a drafting sweep, a clunk, a shimmer) and the table is re-dressed under the blueprint; the room's card (sigil, ROOM n / 8, name, rule line); dissolves by 2.4 s. Plays on each Seven-Out that builds a room, and for the first room once nothing else is playing (after his entry cinematic). Reduced motion: dressed at once. ---
 
 🛑 **Gate:** watch several rebuilds.
 

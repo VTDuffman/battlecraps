@@ -19,7 +19,7 @@ import type { BetField } from '../store/useGameStore.js';
 import { getMaxBet, getTideStage, GAUNTLET, isBossMarker } from '@battlecraps/shared';
 import { getFloorIndex } from '../lib/floorThemes.js';
 import { useTutorialContext } from '../contexts/TutorialContext.js';
-import { isRuleOn, paramsOfRule, ruleCounter } from '../lib/bossRules.js';
+import { isRuleOn, paramsOfRule, ruleCounter, selectTableMarkerIndex } from '../lib/bossRules.js';
 
 // ---------------------------------------------------------------------------
 // Chip denominations — dynamically derived from the current marker's max bet
@@ -170,7 +170,7 @@ const BetZone: React.FC<BetZoneProps> = ({
   const placeBet        = useGameStore((s) => s.placeBet);
   const removeBet       = useGameStore((s) => s.removeBet);
   const activeChip      = useGameStore((s) => s.activeChip);
-  const isNullSpace     = getFloorIndex(useGameStore(selectDisplayMarkerIndex)) === 8;
+  const isNullSpace     = getFloorIndex(useGameStore(selectTableMarkerIndex)) === 8;
 
   // A bet is "locked" when the entire amount is committed from the last roll.
   // Right-click is a no-op in this state — nothing pending to undo.

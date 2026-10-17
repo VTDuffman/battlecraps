@@ -845,6 +845,13 @@ export interface GameState {
   convergenceState: ConvergenceState | null;
   /** FB-040: the latest roll's room facts + a key (drives the rooms rail / the rebuild). */
   lastConvergence: (ConvergenceFacts & { key: number }) | null;
+  /**
+   * FB-040: the room whose floor the table is dressed as (felt, theme, music).
+   * Switched by the rebuild animation at its peak (setConvergenceThemeRoom), so
+   * the change happens under the blueprint; restored to the newest room on a
+   * reload. Null = the Null Space itself.
+   */
+  convergenceThemeRoom: number | null;
   /** FB-039: the latest roll's signal facts + a key (drives the transmission line). */
   lastSignal: ({ landed: { additives: number; hype: number; multipliers: number[] }; sent: { additives: number; hype: number; multipliers: number[] }; dropped: boolean; darkRolls: number; wasDark: boolean } & { key: number }) | null;
   /** The latest roll's Cut (drives the register's ka-ching / stamp). Null when none. */
@@ -983,6 +990,8 @@ export interface GameActions {
 
   /** CharmFlight finished (or was skipped) — show the ❤️ on its portrait. */
   finishCharmFlight(): void;
+  /** FB-040: dress the table as this room's floor (null = the Null Space). */
+  setConvergenceThemeRoom(room: number | null): void;
   /** FB-042: the heart has landed — the new crew member now sinks under the glass. */
   sinkCharmFlight(): void;
 
@@ -1316,6 +1325,7 @@ function bossDisplayFromCounter(initialState: Partial<GameState>): Partial<GameS
   const conv  = initialState.convergenceState ?? null;
   if (GAUNTLET[markerIndex]?.boss?.rule === 'CONVERGENCE' && conv !== null) {
     return {
+      convergenceThemeRoom: rooms[rooms.length - 1] ?? null,
       ...(isRoomRuleOn(rooms, 'CROSS_CALIBRATION') && { executiveRating: conv.rating }),
       ...(isRoomRuleOn(rooms, 'DISABLE_CREW') && (initialState.status === 'POINT_ACTIVE'
         ? { charmedCrewSlot: conv.charm, pendingBossEntryCharm: null }
@@ -1437,6 +1447,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   convergenceRooms:        [],
   convergenceState:        null,
   lastConvergence:         null,
+  convergenceThemeRoom:    null,
   lastBossCut:             null,
   _cutKey:                 0,
   payoffAt:                null,
@@ -1539,6 +1550,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       convergenceRooms:  [],
       convergenceState:  null,
       lastConvergence:   null,
+      convergenceThemeRoom: null,
       lastBossCut:    null,
       payoffAt:       null,
       bossBark:       null,
@@ -1743,6 +1755,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       convergenceRooms:    [],
       convergenceState:    null,
       lastConvergence:     null,
+      convergenceThemeRoom: null,
       lastBossCut:         null,
       payoffAt:            null,
       bossBark:            null,
@@ -2004,6 +2017,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   finishCharmFlight() {
     set({ charmFlight: null });
+  },
+
+  setConvergenceThemeRoom(room) {
+    set({ convergenceThemeRoom: room });
   },
 
   sinkCharmFlight() {
@@ -2409,6 +2426,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       convergenceRooms:      p.convergence ? p.convergence.rooms : [],
       convergenceState:      p.convergence ? p.convergence.state : null,
       lastConvergence:       p.convergence ? { ...p.convergence, key: (get().lastConvergence?.key ?? 0) + 1 } : get().lastConvergence,
+      // A newly built room is dressed by the rebuild animation; otherwise keep the current room.
+      convergenceThemeRoom:  p.convergence
+        ? (p.convergence.added !== null ? get().convergenceThemeRoom : (get().convergenceThemeRoom ?? p.convergence.rooms[p.convergence.rooms.length - 1] ?? null))
+        : null,
       lastBossCut:           p.bossCut ?? null,
       _cutKey:               p.bossCut && p.bossCut.amount > 0 ? get()._cutKey + 1 : get()._cutKey,
       payoffAt:              p.bossCut?.paidOff === true ? Date.now() : get().payoffAt,
@@ -2885,6 +2906,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // FB-040: The Architect's first room. (Le Prix's room charms after the entry cinematic, as in her fight.)
       convergenceRooms: data.convergence?.rooms ?? [],
       convergenceState: data.convergence?.state ?? null,
+      convergenceThemeRoom: null,   // the first room is built after his entry cinematic
       ...(data.convergence && isRoomRuleOn(data.convergence.rooms, 'DISABLE_CREW') && {
         pendingBossEntryCharm: data.convergence.state.charm,
       }),

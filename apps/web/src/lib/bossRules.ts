@@ -11,7 +11,7 @@
 // =============================================================================
 
 import { GAUNTLET, getRoomCounter, isBossMarker, type BossRuleParams, type BossRuleType } from '@battlecraps/shared';
-import type { GameState } from '../store/useGameStore.js';
+import { selectDisplayMarkerIndex, type GameState } from '../store/useGameStore.js';
 
 type Slice = Pick<GameState, 'currentMarkerIndex' | 'bossPointHits' | 'convergenceRooms' | 'convergenceState'>;
 
@@ -37,4 +37,16 @@ export function ruleCounter(s: Slice, rule: BossRuleType): number {
 export function paramsOfRule<R extends BossRuleType>(rule: R): Extract<BossRuleParams, { rule: R }> | null {
   const boss = GAUNTLET.find((m) => m.boss?.rule === rule)?.boss;
   return boss ? (boss.ruleParams as Extract<BossRuleParams, { rule: R }>) : null;
+}
+
+/**
+ * The marker whose floor the table is dressed as: in The Architect's fight, the
+ * room the rebuild last dressed it as (convergenceThemeRoom); otherwise the
+ * marker on display. Drives the felt / theme, the Null Space greyscale and its
+ * text colours, and the floor music.
+ */
+export function selectTableMarkerIndex(s: GameState): number {
+  const d = selectDisplayMarkerIndex(s);
+  if (s.convergenceThemeRoom !== null && isBossMarker(d) && GAUNTLET[d]?.boss?.rule === 'CONVERGENCE') return s.convergenceThemeRoom;
+  return d;
 }

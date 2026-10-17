@@ -36,6 +36,8 @@
 
 --- Implemented locally (2026-10-17): store `convergenceThemeRoom` (+ `setConvergenceThemeRoom`) — the room the table is dressed as; a newly built room is dressed by the rebuild at its peak, a reload restores the newest room, cleared with the fight. `selectTableMarkerIndex` (lib/bossRules) drives `useFloorTheme` (felt, texture, accents, flashes), the Null Space greyscale (App) and its text colours (TableBoard / BettingGrid / DiceZone), the crowd's Null Space handling, and the floor music (each room brings its floor's track). The boss header keeps The Architect's own Null Space styling. `RoomRebuild` (portaled, z-95, non-blocking): cyan blueprint grid, pen strokes drawing the table's outlines, a scan line; at ~0.9 s the room locks in (`playBlueprintRebuild` — pen scratches, a drafting sweep, a clunk, a shimmer) and the table is re-dressed under the blueprint; the room's card (sigil, ROOM n / 8, name, rule line); dissolves by 2.4 s. Plays on each Seven-Out that builds a room, and for the first room once nothing else is playing (after his entry cinematic). Reduced motion: dressed at once. ---
 
+--- Review (2026-10-17): the new table just appeared — the rebuild now ERASES and DRAWS. An eraser band sweeps down (crumbs, rubbing) and wipes the old table to bare blueprint behind it (clip-path wipe in, 0–0.8 s); the room locks in under full blueprint (clunk, ~0.85 s; strokes draft, card shows); then a glowing pen line sweeps down and inks the new table in behind it (clip-path wipe out, 1.6–2.6 s; pen scratches). 2.8 s total. ---
+
 🛑 **Gate:** watch several rebuilds.
 
 ## Phase 4: Barks

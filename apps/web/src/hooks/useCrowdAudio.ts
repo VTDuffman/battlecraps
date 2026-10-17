@@ -1485,38 +1485,26 @@ function playGlassKnockSting(ctx: AudioContext, dest: AudioNode): void {
 
 /** FB-042: THE ROSE — the glass cracks and shatters. */
 /**
- * FB-040: The Architect rebuilds a room — pen strokes scratching a blueprint, a
- * rising drafting sweep, and a heavy clunk as the room locks into place (at
- * ~0.9 s, the rebuild's peak), then a falling shimmer.
+ * FB-040: The Architect erases the table and draws the next room — eraser rubs
+ * on paper (0–0.8 s), a heavy clunk as the room locks in (~0.85 s) with a
+ * shimmer, then quick pen scratches as the new table is inked in (1.6–2.6 s).
  */
 function playBlueprintRebuildSting(ctx: AudioContext, dest: AudioNode): void {
   const t0 = ctx.currentTime + 0.01;
-  // pen strokes
-  for (let i = 0; i < 7; i++) {
-    seaNoise(ctx, dest, t0 + i * 0.11, 0.07, { type: 'bandpass', from: 2600 + (i % 3) * 500, to: 3400, q: 3 }, 0.07, 0.004);
+  // the eraser: rhythmic soft rubs
+  for (let i = 0; i < 6; i++) {
+    seaNoise(ctx, dest, t0 + i * 0.13, 0.11, { type: 'bandpass', from: 700, to: 1300, q: 1.4 }, 0.09, 0.03);
   }
-  // the drafting sweep
-  const osc = ctx.createOscillator();
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(180, t0);
-  osc.frequency.exponentialRampToValueAtTime(1100, t0 + 0.88);
-  const lp = ctx.createBiquadFilter();
-  lp.type = 'lowpass';
-  lp.frequency.setValueAtTime(600, t0);
-  lp.frequency.exponentialRampToValueAtTime(3200, t0 + 0.88);
-  const g = ctx.createGain();
-  g.gain.setValueAtTime(0.0001, t0);
-  g.gain.exponentialRampToValueAtTime(0.05, t0 + 0.5);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.92);
-  osc.connect(lp); lp.connect(g); g.connect(dest);
-  osc.start(t0); osc.stop(t0 + 0.95);
   // the clunk
-  const tc = t0 + 0.9;
+  const tc = t0 + 0.85;
   seaNoise(ctx, dest, tc, 0.18, { type: 'lowpass', from: 500, to: 120 }, 0.3, 0.002);
   strikeBell(ctx, dest, 98, tc, 0.12, 0.8);
   strikeBell(ctx, dest, 147, tc + 0.01, 0.06, 0.7);
-  // shimmer
   [2093, 1760, 1568, 1319].forEach((f, i) => strikeBell(ctx, dest, f, tc + 0.12 + i * 0.07, 0.02, 0.9));
+  // the pen: quick scratchy strokes as the table is inked in
+  for (let i = 0; i < 9; i++) {
+    seaNoise(ctx, dest, t0 + 1.6 + i * 0.11, 0.06, { type: 'bandpass', from: 2800 + (i % 3) * 450, to: 3600, q: 3 }, 0.06, 0.003);
+  }
 }
 
 function playGlassShatterSting(ctx: AudioContext, dest: AudioNode): void {

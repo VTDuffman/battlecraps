@@ -16,6 +16,7 @@ import { useGameStore, selectHypeTier, selectDisplayMarkerIndex } from '../store
 import { useParticleEmitter } from '../hooks/useParticleEmitter.js';
 import { isBossMarker, getBossMinBet, getMinBet, GAUNTLET } from '@battlecraps/shared';
 import { getFloorIndex } from '../lib/floorThemes.js';
+import { isRuleOn } from '../lib/bossRules.js';
 
 // ---------------------------------------------------------------------------
 // Roll result metadata
@@ -139,7 +140,7 @@ export const DiceZone: React.FC = () => {
   const dicePairRef   = useRef<HTMLDivElement>(null);
   const particleActive    = hypeTier >= 2 && throwPhase !== 'idle';
   // FB-038: in The Commander's fight there's no oxygen — the flames gutter.
-  const isCommanderFight  = useGameStore((s) => GAUNTLET[s.currentMarkerIndex]?.boss?.rule === 'ORBITAL_DECAY');
+  const isCommanderFight  = useGameStore((s) => isRuleOn(s, 'ORBITAL_DECAY'));
   const particleCanvasRef = useParticleEmitter(dicePairRef, particleActive, hypeTier, isCommanderFight);
 
   // ── Lefty McGuffin dread→relief cinematic ────────────────────────────────

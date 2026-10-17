@@ -36,6 +36,20 @@ import type {
   BossVictoryCinematicId,
 } from '@battlecraps/shared';
 import { validateOddsBet, getMaxBet, getBossMinBet, getBossPayoffCents, isBossMarker, pickBossBark, getFloorByMarkerIndex, GAUNTLET, MARKER_TARGETS } from '@battlecraps/shared';
+import type { ConvergenceState, BossRuleType } from '@battlecraps/shared';
+
+/** FB-040: The Architect's room facts on a roll (or the pub exit into his fight). */
+export interface ConvergenceFacts {
+  rooms:      number[];
+  added:      number | null;
+  state:      ConvergenceState;
+  skimCents?: number;
+}
+
+/** FB-040: true when one of the rooms (boss marker indices) brings this rule. */
+function isRoomRuleOn(rooms: readonly number[], rule: BossRuleType): boolean {
+  return rooms.some((m) => GAUNTLET[m]?.boss?.rule === rule);
+}
 
 // ---------------------------------------------------------------------------
 // Bet field type — identifies a single wager within the Bets structure
@@ -256,8 +270,10 @@ interface TurnSettledPayload {
   signal?:                 { landed: { additives: number; hype: number; multipliers: number[] }; sent: { additives: number; hype: number; multipliers: number[] }; dropped: boolean; darkRolls: number; wasDark: boolean };
   /** True when Poseidon's Favor cancelled the shooter's first-roll craps-out (rollResult is NO_RESOLUTION). */
   crapsOutBlocked?:        boolean;
-  /** The Architect (CONVERGENCE): crew slot index permanently removed by this seven-out. */
+  /** The Architect (CONVERGENCE): crew slot index permanently removed by this seven-out (retired in FB-040). */
   removedCrewSlot?:        number;
+  /** FB-040: The Architect's rooms — in force after this roll, the one built, their counters. */
+  convergence?:            ConvergenceFacts;
   /** FB-032: The Foreman's Cut on this roll (payoff fights only). */
   bossCut?:                BossCut;
 }
@@ -823,6 +839,12 @@ export interface GameState {
   lastOrbit: { bleed: number; hype: number; key: number } | null;
   /** FB-039: rolls left in The Emissary's crew blackout (0 = in contact). */
   signalDarkRolls: number;
+  /** FB-040: The Architect's rooms in force (boss marker indices, build order). Empty outside his fight. */
+  convergenceRooms: number[];
+  /** FB-040: his rooms' counters (Sarge's clock, Le Prix's charm, the Executive's rating, the tide). */
+  convergenceState: ConvergenceState | null;
+  /** FB-040: the latest roll's room facts + a key (drives the rooms rail / the rebuild). */
+  lastConvergence: (ConvergenceFacts & { key: number }) | null;
   /** FB-039: the latest roll's signal facts + a key (drives the transmission line). */
   lastSignal: ({ landed: { additives: number; hype: number; multipliers: number[] }; sent: { additives: number; hype: number; multipliers: number[] }; dropped: boolean; darkRolls: number; wasDark: boolean } & { key: number }) | null;
   /** The latest roll's Cut (drives the register's ka-ching / stamp). Null when none. */
@@ -894,6 +916,9 @@ export interface DevRunPayload {
   bossProgressCents:     number;
   /** FB-039: The Emissary's crew blackout (rolls left). */
   signalDarkRolls?:      number;
+  /** FB-040: The Architect's rooms in force + their counters (null outside his fight). */
+  convergenceRooms?:     number[] | null;
+  convergenceState?:     ConvergenceState | null;
   isDevRun:              boolean;
 }
 
@@ -1286,6 +1311,18 @@ function bossDisplayFromCounter(initialState: Partial<GameState>): Partial<GameS
   const atTable       = initialState.status === 'IDLE_TABLE' || initialState.status === 'POINT_ACTIVE';
   if (bossPointHits === undefined || !atTable || !isBossMarker(markerIndex)) return {};
 
+  // FB-040: The Architect — his rooms' displays come from their own counters.
+  const rooms = initialState.convergenceRooms ?? [];
+  const conv  = initialState.convergenceState ?? null;
+  if (GAUNTLET[markerIndex]?.boss?.rule === 'CONVERGENCE' && conv !== null) {
+    return {
+      ...(isRoomRuleOn(rooms, 'CROSS_CALIBRATION') && { executiveRating: conv.rating }),
+      ...(isRoomRuleOn(rooms, 'DISABLE_CREW') && (initialState.status === 'POINT_ACTIVE'
+        ? { charmedCrewSlot: conv.charm, pendingBossEntryCharm: null }
+        : { pendingBossEntryCharm: conv.charm })),
+    };
+  }
+
   switch (GAUNTLET[markerIndex]?.boss?.rule) {
     case 'CROSS_CALIBRATION': return { executiveRating: bossPointHits };
     case 'DISABLE_CREW':      return initialState.status === 'POINT_ACTIVE'
@@ -1397,6 +1434,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   lastOrbit:               null,
   signalDarkRolls:         0,
   lastSignal:              null,
+  convergenceRooms:        [],
+  convergenceState:        null,
+  lastConvergence:         null,
   lastBossCut:             null,
   _cutKey:                 0,
   payoffAt:                null,
@@ -1496,6 +1536,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastOrbit:         null,
       signalDarkRolls:   0,
       lastSignal:        null,
+      convergenceRooms:  [],
+      convergenceState:  null,
+      lastConvergence:   null,
       lastBossCut:    null,
       payoffAt:       null,
       bossBark:       null,
@@ -1697,6 +1740,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastOrbit:           null,
       signalDarkRolls:     0,
       lastSignal:          null,
+      convergenceRooms:    [],
+      convergenceState:    null,
+      lastConvergence:     null,
       lastBossCut:         null,
       payoffAt:            null,
       bossBark:            null,
@@ -2108,6 +2154,15 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ? { from: oldCharmedSlot, to: newCharmedSlot, key: (oldCharmFlight?.key ?? 0) + 1 }
         : oldCharmFlight;
 
+    // FB-040: a Seven-Out that builds Le Prix's room in The Architect's fight —
+    // her first charm comes from the room's counter; the heart flies to it.
+    const prixRoomAdded = !isEndingBossFight && p.convergence?.added != null
+      && GAUNTLET[p.convergence.added]?.boss?.rule === 'DISABLE_CREW';
+    const roomCharmSlot   = prixRoomAdded && p.convergence ? p.convergence.state.charm : null;
+    const roomCharmFlight = roomCharmSlot !== null
+      ? { from: null, to: roomCharmSlot, key: (oldCharmFlight?.key ?? 0) + 1 }
+      : null;
+
     // Lose results always take priority. Win fires for canonical win results AND
     // any roll where the player nets money (e.g. NO_RESOLUTION with a hardway
     // payout or a crew flat bonus — KI-019 / KI-021).
@@ -2330,9 +2385,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       _hypeFlashKey:        flashTier !== null ? _hypeFlashKey + 1 : _hypeFlashKey,
       lastHypeSource:       hypeSource,
       _hypeKey:             hypeSource !== null ? _hypeKey + 1 : _hypeKey,
-      charmedCrewSlot:       newCharmedSlot,
+      charmedCrewSlot:       roomCharmSlot ?? newCharmedSlot,
       charmingSlot:          newCharmingSlot,
-      charmFlight:           newCharmFlight,
+      charmFlight:           roomCharmFlight ?? newCharmFlight,
       freedCharmSlot:        isEndingBossFight ? oldCharmedSlot : null,
       _charmKey:             charmFired ? _charmKey + 1 : _charmKey,
       executiveRating:       newExecutiveRating,
@@ -2350,6 +2405,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastOrbit:             p.orbit ? { ...p.orbit, key: (get().lastOrbit?.key ?? 0) + 1 } : get().lastOrbit,
       signalDarkRolls:       p.signal ? p.signal.darkRolls : 0,
       lastSignal:            p.signal ? { ...p.signal, key: (get().lastSignal?.key ?? 0) + 1 } : get().lastSignal,
+      // FB-040: The Architect's rooms (every roll in his fight; cleared once it ends).
+      convergenceRooms:      p.convergence ? p.convergence.rooms : [],
+      convergenceState:      p.convergence ? p.convergence.state : null,
+      lastConvergence:       p.convergence ? { ...p.convergence, key: (get().lastConvergence?.key ?? 0) + 1 } : get().lastConvergence,
       lastBossCut:           p.bossCut ?? null,
       _cutKey:               p.bossCut && p.bossCut.amount > 0 ? get()._cutKey + 1 : get()._cutKey,
       payoffAt:              p.bossCut?.paidOff === true ? Date.now() : get().payoffAt,
@@ -2622,6 +2681,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           crapsOutBlocked?: boolean;
           clockExpired?: boolean;
           removedCrewSlot?: number;
+          convergence?: ConvergenceFacts;
           bossCut?: BossCut;
         };
       };
@@ -2660,6 +2720,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           ...(data.roll.tide !== undefined && { tide: data.roll.tide }),
           ...(data.roll.orbit !== undefined && { orbit: data.roll.orbit }),
           ...(data.roll.signal !== undefined && { signal: data.roll.signal }),
+          ...(data.roll.convergence !== undefined && { convergence: data.roll.convergence }),
         };
         set({ pendingSettlement: autoSettlement });
         get().applyPendingSettlement();
@@ -2698,6 +2759,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         ...(data.roll.tide !== undefined && { tide: data.roll.tide }),
         ...(data.roll.orbit !== undefined && { orbit: data.roll.orbit }),
         ...(data.roll.signal !== undefined && { signal: data.roll.signal }),
+        ...(data.roll.convergence !== undefined && { convergence: data.roll.convergence }),
         ...(data.roll.crapsOutBlocked === true      && { crapsOutBlocked: true as const              }),
         ...(data.roll.clockExpired    === true      && { clockExpired:    true as const              }),
         ...(data.roll.removedCrewSlot !== undefined && { removedCrewSlot: data.roll.removedCrewSlot  }),
@@ -2781,6 +2843,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
        * reveals the ❤️ and flies the heart (CharmFlight) after the boss-intro cinematic.
        */
       bossEntryCharmSlot?: number;
+      /** FB-040: entering The Architect — his first room. */
+      convergence?:        ConvergenceFacts;
     };
 
     const newUnlockedSlots = data.unlockedSlots ?? get().unlockedSlots;
@@ -2815,7 +2879,15 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // (Strong) on the performance meter before the first roll.
       executiveRating: GAUNTLET[state.currentMarkerIndex]?.boss?.rule === 'CROSS_CALIBRATION'
         ? data.bossPointHits
-        : null,
+        : data.convergence && isRoomRuleOn(data.convergence.rooms, 'CROSS_CALIBRATION')
+          ? data.convergence.state.rating
+          : null,
+      // FB-040: The Architect's first room. (Le Prix's room charms after the entry cinematic, as in her fight.)
+      convergenceRooms: data.convergence?.rooms ?? [],
+      convergenceState: data.convergence?.state ?? null,
+      ...(data.convergence && isRoomRuleOn(data.convergence.rooms, 'DISABLE_CREW') && {
+        pendingBossEntryCharm: data.convergence.state.charm,
+      }),
       // Stash the entry charm for Mme. Le Prix — clearTransition('BOSS_ENTRY') will
       // reveal it (set charmedCrewSlot + fire sting) once the boss-intro cinematic ends.
       ...(data.bossEntryCharmSlot !== undefined && {
@@ -3047,6 +3119,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       bossProgressCents:    payload.bossProgressCents ?? 0,
       escrowHeldCents:      payload.pendingAdditiveCents ?? 0,
       signalDarkRolls:      payload.signalDarkRolls ?? 0,
+      convergenceRooms:     payload.convergenceRooms ?? [],
+      convergenceState:     payload.convergenceState ?? null,
       isDevRun:             payload.isDevRun,
     };
 

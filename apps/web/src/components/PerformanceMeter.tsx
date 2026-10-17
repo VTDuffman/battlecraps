@@ -20,6 +20,7 @@ import React, { useEffect, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useGameStore } from '../store/useGameStore.js';
 import { playPromotionDing, playReviewTick, playReviewWarning } from '../hooks/useCrowdAudio.js';
+import { ruleCounter } from '../lib/bossRules.js';
 
 export const RATING_LABELS = ['ACTION REQUIRED', 'BELOW STRONG', 'STRONG', 'VERY STRONG', 'EXCEPTIONAL'] as const;
 const SHORT_LABELS         = ['ACTION', 'BELOW', 'STRONG', 'V.STRONG', 'EXCEPT.'] as const;
@@ -32,7 +33,7 @@ export const PerformanceMeter: React.FC = () => {
   // executiveRating is set by every roll in the fight and at pub exit; fall
   // back to the raw boss counter (the rating) so the meter never waits for
   // the first roll.
-  const rating       = useGameStore((s) => s.executiveRating ?? Math.min(4, Math.max(0, s.bossPointHits)));
+  const rating       = useGameStore((s) => s.executiveRating ?? Math.min(4, Math.max(0, ruleCounter(s, 'CROSS_CALIBRATION'))));
   const bonus        = useGameStore((s) => s.exceptionalBonus);
   const reduceMotion = useReducedMotion();
 

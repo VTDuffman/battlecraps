@@ -24,6 +24,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { GAUNTLET, getTideStage, type BossRuleParams, type TideEffect } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
 import { playSwell, playUndertow, playWaveCrash } from '../hooks/useCrowdAudio.js';
+import { isRuleOn, paramsOfRule, ruleCounter } from '../lib/bossRules.js';
 
 const LEVEL: Record<TideEffect, number> = { DEAD_CALM: 3, UNDERTOW: 8, HIGH_TIDE: 14 };   // dvh
 const SEA    = 'rgba(14,116,144,';
@@ -129,7 +130,9 @@ const SinkingBill: React.FC<{ at: Pt; i: number; depth: number }> = ({ at, i, de
 
 export const TideWater: React.FC = () => {
   const markerIndex  = useGameStore((s) => s.currentMarkerIndex);
-  const counter      = useGameStore((s) => s.bossPointHits);
+  // FB-040: her own fight, or her room in The Architect's (its own tide).
+  const counter      = useGameStore((s) => ruleCounter(s, 'TIDAL_SURGE'));
+  const tideOn       = useGameStore((s) => isRuleOn(s, 'TIDAL_SURGE'));
   const lastTide     = useGameStore((s) => s.lastTide);
   const reduceMotion = useReducedMotion() === true;
 
@@ -166,9 +169,8 @@ export const TideWater: React.FC = () => {
     }
   }, [event?.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const boss = GAUNTLET[markerIndex]?.boss;
-  if (boss?.ruleParams.rule !== 'TIDAL_SURGE') return null;
-  const params = boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>;
+  const params = paramsOfRule('TIDAL_SURGE');
+  if (!tideOn || params === null) return null;
   const level  = LEVEL[getTideStage(params, counter).effect];
 
   const surge   = event !== null && !reduceMotion;

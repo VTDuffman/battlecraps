@@ -21,46 +21,15 @@
 
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { GAUNTLET, getBossPayoffCents, type BossRuleType } from '@battlecraps/shared';
+import { GAUNTLET, type BossRuleType } from '@battlecraps/shared';
 import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
-import { OrbitGauge } from './OrbitGauge.js';
-import { CashRegister } from './CashRegister.js';
-import { SargeClock } from './SargeClock.js';
-import { PerformanceMeter } from './PerformanceMeter.js';
-import { OfferingBowl } from './OfferingBowl.js';
-import { TideDial } from './TideDial.js';
-import { TransmissionLine } from './TransmissionLine.js';
-import { CharmTrap } from './CharmTrap.js';
+import { BOSS_TRACKERS, type TableTracker } from './tableTrackers.js';
+import { ConvergenceTable } from './ConvergenceTable.js';
 
-/** The Foreman's register, for the marker on display (it stays through the clear). */
-const ForemanRegister: React.FC = () => {
-  const markerIndex = useGameStore(selectDisplayMarkerIndex);
-  return <CashRegister payoffCents={getBossPayoffCents(markerIndex) ?? 2500} size="table" />;
-};
-
-interface TableTracker {
-  Component: React.ComponentType;
-  /** Design size in px — the tracker lays out at this size and is scaled to fit. */
-  width:     number;
-  height:    number;
-  /**
-   * Stay mounted through the celebration hold after the clear, instead of
-   * fading out (The Foreman: the PAID IN FULL stamp lands from the register).
-   */
-  keepThroughClear?: boolean;
-}
-
-/** Bosses whose tracker lives on the table. (The Architect joins with FB-040.) */
+/** Every boss's tracker on the table — The Architect's is his rooms (FB-040). */
 const TABLE_TRACKERS: Partial<Record<BossRuleType, TableTracker>> = {
-  EXTORTION_FEE:      { Component: ForemanRegister,  width: 360, height: 150, keepThroughClear: true },
-  DOUBLE_TIME:        { Component: SargeClock,       width: 360, height: 170 },
-  // The empty glass stays through THE ROSE (it shatters).
-  DISABLE_CREW:       { Component: CharmTrap,        width: 360, height: 190, keepThroughClear: true },
-  CROSS_CALIBRATION:  { Component: PerformanceMeter, width: 360, height: 170 },
-  TRIBUTE:            { Component: OfferingBowl,     width: 360, height: 190 },
-  TIDAL_SURGE:        { Component: TideDial,         width: 360, height: 170 },
-  ORBITAL_DECAY:      { Component: OrbitGauge,       width: 360, height: 200 },
-  TRANSMISSION_DELAY: { Component: TransmissionLine, width: 360, height: 150 },
+  ...BOSS_TRACKERS,
+  CONVERGENCE: { Component: ConvergenceTable, width: 360, height: 250 },
 };
 
 const MAX_SCALE = 1.5;

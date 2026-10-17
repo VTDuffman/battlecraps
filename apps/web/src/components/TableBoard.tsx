@@ -65,6 +65,7 @@ import { HypeFlash }           from './HypeFlash.js';
 import { FloorEmblem }         from './FloorEmblem.js';
 import { useTutorialContext }  from '../contexts/TutorialContext.js';
 import { getFloorIndex }        from '../lib/floorThemes.js';
+import { isRuleOn } from '../lib/bossRules.js';
 
 const selectFlash    = (s: GameState) => ({ flashType: s.flashType, _flashKey: s._flashKey });
 const selectWallFlash = (s: GameState) => ({ wallFlash: s.wallFlash, _wallFlashKey: s._wallFlashKey });
@@ -84,7 +85,7 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
   const clearCharmingSlot = useGameStore((s) => s.clearCharmingSlot);
   const charmedCrewSlot   = useGameStore((s) => s.charmedCrewSlot);
   // FB-039: The Emissary's blackout — the crew are out of contact.
-  const crewDark          = useGameStore((s) => s.signalDarkRolls > 0 && GAUNTLET[s.currentMarkerIndex]?.boss?.rule === 'TRANSMISSION_DELAY');
+  const crewDark          = useGameStore((s) => s.signalDarkRolls > 0 && isRuleOn(s, 'TRANSMISSION_DELAY'));
   // True while cascade portrait animations are running (NOT including charm — charm
   // waits for cascade to finish before starting its own portrait expansion).
   const cascadeRunning    = useGameStore((s) => s.cascadeQueue.length > 0);

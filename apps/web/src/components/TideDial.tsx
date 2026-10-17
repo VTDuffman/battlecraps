@@ -12,6 +12,7 @@ import React from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { GAUNTLET, getTideStage, type BossRuleParams, type TideEffect } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
+import { isRuleOn, paramsOfRule, ruleCounter } from '../lib/bossRules.js';
 
 const TEAL  = '#5eead4';
 const AMBER = '#fbbf24';
@@ -24,13 +25,13 @@ const EFFECT_COLOR: Record<TideEffect, string> = {
 };
 
 export const TideDial: React.FC = () => {
-  const markerIndex  = useGameStore((s) => s.currentMarkerIndex);
-  const counter      = useGameStore((s) => s.bossPointHits);
+  // FB-040: her own fight, or her room in The Architect's (its own tide).
+  const on           = useGameStore((s) => isRuleOn(s, 'TIDAL_SURGE'));
+  const counter      = useGameStore((s) => ruleCounter(s, 'TIDAL_SURGE'));
   const reduceMotion = useReducedMotion() === true;
 
-  const boss = GAUNTLET[markerIndex]?.boss;
-  if (boss?.ruleParams.rule !== 'TIDAL_SURGE') return null;
-  const params = boss.ruleParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>;
+  const params = paramsOfRule('TIDAL_SURGE');
+  if (!on || params === null) return null;
   const now    = getTideStage(params, counter);
   const next   = getTideStage(params, counter + 1);
   const color  = EFFECT_COLOR[now.effect];

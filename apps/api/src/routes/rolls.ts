@@ -311,6 +311,8 @@ interface ConvergencePayload {
   added: number | null;
   /** The rooms' own counters after this roll. */
   state: ConvergenceState;
+  /** The Foreman's room: what he skimmed this roll (cents). */
+  skimCents?: number;
 }
 
 interface SignalPayload {
@@ -1162,7 +1164,12 @@ async function rollHandler(
     }
   }
   const convergencePayload: ConvergencePayload | undefined = isConvergenceBoss && !convergenceClears
-    ? { rooms: getRoomsInForce(convergenceOrder, finalNextState.bossPointHits), added: roomAdded, state: nextConvergenceState }
+    ? {
+        rooms: getRoomsInForce(convergenceOrder, finalNextState.bossPointHits),
+        added: roomAdded,
+        state: nextConvergenceState,
+        ...(ruleOn('EXTORTION_FEE') && { skimCents: Math.max(0, rawPayout - bossModifiedPayout) }),
+      }
     : undefined;
 
   // ── CROSS_CALIBRATION: compute bossRating for socket payload ──────────────

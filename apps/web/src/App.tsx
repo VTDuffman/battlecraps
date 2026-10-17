@@ -77,6 +77,8 @@ interface RunStateData {
   bossProgressCents?:    number;
   pendingAdditiveCents?: number;
   signalDarkRolls?:      number;
+  convergenceRooms?:     number[] | null;
+  convergenceState?:     { clock: number; charm: number; rating: number; tide: number } | null;
 }
 
 interface CreateRunResponse {
@@ -256,6 +258,9 @@ const AuthenticatedApp: React.FC = () => {
             ...(data.bossProgressCents !== undefined && { bossProgressCents: data.bossProgressCents }),
             ...(data.pendingAdditiveCents !== undefined && { escrowHeldCents: data.pendingAdditiveCents }),
             ...(data.signalDarkRolls !== undefined && { signalDarkRolls: data.signalDarkRolls }),
+            // FB-040: The Architect's rooms in force + their counters.
+            convergenceRooms: data.convergenceRooms ?? [],
+            convergenceState: data.convergenceState ?? null,
           });
           setLoading(false);
           return;

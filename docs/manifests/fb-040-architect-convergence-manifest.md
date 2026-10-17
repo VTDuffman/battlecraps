@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-040 The Architect — Convergence
 
 **Design doc:** `docs/design/fb-040-architect-convergence-design.md`
-**Status:** Phase 1 done locally (not pushed).
+**Status:** Phases 1–2 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Commit locally per phase; push when Mike says. After each phase: explicit test steps (Dev presets) + what to look for, including a phone-width check. **All crew/player references gender-neutral.** Big wins, big losses — it's the final boss.
 
@@ -25,6 +25,8 @@
 1. Store: rooms in force + room state from the payload; hydration.
 2. Trackers read room-scoped state in his fight (a hook for active rules + per-rule counters) — Sarge's clock, the tide, the meter, the charm, the bowl, the orbit, the signal; TideWater / CharmTrap / crew blackout / Covenant flash work with any room.
 3. `BossTableWell` for CONVERGENCE: the rooms rail (8 tiles — lit with live readouts, "?" blueprints for unbuilt rooms) + the newest room's tracker.
+
+--- Implemented locally (2026-10-17): store `convergenceRooms` / `convergenceState` / `lastConvergence` from the payload, the pub exit (`recruit` → `convergence`; Le Prix / Executive first rooms handled) and hydration (GET /runs, dev reconnect; `bossDisplayFromCounter` restores the rating / charm from the rooms). Client `lib/bossRules.ts` (`isRuleOn` / `ruleCounter` / `paramsOfRule`) mirrors the server's rules in force — used by Sarge's clock, the tide dial + water, Dead Calm, the meter fallback, the crew blackout, the Commander's muffled crowd + guttering flames. A Seven-Out that builds Le Prix's room charms from the room's counter and flies the heart. Trackers registry moved to `tableTrackers.ts` (`BOSS_TRACKERS`; `ROOM_TRACKERS` swaps the Foreman's register for `ForemanSkim` — "−20% OF EVERY WIN", ka-ching on each skim; server adds `skimCents` to the convergence payload). `ConvergenceTable` (360×250): the rooms rail (8 tiles — lit with sigil + live readout, newest glows; "?" blueprint tiles for unbuilt rooms) + the newest room's tracker full width (re-keyed per room). Header: "CONVERGENCE · ROOM n / 8 · +1 ON 7-OUT · THEY STACK" replaces "N CREW LEFT". Note: Le Prix's glass only shows while hers is the newest room — otherwise her tile shows the charmed crew and the heart flies via her name (the FB-034 fallback). ---
 
 🛑 **Gate:** each room shows and behaves; desktop + phone.
 

@@ -11,7 +11,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GAUNTLET, isBossMarker, type BossRuleParams } from '@battlecraps/shared';
+import { GAUNTLET, isBossMarker, MAX_CONVERGENCE_ROOMS, type BossRuleParams } from '@battlecraps/shared';
 import { BossBarkFloat } from './BossBarkFloat.js';
 import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 import { getFloorTheme } from '../lib/floorThemes.js';
@@ -21,8 +21,7 @@ export const BossRoomHeader: React.FC = () => {
   const currentMarkerIndex  = useGameStore(selectDisplayMarkerIndex);
   const bossPointHits       = useGameStore((s) => s.bossPointHits);
   const phase               = useGameStore((s) => s.phase);
-  const crewSlots           = useGameStore((s) => s.crewSlots);
-  const unlockedSlots       = useGameStore((s) => s.unlockedSlots);
+  const roomsInForce        = useGameStore((s) => s.convergenceRooms.length);
   const currentHype         = useGameStore((s) => s.hype);
 
   if (!isBossMarker(currentMarkerIndex)) return null;
@@ -85,30 +84,20 @@ export const BossRoomHeader: React.FC = () => {
           </div>
         </div>
 
-        {/* Right: The Architect's crew count. Every other boss's tracker is on the table (FB-042). */}
+        {/* Right: The Architect's rooms (FB-040). Every boss's tracker is on the table (FB-042). */}
         {isConvergence ? (
-          (() => {
-            // Each seven-out permanently removes one crew member, so count who's left.
-            const activeCrewCount = crewSlots.slice(0, unlockedSlots).filter((c) => c !== null).length;
-            const isNaked         = activeCrewCount === 0;
-            return (
-              <div className="flex-none text-right">
-                <div className="font-pixel text-[7.5px] tracking-widest leading-none"
-                  style={{ color: 'rgba(57,255,20,0.60)' }}>
-                  CONVERGENCE
-                </div>
-                <div className="font-pixel text-r-15 leading-tight"
-                  style={{ color: isNaked ? '#ef4444' : '#39ff14' }}>
-                  {isNaked ? '⌀ NAKED CRAPS' : `${activeCrewCount} CREW LEFT`}
-                </div>
-                <div className="font-pixel text-[7.5px] leading-none mt-0.5"
-                  style={{ color: isNaked ? '#ef4444' : 'rgba(57,255,20,0.45)' }}>
-                  {isNaked ? 'RAW CRAPS — NO CREW' : '−1 ON 7-OUT'}
-                </div>
-              </div>
-            );
-          })()
-        ) : null /* FB-042: every other boss's tracker (Sarge's clock included) is on the table */}
+          <div className="flex-none text-right">
+            <div className="font-pixel text-[7.5px] tracking-widest leading-none" style={{ color: 'rgba(103,232,249,0.65)' }}>
+              CONVERGENCE
+            </div>
+            <div className="font-pixel text-r-15 leading-tight" style={{ color: '#67e8f9' }}>
+              ROOM {roomsInForce} / {MAX_CONVERGENCE_ROOMS}
+            </div>
+            <div className="font-pixel text-[7.5px] leading-none mt-0.5" style={{ color: 'rgba(103,232,249,0.45)' }}>
+              +1 ON 7-OUT · THEY STACK
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* Rule reminder text */}

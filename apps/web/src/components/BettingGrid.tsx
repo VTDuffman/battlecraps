@@ -19,6 +19,7 @@ import type { BetField } from '../store/useGameStore.js';
 import { getMaxBet, getTideStage, GAUNTLET, isBossMarker } from '@battlecraps/shared';
 import { getFloorIndex } from '../lib/floorThemes.js';
 import { useTutorialContext } from '../contexts/TutorialContext.js';
+import { isRuleOn, paramsOfRule, ruleCounter } from '../lib/bossRules.js';
 
 // ---------------------------------------------------------------------------
 // Chip denominations — dynamically derived from the current marker's max bet
@@ -346,8 +347,8 @@ export const BettingGrid: React.FC = () => {
   const consecutivePointHits = useGameStore((s) => s.consecutivePointHits);
   // FB-037: The Sovereign's Dead Calm (LOW TIDE) — no odds bets.
   const isDeadCalm = useGameStore((s) => {
-    const boss = isBossMarker(s.currentMarkerIndex) ? GAUNTLET[s.currentMarkerIndex]?.boss : undefined;
-    return boss?.ruleParams.rule === 'TIDAL_SURGE' && getTideStage(boss.ruleParams, s.bossPointHits).effect === 'DEAD_CALM';
+    const params = paramsOfRule('TIDAL_SURGE');
+    return isRuleOn(s, 'TIDAL_SURGE') && params !== null && getTideStage(params, ruleCounter(s, 'TIDAL_SURGE')).effect === 'DEAD_CALM';
   });
   const isComeOut     = phase === 'COME_OUT' || phase === null;
   const isPointActive = phase === 'POINT_ACTIVE';

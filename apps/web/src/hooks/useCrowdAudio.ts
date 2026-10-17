@@ -26,6 +26,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { GAUNTLET } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
+import { isRuleOn } from '../lib/bossRules.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -1823,8 +1824,9 @@ export function useCrowdAudio(): {
   // FB-038: in The Commander's fight the crowd is muffled — "in space, no one
   // can hear you scream" — and fainter the thinner your hype.
   const hype          = useGameStore((s) => s.hype);
+  const commanderOn   = useGameStore((s) => isRuleOn(s, 'ORBITAL_DECAY'));
   const isCommanderRef = useRef(false);
-  isCommanderRef.current = GAUNTLET[currentMarkerIndex]?.boss?.rule === 'ORBITAL_DECAY';
+  isCommanderRef.current = commanderOn;
   const hypeRef = useRef(hype);
   hypeRef.current = hype;
 

@@ -20,13 +20,14 @@ import { useGameStore } from '../store/useGameStore.js';
 import { getFloorTheme } from '../lib/floorThemes.js';
 import { SevenSegmentDisplay } from './SevenSegmentDisplay.js';
 import { playClockAlarm, playClockTick, playDrillWhistle } from '../hooks/useCrowdAudio.js';
+import { paramsOfRule, ruleCounter } from '../lib/bossRules.js';
 
 export const SargeClock: React.FC = () => {
   const phase         = useGameStore((s) => s.phase);
-  const bossPointHits = useGameStore((s) => s.bossPointHits);
+  // FB-040: his own fight, or his room in The Architect's (its own clock).
+  const bossPointHits = useGameStore((s) => ruleCounter(s, 'DOUBLE_TIME'));
   const markerIndex   = useGameStore((s) => s.currentMarkerIndex);
-  const params        = GAUNTLET[markerIndex]?.boss?.ruleParams;
-  const rollLimit     = params?.rule === 'DOUBLE_TIME' ? params.rollLimit : 6;
+  const rollLimit     = paramsOfRule('DOUBLE_TIME')?.rollLimit ?? 6;
   const labelColor    = `${getFloorTheme(markerIndex).bossStarColor}b3`;
 
   const inPoint   = phase === 'POINT_ACTIVE';

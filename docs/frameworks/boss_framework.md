@@ -140,11 +140,13 @@ Every marker-entry write uses `getBossEntryCounter(markerIndex)` (2 for The Exec
 
 ## The Nine Bosses
 
+**On the table (FB-042, "Under the Glass").** In a boss room the boss's tracker replaces the floor logo on the felt (`BossTableWell`, registry `TABLE_TRACKERS`): laid out at a design size, scaled to fit the field's height and stretched to its width, and the dice fly over it on every throw (a glint sweeps it; a soft dice shadow follows the dice across it). Every boss but The Architect has one; the boss header keeps the name, barks and rule line. The status section keeps the marker progress bar (The Foreman: a plain "THE CUT $X / $25" line).
+
 ### The Foreman — Floor 1
 
 **Rule:** `EXTORTION_FEE` | **Payoff:** $25 (the marker's $200 target still sets bet limits / hire costs / additive scaling, but never clears it) | **Index:** 2
 
-**"The Cut" and "The Payoff" (FB-032).** The Foreman skims 20% off every winning payout: his **Cut**. The Cut accumulates on a cash register shown front and center under the table (in place of the marker progress bar); when it reaches the **Payoff**, he looks the other way and the marker clears through the normal celebration → pub. **The Payoff is the only way out:** bankroll never clears this marker. Losses don't reduce the Cut, so it can't push you backwards. Losing all shooters short of the Payoff is game over.
+**"The Cut" and "The Payoff" (FB-032).** The Foreman skims 20% off every winning payout: his **Cut**. The Cut accumulates on a cash register on the table (FB-042; the status section shows a plain "THE CUT $X / $25" line in place of the progress bar); when it reaches the **Payoff**, he looks the other way and the marker clears through the normal celebration → pub. **The Payoff is the only way out:** bankroll never clears this marker. Losses don't reduce the Cut, so it can't push you backwards. Losing all shooters short of the Payoff is game over.
 
 **Implementation note:** `modifyPayout` taxes the profit portion only (`payoutCents − baseStakeReturned`), rounded to the nearest dollar; losing rolls are untaxed. `rolls.ts` adds each roll's skim (pre-tax − post-tax payout) to `runs.boss_progress_cents` and passes `payoffReached` to `computeNextState`, whose single `clearsMarker()` check uses the Cut for payoff markers (`getBossPayoffCents()`) and bankroll everywhere else. The pre-roll auto-clear uses the same rule. Every roll emits `bossCut { amount, total, payoff, paidOff }`; the client's `CashRegister` rolls the digits, plays a ka-ching, and on the Payoff stamps PAID IN FULL with a register bell (the celebration is held `PAYOFF_HOLD_MS` for it). The Cut resets to 0 on every marker entry.
 
@@ -178,7 +180,7 @@ The clock starts on the first roll after the point is set; come-out rolls never 
 - **Why after the cascade:**
   - Blank-roll crew (the Grinder) still pay for that roll.
   - Crew that react to a dice Seven-Out don't trigger: Lefty, Floor Walker, Lucky Charm. If Lefty re-rolls a real 7 into a blank on the last roll, time is still up.
-- **Client:** `clockExpired: true` is sent in the roll response and `turn:settled`. The dice show `TIME'S UP!`, and the header shows a two-digit seven-segment clock (`SevenSegmentDisplay`) counting rolls left, `06` → `01` — gold, red for the last two, blinking on the last, dimmed on the come-out.
+- **Client:** `clockExpired: true` is sent in the roll response and `turn:settled`. The dice show `TIME'S UP!`, and a big two-digit seven-segment clock on the table (`SargeClock`, FB-042 — formerly in the header) counts rolls left, `06` → `01` — gold, red for the last two, blinking on the last, dimmed on the come-out.
 
 **Odds:** a 6-roll clock times out 18% (4/10), 14% (5/9) and 11% (6/8) of points.
 
@@ -190,7 +192,7 @@ ruleParams: { rule: 'DOUBLE_TIME', rollLimit: 6 }
 
 **Boss moments (FB-033):**
 - **Barks** (`config.ts` `barks`, events from `deriveBossBarkEvents`): pointSet / clockLow (2 left) / lastRoll (1 left) / beatClock (point hit) / timeUp always bark; natural / craps sometimes.
-- **Clock drama** (`SargeClock.tsx`): label + clock grow ~1.35× and pulse in the point phase (faster on the last two rolls); tick per blank (sharper as it runs down), alarm on the last roll, drill whistle on TIME'S UP.
+- **Clock drama** (`SargeClock.tsx`, on the table): the clock grows and pulses in the point phase (faster on the last two rolls); tick per blank (sharper as it runs down), alarm on the last roll, drill whistle on TIME'S UP.
 - **Victory — HONORABLY DISCHARGED** (`victoryCinematic`): certificate slides up, a small green stamp comes down onto its blank band (thud + jolt), bugle call, "…not bad, soldier. Dismissed." (~4.6s, inside the celebration hold).
 - **Defeat — DISHONORABLE DISCHARGE** (`defeatCinematic`): NOTICE OF DISCHARGE, red stamp, dog tags drop and jingle, "Drop and give me twenty… thousand." (~6.2s). Both moments share `components/cinematics/DischargeForm.tsx`.
 
@@ -204,14 +206,16 @@ ruleParams: { rule: 'DOUBLE_TIME', rollLimit: 6 }
 
 **"The Enchantment."** Before each come-out roll, Mme. Le Prix enchants one randomly selected crew member, who sits out the cascade. The charm persists through any point phase and lifts on resolution (Natural, Craps Out, Point Hit or Seven-Out), when a new filled slot is chosen for the next come-out. Every other crew member fires normally.
 
-**Entry charm:** chosen when the player leaves the pub (`recruit.ts`) via shared `pickEntryCharmSlot()`, so it reflects the crew that will actually play the fight. The client holds it in `pendingBossEntryCharm` and reveals the ❤️ after the boss-entry cinematic.
+**Entry charm:** chosen when the player leaves the pub (`recruit.ts`) via shared `pickEntryCharmSlot()`, so it reflects the crew that will actually play the fight. The client holds it in `pendingBossEntryCharm` and reveals the ❤️ after the boss-entry cinematic (a run resumed mid-point charms the slot straight away — there is no entry cinematic then).
 
 **Boss moments (FB-034):**
 - **Barks** — soft, purring lowercase. `charmFired` (the charmed crew would have fired) always barks; `charmed` (the ❤️ moved to someone new) barks 50% of the time and never over a showing bark (`EVENT_BARK_CHANCE` in `bossBarks.ts`) — a skip is silence, so she stays quiet despite re-charming most come-outs. Win / loss sometimes.
-- **The heart's flight** (`CharmFlight.tsx`, store `charmFlight`): whenever the ❤️ settles on a new slot, a heart lifts off the old portrait, swoops to her name (`[data-boss-name-anchor]`) and arcs down onto the new one with a 💗 trail and a harp glissando; the destination holds its ❤️ until it lands. The entry charm is the flight alone (from her name). The charmed portrait pulses pink (`charm-glow`).
-- **Charm heartbeat:** when `turn:settled` carries `charmFired: true`, the portrait of the crew who was actually blocked (the *old* charmed slot) swells, is caught, gives two pink beats and sinks back, a 💗 drifts off it, and `playCharmDaze()` plays (a detuned pad that sags flat + descending chimes); then the heart flies on. Rolling stays locked until it settles (`charmingSlot`, 2.5 s safety net). Replaced the old "OOH LA LA!" bubble.
+- **Under the glass** (FB-042, `CharmTrap.tsx` on the table): the charmed crew member is held under a glass cloche (pink haze, heart pulse; her 🌹 while it's empty). Their rail slot shows a faint dashed outline + ❤️ and can't be dragged; a reorder that would shift the trapped slot is refused (the charm is held by slot index).
+- **The heart's flight** (`CharmFlight.tsx`, store `charmFlight` with `stage` 'heart' → 'sink'): when the ❤️ moves, the heart flies from the glass (`[data-charm-trap-anchor]`) to the new crew member while the one she held flies home, then the new one sinks under the glass (clink). Harp glissando; 💗 trail. Without the glass on screen it falls back to the FB-034 arc via her name.
+- **Charm heartbeat:** when `turn:settled` carries `charmFired: true`, the crew who was actually blocked (the *old* charmed slot) presses up against the glass with two muffled knocks (`playGlassKnock`) and sinks back, dazed 💫, while their rail slot beats pink and a 💗 drifts off it, and `playCharmDaze()` plays (a detuned pad that sags flat + descending chimes); then the heart flies on. Rolling stays locked until it settles (`charmingSlot`, 2.5 s safety net). Replaced the old "OOH LA LA!" bubble.
 - **Victory — THE ROSE** (`victoryCinematic`): a big rose is thrown in, lands with a pink bloom, a spiral burst of petals plus a petal shower, harp flourish, "…improbable. You may keep your winnings." (~5.7 s; own celebration hold, `VICTORY_HOLD_MS_BY_ID`).
-- **Defeat — SHE TAKES THE CREW** (`defeatCinematic`): hearts bloom on your real crew portraits (measured from the rail), they drift up into her name one by one, a huge 💋 presses onto the glass ("mwah" + thud), "Your crew stays with me… forever." (~7.7 s with five crew).
+- **Victory — THE ROSE** also opens with the glass cracking and shattering (`playGlassShatter`) as the one she held flies home (store `freedCharmSlot`; +1.2 s).
+- **Defeat — SHE TAKES THE CREW** (`defeatCinematic`): the one under the glass leaves first, straight from the glass; hearts bloom on your real crew portraits (measured from the rail), they drift up into her name one by one, a huge 💋 presses onto the glass ("mwah" + thud), "Your crew stays with me… forever." (~7.7 s with five crew).
 
 **Implementation note:** `modifyCascadeOrder` returns every slot except the charmed one. The charmed slot index (0-based) is stored in `bossPointHits`; `rolls.ts` reselects it with the server RNG after each come-out resolution and emits it as `charmedCrewSlot`.
 
@@ -240,7 +244,7 @@ A 5-tier Performance Review rating (0–4) is tracked via `bossPointHits` for th
 
 **Boss moments (FB-035):**
 - **Barks** (shared `bossBarks.ts`, migrated from his old header bubble): `promoted` (reached Exceptional) and `finalWarning` (reached Action Required) always bark; `bonusPaid` 50%; ordinary `ratingUp` / `ratingDown` 40% — a skip is silence. Clipped corporate-speak.
-- **Performance meter** (`PerformanceMeter.tsx`, under the marker progress bar): five-step review scale, a ▼ marker springs to the new rating with a keyboard clack per step; Exceptional glows gold and pops "+15% · $X" per bonus (office ding on promotion); Action Required pulses red with FINAL WARNING (low double buzz).
+- **Performance meter** (`PerformanceMeter.tsx`, on the table): five-step review scale, a ▼ marker springs to the new rating with a keyboard clack per step; Exceptional glows gold and pops "+15% · $X" per bonus (office ding on promotion); Action Required pulses red with FINAL WARNING (low double buzz).
 - **Victory — THE NAMEPLATE SWAP** (`victoryCinematic`): his brass plate on the Corner Office door loses its screws and clangs to the floor; THE SHOOTER slides in with a glint, office-chime fanfare and ticker tape; "…restructuring was inevitable. Well played." (~5.9 s, hold 6.3 s).
 - **Defeat — TERMINATED** (`defeatCinematic`, every loss in his fight): pink HR memo (PIP → Performance Improvement Plan; otherwise Notice of Position Elimination), TERMINATED stamp slams, your real crew packed into a PERSONAL EFFECTS box which is carried off; "Security will see you out." (~7.6 s). Replaced `PinkSlipModal`.
 
@@ -266,7 +270,7 @@ ruleParams: { rule: 'TRIBUTE', escrowSeizurePct: 0.75 }
 
 **Boss moments (FB-036):**
 - **Barks** (solemn, liturgical; he speaks for the order): `tributeSeized` always; `bigOffering` (held ≥ 10% of target, newly) 50%; `escrowReleased` 30%; win / loss by chance.
-- **The offering bowl** (`OfferingBowl.tsx`, under the marker progress bar): HELD $X between two candles, a coin pile scaled to what's held; coins drop in when crew cash is offered, rise out on a release (RELEASED +$X); a seizure flares the candles, burns embers off the bowl and sears TRIBUTE −$X under a bell toll and a minor choir. Driven by the server's `escrow { heldCents, releasedCents, seizedCents }`.
+- **The offering bowl** (`OfferingBowl.tsx`, on the table): HELD $X between two candles, a coin pile scaled to what's held; coins drop in when crew cash is offered, rise out on a release (RELEASED +$X); a seizure flares the candles, burns embers off the bowl and sears TRIBUTE −$X under a bell toll and a minor choir. Driven by the server's `escrow { heldCents, releasedCents, seizedCents }`.
 - **Roll log** (KI-083): in escrow fights crew cash reads "<crew>: $X → the offering"; "Released from the offering" and "The Hierophant: $X tribute" get their own lines; Net counts only what was paid.
 - **Victory — THE EYE CLOSES** (`victoryCinematic`): his SVG eye (`cinematics/HierophantEye.tsx`) opens in a ring of candles before the sanctum doors, looks you over and closes; the candles go out one by one; the doors grind open and light floods in under a major choir (~8.2 s, hold 8.6 s).
 - **Defeat — THE ORDER COLLECTS** (`defeatCinematic`): hooded figures close in, your bankroll drains into the bowl, the eye opens and burns, three bell tolls, candles out to black, "The order always collects." (~8.3 s).
@@ -301,7 +305,7 @@ ruleParams: {
 
 **Boss moments (FB-037):**
 - **Barks** (regal, ancient, slow — he speaks like the sea): `waveHit` and `undertowHit` always; `highTide` (the tide turns to HIGH) 50%; win / loss by chance. A wave The Covenant turned back is silent; a run-ending wave is left to the defeat cinematic.
-- **Tide dial** (`TideDial.tsx`, under the marker progress bar): LOW · EBB · HIGH · FLOW with the current stage lit and the next marked, the stage name (teal / amber ⚠ / red ⚠) and its one-line rule.
+- **Tide dial** (`TideDial.tsx`, on the table): LOW · EBB · HIGH · FLOW with the current stage lit and the next marked, the stage name (teal / amber ⚠ / red ⚠) and its one-line rule.
 - **The water line** (`TideWater.tsx`, a portal that never blocks input): translucent sea at 3 / 8 / 14 dvh for Dead Calm / Undertow / High Tide with a rolling surface. On a Seven-Out at the Undertow or High Tide the sea fills the whole screen (foam crest) and drains — dragging eight 💵 out of the bankroll readout (`data-bankroll-readout`) or the lost shooter pips (`data-shooter-pip`, swollen and struggling). Dead Calm waterlogs the Odds square. Stands aside on a run-ending roll.
 - **Victory — THE CROWN SINKS** (`victoryCinematic`): the sea floods the screen, then his crown sinks like a pendulum through light shafts and bubbles and settles in the sand; "…the tide will return. It always does." (~9.2 s, hold 9.6 s).
 - **Defeat — THE WAVE** (`defeatCinematic`): a dark wall of water breaks over the table and never drains; your crew and money sink into the deep as the light goes out; "Your run will not outlast this tide." (~8.1 s).
@@ -324,7 +328,7 @@ ruleParams: { rule: 'ORBITAL_DECAY', bleedPct: 0.20 }
 
 **Boss moments (FB-038)** — theme thread *"In space, no one can hear you scream"*:
 - **Barks** (clipped mission-control speak): `orbitLost` (a Seven-Out from ≥ 1.5×) and `peakHype` (reaching On Fire, judged at the hype the roll paid at) always; `decaying` (bleed ≥ 0.2×) 35%; win / loss by chance.
-- **Orbit gauge** (`OrbitGauge.tsx`, under the marker progress bar): a planet; your ship circles it on an orbit whose radius is your hype (sprung), faster the lower it gets; 1.5×/2.5× rings; "▲ BURN" (thruster flare + rush) and "▼ ORBIT DECAY" (descending ping) each roll.
+- **Orbit gauge** (`OrbitGauge.tsx`, on the table): a planet; your ship circles it on an orbit whose radius is your hype (sprung), faster the lower it gets; 1.5×/2.5× rings; "▲ BURN" (thruster flare + rush) and "▼ ORBIT DECAY" (descending ping) each roll.
 - **No one can hear you scream:** dread tagline "IN SPACE, NO ONE CAN HEAR YOU SCREAM."; the crowd cheer/groan are muffled in his fight (`muffledDest`: low-pass 420 Hz, 0.25 → 0.6 with hype); the dice flames gutter at On Fire (`useParticleEmitter(…, guttering)`).
 - **Victory — ESCAPE VELOCITY** (`victoryCinematic`): engines ignite, the ship breaks orbit, the planet falls away, stars streak into hyperspace, the jump; "…orbital mechanics didn't account for you. Gravity's compliments." (~8 s, hold 8.4 s).
 - **Defeat — LOSS OF SIGNAL** (`defeatCinematic`): MASTER CAUTION, re-entry (glow, plasma, shaking, a roar that **hard-cuts**), silent static, LOSS OF SIGNAL, "In space, no one can hear you scream." (~8.3 s).
@@ -349,7 +353,7 @@ ruleParams: { rule: 'TRANSMISSION_DELAY', blackoutRolls: 6 }
 
 **Boss moments (FB-039)** — translated alien text, in brackets:
 - **Barks:** `signalLost` (a Seven-Out) and `contactRestored` (the blackout ends) always; `received` (a packet lands) 30%; win / loss by chance.
-- **Transmission line** (`TransmissionLine.tsx`, under the marker progress bar): CREW 👥 → TABLE 🎲 over a scrolling sine wave; the packet waits mid-line "IN TRANSIT +$X · +0.30×" and pops "RECEIVED …" (ping) next roll; a Seven-Out turns the line to red static ("SIGNAL LOST", static burst) with "NO SIGNAL · n" counting down, then "CONTACT RESTORED". While dark the crew rail greys out under scanline static.
+- **Transmission line** (`TransmissionLine.tsx`, on the table): CREW 👥 → TABLE 🎲 over a scrolling sine wave; the packet waits mid-line "IN TRANSIT +$X · +0.30×" and pops "RECEIVED …" (ping) next roll; a Seven-Out turns the line to red static ("SIGNAL LOST", static burst) with "NO SIGNAL · n" counting down, then "CONTACT RESTORED". While dark the crew rail greys out under scanline static.
 - **Victory — MESSAGE RECEIVED** (`victoryCinematic`): dark screen, falling glyphs, INCOMING TRANSMISSION, his line decodes from cycling alien glyphs one character at a time, MESSAGE RECEIVED locks in; "[The entity pauses for 0.3 seconds. This is the equivalent of applause.]" (~8.4 s, hold 8.8 s).
 - **Defeat — TRANSLATED** (`defeatCinematic`): your bankroll and crew dissolve into glyphs, a green tractor beam draws them up and out, the screen is left a sea of symbols; "[Translation complete. You will be studied.]" (~8.3 s).
 
@@ -425,11 +429,12 @@ TypeScript narrows the type inside each hook file via the `rule` discriminant. T
 | Foreman fight, Cut reaches $25 | PAID IN FULL stamp + bell, then marker clear → pub; Cut resets |
 | Sarge fight, blank on the 6th point-phase roll | SEVEN_OUT with `clockExpired`; shooter lost; bets lost; dice show TIME'S UP! |
 | Sarge fight, Point Hit on the 6th roll | Normal win; clock resets |
-| Sarge fight, blank before the limit | Clock ticks (`bossPointHits` +1); header counts down |
+| Sarge fight, blank before the limit | Clock ticks (`bossPointHits` +1); the table clock counts down |
 | Sarge fight, real Seven-Out / come-out rolls | Normal; come-out never ticks the clock |
 | Sarge fight, timeout with Grinder / Floor Walker / Lefty | Grinder pays; Floor Walker doesn't refund; Lefty doesn't save |
 | Mme. Le Prix fight | Exactly one filled slot charmed per come-out (❤️); that crew produces no events; all others fire normally |
-| Mme. Le Prix fight, charmed crew would have fired | `charmFired: true` in `turn:settled`; charm heartbeat plays on that portrait |
+| Mme. Le Prix fight, charmed crew would have fired | `charmFired: true` in `turn:settled`; they knock on the glass; heartbeat on their rail slot |
+| Mme. Le Prix fight, drag a crew member across the trapped slot | Refused (no reorder) |
 | Mme. Le Prix fight, come-out resolves | `charmedCrewSlot` moves to a newly selected filled slot |
 | Executive fight, Natural or Point Hit | `bossPointHits` increments (capped at 4); `bossRating.direction = 'up'` in `turn:settled` |
 | Executive fight, Craps Out or Seven-Out above rating 0 | `bossPointHits` decrements; `bossRating.direction = 'down'`; no GAME_OVER |

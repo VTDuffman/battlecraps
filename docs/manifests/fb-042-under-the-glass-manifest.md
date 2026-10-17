@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-042 Under the Glass
 
 **Design doc:** `docs/design/fb-042-under-the-glass-design.md`
-**Status:** Phases 1–3 done locally (not pushed).
+**Status:** Complete (2026-10-17).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` before a phase is done. Commit locally per phase; push when Mike says. After each phase: explicit test steps (Dev presets) + what to look for, **including a phone-width check**. The dice must always pass over the tracker. All crew/player references gender-neutral.
 
@@ -45,5 +45,7 @@
 1. Remove the boss-room squeeze (`compact` GameStatus, `#wall-divider` padding); check the header on a phone.
 2. Optional: dice shadow on the glass; glint per throw.
 3. Docs: `CLAUDE.md`, `boss_framework.md`, backlog FB-042 → Implemented.
+
+--- Implemented (2026-10-17): boss-room squeeze removed (GameStatus `compact`, `#wall-divider` padding — the tagline is back too). A glint sweeps the tracker on each throw; a soft dice shadow follows `[data-dice-pair]` across the well while rolling (bigger/softer/further the higher the dice). Docs: boss_framework (table section + each boss), CLAUDE.md (constraint + current state), backlog FB-042 → Implemented, design complete. ---
 
 🛑 **Gate:** FB-042 complete → push.

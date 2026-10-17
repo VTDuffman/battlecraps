@@ -498,6 +498,7 @@ export const DiceZone: React.FC = () => {
         {/* Animated dice pair */}
         <div
           ref={dicePairRef}
+          data-dice-pair=""
           className={['', diceAnimClass(), throwPhase !== 'idle' ? 'relative z-10' : ''].join(' ')}
           onAnimationEnd={(e) => {
             if (e.currentTarget !== e.target) return;

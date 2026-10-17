@@ -1,6 +1,6 @@
 # FB-042: Under the Glass — Boss Mechanics on the Table (Design)
 
-**Status:** Design agreed 2026-10-17. Ready for implementation.
+**Status:** Implemented 2026-10-17.
 **Pattern:** presentation only. No rule, server or payload changes.
 
 ---

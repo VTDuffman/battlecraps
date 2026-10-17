@@ -1982,7 +1982,7 @@ Three changes fix them:
 
 **Type:** Presentation (no rule changes)
 **Area:** `apps/web/src/components/TableBoard.tsx`, `FloorEmblem.tsx`, the boss trackers (`CashRegister`, `SargeClock`, `PerformanceMeter`, `OfferingBowl`, `TideDial`, `OrbitGauge`, `TransmissionLine`), `CharmFlight.tsx`, `CrewPortrait.tsx`, `components/defeat/`, `components/victory/`
-**Status:** Designed (2026-10-17); pending implementation
+**Status:** Implemented (2026-10-17) — glass well + every tracker on the table, Sarge's clock, the register + Cut line, Le Prix's charm trap, header squeeze removed, glint + dice shadow
 **Design:** `docs/design/fb-042-under-the-glass-design.md`
 **Manifest:** `docs/manifests/fb-042-under-the-glass-manifest.md`
 

@@ -16,8 +16,9 @@
 // A run-ending roll is always silent (the defeat cinematic owns the screen).
 // =============================================================================
 
-import { GAUNTLET, type BossBarkTrigger } from './config.js';
+import { GAUNTLET, type BossBarkTrigger, type BossRuleParams } from './config.js';
 import { getTideStage } from './bossRules/tidalSurge.js';
+import { getRoomCounter, type ConvergenceState } from './convergence.js';
 import type { GamePhase, RollResult } from './types.js';
 
 /** Chance a plain win / loss produces a bark. */
@@ -83,6 +84,8 @@ export interface BossBarkInput {
   signal?: { landed: { additives: number; hype: number; multipliers: number[] }; dropped: boolean; darkRolls: number; wasDark: boolean };
   /** Payoff fights: Cut before and after this roll, the Payoff, and whether it was reached. */
   cut?:          { before: number; after: number; payoff: number; paidOff: boolean };
+  /** FB-040 (The Architect): the rooms in force after this roll, the one just built, their counters. */
+  convergence?: { rooms: number[]; added: number | null; state: ConvergenceState };
   /** A bark is still showing — skip chance-based barks. */
   barkShowing:   boolean;
   /** Last line shown, to avoid repeating it. */
@@ -92,6 +95,8 @@ export interface BossBarkInput {
 export interface BossBark {
   trigger: BossBarkTrigger;
   line:    string;
+  /** FB-040: in The Architect's fight, the room boss speaking (an echo); absent = the marker's own boss. */
+  speakerMarker?: number;
 }
 
 function crossed(before: number, after: number, payoff: number, fraction: number): boolean {
@@ -106,9 +111,17 @@ function crossed(before: number, after: number, payoff: number, fraction: number
 export function deriveBossBarkEvents(input: BossBarkInput): BossBarkTrigger[] {
   const boss = GAUNTLET[input.markerIndex]?.boss;
   if (!boss) return [];
+  return deriveRuleEvents(boss.ruleParams, input, input.newBossPointHits);
+}
+
+/**
+ * The moments one rule produced this roll — for a boss's own fight, or for a
+ * room of The Architect's (FB-040: its params, and its own counter after the roll).
+ */
+function deriveRuleEvents(params: BossRuleParams, input: BossBarkInput, counterAfter: number | undefined): BossBarkTrigger[] {
   const events: BossBarkTrigger[] = [];
 
-  switch (boss.ruleParams.rule) {
+  switch (params.rule) {
     // The Foreman: his Cut closing in on the Payoff.
     case 'EXTORTION_FEE': {
       const { cut } = input;
@@ -121,12 +134,12 @@ export function deriveBossBarkEvents(input: BossBarkInput): BossBarkTrigger[] {
 
     // Sarge: the Double Time clock. rollsLeft = rollLimit − rolls used.
     case 'DOUBLE_TIME': {
-      const limit = boss.ruleParams.rollLimit;
+      const limit = params.rollLimit;
       if (input.clockExpired) { events.push('timeUp'); break; }
       if (input.rollResult === 'POINT_HIT') { events.push('beatClock'); break; }
       if (input.newPhase !== 'POINT_ACTIVE') break;
       if (input.rollResult === 'POINT_SET') { events.push('pointSet'); break; }
-      const rollsLeft = limit - (input.newBossPointHits ?? 0);
+      const rollsLeft = limit - (counterAfter ?? 0);
       if (rollsLeft === 1) events.push('lastRoll');
       else if (rollsLeft === 2) events.push('clockLow');
       break;
@@ -174,7 +187,7 @@ export function deriveBossBarkEvents(input: BossBarkInput): BossBarkTrigger[] {
       if (!t) break;
       if ((t.waveShooters ?? 0) > 0) events.push('waveHit');
       if ((t.undertowCents ?? 0) > 0) events.push('undertowHit');
-      if (t.nextStage !== t.stage && getTideStage(boss.ruleParams, t.nextStage).effect === 'HIGH_TIDE') events.push('highTide');
+      if (t.nextStage !== t.stage && getTideStage(params, t.nextStage).effect === 'HIGH_TIDE') events.push('highTide');
       break;
     }
 
@@ -235,6 +248,8 @@ export function selectBossBarkTrigger(input: BossBarkInput, random: () => number
  * lines for the chosen trigger. Avoids repeating `lastLine` when possible.
  */
 export function pickBossBark(input: BossBarkInput, random: () => number = Math.random): BossBark | null {
+  const boss = GAUNTLET[input.markerIndex]?.boss;
+  if (boss?.rule === 'CONVERGENCE' && input.convergence) return pickConvergenceBark(input, random);
   const trigger = selectBossBarkTrigger(input, random);
   if (trigger === null) return null;
 
@@ -244,4 +259,48 @@ export function pickBossBark(input: BossBarkInput, random: () => number = Math.r
   const options = pool.length > 1 ? pool.filter((l) => l !== input.lastLine) : pool;
   const line = options[Math.floor(random() * options.length)] ?? options[0];
   return line === undefined ? null : { trigger, line };
+}
+
+function pickLine(pool: readonly string[] | undefined, lastLine: string | null, random: () => number): string | null {
+  if (!pool || pool.length === 0) return null;
+  const options = pool.length > 1 ? pool.filter((l) => l !== lastLine) : pool;
+  return options[Math.floor(random() * options.length)] ?? options[0] ?? null;
+}
+
+/**
+ * FB-040 — The Architect's fight. In order:
+ *   1. A room was just built: he names it (always — it's the rebuild).
+ *   2. A room's own moment (newest room first): that boss barks it, as an echo
+ *      — same always / by-chance rules as in their own fight.
+ *   3. Otherwise his own chance-based win / loss.
+ */
+function pickConvergenceBark(input: BossBarkInput, random: () => number): BossBark | null {
+  if (input.isGameOver) return null;
+  const architect = GAUNTLET[input.markerIndex]?.boss;
+  const conv = input.convergence;
+  if (!architect || !conv) return null;
+
+  if (conv.added !== null) {
+    const rule = GAUNTLET[conv.added]?.boss?.rule;
+    const line = pickLine((rule && architect.roomBarks?.[rule]) || architect.barks?.roomBuilt, input.lastLine, random);
+    return line === null ? null : { trigger: 'roomBuilt', line };
+  }
+
+  for (const room of [...conv.rooms].reverse()) {
+    const rb = GAUNTLET[room]?.boss;
+    if (!rb) continue;
+    const event = deriveRuleEvents(rb.ruleParams, input, getRoomCounter(rb.rule, conv.state)).find((t) => (rb.barks?.[t]?.length ?? 0) > 0);
+    if (!event) continue;
+    const chance = EVENT_BARK_CHANCE[event];
+    if (chance !== undefined && (input.barkShowing || random() >= chance)) return null;
+    const line = pickLine(rb.barks?.[event], input.lastLine, random);
+    return line === null ? null : { trigger: event, line, speakerMarker: room };
+  }
+
+  if (input.barkShowing) return null;
+  const trigger = input.bankrollDelta > 0 ? (random() < BARK_CHANCE.win ? 'win' : null)
+    : input.isLoss ? (random() < BARK_CHANCE.loss ? 'loss' : null) : null;
+  if (trigger === null) return null;
+  const line = pickLine(architect.barks?.[trigger], input.lastLine, random);
+  return line === null ? null : { trigger, line };
 }

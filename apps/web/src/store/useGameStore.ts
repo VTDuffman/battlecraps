@@ -865,7 +865,8 @@ export interface GameState {
    * FB-032: the boss's current in-fight bark (generic system; lines live in
    * config.ts `barks`). key re-fires the animation for repeated text. Null = silent.
    */
-  bossBark: { line: string; key: number } | null;
+  /** speakerMarker (FB-040): an echo — a room boss speaking in The Architect's fight. */
+  bossBark: { line: string; key: number; speakerMarker?: number } | null;
   /** Last bark line shown — avoids repeating it back-to-back. */
   bossBarkLastLine: string | null;
 
@@ -2348,11 +2349,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       ...(p.bossCut && {
         cut: { before: cutBefore, after: p.bossCut.total, payoff: p.bossCut.payoff, paidOff: p.bossCut.paidOff },
       }),
+      // FB-040: The Architect's rooms (his rebuild lines + the rooms' echoes).
+      ...(p.convergence && { convergence: { rooms: p.convergence.rooms, added: p.convergence.added, state: p.convergence.state } }),
       barkShowing:   oldBossBark !== null,
       lastLine:      bossBarkLastLine,
     });
     const newBossBark = bark !== null
-      ? { line: bark.line, key: (oldBossBark?.key ?? 0) + 1 }
+      ? { line: bark.line, key: (oldBossBark?.key ?? 0) + 1, ...(bark.speakerMarker !== undefined && { speakerMarker: bark.speakerMarker }) }
       : oldBossBark;
     if (bark !== null && newBossBark !== null) {
       // Safety clear in case the header never calls clearBossBark().

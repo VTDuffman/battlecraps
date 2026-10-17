@@ -174,7 +174,8 @@ export type BossBarkTrigger =
   | 'tributeSeized' | 'bigOffering' | 'escrowReleased'
   | 'waveHit' | 'undertowHit' | 'highTide'
   | 'orbitLost' | 'peakHype' | 'decaying'
-  | 'signalLost' | 'contactRestored' | 'received';
+  | 'signalLost' | 'contactRestored' | 'received'
+  | 'roomBuilt';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
 export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS' | 'THE_WAVE' | 'LOSS_OF_SIGNAL' | 'TRANSLATED';
@@ -199,6 +200,12 @@ export interface BossConfig {
    * with no barks stays silent. Lines are short; one shows at a time.
    */
   barks?: Partial<Record<BossBarkTrigger, readonly string[]>>;
+  /**
+   * FB-040 (The Architect): what he says as he builds each room, by the room's
+   * rule (falls back to barks.roomBuilt). Inside a room, its boss's own moments
+   * bark from that boss's `barks` — as an echo.
+   */
+  roomBarks?: Partial<Record<BossRuleType, readonly string[]>>;
   /**
    * FB-032: signature "you lost" moment played over the table before the
    * game-over screen when this boss ends the run. Optional. `id` picks the
@@ -876,6 +883,23 @@ export const GAUNTLET: readonly MarkerConfig[] = [
         "Each time you seven out, I rebuild another room — and it stays.",
         "By the end, you'll be fighting all of them at once.",
       ],
+      // FB-040 barks — cold, the designer. He narrates each rebuild; inside a
+      // room its own boss's moments echo in that boss's voice.
+      barks: {
+        roomBuilt: ["Another room. They're all still here."],
+        win:       ["Noted.", "A deviation. Minor."],
+        loss:      ["As drafted.", "The blueprint holds."],
+      },
+      roomBarks: {
+        EXTORTION_FEE:      ["The loading dock. You remember the smell.", "Back to the dock. He still wants his cut."],
+        DOUBLE_TIME:        ["Sarge's clock. Still ticking.", "The hall. Double time."],
+        DISABLE_CREW:       ["Her parlour. She kept your seat warm.", "The riverboat. She remembers your crew."],
+        CROSS_CALIBRATION:  ["The corner office. Your review is overdue.", "The Suite. He's been expecting your numbers."],
+        TRIBUTE:            ["The temple. The offering plate is out.", "The Lodge. Kneel, or pay."],
+        TIDAL_SURGE:        ["The tide is coming in.", "Atlantis. Hold your breath."],
+        ORBITAL_DECAY:      ["Orbit. Hold on.", "The station. Mind the gravity."],
+        TRANSMISSION_DELAY: ["The signal. Can you hear me?", "The receiving chamber. Everything echoes."],
+      },
       ruleBlurb: "Convergence: the fight opens in a room rebuilt from one of the bosses you've beaten, under that boss's rule. Every seven-out rebuilds another — and they stack: every rule stays in force. The order is random. The Executive's review can still end your run.",
       victoryQuote: "…the pattern was incomplete after all. Interesting.",
       defeatAnnouncement: 'ARCHIVED',

@@ -67,8 +67,8 @@ describe('pickBossBark', () => {
     }
   });
 
-  it('bosses with no barks stay silent', () => {
-    expect(pickBossBark({ ...base, markerIndex: 26, bankrollDelta: 400 }, always)).toBeNull(); // The Architect (no barks yet)
+  it('markers with no boss stay silent', () => {
+    expect(pickBossBark({ ...base, markerIndex: 0, bankrollDelta: 400 }, always)).toBeNull();
   });
 });
 
@@ -300,5 +300,39 @@ describe('bark copy is gender-neutral (CLAUDE.md copy rule)', () => {
       });
     });
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('The Architect (FB-040): rooms', () => {
+  const ARCH  = 26;
+  const STATE = { clock: 0, charm: 0, rating: 2, tide: 0 };
+  const conv  = (rooms: number[], added: number | null, state = STATE) => ({ rooms, added, state });
+
+  it('a room just built: he names it (always, even over a showing bark)', () => {
+    const bark = pickBossBark({ ...base, markerIndex: ARCH, barkShowing: true, convergence: conv([5, 11], 11) }, never);
+    expect(bark?.trigger).toBe('roomBuilt');
+    expect(GAUNTLET[ARCH]!.boss!.roomBarks!.CROSS_CALIBRATION).toContain(bark?.line);
+    expect(bark?.speakerMarker).toBeUndefined();
+  });
+
+  it("a room's own moment echoes in that boss's voice (Sarge: 2 rolls left on his clock)", () => {
+    const bark = pickBossBark({
+      ...base, markerIndex: ARCH, rollResult: 'NO_RESOLUTION', newPhase: 'POINT_ACTIVE',
+      convergence: conv([23, 5], null, { ...STATE, clock: 4 }),
+    }, never);
+    expect(bark?.trigger).toBe('clockLow');
+    expect(bark?.speakerMarker).toBe(5);
+    expect(GAUNTLET[5]!.boss!.barks!.clockLow).toContain(bark?.line);
+  });
+
+  it('otherwise his own win / loss lines, by chance', () => {
+    const bark = pickBossBark({ ...base, markerIndex: ARCH, bankrollDelta: 500, convergence: conv([2], null) }, always);
+    expect(bark?.trigger).toBe('win');
+    expect(GAUNTLET[ARCH]!.boss!.barks!.win).toContain(bark?.line);
+    expect(pickBossBark({ ...base, markerIndex: ARCH, bankrollDelta: 500, convergence: conv([2], null) }, never)).toBeNull();
+  });
+
+  it('a run-ending roll is silent', () => {
+    expect(pickBossBark({ ...base, markerIndex: ARCH, isGameOver: true, convergence: conv([5, 11], 11) }, always)).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-040 The Architect — Convergence
 
 **Design doc:** `docs/design/fb-040-architect-convergence-design.md`
-**Status:** Phases 1–3 done locally (not pushed).
+**Status:** Phases 1–4 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Commit locally per phase; push when Mike says. After each phase: explicit test steps (Dev presets) + what to look for, including a phone-width check. **All crew/player references gender-neutral.** Big wins, big losses — it's the final boss.
 
@@ -44,6 +44,8 @@
 
 ## Phase 4: Barks
 The Architect's per-room rebuild lines (always) + generic; echo barks of each room's own events in that boss's voice (glitched, attributed); win / loss by chance. Tests.
+
+--- Implemented locally (2026-10-17): `roomBuilt` trigger + `roomBarks` (BossConfig, by room rule) — The Architect names each room as it's built, always ("Sarge's clock. Still ticking." …; generic fallback `barks.roomBuilt`); his own win / loss by chance. Echoes: `pickConvergenceBark` checks the rooms in force (newest first) with `deriveRuleEvents` (each room's params + its own counter from `convergence_state`) and barks the first moment its boss has lines for, from that boss's `barks`, under the same always / by-chance rules — `BossBark.speakerMarker` = the room. Client: store passes `convergence` to `pickBossBark`, keeps `speakerMarker` on `bossBark`; `BossBarkFloat` renders echoes cyan with a chromatic edge, glitching in (flicker + jitter), attributed "— SARGE · ECHO". Shared tests 508 (+4). ---
 
 ## Phase 5: THE PATTERN BREAKS (victory)
 Investigate the hand-off to the gauntlet victory sequence first. Rooms flash past in reverse, the grid tears, the space folds to white, his line; then the victory sequence.

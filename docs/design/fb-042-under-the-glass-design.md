@@ -20,6 +20,7 @@ Each boss's mechanic tracker sits in the game-status section (the cash register,
 | 3 | Sarge's clock | **Moves** to the table: a big clock face under the glass. |
 | 4 | The Architect ("N CREW LEFT") | **Later.** Stays in the header; his table display is part of FB-040 (Convergence). |
 | 5 | Mme. Le Prix (no tracker today) | **She traps the charmed crew member under the glass.** |
+| 6a | The glass itself (after Phase 1 review) | **Figurative — no frame.** No well border, inset shadow or sheen; the tracker simply spans the width of the field and the dice fly over it. |
 | 6 | The Foreman's register | Moves to the table; the status section gets a small "CUT $12 / $25" in its place. |
 
 ## 3. Why it already nearly works

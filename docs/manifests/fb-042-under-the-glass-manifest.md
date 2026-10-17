@@ -15,6 +15,8 @@
 
 --- Implemented locally (2026-10-17): `BossTableWell` (`TABLE_TRACKERS` registry by rule with a design size; `hasTableTracker()`; well inset into the felt + glass sheen/rim; `isolation: isolate` so nothing stacks above the dice; ResizeObserver scale-to-fit, max 1.5×; tracker fades out once the marker is cleared). TableBoard renders it in the green space for boss rooms with a table tracker, `FloorEmblem` otherwise. `OrbitGauge` re-laid out at 360×200 (bigger planet, rounder orbit, bigger readouts) and removed from `MarkerProgress`. ---
 
+--- Review (2026-10-17): the well frame + glass sheen didn't read and aren't wanted (the glass was figurative) — removed. Trackers now scale to fit the field's height and stretch to its full width (16px gutters, matching the betting grid). Orbit ring labels staggered (1.5× / 2.5× overlapped). ---
+
 🛑 **Gate:** Commander presets on desktop + phone width — dice fly over the gauge, nothing clipped.
 
 ## Phase 2: Every other tracker

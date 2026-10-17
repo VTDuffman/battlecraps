@@ -2,8 +2,9 @@
 // BATTLECRAPS — ORBIT GAUGE (FB-038, The Commander)
 // apps/web/src/components/OrbitGauge.tsx
 //
-// The Commander's orbital bleed, under the glass on the table (FB-042 —
-// BossTableWell lays it out at 360×200 and scales it to fit). A planet sits in the middle; your ship circles it on an orbit whose
+// The Commander's orbital bleed, on the table (FB-042 — BossTableWell lays
+// it out 200 tall, scaled to fit and stretched to the field's width; the
+// orbit itself stays centred in its 360×200 viewBox). A planet sits in the middle; your ship circles it on an orbit whose
 // radius IS your hype — 1.0× skims the atmosphere, On Fire is a high, wide
 // orbit. Every roll the bleed tightens the orbit toward the planet; hype gains
 // fire the thrusters and lift it. Like a real orbit, the lower you are the
@@ -35,12 +36,13 @@ const radiusFor = (hype: number): number =>
 const tierColor = (hype: number): string =>
   hype >= 2.5 ? '#fb923c' : hype >= 1.5 ? '#fbbf24' : '#c8d8e8';
 
-const Ring: React.FC<{ hype: number; label: string; color: string }> = ({ hype, label, color }) => {
+/** `dy` staggers the labels vertically — the rings are close on the right. */
+const Ring: React.FC<{ hype: number; label: string; color: string; dy: number }> = ({ hype, label, color, dy }) => {
   const r = radiusFor(hype);
   return (
     <g>
       <ellipse cx={CX} cy={CY} rx={r * RX} ry={r * RY} fill="none" stroke={color} strokeOpacity={0.22} strokeDasharray="2 5" />
-      <text x={CX + r * RX + 4} y={CY + 3} fill={color} fillOpacity={0.55} fontSize={8} fontFamily='"Press Start 2P", monospace'>{label}</text>
+      <text x={CX + r * RX + 4} y={CY + dy} fill={color} fillOpacity={0.55} fontSize={8} fontFamily='"Press Start 2P", monospace'>{label}</text>
     </g>
   );
 };
@@ -110,8 +112,8 @@ export const OrbitGauge: React.FC = () => {
           </radialGradient>
         </defs>
 
-        <Ring hype={1.5} label="1.5×" color="#fbbf24" />
-        <Ring hype={2.5} label="2.5×" color="#fb923c" />
+        <Ring hype={1.5} label="1.5×" color="#fbbf24" dy={13} />
+        <Ring hype={2.5} label="2.5×" color="#fb923c" dy={-5} />
 
         {/* your orbit */}
         <motion.ellipse cx={CX} cy={CY} rx={ringRx} ry={ringRy} fill="none" stroke={color} strokeOpacity={0.7} strokeWidth={1.2} />

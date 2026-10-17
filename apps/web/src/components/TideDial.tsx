@@ -2,8 +2,8 @@
 // BATTLECRAPS — TIDE DIAL (FB-037, The Sovereign)
 // apps/web/src/components/TideDial.tsx
 //
-// The Sovereign's tide, front and center under the marker progress bar (his
-// room still clears on bankroll). Four segments — LOW · EBB · HIGH · FLOW —
+// The Sovereign's tide, on the table (FB-042 — BossTableWell lays it out
+// 360×170 and scales it to fit; his room still clears on bankroll). Four segments — LOW · EBB · HIGH · FLOW —
 // with the current stage lit and the next one marked, the stage's name and
 // its one-line rule. "You can see it coming."
 // =============================================================================
@@ -38,7 +38,7 @@ export const TideDial: React.FC = () => {
 
   return (
     <div
-      className="relative mx-auto w-full max-w-sm rounded-md px-3 pb-1.5 pt-1"
+      className="relative flex h-full w-full flex-col justify-center rounded-lg px-4 py-3"
       style={{
         background: 'linear-gradient(180deg, rgba(4,30,46,0.85), rgba(2,18,30,0.9))',
         border:     `1px solid ${color}55`,
@@ -49,7 +49,7 @@ export const TideDial: React.FC = () => {
       aria-label={`The tide: ${now.tide}, ${now.name} — ${now.rule}. Next: ${next.name}.`}
     >
       {/* the four stages */}
-      <div className="flex gap-1">
+      <div className="flex gap-1.5">
         {stages.map((st) => {
           const isNow  = st.index === now.index;
           const isNext = st.index === next.index;
@@ -57,7 +57,7 @@ export const TideDial: React.FC = () => {
           return (
             <div key={st.index} className="flex flex-1 flex-col items-center">
               <div
-                className="h-2 w-full rounded-sm"
+                className="h-4 w-full rounded-sm"
                 style={{
                   background: isNow ? c : `${c}2a`,
                   boxShadow:  isNow ? `0 0 8px 1px ${c}aa` : 'none',
@@ -66,7 +66,7 @@ export const TideDial: React.FC = () => {
                   transition: 'background 300ms, box-shadow 300ms',
                 }}
               />
-              <span className="mt-0.5 font-pixel text-[6px] leading-none tracking-wide"
+              <span className="mt-1.5 font-pixel text-[8px] leading-none tracking-wide"
                 style={{ color: isNow ? c : 'rgba(186,230,253,0.4)' }}>
                 {st.tide.replace(' TIDE', '')}{isNext ? ' ▸' : ''}
               </span>
@@ -78,18 +78,18 @@ export const TideDial: React.FC = () => {
       {/* the stage, its rule, and what's next */}
       <motion.div
         key={now.index}
-        className="mt-1 text-center"
+        className="mt-4 text-center"
         initial={reduceMotion ? false : { opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
       >
-        <div className="font-pixel text-r-11 font-bold leading-tight" style={{ color, textShadow: `0 0 8px ${color}88` }}>
+        <div className="font-pixel text-[19px] font-bold leading-tight" style={{ color, textShadow: `0 0 8px ${color}88` }}>
           {now.effect === 'DEAD_CALM' ? now.name : `⚠ ${now.name}`}
         </div>
-        <div className="font-pixel text-[7.5px] leading-tight tracking-wide" style={{ color: `${color}cc` }}>
+        <div className="mt-1 font-pixel text-[10px] leading-tight tracking-wide" style={{ color: `${color}cc` }}>
           {now.rule}
         </div>
-        <div className="mt-0.5 font-pixel text-[6.5px] leading-none tracking-widest" style={{ color: 'rgba(186,230,253,0.5)' }}>
+        <div className="mt-2.5 font-pixel text-[8.5px] leading-none tracking-widest" style={{ color: 'rgba(186,230,253,0.5)' }}>
           NEXT COME-OUT: {next.name}
         </div>
       </motion.div>

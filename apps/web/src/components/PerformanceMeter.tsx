@@ -2,8 +2,9 @@
 // BATTLECRAPS — PERFORMANCE METER (FB-035, The Executive)
 // apps/web/src/components/PerformanceMeter.tsx
 //
-// The Executive's Performance Review, front and center under the marker
-// progress bar (his room still clears on bankroll, so the bar stays). A 5-step
+// The Executive's Performance Review, on the table (FB-042 — BossTableWell
+// lays it out 360×170 and scales it to fit; his room still clears on bankroll,
+// so the progress bar stays). A 5-step
 // review scale with a marker that slides when the rating moves — a keyboard
 // clack per step, an office ding on reaching Exceptional, a low buzz on
 // dropping to Action Required.
@@ -59,7 +60,7 @@ export const PerformanceMeter: React.FC = () => {
 
   return (
     <div
-      className={`relative mx-auto w-full max-w-sm rounded-md px-3 pb-1.5 pt-1 ${isActionReq && !reduceMotion ? 'animate-review-alarm' : ''}`}
+      className={`relative flex h-full w-full flex-col justify-center rounded-lg px-4 py-3 ${isActionReq && !reduceMotion ? 'animate-review-alarm' : ''}`}
       style={{
         background: 'rgba(8,12,20,0.72)',
         border:     `1px solid ${isActionReq ? RED : isExceptional ? GOLD : 'rgba(200,216,232,0.25)'}`,
@@ -71,12 +72,12 @@ export const PerformanceMeter: React.FC = () => {
     >
       {/* Header row: title + current rating */}
       <div className="flex items-baseline justify-between gap-2">
-        <span className="font-pixel text-r-7 tracking-widest" style={{ color: 'rgba(200,216,232,0.65)' }}>
+        <span className="font-pixel text-[9px] tracking-widest" style={{ color: 'rgba(200,216,232,0.65)' }}>
           PERFORMANCE REVIEW
         </span>
         <motion.span
           key={rating}
-          className="font-pixel text-r-11 font-bold leading-none"
+          className="font-pixel text-[17px] font-bold leading-none"
           style={{ color, textShadow: isExceptional ? `0 0 8px ${GOLD}bb` : isActionReq ? `0 0 8px ${RED}aa` : undefined }}
           initial={reduceMotion ? false : { scale: 1.35, opacity: 0.4 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -87,14 +88,14 @@ export const PerformanceMeter: React.FC = () => {
       </div>
 
       {/* The scale: five segments, the marker rides above the current one */}
-      <div className="relative mt-2.5">
+      <div className="relative mt-6">
         <motion.div
-          className="absolute -top-2.5 z-10 h-0 w-0"
+          className="absolute -top-4 z-10 h-0 w-0"
           style={{
-            marginLeft:  -6,
-            borderLeft:  '6px solid transparent',
-            borderRight: '6px solid transparent',
-            borderTop:   `8px solid ${color}`,
+            marginLeft:  -9,
+            borderLeft:  '9px solid transparent',
+            borderRight: '9px solid transparent',
+            borderTop:   `12px solid ${color}`,
             filter:      `drop-shadow(0 0 4px ${color})`,
           }}
           initial={false}
@@ -107,7 +108,7 @@ export const PerformanceMeter: React.FC = () => {
             return (
               <div
                 key={i}
-                className="h-2.5 flex-1 rounded-sm"
+                className="h-4 flex-1 rounded-sm"
                 style={{
                   background: active ? c : `${c}33`,
                   boxShadow:  active ? `0 0 8px 1px ${c}aa` : 'none',
@@ -117,11 +118,11 @@ export const PerformanceMeter: React.FC = () => {
             );
           })}
         </div>
-        <div className="mt-1 flex gap-1">
+        <div className="mt-1.5 flex gap-1">
           {SHORT_LABELS.map((l, i) => (
             <span
               key={l}
-              className="flex-1 text-center font-pixel text-[6px] leading-none tracking-wide"
+              className="flex-1 text-center font-pixel text-[8px] leading-none tracking-wide"
               style={{ color: i === rating ? (RATING_COLORS[i] ?? '#c8d8e8') : 'rgba(200,216,232,0.35)' }}
             >
               {l}
@@ -133,7 +134,7 @@ export const PerformanceMeter: React.FC = () => {
       {/* Status line */}
       {(isActionReq || isExceptional) && (
         <div
-          className={`mt-1 text-center font-pixel text-r-8 tracking-widest ${isActionReq && !reduceMotion ? 'animate-executive-action-required' : ''}`}
+          className={`mt-3 text-center font-pixel text-[10px] tracking-widest ${isActionReq && !reduceMotion ? 'animate-executive-action-required' : ''}`}
           style={{ color: isActionReq ? RED : GOLD }}
         >
           {isActionReq ? '⚠ FINAL WARNING — ONE MORE BAD ROLL' : '★ +15% ON EVERY WIN'}
@@ -145,7 +146,7 @@ export const PerformanceMeter: React.FC = () => {
         {showBonus && bonus !== null && (
           <motion.span
             key={bonus.key}
-            className="pointer-events-none absolute right-2 top-0 z-20 whitespace-nowrap font-pixel text-r-11 font-bold"
+            className="pointer-events-none absolute right-3 top-12 z-20 whitespace-nowrap font-pixel text-[15px] font-bold"
             style={{ color: GOLD, textShadow: `0 0 10px ${GOLD}, 0 2px 4px rgba(0,0,0,0.9)` }}
             initial={{ opacity: 0, y: 0, scale: 0.6 }}
             animate={reduceMotion ? { opacity: [0, 1, 1, 0] } : { opacity: [0, 1, 1, 0], y: [0, -14, -26, -40], scale: [0.6, 1.2, 1, 1] }}

@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-042 Under the Glass
 
 **Design doc:** `docs/design/fb-042-under-the-glass-design.md`
-**Status:** Phase 1 done locally (not pushed).
+**Status:** Phases 1–2 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` before a phase is done. Commit locally per phase; push when Mike says. After each phase: explicit test steps (Dev presets) + what to look for, **including a phone-width check**. The dice must always pass over the tracker. All crew/player references gender-neutral.
 
@@ -24,6 +24,8 @@
 2. `SargeClock` out of `BossRoomHeader` → the well as a big clock face.
 3. `CashRegister` → the well; small "CUT $X / $25" readout in the status section.
 4. Pop-ups (RECEIVED, +15%, PAID IN FULL, bowl coins) fit inside the well.
+
+--- Implemented locally (2026-10-17): `TABLE_TRACKERS` now covers every boss but Le Prix / The Architect — register 360×150 (`keepThroughClear` so PAID IN FULL lands), Sarge clock 360×170, performance meter 360×170, offering bowl 360×190, tide dial 360×170, orbit 360×200, transmission line 360×150. Each re-laid out to fill its box (full-width panel, bigger type/scale/bars/bowl/icons/wave); pop-ups moved inside the box. `SargeClock` is self-contained (reads its roll limit + colour) and left the boss header (header right side now only The Architect). `CashRegister` gains `size="table"` (stacked: THE CUT over big rolling digits); the status section shows a plain "THE CUT $X / $25" line + green bar for payoff markers (no sounds). `MarkerProgress` no longer renders any tracker. ---
 
 🛑 **Gate:** each boss's presets, desktop + phone.
 

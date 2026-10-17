@@ -2,8 +2,9 @@
 // BATTLECRAPS — OFFERING BOWL (FB-036, The Hierophant)
 // apps/web/src/components/OfferingBowl.tsx
 //
-// The Hierophant's escrow made physical, front and center under the marker
-// progress bar (his room still clears on bankroll). A brass bowl between two
+// The Hierophant's escrow made physical, on the table (FB-042 —
+// BossTableWell lays it out 360×190 and scales it to fit; his room still
+// clears on bankroll). A brass bowl between two
 // candles shows what your crew's bonuses are held as — "HELD $X".
 //   • Held: coins drop into the bowl (a soft clink).
 //   • Released: coins rise out of it — "RELEASED +$X" (a rising shimmer).
@@ -29,11 +30,11 @@ const MAX_COINS = 7;
 const dollars = (cents: number): string => `$${Math.round(cents / 100).toLocaleString('en-US')}`;
 
 const Candle: React.FC<{ flare: boolean; side: 'left' | 'right'; reduceMotion: boolean }> = ({ flare, side, reduceMotion }) => (
-  <div className="relative flex flex-col items-center" style={{ width: 26 }}>
+  <div className="relative flex flex-col items-center" style={{ width: 36 }}>
     <motion.span
       className={`block select-none leading-none ${reduceMotion ? '' : 'animate-candle-flicker'}`}
       style={{
-        fontSize: 22,
+        fontSize: 30,
         animationDelay: side === 'left' ? '0s' : '-0.7s',
         filter: `drop-shadow(0 0 ${flare ? 14 : 6}px ${flare ? EMBER : AMBER})`,
       }}
@@ -78,14 +79,14 @@ export const OfferingBowl: React.FC = () => {
   const seized = fresh !== null && fresh.seizedCents > 0;
 
   const embers = useMemo(() => Array.from({ length: 12 }, (_, i) => ({
-    x: (i - 5.5) * 7 + ((i * 37) % 9) - 4,
-    rise: 34 + ((i * 53) % 30),
+    x: ((i - 5.5) * 7 + ((i * 37) % 9) - 4) * 1.4,
+    rise: 44 + ((i * 53) % 40),
     delay: ((i * 29) % 10) / 40,
   })), []);
 
   return (
     <div
-      className="relative mx-auto w-full max-w-sm overflow-visible rounded-md px-3 pb-1.5 pt-1"
+      className="relative flex h-full w-full flex-col justify-center overflow-visible rounded-lg px-4 py-3"
       style={{
         background: 'radial-gradient(ellipse at 50% 80%, rgba(120,53,15,0.35), rgba(20,8,28,0.82) 70%)',
         border:     `1px solid ${flaring ? EMBER : 'rgba(245,158,11,0.35)'}`,
@@ -95,25 +96,25 @@ export const OfferingBowl: React.FC = () => {
       role="status"
       aria-label={`The offering: ${dollars(held)} held`}
     >
-      <div className="text-center font-pixel text-r-7 tracking-[0.3em]" style={{ color: 'rgba(252,211,77,0.6)' }}>
+      <div className="text-center font-pixel text-[9px] tracking-[0.3em]" style={{ color: 'rgba(252,211,77,0.6)' }}>
         THE OFFERING
       </div>
 
-      <div className="mt-0.5 flex items-end justify-center gap-4">
+      <div className="mt-2 flex items-end justify-center gap-6">
         <Candle flare={flaring} side="left" reduceMotion={reduceMotion} />
 
         {/* The bowl + its coins */}
-        <div className="relative flex flex-col items-center" style={{ width: 112 }}>
-          <div className="relative" style={{ height: 18, width: 84 }}>
+        <div className="relative flex flex-col items-center" style={{ width: 156 }}>
+          <div className="relative" style={{ height: 25, width: 118 }}>
             {/* coin pile, resting in the bowl's mouth */}
             {Array.from({ length: coins }, (_, i) => (
               <span
                 key={i}
                 className="absolute block rounded-full"
                 style={{
-                  width: 14, height: 6,
-                  left: 42 - 7 + ((i % 4) - 1.5) * 12 + (i >= 4 ? 6 : 0),
-                  bottom: i >= 4 ? 5 : 0,
+                  width: 19, height: 8,
+                  left: 59 - 9.5 + ((i % 4) - 1.5) * 17 + (i >= 4 ? 8 : 0),
+                  bottom: i >= 4 ? 7 : 0,
                   background: 'linear-gradient(180deg, #fde68a, #b45309)',
                   boxShadow: '0 1px 1px rgba(0,0,0,0.6)',
                 }}
@@ -122,37 +123,37 @@ export const OfferingBowl: React.FC = () => {
           </div>
           <div
             style={{
-              width: 92, height: 26, marginTop: -6,
-              borderRadius: '6px 6px 46px 46px',
+              width: 128, height: 36, marginTop: -8,
+              borderRadius: '8px 8px 64px 64px',
               background: 'linear-gradient(180deg, #fbbf24 0%, #b45309 45%, #78350f 100%)',
               boxShadow: `inset 0 3px 0 rgba(255,255,255,0.35), 0 4px 10px rgba(0,0,0,0.6)${flaring ? `, 0 0 16px 4px ${EMBER}88` : ''}`,
             }}
           />
-          <div style={{ width: 40, height: 6, background: '#78350f', borderRadius: 2 }} />
+          <div style={{ width: 56, height: 8, background: '#78350f', borderRadius: 2 }} />
 
           {/* Coins dropping in / rising out, embers on a seizure */}
           <AnimatePresence>
             {fresh !== null && !reduceMotion && (
               <motion.div key={fresh.key} className="pointer-events-none absolute inset-0" exit={{ opacity: 0 }}>
                 {fresh.heldCents > 0 && !seized && [0, 1, 2].map((i) => (
-                  <motion.span key={`d${i}`} className="absolute block select-none text-[13px] leading-none"
-                    style={{ left: 40 + (i - 1) * 16 }}
-                    initial={{ y: -46, opacity: 0 }}
-                    animate={{ y: [-46, 4, 2], opacity: [0, 1, 0] }}
+                  <motion.span key={`d${i}`} className="absolute block select-none text-[18px] leading-none"
+                    style={{ left: 68 + (i - 1) * 22 }}
+                    initial={{ y: -56, opacity: 0 }}
+                    animate={{ y: [-56, 6, 3], opacity: [0, 1, 0] }}
                     transition={{ duration: 0.6, delay: 0.25 + i * 0.08, ease: 'easeIn' }}
                   >🪙</motion.span>
                 ))}
                 {fresh.releasedCents > 0 && !seized && [0, 1, 2].map((i) => (
-                  <motion.span key={`r${i}`} className="absolute block select-none text-[13px] leading-none"
-                    style={{ left: 40 + (i - 1) * 18, top: 8 }}
+                  <motion.span key={`r${i}`} className="absolute block select-none text-[18px] leading-none"
+                    style={{ left: 68 + (i - 1) * 24, top: 11 }}
                     initial={{ y: 0, opacity: 0 }}
-                    animate={{ y: -52, x: 30 + i * 6, opacity: [0, 1, 0] }}
+                    animate={{ y: -64, x: 40 + i * 8, opacity: [0, 1, 0] }}
                     transition={{ duration: 0.9, delay: i * 0.07, ease: 'easeOut' }}
                   >🪙</motion.span>
                 ))}
                 {seized && embers.map((e, i) => (
                   <motion.span key={`e${i}`} className="absolute block rounded-full"
-                    style={{ width: 4, height: 4, left: 54 + e.x, top: 14, background: i % 3 === 0 ? GOLD : EMBER, boxShadow: `0 0 6px ${EMBER}` }}
+                    style={{ width: 5, height: 5, left: 76 + e.x, top: 20, background: i % 3 === 0 ? GOLD : EMBER, boxShadow: `0 0 6px ${EMBER}` }}
                     initial={{ y: 0, opacity: 0 }}
                     animate={{ y: -e.rise, x: e.x * 0.4, opacity: [0, 1, 0] }}
                     transition={{ duration: 1.4, delay: e.delay, ease: 'easeOut' }}
@@ -166,7 +167,7 @@ export const OfferingBowl: React.FC = () => {
         <Candle flare={flaring} side="right" reduceMotion={reduceMotion} />
       </div>
 
-      <div className="mt-1 text-center font-pixel text-r-11 font-bold leading-none" style={{ color: GOLD, textShadow: `0 0 8px ${AMBER}88` }}>
+      <div className="mt-3 text-center font-pixel text-[18px] font-bold leading-none" style={{ color: GOLD, textShadow: `0 0 8px ${AMBER}88` }}>
         HELD {dollars(display)}
       </div>
 
@@ -175,14 +176,14 @@ export const OfferingBowl: React.FC = () => {
         {fresh !== null && (fresh.seizedCents > 0 || fresh.releasedCents > 0) && (
           <motion.div
             key={fresh.key}
-            className="pointer-events-none absolute inset-x-0 -top-3 z-20 flex flex-col items-center gap-0.5"
+            className="pointer-events-none absolute inset-x-0 top-6 z-20 flex flex-col items-center gap-0.5"
             initial={{ opacity: 0 }}
             animate={{ opacity: [0, 1, 1, 0] }}
             transition={{ duration: seized ? 2.6 : 1.7, times: [0, 0.1, 0.75, 1] }}
           >
             {seized && (
               <motion.span
-                className="whitespace-nowrap font-pixel text-r-13 font-bold"
+                className="whitespace-nowrap font-pixel text-[19px] font-bold"
                 style={{ color: EMBER, textShadow: `0 0 10px ${EMBER}, 0 0 22px #b91c1c, 0 2px 4px rgba(0,0,0,0.9)` }}
                 initial={reduceMotion ? false : { scale: 1.8, y: 6 }}
                 animate={reduceMotion ? {} : { scale: [1.8, 0.95, 1.05, 1], y: [6, -4, -8, -12] }}
@@ -193,7 +194,7 @@ export const OfferingBowl: React.FC = () => {
             )}
             {fresh.releasedCents > 0 && (
               <motion.span
-                className="whitespace-nowrap font-pixel text-r-10 font-bold"
+                className="whitespace-nowrap font-pixel text-[14px] font-bold"
                 style={{ color: GOLD, textShadow: `0 0 8px ${AMBER}, 0 2px 4px rgba(0,0,0,0.9)` }}
                 initial={reduceMotion ? false : { y: 4 }}
                 animate={reduceMotion ? {} : { y: -16 }}

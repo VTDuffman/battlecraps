@@ -2,9 +2,9 @@
 // BATTLECRAPS — CASH REGISTER (FB-032, The Foreman)
 // apps/web/src/components/CashRegister.tsx
 //
-// Readout for The Foreman's Cut — shown front and center in place of the marker
-// progress bar (TableBoard MarkerProgress): "THE CUT $18 / $25" with mechanical
-// rolling digits. Each skim rolls the digits up with a "+$N" pop and a
+// Readout for The Foreman's Cut — on the table (FB-042: `size="table"` in
+// BossTableWell, laid out 360×150 and scaled to fit; the status section shows a
+// plain "THE CUT $18 / $25" line instead): mechanical rolling digits. Each skim rolls the digits up with a "+$N" pop and a
 // ka-ching; reaching the Payoff slams a PAID IN FULL stamp over the table with
 // a register bell. The store holds the marker-clear celebration for
 // PAYOFF_HOLD_MS so the stamp lands first.
@@ -55,10 +55,11 @@ const RollingDollars: React.FC<{ cents: number; minDigits: number }> = ({ cents,
 
 export const CashRegister: React.FC<{
   payoffCents: number;
-  /** 'large' = front-and-center under the table (replaces the marker progress bar). */
-  size?: 'small' | 'large';
+  /** 'large' = a single wide row; 'table' = the big stacked register on the felt (FB-042). */
+  size?: 'small' | 'large' | 'table';
 }> = ({ payoffCents, size = 'small' }) => {
   const large = size === 'large';
+  const table = size === 'table';
   const total    = useGameStore((s) => s.bossProgressCents);
   const lastCut  = useGameStore((s) => s.lastBossCut);
   const cutKey   = useGameStore((s) => s._cutKey);
@@ -92,6 +93,78 @@ export const CashRegister: React.FC<{
 
   const paidOff   = total >= payoffCents;
   const minDigits = String(Math.floor(payoffCents / 100)).length;
+
+  const stamp = stampKey !== null && createPortal(
+    <div
+      key={stampKey}
+      className="pointer-events-none fixed inset-0 z-[120] flex items-center justify-center"
+      aria-hidden="true"
+    >
+      <div className="flex flex-col items-center gap-3 animate-payoff-stamp">
+        <div
+          className="font-pixel px-5 py-3 tracking-widest"
+          style={{
+            fontSize:   'clamp(26px, 8vw, 44px)',
+            color:      STAMP_RED,
+            border:     `5px double ${STAMP_RED}`,
+            borderRadius: '6px',
+            background: 'rgba(10,0,4,0.55)',
+            textShadow: '0 0 12px rgba(225,29,72,0.55)',
+            transform:  'rotate(-8deg)',
+          }}
+        >
+          PAID IN FULL
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+
+  if (table) {
+    return (
+      <div
+        className="relative flex h-full w-full flex-col items-center justify-center rounded-lg"
+        style={{ background: 'radial-gradient(ellipse at 50% 55%, rgba(10,40,20,0.55), rgba(2,10,5,0.9) 75%)', border: `1px solid ${REGISTER_GREEN}33` }}
+        aria-live="polite"
+      >
+        <div className="font-pixel text-[18px] tracking-[0.3em] leading-none" style={{ color: REGISTER_GREEN, textShadow: `0 0 6px ${REGISTER_GREEN}66` }}>
+          THE CUT
+        </div>
+        <div className="mt-3 flex items-center gap-3">
+          <span className="leading-none" style={{ fontSize: '30px' }} aria-hidden="true">💵</span>
+          <div
+            className={`relative inline-flex items-baseline gap-1 rounded px-4 py-2 font-mono font-bold leading-none${paidOff ? ' animate-register-flash' : ''}`}
+            style={{
+              fontSize:   '46px',
+              color:      REGISTER_GREEN,
+              background: 'rgba(0,0,0,0.75)',
+              border:     `2px solid ${REGISTER_GREEN}55`,
+              boxShadow:  `inset 0 0 8px ${REGISTER_GREEN}22`,
+              textShadow: `0 0 8px ${REGISTER_GREEN}88`,
+            }}
+            aria-label={`The Cut: ${Math.floor(total / 100)} of ${Math.floor(payoffCents / 100)}`}
+          >
+            <span>$</span>
+            <RollingDollars cents={total} minDigits={minDigits} />
+            <span className="opacity-60" style={{ fontSize: '20px' }}>/ ${Math.floor(payoffCents / 100)}</span>
+          </div>
+          <span className="leading-none" style={{ fontSize: '30px' }} aria-hidden="true">💵</span>
+        </div>
+        <div className="relative mt-3 h-5 w-full">
+          {pop && (
+            <div
+              key={pop.key}
+              className="pointer-events-none absolute left-1/2 top-1/2 font-pixel text-[18px] animate-kaching-pop"
+              style={{ color: REGISTER_GREEN, textShadow: '0 0 8px rgba(0,0,0,0.9)' }}
+            >
+              +${Math.round(pop.amount / 100)}
+            </div>
+          )}
+        </div>
+        {stamp}
+      </div>
+    );
+  }
 
   return (
     <div className={`relative flex-none flex items-center ${large ? 'gap-2.5' : 'gap-1.5'}`} aria-live="polite">
@@ -135,31 +208,7 @@ export const CashRegister: React.FC<{
         </div>
       )}
 
-      {stampKey !== null && createPortal(
-        <div
-          key={stampKey}
-          className="pointer-events-none fixed inset-0 z-[120] flex items-center justify-center"
-          aria-hidden="true"
-        >
-          <div className="flex flex-col items-center gap-3 animate-payoff-stamp">
-            <div
-              className="font-pixel px-5 py-3 tracking-widest"
-              style={{
-                fontSize:   'clamp(26px, 8vw, 44px)',
-                color:      STAMP_RED,
-                border:     `5px double ${STAMP_RED}`,
-                borderRadius: '6px',
-                background: 'rgba(10,0,4,0.55)',
-                textShadow: '0 0 12px rgba(225,29,72,0.55)',
-                transform:  'rotate(-8deg)',
-              }}
-            >
-              PAID IN FULL
-            </div>
-          </div>
-        </div>,
-        document.body,
-      )}
+      {stamp}
     </div>
   );
 };

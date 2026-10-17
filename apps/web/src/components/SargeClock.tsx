@@ -2,30 +2,32 @@
 // BATTLECRAPS — SARGE'S DOUBLE TIME CLOCK (FB-030, drama FB-033)
 // apps/web/src/components/SargeClock.tsx
 //
-// Point-phase rolls left before TIME'S UP, as a two-digit digital clock in the
-// boss header. Gold while running, red for the last two rolls, blinking on the
-// last; dimmed on the come-out (the clock only starts once a point is set).
+// Point-phase rolls left before TIME'S UP, as a big two-digit digital clock on
+// the table (FB-042 — BossTableWell). Gold while running, red for the last two
+// rolls, blinking on the last; dimmed on the come-out (the clock only starts
+// once a point is set).
 //
-// FB-033 drama: in the point phase the clock grows (~1.35×) with a glow that
-// pulses harder on the last two rolls. Sounds fire when the roll is REVEALED
+// FB-033 drama: in the point phase the clock grows with a glow that pulses
+// harder on the last two rolls. Sounds fire when the roll is REVEALED
 // (the store updates phase / bossPointHits in applyPendingSettlement):
 //   tick on every point-phase blank (sharper as time runs out),
 //   alarm on reaching the last roll, drill whistle on TIME'S UP.
 // =============================================================================
 
 import React, { useEffect, useRef } from 'react';
+import { GAUNTLET } from '@battlecraps/shared';
 import { useGameStore } from '../store/useGameStore.js';
+import { getFloorTheme } from '../lib/floorThemes.js';
 import { SevenSegmentDisplay } from './SevenSegmentDisplay.js';
 import { playClockAlarm, playClockTick, playDrillWhistle } from '../hooks/useCrowdAudio.js';
 
-interface SargeClockProps {
-  rollLimit:   number;
-  labelColor:  string;
-}
-
-export const SargeClock: React.FC<SargeClockProps> = ({ rollLimit, labelColor }) => {
+export const SargeClock: React.FC = () => {
   const phase         = useGameStore((s) => s.phase);
   const bossPointHits = useGameStore((s) => s.bossPointHits);
+  const markerIndex   = useGameStore((s) => s.currentMarkerIndex);
+  const params        = GAUNTLET[markerIndex]?.boss?.ruleParams;
+  const rollLimit     = params?.rule === 'DOUBLE_TIME' ? params.rollLimit : 6;
+  const labelColor    = `${getFloorTheme(markerIndex).bossStarColor}b3`;
 
   const inPoint   = phase === 'POINT_ACTIVE';
   const rollsLeft = inPoint ? Math.max(1, rollLimit - bossPointHits) : rollLimit;
@@ -55,29 +57,33 @@ export const SargeClock: React.FC<SargeClockProps> = ({ rollLimit, labelColor })
   const glowClass = inPoint ? (isLow ? 'hard' : 'soft') : null;
 
   return (
-    // Label + clock scale together in the point phase (anchored right so the
-    // growth spills left, away from the header edge) and pulse in sync.
+    // The clock face grows a little in the point phase and pulses with the
+    // label; dimmed on the come-out.
     <div
-      className="flex-none flex items-center gap-2 transition-transform duration-300 ease-out motion-reduce:transition-none"
+      className="flex h-full w-full flex-col items-center justify-center rounded-lg"
       style={{
-        transform:       inPoint ? 'scale(1.35)' : 'scale(1)',
-        transformOrigin: 'right center',
+        background: 'radial-gradient(ellipse at 50% 55%, rgba(40,26,8,0.55), rgba(8,6,4,0.9) 75%)',
+        border:     `1px solid ${ledColor}${inPoint ? '55' : '22'}`,
+        transition: 'border-color 300ms',
         ['--clock-glow' as string]: ledColor,
       }}
     >
       <div
-        className={`font-pixel text-[10px] tracking-widest leading-none whitespace-nowrap${glowClass === 'hard' ? ' animate-clock-label-glow-hard' : glowClass === 'soft' ? ' animate-clock-label-glow' : ''}`}
+        className={`font-pixel text-[15px] tracking-[0.3em] leading-none whitespace-nowrap${glowClass === 'hard' ? ' animate-clock-label-glow-hard' : glowClass === 'soft' ? ' animate-clock-label-glow' : ''}`}
         style={{ color: inPoint ? ledColor : labelColor }}
       >
         DOUBLE TIME
       </div>
-      <div>
+      <div
+        className="mt-3 transition-transform duration-300 ease-out motion-reduce:transition-none"
+        style={{ transform: inPoint ? 'scale(1.12)' : 'scale(1)' }}
+      >
         <div
-          className={`rounded-sm px-1.5 py-1${inPoint ? (isLow ? ' animate-clock-glow-hard' : ' animate-clock-glow') : ''}`}
+          className={`rounded-md px-4 py-3${inPoint ? (isLow ? ' animate-clock-glow-hard' : ' animate-clock-glow') : ''}`}
           style={{
             background: '#0a0605',
-            border:     `1px solid ${ledColor}${inPoint ? '80' : '40'}`,
-            boxShadow:  'inset 0 0 6px rgba(0,0,0,0.9)',
+            border:     `2px solid ${ledColor}${inPoint ? '80' : '40'}`,
+            boxShadow:  'inset 0 0 10px rgba(0,0,0,0.9)',
             opacity:    inPoint ? 1 : 0.55,
             ['--clock-glow' as string]: ledColor,
           }}
@@ -85,11 +91,14 @@ export const SargeClock: React.FC<SargeClockProps> = ({ rollLimit, labelColor })
           <SevenSegmentDisplay
             value={String(rollsLeft).padStart(2, '0')}
             color={ledColor}
-            height={20}
+            height={64}
             label={inPoint ? `${rollsLeft} rolls left to hit the point` : 'Clock starts when the point is set'}
             className={isLast ? 'animate-pulse' : undefined}
           />
         </div>
+      </div>
+      <div className="mt-3 font-pixel text-[9px] tracking-widest" style={{ color: inPoint ? `${ledColor}cc` : labelColor }}>
+        {inPoint ? (isLast ? 'LAST ROLL — HIT IT OR IT’S A SEVEN-OUT' : 'ROLLS LEFT TO HIT THE POINT') : 'CLOCK STARTS WHEN THE POINT IS SET'}
       </div>
     </div>
   );

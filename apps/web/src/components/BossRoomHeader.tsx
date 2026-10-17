@@ -13,7 +13,6 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GAUNTLET, isBossMarker, type BossRuleParams } from '@battlecraps/shared';
 import { BossBarkFloat } from './BossBarkFloat.js';
-import { SargeClock } from './SargeClock.js';
 import { useGameStore, selectDisplayMarkerIndex } from '../store/useGameStore.js';
 import { getFloorTheme } from '../lib/floorThemes.js';
 
@@ -35,12 +34,7 @@ export const BossRoomHeader: React.FC = () => {
   const theme = getFloorTheme(currentMarkerIndex);
 
 
-  const isTidalSurge        = boss.rule === 'TIDAL_SURGE';
-  const isOrbitalDecay      = boss.rule === 'ORBITAL_DECAY';
-  const isTransmissionDelay = boss.rule === 'TRANSMISSION_DELAY';
   const isConvergence       = boss.rule === 'CONVERGENCE';
-  const isExecutive         = boss.rule === 'CROSS_CALIBRATION';
-  const isDoubleTime        = boss.rule === 'DOUBLE_TIME';
 
   return (
     <div
@@ -91,10 +85,8 @@ export const BossRoomHeader: React.FC = () => {
           </div>
         </div>
 
-        {/* Right: tide state / min-bet / rule indicator */}
-        {/* The Executive's rating lives in the PerformanceMeter (FB-035), front and center. */}
-        {/* The Executive's rating and the Sovereign's tide live front and center (PerformanceMeter, TideDial). */}
-        {isExecutive || isTidalSurge || isTransmissionDelay ? null : isConvergence ? (
+        {/* Right: The Architect's crew count. Every other boss's tracker is on the table (FB-042). */}
+        {isConvergence ? (
           (() => {
             // Each seven-out permanently removes one crew member, so count who's left.
             const activeCrewCount = crewSlots.slice(0, unlockedSlots).filter((c) => c !== null).length;
@@ -116,12 +108,7 @@ export const BossRoomHeader: React.FC = () => {
               </div>
             );
           })()
-        ) : isOrbitalDecay ? null /* FB-038: the orbit gauge lives front and center */ : isDoubleTime ? (
-          <SargeClock
-            rollLimit={boss.ruleParams.rule === 'DOUBLE_TIME' ? boss.ruleParams.rollLimit : 6}
-            labelColor={`${theme.bossStarColor}b3`}
-          />
-        ) : null}
+        ) : null /* FB-042: every other boss's tracker (Sarge's clock included) is on the table */}
       </div>
 
       {/* Rule reminder text */}

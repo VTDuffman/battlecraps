@@ -32,11 +32,7 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { GAUNTLET, MARKER_TARGETS, getMaxBet, isBossMarker, getBossPayoffCents } from '@battlecraps/shared';
-import { PerformanceMeter } from './PerformanceMeter.js';
-import { OfferingBowl } from './OfferingBowl.js';
-import { TideDial } from './TideDial.js';
 import { BossTableWell, hasTableTracker } from './BossTableWell.js';
-import { TransmissionLine } from './TransmissionLine.js';
 import { HowToPlayScreen } from './tutorial/HowToPlayScreen.js';
 import { FeedbackModal }   from './FeedbackModal.js';
 import { DevRunBadge }     from './DevRunBadge.js';
@@ -51,7 +47,6 @@ import {
 } from '../store/useGameStore.js';
 import { BettingGrid, ChipSelector } from './BettingGrid.js';
 import { BossRoomHeader }  from './BossRoomHeader.js';
-import { CashRegister }    from './CashRegister.js';
 import { DefeatCinematicHost } from './defeat/DefeatCinematicHost.js';
 import { VictoryCinematicHost } from './victory/VictoryCinematicHost.js';
 import { CharmFlight } from './CharmFlight.js';
@@ -910,16 +905,25 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
   const pct         = Math.round(progress * 100);
   const theme       = useFloorTheme();
   const isNullSpace = getFloorIndex(markerIndex) === 8;
+  const cutCents    = useGameStore((s) => s.bossProgressCents);
 
-  // FB-032: a payoff marker (The Foreman) is cleared by his Cut, not bankroll —
-  // the cash register takes the progress bar's place, front and center. It
-  // stays mounted through the celebration hold (markerIndex is the display
-  // marker) so the PAID IN FULL stamp can land.
+  // FB-032: a payoff marker (The Foreman) is cleared by his Cut, not bankroll,
+  // so the bar tracks the Cut. The register itself is on the table (FB-042,
+  // BossTableWell) — this line is plain text, no sounds.
   const payoff = getBossPayoffCents(markerIndex);
   if (payoff !== null) {
+    const cutPct = isCleared ? 100 : Math.round(Math.min(1, cutCents / payoff) * 100);
     return (
-      <div className="w-full px-2 flex justify-center" data-tutorial-zone="marker-progress">
-        <CashRegister payoffCents={payoff} size="large" />
+      <div className="w-full px-2 space-y-1" data-tutorial-zone="marker-progress">
+        <div className="flex justify-between items-baseline">
+          <span className="font-pixel text-r-7" style={{ color: '#f87171' }}>★ BOSS</span>
+          <span className="font-pixel text-r-7" style={{ color: 'rgba(124,252,154,0.75)' }}>
+            THE CUT ${Math.floor(cutCents / 100)} / ${Math.floor(payoff / 100)}
+          </span>
+        </div>
+        <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: theme.feltRail, border: '1px solid rgba(255,255,255,0.10)' }}>
+          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${cutPct}%`, background: 'linear-gradient(90deg, #166534, #7CFC9A)' }} />
+        </div>
       </div>
     );
   }
@@ -960,34 +964,6 @@ const MarkerProgress: React.FC<{ bankroll: number; markerIndex: number; liveMark
           }}
         />
       </div>
-
-      {/* FB-035: the Executive's Performance Review, front and center */}
-      {GAUNTLET[markerIndex]?.boss?.rule === 'CROSS_CALIBRATION' && !isCleared && (
-        <div className="pt-1.5">
-          <PerformanceMeter />
-        </div>
-      )}
-
-      {/* FB-039: the Emissary's transmission line */}
-      {GAUNTLET[markerIndex]?.boss?.rule === 'TRANSMISSION_DELAY' && !isCleared && (
-        <div className="pt-1.5">
-          <TransmissionLine />
-        </div>
-      )}
-
-      {/* FB-037: the Sovereign's tide */}
-      {GAUNTLET[markerIndex]?.boss?.rule === 'TIDAL_SURGE' && !isCleared && (
-        <div className="pt-1.5">
-          <TideDial />
-        </div>
-      )}
-
-      {/* FB-036: the Hierophant's offering bowl (his escrow, made visible) */}
-      {GAUNTLET[markerIndex]?.boss?.rule === 'TRIBUTE' && !isCleared && (
-        <div className="pt-1.5">
-          <OfferingBowl />
-        </div>
-      )}
     </div>
   );
 };

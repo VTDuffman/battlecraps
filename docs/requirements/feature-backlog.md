@@ -1940,8 +1940,11 @@ His one-roll cash escrow was soft (simulated ≈ −1 to −3) and a weaker copy
 
 ## FB-040 — The Architect: Convergence (final boss redesign)
 
-**Type:** Boss rule redesign (idea) + presentation
-**Status:** Idea (2026-10-14) — design when the roll-out reaches him
+**Type:** Boss rule redesign (sim-tuned) + presentation (rooms rail, the rebuild, barks, victory + defeat cinematics)
+**Status:** Designed (2026-10-17) — stacking + random order; pending implementation
+**Design:** `docs/design/fb-040-architect-convergence-design.md`
+**Manifest:** `docs/manifests/fb-040-architect-convergence-manifest.md`
+**Sim:** `scripts/sim/architect-convergence-sim.mjs` — stacking + random ≈ −19 / −24 / −20 (mixed / cash / hype); rotation alone was −3 to −5, softer than today's demolition (−8 to −14)
 
 ### Idea
 

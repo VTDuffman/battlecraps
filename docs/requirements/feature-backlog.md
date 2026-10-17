@@ -1975,3 +1975,17 @@ Three changes fix them:
 3. **Crew Hype ×1.5:** every Hype crew member's boost goes up by half.
 
 **Simulated:** reach Floor 4 ~12% → ~40%; finish from Floor 5 mixed 63% / cash 45% (today 73 / 72). Mixed crews become the best build; pure hype isn't a target.
+
+---
+
+## FB-042 — Under the Glass: Boss Mechanics on the Table
+
+**Type:** Presentation (no rule changes)
+**Area:** `apps/web/src/components/TableBoard.tsx`, `FloorEmblem.tsx`, the boss trackers (`CashRegister`, `SargeClock`, `PerformanceMeter`, `OfferingBowl`, `TideDial`, `OrbitGauge`, `TransmissionLine`), `CharmFlight.tsx`, `CrewPortrait.tsx`, `components/defeat/`, `components/victory/`
+**Status:** Designed (2026-10-17); pending implementation
+**Design:** `docs/design/fb-042-under-the-glass-design.md`
+**Manifest:** `docs/manifests/fb-042-under-the-glass-manifest.md`
+
+### Solution
+
+Boss trackers are squeezed into the header and status section, while the felt below (the floor logo, the dice travel zone) does little — worst on a phone. In boss rooms the tracker replaces the floor logo and sits **under glass, set into the felt**; the dice fly over it on every throw. Sarge's clock moves too; The Foreman's register moves, leaving a small Cut readout. **Mme. Le Prix traps the charmed crew member under the glass.** The Architect waits for FB-040.

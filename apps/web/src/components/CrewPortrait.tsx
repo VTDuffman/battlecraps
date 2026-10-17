@@ -242,7 +242,9 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
   const isRolling          = useGameStore((s) => s.isRolling);
   const currentMarkerIndex = useGameStore((s) => s.currentMarkerIndex);
   const charmedCrewSlot    = useGameStore((s) => s.charmedCrewSlot);
-  const charmFlightTo      = useGameStore((s) => s.charmFlight?.to ?? null);
+  // FB-042: the crew icon stays until the heart lands ('heart' stage); then
+  // they sink under the glass and the slot shows the trapped outline.
+  const charmFlightTo      = useGameStore((s) => s.charmFlight && (s.charmFlight.stage ?? 'heart') === 'heart' ? s.charmFlight.to : null);
 
   // ── Emoji pulse tier — scales with hype, suppressed while triggering/cooldown
   const onCooldownNow = cooldownState > 0;
@@ -342,7 +344,7 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: sortableId, disabled: isEmpty || isRolling });
+  } = useSortable({ id: sortableId, disabled: isEmpty || isRolling || isCharmed });   // FB-042: the trapped slot can't be dragged
 
   const style: React.CSSProperties = {
     transform:   CSS.Transform.toString(transform),
@@ -447,7 +449,8 @@ export const CrewPortrait: React.FC<CrewPortraitProps> = ({
           isEmpty
             ? 'border-felt-light/40 bg-felt-dark/60'
             : isCharmed
-              ? 'border-pink-400/90 bg-felt-dark'
+              // FB-042: they're under Le Prix's glass — a faint dashed outline + ❤️
+              ? `border-dashed border-pink-400/80 bg-felt-dark/60${charmHeld ? '' : ' opacity-70'}`
               : 'border-gold/60 bg-felt-dark',
 
           // Holding: red border + soft glow overrides gold

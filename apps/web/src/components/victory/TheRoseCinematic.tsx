@@ -8,15 +8,93 @@
 // swirls away while more petals shower down over the table; a harp flourish
 // (its chord lands with the rose); then her line, softly.
 //
+// FB-042: first, if she was holding one of your crew under her glass on the
+// table, the glass cracks and shatters and they fly home to the rail (FREE_MS);
+// everything below then runs FREE_MS later.
+//
 // Timeline (ms): 0 rose thrown → 1100 harp flourish → 1800 lands (bloom,
-// petal burst) → 2000 petal shower → 2600 line → 5300 fade → 5700 onFinish.
-// Runs inside the store's celebration hold (VICTORY_HOLD_MS_BY_ID.THE_ROSE).
+// petal burst) → 2000 petal shower → 2600 line → 5300 fade → 5700 onFinish
+// (+1200 with the glass). Runs inside the store's celebration hold
+// (VICTORY_HOLD_MS_BY_ID.THE_ROSE).
 // =============================================================================
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { playHarpFlourish } from '../../hooks/useCrowdAudio.js';
+import { playGlassShatter, playHarpFlourish } from '../../hooks/useCrowdAudio.js';
+import { useGameStore } from '../../store/useGameStore.js';
+import { setRailHidden } from '../cinematics/railCrew.js';
+import { CREW_EMOJI } from '../CrewPortrait.js';
 import type { VictoryCinematicProps } from './registry.js';
+
+/** FB-042: the glass breaking, and who flies home. */
+const FREE_MS = 1200;
+interface Freed { slot: number; emoji: string; glass: { x: number; y: number; w: number; h: number }; home: { x: number; y: number } }
+
+function measureFreed(): Freed | null {
+  const { freedCharmSlot, crewSlots } = useGameStore.getState();
+  if (freedCharmSlot === null) return null;
+  const crewId = crewSlots[freedCharmSlot]?.crewId;
+  const g = document.querySelector('[data-charm-trap-anchor]')?.getBoundingClientRect();
+  const h = document.querySelector(`[data-slot-index="${freedCharmSlot}"]`)?.getBoundingClientRect();
+  if (crewId === undefined || !g || g.width === 0 || !h || h.width === 0) return null;
+  return {
+    slot:  freedCharmSlot,
+    emoji: CREW_EMOJI[crewId] ?? '?',
+    glass: { x: g.left, y: g.top, w: g.width, h: g.height },
+    home:  { x: h.left + h.width / 2, y: h.top + h.width / 2 },
+  };
+}
+
+const CRACKS = ['M50 40 L30 10 L18 0', 'M50 40 L72 14 L80 0', 'M50 40 L12 46 L0 52', 'M50 40 L88 52 L100 60', 'M50 40 L40 80 L34 100', 'M50 40 L62 78 L70 100', 'M30 10 L12 46', 'M72 14 L88 52'];
+
+const SHARDS = Array.from({ length: 12 }, (_, i) => {
+  const a = (i / 12) * Math.PI * 2 + 0.3;
+  return { dx: Math.cos(a) * (70 + (i % 3) * 30), dy: Math.sin(a) * (60 + (i % 4) * 22) - 30, rot: (i % 2 ? 1 : -1) * (120 + i * 25), size: 7 + (i % 3) * 4 };
+});
+
+const GlassBreak: React.FC<{ freed: Freed }> = ({ freed }) => {
+  const { glass, home } = freed;
+  const cx = glass.x + glass.w / 2, cy = glass.y + glass.h * 0.55;
+  return (
+    <>
+      {/* the cracks */}
+      <motion.svg
+        className="absolute"
+        style={{ left: glass.x, top: glass.y, width: glass.w, height: glass.h }}
+        viewBox="0 0 100 100" preserveAspectRatio="none"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 1, 1, 0] }}
+        transition={{ duration: 0.9, times: [0, 0.1, 0.55, 1] }}
+      >
+        {CRACKS.map((d) => <path key={d} d={d} fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />)}
+      </motion.svg>
+      {/* the shards */}
+      {SHARDS.map((s, i) => (
+        <motion.span
+          key={i}
+          className="absolute block"
+          style={{ left: cx, top: cy, width: s.size, height: s.size * 1.6, marginLeft: -s.size / 2,
+                   background: 'linear-gradient(135deg, rgba(255,255,255,0.85), rgba(244,114,182,0.35))',
+                   clipPath: 'polygon(50% 0, 100% 70%, 20% 100%)' }}
+          initial={{ x: 0, y: 0, rotate: 0, opacity: 0 }}
+          animate={{ x: s.dx, y: [0, s.dy, s.dy + 90], rotate: s.rot, opacity: [0, 1, 0] }}
+          transition={{ duration: 1.0, delay: 0.25, ease: 'easeOut' }}
+        />
+      ))}
+      {/* they fly home */}
+      <motion.span
+        className="absolute left-0 top-0 leading-none"
+        style={{ fontSize: 40, marginLeft: -20, marginTop: -20, filter: 'drop-shadow(0 0 10px rgba(253,224,71,0.8))' }}
+        initial={{ x: cx, y: cy, scale: 0.8, opacity: 0 }}
+        animate={{ x: [cx, cx, (cx + home.x) / 2, home.x], y: [cy, cy - 30, Math.min(cy, home.y) - 60, home.y], scale: [0.8, 1.3, 1.2, 1], opacity: [0, 1, 1, 1] }}
+        transition={{ duration: 0.95, delay: 0.25, times: [0, 0.2, 0.6, 1], ease: 'easeInOut' }}
+        onAnimationComplete={() => setRailHidden(freed.slot, false)}
+      >
+        {freed.emoji}
+      </motion.span>
+    </>
+  );
+};
 
 const FLOURISH_AT = 1100;
 const LAND_AT     = 1800;
@@ -98,23 +176,50 @@ export const TheRoseCinematic: React.FC<VictoryCinematicProps> = ({ line, onFini
   const burst   = useMemo(burstPaths, []);
   const raining = useMemo(() => showerPaths(window.innerWidth, window.innerHeight), []);
 
+  // FB-042: the glass breaks first, if she was holding someone.
+  const [freed, setFreed]       = useState<Freed | null>(null);
+  const [measured, setMeasured] = useState(false);
+  const [thrown, setThrown]     = useState(false);
+  useLayoutEffect(() => {
+    const f = reduceMotion ? null : measureFreed();
+    if (f) setRailHidden(f.slot, true);
+    setFreed(f);
+    setMeasured(true);
+    return () => { if (f) setRailHidden(f.slot, false); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
+    if (!measured) return;
+    const off = freed ? FREE_MS : 0;
+    if (freed) playGlassShatter();
     const timers = [
-      window.setTimeout(playHarpFlourish, FLOURISH_AT),
-      window.setTimeout(() => setLanded(true), LAND_AT),
-      window.setTimeout(() => setShower(true), SHOWER_AT),
-      window.setTimeout(() => setShowLine(true), LINE_AT),
-      window.setTimeout(() => setFading(true), FADE_AT),
-      window.setTimeout(onFinish, FINISH_AT),
+      window.setTimeout(() => setThrown(true), off),
+      window.setTimeout(playHarpFlourish, off + FLOURISH_AT),
+      window.setTimeout(() => setLanded(true), off + LAND_AT),
+      window.setTimeout(() => setShower(true), off + SHOWER_AT),
+      window.setTimeout(() => setShowLine(true), off + LINE_AT),
+      window.setTimeout(() => setFading(true), off + FADE_AT),
+      window.setTimeout(onFinish, off + FINISH_AT),
     ];
     return () => timers.forEach((t) => window.clearTimeout(t));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [measured]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div
       className="fixed inset-0 overflow-hidden transition-opacity duration-500"
-      style={{ background: 'radial-gradient(ellipse at center, rgba(110,10,48,0.45), rgba(0,0,0,0.6))', opacity: fading ? 0 : 1 }}
+      style={{ opacity: fading ? 0 : 1 }}
     >
+      {/* her wine-dark dim comes up with the rose (after the glass, if any) */}
+      <motion.div
+        className="absolute inset-0"
+        style={{ background: 'radial-gradient(ellipse at center, rgba(110,10,48,0.45), rgba(0,0,0,0.6))' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: thrown ? 1 : 0 }}
+        transition={{ duration: 0.5 }}
+      />
+
+      {freed && <GlassBreak freed={freed} />}
+
       {/* Petal shower — from above, across the whole table */}
       {shower && !reduceMotion && (
         <div className="absolute left-1/2 top-1/2">
@@ -136,7 +241,7 @@ export const TheRoseCinematic: React.FC<VictoryCinematicProps> = ({ line, onFini
             />
           )}
 
-          <motion.span
+          {thrown && <motion.span
             className="absolute left-1/2 top-1/2 block select-none leading-none"
             style={{
               fontSize: 'clamp(120px, 34vw, 180px)',
@@ -161,7 +266,7 @@ export const TheRoseCinematic: React.FC<VictoryCinematicProps> = ({ line, onFini
               : { duration: 2.1, times: [0, 0.4, 0.86, 0.92, 0.97, 1], ease: 'easeOut' }}
           >
             🌹
-          </motion.span>
+          </motion.span>}
 
           {landed && !reduceMotion && burst.map((p, i) => <Petal key={`b${i}`} path={p} />)}
         </div>

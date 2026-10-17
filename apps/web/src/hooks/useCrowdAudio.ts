@@ -1466,6 +1466,30 @@ function playTranslationCompleteSting(ctx: AudioContext, dest: AudioNode): void 
   beep(ctx, dest, 2960, t0 + 0.12, 0.05, 0.02);
 }
 
+/** FB-042: a crew member settles under Le Prix's glass — a soft glass clink. */
+function playGlassClinkSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  strikeBell(ctx, dest, 2637, t0, 0.035, 0.9);
+  strikeBell(ctx, dest, 3520, t0 + 0.05, 0.02, 0.7);
+}
+
+/** FB-042: the trapped crew member knocks on the glass — two muffled taps. */
+function playGlassKnockSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  [0, 0.32].forEach((dt) => {
+    seaNoise(ctx, dest, t0 + dt, 0.07, { type: 'bandpass', from: 900, to: 600, q: 3 }, 0.18, 0.002);
+    strikeBell(ctx, dest, 1480, t0 + dt, 0.015, 0.35);
+  });
+}
+
+/** FB-042: THE ROSE — the glass cracks and shatters. */
+function playGlassShatterSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 0.08, { type: 'highpass', from: 3000, to: 3000 }, 0.22, 0.001);
+  seaNoise(ctx, dest, t0 + 0.12, 0.6, { type: 'highpass', from: 5000, to: 2500 }, 0.16, 0.004);
+  [3951, 3136, 4699, 2794, 3729].forEach((f, i) => strikeBell(ctx, dest, f, t0 + 0.14 + i * 0.05, 0.02, 0.5));
+}
+
 /**
  * Runs a sting on the shared module-level AudioContext + master volume.
  * For sounds triggered outside useCrowdAudio (cinematics run while TableBoard,
@@ -1548,6 +1572,21 @@ export function playDoorClang(): void {
 /** FB-034: a charmed crew member tries to fire — and drifts off in a daze. */
 export function playCharmDaze(): void {
   playStandalone(playCharmDazeSting);
+}
+
+/** FB-042: a crew member settles under Le Prix's glass. */
+export function playGlassClink(): void {
+  playStandalone(playGlassClinkSting);
+}
+
+/** FB-042: the trapped crew member knocks on the glass. */
+export function playGlassKnock(): void {
+  playStandalone(playGlassKnockSting);
+}
+
+/** FB-042: THE ROSE — the glass shatters. */
+export function playGlassShatter(): void {
+  playStandalone(playGlassShatterSting);
 }
 
 /** FB-034 defeat: a heart blooms on the i-th crew portrait. */

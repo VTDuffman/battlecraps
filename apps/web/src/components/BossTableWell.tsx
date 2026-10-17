@@ -26,6 +26,7 @@ import { PerformanceMeter } from './PerformanceMeter.js';
 import { OfferingBowl } from './OfferingBowl.js';
 import { TideDial } from './TideDial.js';
 import { TransmissionLine } from './TransmissionLine.js';
+import { CharmTrap } from './CharmTrap.js';
 
 /** The Foreman's register, for the marker on display (it stays through the clear). */
 const ForemanRegister: React.FC = () => {
@@ -45,10 +46,12 @@ interface TableTracker {
   keepThroughClear?: boolean;
 }
 
-/** Bosses whose tracker lives on the table. (Le Prix joins in Phase 3; The Architect with FB-040.) */
+/** Bosses whose tracker lives on the table. (The Architect joins with FB-040.) */
 const TABLE_TRACKERS: Partial<Record<BossRuleType, TableTracker>> = {
   EXTORTION_FEE:      { Component: ForemanRegister,  width: 360, height: 150, keepThroughClear: true },
   DOUBLE_TIME:        { Component: SargeClock,       width: 360, height: 170 },
+  // The empty glass stays through THE ROSE (it shatters).
+  DISABLE_CREW:       { Component: CharmTrap,        width: 360, height: 190, keepThroughClear: true },
   CROSS_CALIBRATION:  { Component: PerformanceMeter, width: 360, height: 170 },
   TRIBUTE:            { Component: OfferingBowl,     width: 360, height: 190 },
   TIDAL_SURGE:        { Component: TideDial,         width: 360, height: 170 },

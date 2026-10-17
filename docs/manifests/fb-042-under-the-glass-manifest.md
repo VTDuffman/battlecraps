@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-042 Under the Glass
 
 **Design doc:** `docs/design/fb-042-under-the-glass-design.md`
-**Status:** Phases 1–2 done locally (not pushed).
+**Status:** Phases 1–3 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` before a phase is done. Commit locally per phase; push when Mike says. After each phase: explicit test steps (Dev presets) + what to look for, **including a phone-width check**. The dice must always pass over the tracker. All crew/player references gender-neutral.
 
@@ -34,6 +34,8 @@
 2. Charm moves: release back to the rail; `CharmFlight` lands on the glass; next one pulled down. Entry charm starts at the glass.
 3. `charmFired`: press against the glass + muffled knock + daze.
 4. THE ROSE: glass cracks, crew member freed, then the rose. SHE TAKES THE CREW: trapped one leaves from the glass first (or the alternative — decide here).
+
+--- Implemented locally (2026-10-17): `CharmTrap` (DISABLE_CREW, 360×190, keepThroughClear) — a glass cloche on the felt holding the charmed crew member (pink haze, heart pulse; her 🌹 while empty / mid-flight), `[data-charm-trap-anchor]`. Rail: charmed slot = faint dashed outline + ❤️, not draggable; a drag that would shift the trapped slot is refused (the charm is held by slot index). `CharmFlight` rewritten with stages (store `charmFlight.stage`, `sinkCharmFlight()`): heart glass → new slot while the old one flies home, then the new one sinks under the glass (`playGlassClink`); falls back to the via-her-name arc when the glass isn't on screen. Charm fired: the trapped one presses up against the glass, two muffled knocks (`playGlassKnock`) + rings, 💫 daze — synced with the rail heartbeat. Store `freedCharmSlot` (who was under the glass when her fight ended). THE ROSE: cracks + shards + `playGlassShatter`, they fly home, then the rose (+1.2 s; hold 6.1 → 7.3 s). SHE TAKES THE CREW: the trapped one leaves first, from the glass (kept the loss; the "pull everyone under the glass" alternative not taken). ---
 
 🛑 **Gate:** Le Prix presets — charm move, fired, win, loss.
 

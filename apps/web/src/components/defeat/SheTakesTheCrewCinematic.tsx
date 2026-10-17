@@ -9,6 +9,8 @@
 // a pink flash; finally a huge glossy lipstick kiss presses onto the screen
 // like a stamp on glass ("mwah" + thud + jolt) and she has the last word.
 // Built at the same scale as her win moment (THE ROSE): big wins, big losses.
+// FB-042: the crew member she was already holding under her glass on the
+// table goes first, straight from the glass.
 //
 // Timeline (ms): 0 dim → 300 hearts bloom (staggered 260) → 1700 crew lift
 // off (staggered 380, 1.5 s each) → last arrives ≈4700 → 4900 kiss → 5500
@@ -19,6 +21,7 @@
 import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { measureRailCrew, setRailHidden, type RailMember } from '../cinematics/railCrew.js';
+import { useGameStore } from '../../store/useGameStore.js';
 import { playHarpGlissando, playHeartBloom, playKissMwah, playStampThud } from '../../hooks/useCrowdAudio.js';
 import type { DefeatCinematicProps } from './registry.js';
 
@@ -36,13 +39,22 @@ const EMPTY_KISS_AT = 1000;
 type Member = RailMember;
 interface Pt { x: number; y: number }
 
-function measureCrew(): { members: Member[]; target: Pt } {
+function measureCrew(): { members: Member[]; target: Pt; fromGlass: number | null } {
   const nameEl = document.querySelector('[data-boss-name-anchor]');
   const nr     = nameEl?.getBoundingClientRect();
   const target = nr && nr.width > 0
     ? { x: nr.left + Math.min(nr.width, 160) / 2, y: nr.top + nr.height / 2 }
     : { x: window.innerWidth / 2, y: window.innerHeight * 0.12 };
-  return { members: measureRailCrew(), target };
+  // FB-042: the one under her glass starts from the glass, and leaves first.
+  const members = measureRailCrew();
+  const trapped = useGameStore.getState().freedCharmSlot;
+  const glass   = document.querySelector('[data-charm-trap-anchor]')?.getBoundingClientRect();
+  const held    = members.find((m) => m.slot === trapped);
+  if (held && glass && glass.width > 0) {
+    const fromGlass = { ...held, x: glass.left + glass.width / 2, y: glass.top + glass.height * 0.55 };
+    return { members: [fromGlass, ...members.filter((m) => m !== held)].map((m, order) => ({ ...m, order })), target, fromGlass: fromGlass.slot };
+  }
+  return { members, target, fromGlass: null };
 }
 
 const CrewStandIn: React.FC<{ m: Member; target: Pt; bloomed: boolean; lifted: boolean; reduceMotion: boolean }> = ({
@@ -94,7 +106,7 @@ const CrewStandIn: React.FC<{ m: Member; target: Pt; bloomed: boolean; lifted: b
 
 export const SheTakesTheCrewCinematic: React.FC<DefeatCinematicProps> = ({ line, onFinish }) => {
   const reduceMotion = useReducedMotion();
-  const [scene, setScene]     = useState<{ members: Member[]; target: Pt } | null>(null);
+  const [scene, setScene]     = useState<{ members: Member[]; target: Pt; fromGlass: number | null } | null>(null);
   const [bloomed, setBloomed] = useState(0);   // how many hearts have bloomed
   const [lifted, setLifted]   = useState(0);   // how many crew have lifted off
   const [arrivals, setArrivals] = useState(0); // pink flashes at her name
@@ -109,6 +121,8 @@ export const SheTakesTheCrewCinematic: React.FC<DefeatCinematicProps> = ({ line,
     const n = scene.members.length;
     const timers: number[] = [];
     const at = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
+    // Their rail slot is already empty — they're under the glass.
+    if (scene.fromGlass !== null) setRailHidden(scene.fromGlass, true);
 
     scene.members.forEach((m, i) => {
       at(BLOOM_AT + i * BLOOM_STEP, () => { setBloomed(i + 1); playHeartBloom(i); });

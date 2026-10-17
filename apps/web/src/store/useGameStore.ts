@@ -351,8 +351,20 @@ export interface GameState {
    * CharmFlight arcs a heart from `from` (null = her name only) via her name
    * to `to`, and the destination portrait holds its ❤️ until it lands.
    * Cosmetic only; cleared by finishCharmFlight() (or a newer flight).
+   *
+   * FB-042: with the trap on the table the flight has two stages — 'heart'
+   * (the heart flies from the glass to the new crew member, while the
+   * released one flies back to the rail) then 'sink' (the new one sinks from
+   * the rail under the glass). Undefined = 'heart'.
    */
-  charmFlight: { from: number | null; to: number; key: number } | null;
+  charmFlight: { from: number | null; to: number; key: number; stage?: 'heart' | 'sink' } | null;
+
+  /**
+   * FB-042: the crew slot Mme. Le Prix was holding under the glass when her
+   * fight ended (win or loss) — THE ROSE frees it, SHE TAKES THE CREW starts it
+   * from the glass. Null otherwise; reset by the next settlement.
+   */
+  freedCharmSlot: number | null;
 
   // ── Crew ──────────────────────────────────────────────────────────────────
   crewSlots: StoredCrewSlots;
@@ -946,6 +958,8 @@ export interface GameActions {
 
   /** CharmFlight finished (or was skipped) — show the ❤️ on its portrait. */
   finishCharmFlight(): void;
+  /** FB-042: the heart has landed — the new crew member now sinks under the glass. */
+  sinkCharmFlight(): void;
 
   /**
    * Submit the current bets and trigger a dice roll.
@@ -1222,7 +1236,7 @@ const PAYOFF_HOLD_MS = 2600;   // FB-032: PAID IN FULL stamp (1.6s) + a beat
 /** Celebration hold per boss victory cinematic: its length + a beat. */
 const VICTORY_HOLD_MS_BY_ID: Readonly<Record<BossVictoryCinematicId, number>> = {
   HONORABLY_DISCHARGED: 4900,  // FB-033: Sarge (~4.6s)
-  THE_ROSE:             6100,  // FB-034: Mme. Le Prix (~5.7s)
+  THE_ROSE:             7300,  // FB-034: Mme. Le Prix (~5.7s, +1.2s when the glass breaks — FB-042)
   NAMEPLATE_SWAP:       6300,  // FB-035: The Executive (~5.9s)
   THE_EYE_CLOSES:       8600,  // FB-036: The Hierophant (~8.2s — his line is long)
   THE_CROWN_SINKS:      9600,  // FB-037: The Sovereign (~9.2s — the sea floods in first)
@@ -1281,6 +1295,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   pendingBossEntryCharm: null,
   charmingSlot:        null,
   charmFlight:         null,
+  freedCharmSlot:      null,
   bets:                DEFAULT_BETS,
   committedBets:       DEFAULT_BETS,
   activeChip:          500,  // $5 default
@@ -1438,6 +1453,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       pendingBossEntryCharm: null,
       charmingSlot:          null,
       charmFlight:           null,
+      freedCharmSlot:        null,
       payoutPops:            null,
       _popsKey:             0,
       pointRingType:        null,
@@ -1704,6 +1720,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       pendingBossEntryCharm: null,
       charmingSlot:          null,
       charmFlight:           null,
+      freedCharmSlot:        null,
       payoutPops:            null,
       _popsKey:              0,
       _reRollKey:            0,
@@ -1920,6 +1937,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
   finishCharmFlight() {
     set({ charmFlight: null });
+  },
+
+  sinkCharmFlight() {
+    const { charmFlight } = get();
+    if (charmFlight && charmFlight.stage !== 'sink') set({ charmFlight: { ...charmFlight, stage: 'sink' } });
   },
 
   dequeueEvent() {
@@ -2290,6 +2312,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       charmedCrewSlot:       newCharmedSlot,
       charmingSlot:          newCharmingSlot,
       charmFlight:           newCharmFlight,
+      freedCharmSlot:        isEndingBossFight ? oldCharmedSlot : null,
       _charmKey:             charmFired ? _charmKey + 1 : _charmKey,
       executiveRating:       newExecutiveRating,
       exceptionalBonus:      (p.exceptionalBonusCents ?? 0) > 0

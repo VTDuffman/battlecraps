@@ -160,6 +160,10 @@ export const TableBoard: React.FC<{ onNewRun?: () => void; onReturnToTitle?: () 
     if (!over || active.id === over.id) return;
     const oldIndex = slotIds.indexOf(active.id as string);
     const newIndex = slotIds.indexOf(over.id   as string);
+    // FB-042: Le Prix's charm is held by slot index — a move that would shift
+    // the trapped slot (it lies between the two ends) is refused.
+    const trapped = useGameStore.getState().charmedCrewSlot;
+    if (trapped !== null && trapped >= Math.min(oldIndex, newIndex) && trapped <= Math.max(oldIndex, newIndex)) return;
     void reorderCrew(oldIndex, newIndex);
   }, [slotIds, reorderCrew]);
 

@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-040 The Architect — Convergence
 
 **Design doc:** `docs/design/fb-040-architect-convergence-design.md`
-**Status:** Not started.
+**Status:** Phase 1 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Commit locally per phase; push when Mike says. After each phase: explicit test steps (Dev presets) + what to look for, including a phone-width check. **All crew/player references gender-neutral.** Big wins, big losses — it's the final boss.
 
@@ -16,6 +16,8 @@
 6. **Copy:** config (tagline, entry lines, blurb, header text, defeat announcement), floors.ts Floor 9, help section; docs (boss_framework, floors.md, PRD).
 7. **Sims:** keep `architect-convergence-sim.mjs`; switch `gauntlet-economy-sim.mjs`'s Architect to stacking-random.
 8. **Tests:** integration — rooms drawn at entry and persisted; first room in force; a Seven-Out adds the next room (and a Covenant-saved one); stacked interactions (Emissary lag + Hierophant escrow; Le Prix + blackout; Foreman skim after the Executive bonus; High Tide + Covenant); PIP ends the run; clears on bankroll; old boss fights unchanged.
+
+--- Implemented locally (2026-10-17): shared `convergence.ts` (room markers, shuffle, rooms in force, per-rule counters, `enterRoom`, `advanceRuleCounter`). `runs.convergence_rooms` / `convergence_state` (startup ALTER + drizzle/0011). `rolls.ts` refactored onto `rulesInForce` (`ruleOn` / `paramsFor` / `counterOf`; Le Prix's cascade hook + the Foreman's skim hook per room) — every existing boss test passes untouched; demolition, load-bearing and `removedCrewSlot` retired; counter cap 7. Rooms drawn on the pub exit (`recruit.ts`, returns `convergence`), on dev create/jump (`convergenceRooms` prefix + `convergenceState` overrides), with a first-roll fallback; GET /runs returns rooms in force + state. Payload `convergence { rooms, added, state }`; receipt "ROOM REBUILT — …". Copy: tagline, entry lines, blurb, header text, defeat announcement ARCHIVED, flavour, floors.ts Floor 9. Docs: boss_framework, floors.md, CLAUDE.md constraint. Preset "Architect — three rooms stacked" (Sarge + Executive + Emissary) replaces the demolition one. Tests: 10 integration (draw, pub exit, Sarge timeout builds a room, no room without a 7-out, Covenant still builds, stacked PIP, Foreman skim, Le Prix charm, clear resets, no demolition) + the Vig receipt + 6 shared. Integration 177, shared 504. **Deferred to Phase 7:** `gauntlet-economy-sim.mjs` still models the old demolition at marker 26 (`architect-convergence-sim.mjs` is the tuning tool). Order note: the Foreman skim applies before the Executive bonus (existing order). ---
 
 🛑 **Gate:** play The Architect locally (Dev presets).
 

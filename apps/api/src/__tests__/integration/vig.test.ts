@@ -125,16 +125,17 @@ describe('The Vig — receipt line', () => {
     expect(run['signalTransit']).toEqual({ additives: 36_000_000, hype: 0, multipliers: [] });
   });
 
-  it('Architect: the load-bearing cut (applied after the Vig) gets its own line', async () => {
+  it('Architect: crew cash is no longer cut (load-bearing retired, FB-040) — the lines add up', async () => {
     // Marker 26: max bet 600_000_000¢ × 0.45 (FB-041, Floor 9) = 270_000_000¢ → Ace = 108_000_000¢;
-    // Vig → 129_600_000¢; one slot down → × 0.85 = 110_160_000¢ paid (19_440_000¢ cut).
+    // Vig → 129_600_000¢, paid in full. Sarge's room is in force (a blank just ticks his clock).
     const { receipt } = await blankWithAce({
-      currentMarkerIndex: 26, bankrollCents: 500_000_000, unlockedSlots: 5, bossPointHits: 1,
+      currentMarkerIndex: 26, bankrollCents: 500_000_000, unlockedSlots: 5, bossPointHits: 0,
+      convergenceRooms: [5, 2, 8, 11, 14, 17, 20, 23], convergenceState: { clock: 0, charm: 0, rating: 2, tide: 0 },
     }, 100_000_000);
 
     expect(receipt.lines).toContainEqual({ kind: 'win', text: 'The Vig: $216000.00 (+20% crew cash)' });
-    expect(receipt.lines).toContainEqual({ kind: 'loss', text: 'The Architect: $194400.00 load-bearing (crew cash −15%)' });
-    expect(receipt.netDelta).toBe(110_160_000);
+    expect(receipt.lines.some((l) => l.text.includes('load-bearing'))).toBe(false);
+    expect(receipt.netDelta).toBe(129_600_000);
     expect(sumMoneyLines(receipt)).toBe(receipt.netDelta);
   });
 });

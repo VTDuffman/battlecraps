@@ -281,6 +281,16 @@ export const runs = pgTable(
     signalTransit: jsonb('signal_transit').$type<{ additives: number; hype: number; multipliers: number[] } | null>(),
     /** FB-039: rolls left in The Emissary's crew blackout after a Seven-Out (0 = in contact). */
     signalDarkRolls: integer('signal_dark_rolls').notNull().default(0),
+    /**
+     * FB-040: The Architect's room order — the boss marker indices of the eight
+     * bosses before him, shuffled at fight entry. NULL outside his fight.
+     */
+    convergenceRooms: jsonb('convergence_rooms').$type<number[] | null>(),
+    /**
+     * FB-040: the rooms' own counters in his fight — { clock, charm, rating, tide }.
+     * NULL outside his fight.
+     */
+    convergenceState: jsonb('convergence_state').$type<{ clock: number; charm: number; rating: number; tide: number } | null>(),
 
     // ── Shooter lives ──────────────────────────────────────────────────────
 

@@ -121,7 +121,7 @@ export type BossRuleType =
   | 'ORBITAL_DECAY'          // Floor 7 — The Commander: orbital bleed — every roll hype above 1.0× loses 20% of its height (FB-038)
   | 'FIRST_CONTACT_PROTOCOL' // Floor 8 — retired mechanic; kept in union for historical safety
   | 'TRANSMISSION_DELAY'     // Floor 8 — The Emissary: signal lag (crew effects land a roll late) + a crew blackout after a 7-out (FB-039)
-  | 'CONVERGENCE';           // Floor 9 — The Architect: each seven-out removes the last crew member to fire
+  | 'CONVERGENCE';           // Floor 9 — The Architect: rooms rebuilt from every boss you've beaten, stacking with each seven-out (FB-040)
 
 /** The permanent comp perk awarded for defeating a boss. */
 export type CompRewardType =
@@ -155,7 +155,7 @@ export type BossRuleParams =
     }
   | { rule: 'FIRST_CONTACT_PROTOCOL' }   // Floor 8 — retired; kept for historical safety
   | { rule: 'TRANSMISSION_DELAY'; blackoutRolls: number }   // Floor 8 — FB-039; logic inline in rolls.ts
-  | { rule: 'CONVERGENCE' };             // Floor 9 — no params; counter tracked via bossPointHits
+  | { rule: 'CONVERGENCE' };             // Floor 9 — no params; bossPointHits = Seven-Outs (rooms built − 1), room order + counters on the run (FB-040)
 
 /** Full descriptor for a boss fight. Only present on markers where isBoss is true. */
 /**
@@ -870,18 +870,18 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       title: 'Designer of the Null Space',
       sigil: '📐',
       // Vibe
-      dreadTagline: 'YOUR CREW IS TEMPORARY.',
+      dreadTagline: 'EVERY ROOM YOU SURVIVED. AT ONCE.',
       entryLines: [
-        "You've been here before. This table was built from the pattern you left behind.",
-        "Every seven-out, one of them disappears. Not gone — just reclaimed.",
-        "By the fifth, you'll be rolling alone. The table will still be here. Will you?",
+        "Every table you beat was a draft. This is the blueprint.",
+        "Each time you seven out, I rebuild another room — and it stays.",
+        "By the end, you'll be fighting all of them at once.",
       ],
-      ruleBlurb: "Every seven-out, The Architect permanently removes one of your crew — the last one who fired. Each seven-out also cuts your remaining crew's cash bonuses by a further 15%. Lose them all and you roll naked craps.",
+      ruleBlurb: "Convergence: the fight opens in a room rebuilt from one of the bosses you've beaten, under that boss's rule. Every seven-out rebuilds another — and they stack: every rule stays in force. The order is random. The Executive's review can still end your run.",
       victoryQuote: "…the pattern was incomplete after all. Interesting.",
-      defeatAnnouncement: 'NULL SPACE COLLAPSED',
+      defeatAnnouncement: 'ARCHIVED',
       // Mechanic
       rule:           'CONVERGENCE',
-      ruleHeaderText: 'SEVEN-OUT REMOVES YOUR LAST-FIRED CREW — EACH ONE CUTS CREW CASH 15%',
+      ruleHeaderText: "CONVERGENCE — EVERY 7-OUT ADDS ANOTHER BOSS'S RULE · THEY STACK",
       ruleParams:     { rule: 'CONVERGENCE' },
       // No comp — The Null Space is the end of the line
       compReward:     'NONE',
@@ -890,7 +890,7 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       compDescription: '',
       compFanLabel:    '',
       // Legacy
-      flavorText: "You built this table from every run you ever played. Now it takes you apart.",
+      flavorText: "Every room you survived, rebuilt from your own pattern — and this time they don't take turns.",
     },
   },
 ];

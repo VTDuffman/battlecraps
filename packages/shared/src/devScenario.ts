@@ -13,6 +13,7 @@
 // =============================================================================
 
 import { GAUNTLET, MARKER_TARGETS, COMP_PERK_IDS, getBossEntryCounter, getBossPayoffCents, getMinBet, isBossMarker } from './config.js';
+import { CONVERGENCE_ROOM_MARKERS, MAX_CONVERGENCE_ROOMS, isConvergenceMarker, type ConvergenceState } from './convergence.js';
 import type { Bets, GamePhase } from './types.js';
 
 export type DevScenarioPoint = 4 | 5 | 6 | 8 | 9 | 10;
@@ -42,6 +43,14 @@ export interface DevScenario {
   signalTransitHype?:    number;
   /** FB-039 Emissary: blackout rolls left (crew dark). Emissary marker only. */
   signalDarkRolls?:      number;
+  /**
+   * FB-040 Architect: the first rooms of his order (boss marker indices, e.g.
+   * [5, 11, 23] = Sarge, the Executive, the Emissary). The rest are shuffled in.
+   * Rooms in force = bossCounter + 1. Architect marker only.
+   */
+  convergenceRooms?:     number[];
+  /** FB-040 Architect: override any room counters ({ clock, charm, rating, tide }). */
+  convergenceState?:     Partial<ConvergenceState>;
   /** FB-032: The Foreman's Cut so far, in cents (payoff markers only; ignored elsewhere). */
   bossProgressCents?:    number;
   /**
@@ -74,6 +83,9 @@ export interface DevRunState {
   bossPointHits:        number;
   pendingAdditiveCents: number;
   bossProgressCents:    number;
+  /** FB-040: the scenario's room order prefix + counter overrides at The Architect (null elsewhere). */
+  convergenceRooms:     number[] | null;
+  convergenceState:     Partial<ConvergenceState> | null;
   /** FB-039: what's in transit at The Emissary's table (null elsewhere / nothing). */
   signalTransit:        { additives: number; hype: number; multipliers: number[] } | null;
   signalDarkRolls:      number;
@@ -109,7 +121,7 @@ export function getBossCounterRange(markerIndex: number, unlockedSlots: number):
   if (!isBossMarker(markerIndex)) return null;
   switch (GAUNTLET[markerIndex]?.boss?.rule) {
     case 'CROSS_CALIBRATION': return { min: 0, max: 4 };               // rating
-    case 'CONVERGENCE':       return { min: 0, max: 5 };               // seven-outs
+    case 'CONVERGENCE':       return { min: 0, max: MAX_CONVERGENCE_ROOMS - 1 };   // seven-outs = rooms built − 1
     case 'TIDAL_SURGE':       return { min: 0, max: 3 };               // tide stage
     case 'DISABLE_CREW':      return { min: 0, max: Math.max(0, unlockedSlots - 1) }; // charmed slot
     case 'DOUBLE_TIME': {                                               // clock rolls used
@@ -135,7 +147,7 @@ function beatenBosses(markerIndex: number) {
 }
 
 /** What a real player would plausibly have on arriving at `markerIndex`. */
-export function getRealisticDefaults(markerIndex: number): Required<Omit<DevScenario, 'name' | 'point' | 'crew' | 'ignoreUnlocks' | 'signalTransitCents' | 'signalTransitHype' | 'signalDarkRolls'>> {
+export function getRealisticDefaults(markerIndex: number): Required<Omit<DevScenario, 'name' | 'point' | 'crew' | 'ignoreUnlocks' | 'signalTransitCents' | 'signalTransitHype' | 'signalDarkRolls' | 'convergenceRooms' | 'convergenceState'>> {
   const idx    = clampMarkerIndex(markerIndex);
   const target = MARKER_TARGETS[idx] ?? 0;
   const bosses = beatenBosses(idx);
@@ -206,7 +218,15 @@ export function buildDevRunState(scenario: DevScenario): DevRunState {
     pendingAdditiveCents: Math.max(0, Math.round(scenario.pendingAdditiveCents ?? 0)),
     bossProgressCents:    getBossPayoffCents(idx) !== null ? Math.max(0, Math.round(scenario.bossProgressCents ?? 0)) : 0,
     ...buildSignalState(idx, scenario),
+    ...buildConvergenceState(idx, scenario),
   };
+}
+
+/** FB-040: The Architect's room order prefix (valid, unique rooms) + counter overrides; empty elsewhere. */
+function buildConvergenceState(idx: number, scenario: DevScenario): Pick<DevRunState, 'convergenceRooms' | 'convergenceState'> {
+  if (!isConvergenceMarker(idx)) return { convergenceRooms: null, convergenceState: null };
+  const rooms = [...new Set((scenario.convergenceRooms ?? []).filter((m) => CONVERGENCE_ROOM_MARKERS.includes(m)))];
+  return { convergenceRooms: rooms, convergenceState: scenario.convergenceState ?? null };
 }
 
 /** FB-039: The Emissary's signal (transit + blackout); empty at every other marker. */
@@ -253,5 +273,7 @@ export function buildTransitionEntryState(scenario: DevScenario): DevRunState | 
     bossProgressCents:    0,
     signalTransit:        null,
     signalDarkRolls:      0,
+    convergenceRooms:     null,
+    convergenceState:     null,
   };
 }

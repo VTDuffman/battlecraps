@@ -393,7 +393,7 @@ export const FLOORS: readonly FloorConfig[] = [
   // ── Floor 9: The Null Space ───────────────────────────────────────────────
   // Pure black. No felt texture. No ambient light. No sound.
   // The Architect built this room from the data of every run ever played.
-  // Your crew is temporary. Your patterns are not.
+  // Every room you survived, rebuilt — and stacked (FB-040).
   {
     id:        9,
     name:      'The Null Space',
@@ -401,12 +401,12 @@ export const FLOORS: readonly FloorConfig[] = [
     introLines: [
       'Pure black. No felt texture, no ambient light, no sound. Just the table, the dice, and the cursor blinking at the end of a very long terminal session.',
       'The Architect built this place from the data of every run ever played. He knows your patterns. He designed this room specifically for you.',
-      'Every seven-out, one of your crew is reclaimed. The table has infinite patience. You do not.',
+      'Every seven-out, he rebuilds another room you survived — and none of them leave. The table has infinite patience. You do not.',
     ],
     bossName:   'The Architect',
     bossTitle:  'Designer of the Null Space',
     bossVenue:  'The Null Space — The Zero Chamber',
-    bossTeaser: 'The Architect reclaims your crew one by one — a seven-out at a time — until you roll alone.',
+    bossTeaser: 'The Architect rebuilds every boss you beat, one seven-out at a time — and their rules stack until you face them all at once.',
     atmosphere: 'digital',
   },
 

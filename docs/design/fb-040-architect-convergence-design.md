@@ -64,7 +64,7 @@ New columns: `runs.convergence_rooms` (jsonb, the 8 boss marker indices in order
 
 1. Poseidon's Favor → cascade (Le Prix's hook skips the charmed slot; the Emissary's blackout nulls the crew) → Sarge's timeout.
 2. The Vig → Emissary lag (swap in what landed) → Hierophant escrow hold.
-3. `settleTurn()` → Executive +15% at Exceptional → Foreman skim (20% of the winning profit, bonus included) → The Frequency → Hierophant release / seizure → Undertow.
+3. `settleTurn()` → Foreman skim (20% of the winning profit) → Executive +15% at Exceptional (on what's left — the existing order in `rolls.ts`) → The Frequency → Hierophant release / seizure → Undertow.
 4. State advance: High Tide drowns 2 (The Covenant cancels) → Keepsake (not with the Commander in) → Commander bleed → room counters → **PIP check** (ends the run) → **on a Seven-Out, add the next room**.
 
 **Core refactor:** `rolls.ts` branches on a single `activeBossRule` and keeps one counter (`bossPointHits`) for Sarge / Le Prix / Executive / Sovereign. Replace with `activeRules: Set<BossRuleType>` + per-rule state accessors (for every other boss: `{boss.rule}` and `bossPointHits`, unchanged behaviour). Each boss branch becomes `activeRules.has(rule)` and reads its own state. The existing boss integration tests must pass untouched.

@@ -13,7 +13,7 @@ import { runs, crewDefinitions } from '../db/schema.js';
 import type { RunRow, StoredCrewSlots, UserRow } from '../db/schema.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
-import { OPENING_BANKROLL_CENTS, TUTORIAL_BANKROLL_CENTS } from '@battlecraps/shared';
+import { OPENING_BANKROLL_CENTS, TUTORIAL_BANKROLL_CENTS, getRoomsInForce } from '@battlecraps/shared';
 
 const EMPTY_CREW_SLOTS: StoredCrewSlots = [null, null, null, null, null];
 
@@ -105,6 +105,9 @@ export async function buildRunStatePayload(run: RunRow, userRow: UserRow) {
     compPerkIds:           run.compPerkIds,
     pendingAdditiveCents:  run.pendingAdditiveCents,
     signalDarkRolls:       run.signalDarkRolls,
+    // FB-040: The Architect's rooms in force (null outside his fight) + their counters.
+    convergenceRooms:      run.convergenceRooms !== null ? getRoomsInForce(run.convergenceRooms as number[], run.bossPointHits) : null,
+    convergenceState:      run.convergenceState,
     isDevRun:              run.isDevRun,
   };
 }

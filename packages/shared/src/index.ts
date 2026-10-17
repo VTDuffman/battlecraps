@@ -120,3 +120,22 @@ export { DEV_SCENARIOS } from './devScenarios.js';
 export type { BossBarkTrigger, BossDefeatCinematicId, BossVictoryCinematicId } from './config.js';
 export type { BossBarkInput, BossBark } from './bossBarks.js';
 export { BARK_CHANCE, EVENT_BARK_CHANCE, BIG_OFFERING_SHARE, deriveBossBarkEvents, selectBossBarkTrigger, pickBossBark } from './bossBarks.js';
+
+// FB-040: The Architect's Convergence — rooms rebuilt from the bosses you've beaten.
+export {
+  CONVERGENCE_ROOM_MARKERS,
+  MAX_CONVERGENCE_ROOMS,
+  EMPTY_CONVERGENCE_STATE,
+  isConvergenceMarker,
+  shuffleConvergenceRooms,
+  getRoomsInForce,
+  getRoomRule,
+  getRoomParams,
+  getRoomCounter,
+  withRoomCounter,
+  getRoomEntryCounter,
+  enterRoom,
+  advanceRuleCounter,
+  getConvergenceTide,
+} from './convergence.js';
+export type { ConvergenceState } from './convergence.js';

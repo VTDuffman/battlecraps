@@ -58,7 +58,7 @@ interface FormState {
   bossCounter:     number | null; // null = use the real entry value (or random charm)
   ignoreUnlocks:   boolean;
   /** FB-039: Emissary signal — carried from a preset (no form inputs). */
-  signal:          Pick<DevScenario, 'signalTransitCents' | 'signalTransitHype' | 'signalDarkRolls'>;
+  signal:          Pick<DevScenario, 'signalTransitCents' | 'signalTransitHype' | 'signalDarkRolls' | 'convergenceRooms' | 'convergenceState'>;
 }
 
 function formFromMarker(markerIndex: number, keep?: Pick<FormState, 'crew' | 'ignoreUnlocks'>): FormState {
@@ -107,6 +107,8 @@ function formFromPreset(preset: DevScenario): FormState {
       ...(preset.signalTransitCents !== undefined ? { signalTransitCents: preset.signalTransitCents } : {}),
       ...(preset.signalTransitHype  !== undefined ? { signalTransitHype:  preset.signalTransitHype }  : {}),
       ...(preset.signalDarkRolls    !== undefined ? { signalDarkRolls:    preset.signalDarkRolls }    : {}),
+      ...(preset.convergenceRooms   !== undefined ? { convergenceRooms:   preset.convergenceRooms }   : {}),
+      ...(preset.convergenceState   !== undefined ? { convergenceState:   preset.convergenceState }   : {}),
     },
   };
 }

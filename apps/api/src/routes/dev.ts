@@ -29,6 +29,12 @@ import {
   type Bets,
   isBossMarker,
   pickEntryCharmSlot,
+  isConvergenceMarker,
+  shuffleConvergenceRooms,
+  getRoomsInForce,
+  enterRoom,
+  EMPTY_CONVERGENCE_STATE,
+  type ConvergenceState,
   type DevRunState,
   type DevScenario,
 } from '@battlecraps/shared';
@@ -54,6 +60,28 @@ const betsSchema = z.object({
   hardways: z.object({ hard4: cents, hard6: cents, hard8: cents, hard10: cents }),
 });
 
+/**
+ * FB-040: The Architect's rooms for a dev run — the scenario's order prefix with
+ * the rest shuffled in, each room in force (bossCounter + 1) built in turn, then
+ * any counter overrides. Null for every other marker.
+ */
+function convergenceForDevRun(
+  state:         DevRunState,
+  crewSlots:     StoredCrewSlots,
+  bossPointHits: number,
+): { convergenceRooms: number[] | null; convergenceState: ConvergenceState | null } {
+  if (!isConvergenceMarker(state.currentMarkerIndex) || state.convergenceRooms === null) {
+    return { convergenceRooms: null, convergenceState: null };
+  }
+  const prefix = state.convergenceRooms;
+  const order  = [...prefix, ...shuffleConvergenceRooms(randomBelow).filter((m) => !prefix.includes(m))];
+  let built: ConvergenceState = EMPTY_CONVERGENCE_STATE;
+  for (const room of getRoomsInForce(order, bossPointHits)) {
+    built = enterRoom(built, room, crewSlots, state.unlockedSlots, randomBelow);
+  }
+  return { convergenceRooms: order, convergenceState: { ...built, ...(state.convergenceState ?? {}) } };
+}
+
 const scenarioSchema = z.object({
   name:                 z.string().max(120).optional(),
   markerIndex:          z.number().int().min(0).max(GAUNTLET.length - 1),
@@ -72,6 +100,13 @@ const scenarioSchema = z.object({
   signalTransitCents:   cents.optional(),
   signalTransitHype:    z.number().min(0).max(10).optional(),
   signalDarkRolls:      z.number().int().min(0).max(20).optional(),
+  convergenceRooms:     z.array(z.number().int().min(0).max(30)).max(8).optional(),
+  convergenceState:     z.object({
+    clock:  z.number().int().min(0).max(10).optional(),
+    charm:  z.number().int().min(0).max(4).optional(),
+    rating: z.number().int().min(0).max(4).optional(),
+    tide:   z.number().int().min(0).max(3).optional(),
+  }).optional(),
   bossProgressCents:    cents.optional(),
   entry:                z.enum(['table', 'transition']).optional(),
   ignoreUnlocks:        z.boolean().optional(),
@@ -207,6 +242,7 @@ export async function devPlugin(app: FastifyInstance): Promise<void> {
           pendingAdditiveCents: state.pendingAdditiveCents,
           signalTransit:        state.signalTransit,
           signalDarkRolls:      state.signalDarkRolls,
+          ...convergenceForDevRun(state, crewSlots, bossPointHits),
           bossProgressCents:    state.bossProgressCents,
           shooters:             state.shooters,
           currentMarkerIndex:   state.currentMarkerIndex,
@@ -383,6 +419,7 @@ export async function devPlugin(app: FastifyInstance): Promise<void> {
           pendingAdditiveCents:  state.pendingAdditiveCents,
           signalTransit:         state.signalTransit,
           signalDarkRolls:       state.signalDarkRolls,
+          ...convergenceForDevRun(state, crewSlots, bossPointHits),
           shooters:              state.shooters,
           currentMarkerIndex:    state.currentMarkerIndex,
           floor:                 state.floor,

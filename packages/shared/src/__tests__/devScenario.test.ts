@@ -60,7 +60,7 @@ describe('buildDevRunState', () => {
     expect(s.shooters).toBe(7);
     expect(s.hype).toBe(0.25);
     expect(s.bankrollCents).toBe(0);
-    expect(s.bossPointHits).toBe(5); // Architect max
+    expect(s.bossPointHits).toBe(7); // Architect max — 8 rooms in force (FB-040)
   });
 
   it('a point sets POINT_ACTIVE and seeds a pass line bet', () => {
@@ -99,7 +99,7 @@ describe('buildTransitionEntryState', () => {
 describe('getBossCounterRange', () => {
   it('matches each counter-driven boss', () => {
     expect(getBossCounterRange(11, 3)).toEqual({ min: 0, max: 4 });
-    expect(getBossCounterRange(26, 5)).toEqual({ min: 0, max: 5 });
+    expect(getBossCounterRange(26, 5)).toEqual({ min: 0, max: 7 });   // Seven-Outs = rooms built − 1
     expect(getBossCounterRange(17, 4)).toEqual({ min: 0, max: 3 });
     expect(getBossCounterRange(8, 3)).toEqual({ min: 0, max: 2 });
     expect(getBossCounterRange(2, 3)).toBeNull(); // Foreman: stateless

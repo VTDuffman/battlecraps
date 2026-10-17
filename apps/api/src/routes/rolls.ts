@@ -41,6 +41,17 @@ import {
   getBossPayoffCents,
   getBaseHypeTick,
   OLD_PRO_ID,
+  isConvergenceMarker,
+  shuffleConvergenceRooms,
+  getRoomsInForce,
+  getRoomCounter,
+  withRoomCounter,
+  enterRoom,
+  advanceRuleCounter,
+  EMPTY_CONVERGENCE_STATE,
+  MAX_CONVERGENCE_ROOMS,
+  type ConvergenceState,
+  type BossRuleType,
   type CascadeEvent,
   type CrewMember,
   type Bets,
@@ -226,8 +237,6 @@ interface WsTurnSettledPayload {
    * craps-out animation and let the come-out phase continue.
    */
   crapsOutBlocked?: boolean;
-  /** CONVERGENCE (The Architect): crew slot index permanently removed by this seven-out. */
-  removedCrewSlot?: number;
   /**
    * @deprecated — FIRST_CONTACT_PROTOCOL retired in FB-026. Never emitted from FB-026 onwards.
    * Previously signalled that a come-out natural was suppressed by FCP.
@@ -291,6 +300,17 @@ interface WsTurnSettledPayload {
   orbit?: { bleed: number; hype: number };
   /** FB-039: The Emissary's signal — what landed, what's now in transit, a drop, the blackout. */
   signal?: SignalPayload;
+  /** FB-040: The Architect's rooms — in force after this roll, the one built this roll, their counters. */
+  convergence?: ConvergencePayload;
+}
+
+interface ConvergencePayload {
+  /** Boss marker indices of the rooms in force after this roll, in build order. */
+  rooms: number[];
+  /** The room built by this roll's Seven-Out, or null. */
+  added: number | null;
+  /** The rooms' own counters after this roll. */
+  state: ConvergenceState;
 }
 
 interface SignalPayload {
@@ -364,14 +384,62 @@ async function rollHandler(
 
   // ── 3b. Boss rule hooks (active during boss markers only) ─────────────────
   const bossMarkerConfig = GAUNTLET[run.currentMarkerIndex];
-  const bossHooks        = bossMarkerConfig?.boss ? BOSS_RULE_HOOKS[bossMarkerConfig.boss.ruleParams.rule] : undefined;
-  const bossParams       = bossMarkerConfig?.boss ? bossMarkerConfig.boss.ruleParams : undefined;
-  const activeBossRule   = bossMarkerConfig?.boss?.rule ?? null;
-  const isHierophantEscrow  = activeBossRule === 'TRIBUTE'             && isBossMarker(run.currentMarkerIndex);
-  const isTransmissionDelay = activeBossRule === 'TRANSMISSION_DELAY'  && isBossMarker(run.currentMarkerIndex);
-  const isOrbitalDecay      = activeBossRule === 'ORBITAL_DECAY'       && isBossMarker(run.currentMarkerIndex);
-  const isCrossCalibrationBoss = activeBossRule === 'CROSS_CALIBRATION' && isBossMarker(run.currentMarkerIndex);
+
+  // FB-040: the rules in force this roll. A boss fight has its one rule (its
+  // counter is bossPointHits). The Architect's (CONVERGENCE) has every room
+  // built so far — each with its own boss's params and its own counter from
+  // convergence_state; bossPointHits is his Seven-Out count. Every boss branch
+  // below reads from here (ruleOn / paramsFor / counterOf).
+  const isConvergenceBoss = isConvergenceMarker(run.currentMarkerIndex);
+  // Drawn at fight entry (recruit.ts / dev.ts); drawn here if a run reached him without it.
+  const convergenceOrder: number[] = isConvergenceBoss
+    ? ((run.convergenceRooms as number[] | null) ?? shuffleConvergenceRooms(randomBelow))
+    : [];
+  const firstRoom = convergenceOrder[0];
+  const convergenceState: ConvergenceState = isConvergenceBoss
+    ? ((run.convergenceState as ConvergenceState | null)
+        ?? (firstRoom !== undefined
+          ? enterRoom(EMPTY_CONVERGENCE_STATE, firstRoom, run.crewSlots as StoredCrewSlots, run.unlockedSlots, randomBelow)
+          : EMPTY_CONVERGENCE_STATE))
+    : EMPTY_CONVERGENCE_STATE;
+  const roomsInForce = isConvergenceBoss ? getRoomsInForce(convergenceOrder, run.bossPointHits) : [];
+
+  interface RuleInForce { params: BossRuleParams; counter: number; bossName: string }
+  const rulesInForce = new Map<BossRuleType, RuleInForce>();
+  if (isConvergenceBoss) {
+    for (const room of roomsInForce) {
+      const b = GAUNTLET[room]?.boss;
+      if (b) rulesInForce.set(b.rule, { params: b.ruleParams, counter: getRoomCounter(b.rule, convergenceState), bossName: b.name });
+    }
+  } else if (bossMarkerConfig?.boss && isBossMarker(run.currentMarkerIndex)) {
+    const b = bossMarkerConfig.boss;
+    rulesInForce.set(b.rule, { params: b.ruleParams, counter: run.bossPointHits, bossName: b.name });
+  }
+  const ruleOn    = (rule: BossRuleType): boolean => rulesInForce.has(rule);
+  const counterOf = (rule: BossRuleType): number => rulesInForce.get(rule)?.counter ?? 0;
+  const bossNameOf = (rule: BossRuleType): string => rulesInForce.get(rule)?.bossName ?? bossMarkerConfig?.boss?.name ?? '';
+  function paramsFor<R extends BossRuleType>(rule: R): Extract<BossRuleParams, { rule: R }> {
+    return rulesInForce.get(rule)!.params as Extract<BossRuleParams, { rule: R }>;
+  }
+
+  // The boss's hook set — a single boss's own. The Architect's rooms bring
+  // their hooks individually (Le Prix's cascade order, The Foreman's skim).
+  const bossHooks        = !isConvergenceBoss && bossMarkerConfig?.boss ? BOSS_RULE_HOOKS[bossMarkerConfig.boss.ruleParams.rule] : undefined;
+  const bossParams       = !isConvergenceBoss && bossMarkerConfig?.boss ? bossMarkerConfig.boss.ruleParams : undefined;
+  const isHierophantEscrow  = ruleOn('TRIBUTE');
+  const isTransmissionDelay = ruleOn('TRANSMISSION_DELAY');
+  const isOrbitalDecay      = ruleOn('ORBITAL_DECAY');
+  const isCrossCalibrationBoss = ruleOn('CROSS_CALIBRATION');
   const bossState: BossRuleState = { bossPointHits: run.bossPointHits, markerIndex: run.currentMarkerIndex };
+  // Le Prix's cascade hook (her own fight, or her room in his).
+  const cascadeHooks  = ruleOn('DISABLE_CREW') ? BOSS_RULE_HOOKS.DISABLE_CREW : bossHooks;
+  const cascadeParams = ruleOn('DISABLE_CREW') ? paramsFor('DISABLE_CREW') : bossParams;
+  const cascadeState: BossRuleState = ruleOn('DISABLE_CREW')
+    ? { bossPointHits: counterOf('DISABLE_CREW'), markerIndex: run.currentMarkerIndex }
+    : bossState;
+  // The Foreman's skim (his fight, or his room in The Architect's).
+  const payoutHooks  = ruleOn('EXTORTION_FEE') ? BOSS_RULE_HOOKS.EXTORTION_FEE : bossHooks;
+  const payoutParams = ruleOn('EXTORTION_FEE') ? paramsFor('EXTORTION_FEE') : bossParams;
   // FB-036: The Covenant ("The Order Protects") — once per marker, the first
   // Seven-Out doesn't cost a shooter. Available while it hasn't been used at
   // this marker. Earned after the Hierophant, so it applies from Floor 6 on.
@@ -471,7 +539,7 @@ async function rollHandler(
     const rawBankroll    = postBetBankroll + remainingBets;
     // FB-036: anything still held in escrow is paid out with the clear — the
     // Hierophant's offering with Hype (as on any win), the Emissary's flat.
-    const escrowOnClear  = (activeBossRule === 'TRIBUTE' && isBossMarker(run.currentMarkerIndex)
+    const escrowOnClear  = (ruleOn('TRIBUTE')
       ? Math.floor(run.pendingAdditiveCents * run.hype / 100) * 100
       : run.pendingAdditiveCents)
       // FB-039: the Emissary's crew cash in transit lands with the clear.
@@ -498,6 +566,8 @@ async function rollHandler(
         pendingAdditiveCents:  0,
         signalTransit:         null,
         signalDarkRolls:       0,
+        convergenceRooms:      null,
+        convergenceState:      null,
         pointPhaseBlankStreak: 0,
         mechanicFreeze:        null,
         hype:                  run.hype,
@@ -607,10 +677,8 @@ async function rollHandler(
   // ── FB-037: The Sovereign's tide — the stage this roll is played at ───────
   // The counter advances when a come-out cycle resolves, so a point set at a
   // stage stays at that stage until it resolves.
-  const tidalParams = activeBossRule === 'TIDAL_SURGE' && isBossMarker(run.currentMarkerIndex)
-    ? (bossParams as Extract<BossRuleParams, { rule: 'TIDAL_SURGE' }>)
-    : null;
-  const tideStage = tidalParams !== null ? getTideStage(tidalParams, run.bossPointHits) : null;
+  const tidalParams = ruleOn('TIDAL_SURGE') ? paramsFor('TIDAL_SURGE') : null;
+  const tideStage = tidalParams !== null ? getTideStage(tidalParams, counterOf('TIDAL_SURGE')) : null;
   // Dead Calm (LOW TIDE): no odds bets — reject any odds added this roll.
   if (tideStage?.effect === 'DEAD_CALM' && incomingBets.odds > (run.bets as Bets).odds) {
     return reply.status(422).send({ error: 'DEAD CALM — no odds bets at low tide.' });
@@ -720,7 +788,6 @@ async function rollHandler(
   //
   // For CONVERGENCE: inject the PRE-roll seven-out count into TurnContext as
   // bossSevenOutCount (informational — no hook or crew reads it today).
-  const isConvergenceBoss = activeBossRule === 'CONVERGENCE' && isBossMarker(run.currentMarkerIndex);
   const preCascadeCtx = isConvergenceBoss
     ? { ...poseidonCtx, bossSevenOutCount: run.bossPointHits }
     : poseidonCtx;
@@ -731,7 +798,7 @@ async function rollHandler(
   const signalDark = isTransmissionDelay && (run.signalDarkRolls as number) > 0;
   const cascadeResult = resolveCascade(
     signalDark ? crewSlots.map(() => null) : crewSlots,
-    preCascadeCtx, rollDice, bossHooks, bossParams, bossState,
+    preCascadeCtx, rollDice, cascadeHooks, cascadeParams, cascadeState,
   );
   const { finalContext: cascadeContext, events } = cascadeResult;
   const updatedCrewSlots = signalDark ? crewSlots : cascadeResult.updatedCrewSlots;
@@ -743,15 +810,13 @@ async function rollHandler(
   // react to a dice Seven-Out (Lefty, Floor Walker, Lucky Charm) did not fire.
   // Pass Line and Odds are lost and every Hardway clears; a Hardway that won on
   // this roll still pays (its payout and stake are already in the context).
-  const isDoubleTime = activeBossRule === 'DOUBLE_TIME' && isBossMarker(run.currentMarkerIndex);
-  const doubleTimeLimit = isDoubleTime
-    ? (bossParams as Extract<BossRuleParams, { rule: 'DOUBLE_TIME' }>).rollLimit
-    : 0;
+  const isDoubleTime = ruleOn('DOUBLE_TIME');
+  const doubleTimeLimit = isDoubleTime ? paramsFor('DOUBLE_TIME').rollLimit : 0;
   const clockExpired =
     isDoubleTime &&
     run.phase === 'POINT_ACTIVE' &&
     cascadeContext.rollResult === 'NO_RESOLUTION' &&
-    run.bossPointHits + 1 >= doubleTimeLimit;
+    counterOf('DOUBLE_TIME') + 1 >= doubleTimeLimit;
   const finalContext: TurnContext = clockExpired
     ? {
         ...cascadeContext,
@@ -769,13 +834,6 @@ async function rollHandler(
       }
     : cascadeContext;
 
-  // ── CONVERGENCE: track the last crew slot that fired this roll ──────────────
-  // Used by Targeted Demolition (step 8f / computeNextState) to identify which
-  // slot to permanently remove on SEVEN_OUT.
-  const lastTriggeredSlot = events.length > 0
-    ? (events[events.length - 1]?.slotIndex ?? null)
-    : null;
-
   // ── CROSS_CALIBRATION: PIP termination check ─────────────────────────────
   // When the rating is at 0 (Action Required) and another bad outcome lands,
   // the Pink Slip fires — GAME_OVER regardless of remaining shooters.
@@ -784,7 +842,7 @@ async function rollHandler(
   //
   // bossPointHits is the stored rating. Every marker-entry write initializes it
   // via getBossEntryCounter() (2 = Strong), so a stored 0 always means Action Required.
-  const effectiveRating = run.bossPointHits;
+  const effectiveRating = counterOf('CROSS_CALIBRATION');
   const pipTermination = (
     isCrossCalibrationBoss &&
     effectiveRating === 0 &&
@@ -796,8 +854,7 @@ async function rollHandler(
   // a come-out or point phase and starts a new come-out).
   // POINT_SET and NO_RESOLUTION hold the current charm — same slot persists
   // through the point phase.
-  const isDisableCrewBoss =
-    activeBossRule === 'DISABLE_CREW' && isBossMarker(run.currentMarkerIndex);
+  const isDisableCrewBoss = ruleOn('DISABLE_CREW');
   const comesOutResolved =
     finalContext.rollResult === 'NATURAL'   ||
     finalContext.rollResult === 'CRAPS_OUT' ||
@@ -809,7 +866,7 @@ async function rollHandler(
   // that slot's crew member was ready to fire (non-null, within unlocked range,
   // cooldownState === 0). If so, the enchantment actively negated an ability —
   // triggers the charm heartbeat on the client.
-  const currentCharmSlot  = bossState.bossPointHits;
+  const currentCharmSlot  = counterOf('DISABLE_CREW');
   const charmedCrewMember = isDisableCrewBoss ? (crewSlots[currentCharmSlot] ?? null) : null;
   // Test whether the charmed crew member would have fired on this roll.
   // We call execute() with the pre-cascade context and a no-op rollDice that returns
@@ -892,17 +949,8 @@ async function rollHandler(
       }
     : viggedRaw;
 
-  // ── 8f. CONVERGENCE (Load-Bearing) — cumulative 15% additive penalty per removed slot ─
-  // bossPointHits = number of slots already removed this boss fight (0–5).
-  // Each removed slot compounds a further 15% reduction: additives × 0.85^N.
-  // Rounds to the nearest dollar (100 cents) per project convention.
-  // Applied after Vig so the +20% bonus is penalised alongside base additives.
-  const loadPenaltyFactor = isConvergenceBoss
-    ? Math.pow(0.85, run.bossPointHits)
-    : 1.0;
-  const loadBearingContext = isConvergenceBoss && viggedContext.additives > 0
-    ? { ...viggedContext, additives: Math.floor(viggedContext.additives * loadPenaltyFactor / 100) * 100 }
-    : viggedContext;
+  // (8f. The Architect's load-bearing cut was retired with his demolition — FB-040.)
+  const loadBearingContext = viggedContext;
 
   // ── 8d. TRIBUTE (Hierophant Escrow) — hold additives; don't pass to settleTurn ─
   // When Hierophant escrow is active, zero out additives before settlement —
@@ -929,8 +977,8 @@ async function rollHandler(
   //   SEVEN_OUT (bets already deducted at POINT_SET): betDelta=0 → delta=0
   //   POINT_SET (bets frozen): payout=0, betDelta=passLine → delta=-passLine
   const rawPayout = settleTurn(tdEscrowContext);
-  const bossModifiedPayout = bossHooks?.modifyPayout
-    ? bossHooks.modifyPayout(rawPayout, tdEscrowContext.baseStakeReturned, bossParams!, bossState)
+  const bossModifiedPayout = payoutHooks?.modifyPayout
+    ? payoutHooks.modifyPayout(rawPayout, tdEscrowContext.baseStakeReturned, payoutParams!, bossState)
     : rawPayout;
 
   // ── FB-032: The Foreman's Cut → Payoff ────────────────────────────────────
@@ -985,7 +1033,7 @@ async function rollHandler(
     const offering   = run.pendingAdditiveCents + heldThisRoll;
     const isWin      = finalContext.rollResult === 'NATURAL' || finalContext.rollResult === 'POINT_HIT';
     if (isEscrowSevenOut || isWin) {
-      const p = GAUNTLET[run.currentMarkerIndex]!.boss!.ruleParams as Extract<BossRuleParams, { rule: 'TRIBUTE' }>;
+      const p = paramsFor('TRIBUTE');
       const seizurePct = isEscrowSevenOut ? p.escrowSeizurePct : 0;
       const pot        = escrowWithHype(offering);
       escrowRelease = Math.floor(pot * (1 - seizurePct) / 100) * 100;
@@ -1026,10 +1074,10 @@ async function rollHandler(
   const bossDeductionAmount = rawPayout - payout;
   const bossDeductions: Array<{ amount: number; source: string; label: string }> = [];
   if (bossDeductionAmount > 0 && bossMarkerConfig?.boss) {
-    bossDeductions.push({ amount: bossDeductionAmount, source: bossMarkerConfig.boss.name, label: 'extortion fee' });
+    bossDeductions.push({ amount: bossDeductionAmount, source: bossNameOf('EXTORTION_FEE'), label: 'extortion fee' });
   }
   if (undertowCents > 0 && bossMarkerConfig?.boss) {
-    bossDeductions.push({ amount: undertowCents, source: bossMarkerConfig.boss.name, label: 'undertow' });
+    bossDeductions.push({ amount: undertowCents, source: bossNameOf('TIDAL_SURGE'), label: 'undertow' });
   }
   // ── 11. Advance state machine ─────────────────────────────────────────────
   const hasSeaLegs = (run.compPerkIds as number[]).includes(COMP_PERK_IDS.SEA_LEGS);
@@ -1039,10 +1087,12 @@ async function rollHandler(
   // FB-037: High Tide — a Seven-Out drowns waveShooters (The Covenant cancels it).
   const isWave = tidalParams !== null && tideStage?.effect === 'HIGH_TIDE' && viggedContext.rollResult === 'SEVEN_OUT';
   const sevenOutShooters = isWave ? tidalParams!.waveShooters : 1;
-  const nextState = computeNextState(run, viggedContext, postTideBankroll, incomingBets, hasSeaLegs, lastTriggeredSlot, payoffReached, covenantSaved, sevenOutShooters);
+  const nextState = computeNextState(run, viggedContext, postTideBankroll, incomingBets, hasSeaLegs, isOrbitalDecay, payoffReached, covenantSaved, sevenOutShooters);
 
   // ── DISABLE_CREW: override bossPointHits with the newly selected charm slot ─
-  const charmAdjustedState = nextCharmSlot !== null
+  // (In The Architect's fight bossPointHits is his Seven-Out count — the charm
+  // lives in convergence_state instead, below.)
+  const charmAdjustedState = nextCharmSlot !== null && !isConvergenceBoss
     ? { ...nextState, bossPointHits: nextCharmSlot }
     : nextState;
   // ── CROSS_CALIBRATION: PIP termination overrides status to GAME_OVER ──────
@@ -1061,9 +1111,7 @@ async function rollHandler(
     : 0;
 
   // ── FB-039: The Emissary — what's in transit and the blackout, next roll ──
-  const blackoutRolls = isTransmissionDelay
-    ? (bossParams as Extract<BossRuleParams, { rule: 'TRANSMISSION_DELAY' }>).blackoutRolls
-    : 0;
+  const blackoutRolls = isTransmissionDelay ? paramsFor('TRANSMISSION_DELAY').blackoutRolls : 0;
   const signalTransitToPersist: SignalPacket | null =
     isTransmissionDelay && !signalSevenOut && !clearsMarkerNow ? signalSent : null;
   const signalDarkToPersist = isTransmissionDelay && !clearsMarkerNow
@@ -1078,9 +1126,7 @@ async function rollHandler(
   // After a roll that isn't a Seven-Out (and doesn't clear the marker — hype
   // resets there anyway), hype above 1.0× loses bleedPct of its height. This
   // roll was already paid at its full hype; the bleed is what's carried forward.
-  const orbitParams = isOrbitalDecay
-    ? (bossParams as Extract<BossRuleParams, { rule: 'ORBITAL_DECAY' }>)
-    : null;
+  const orbitParams = isOrbitalDecay ? paramsFor('ORBITAL_DECAY') : null;
   const bleedsNow = orbitParams !== null
     && viggedContext.rollResult !== 'SEVEN_OUT'
     && escrowAdjustedState.currentMarkerIndex === run.currentMarkerIndex
@@ -1095,6 +1141,30 @@ async function rollHandler(
   const settledBankroll = postTideBankroll + escrowPaidOnClear;
   const bankrollDelta   = settledBankroll - run.bankrollCents;
 
+  // ── FB-040: The Architect — the rooms' counters, and the next room ────────
+  // Each room's counter moves as it would in that boss's own fight (Le Prix's
+  // charm is re-picked above). A Seven-Out that doesn't end the marker builds
+  // the next room (its counter starts fresh); every room stays in force.
+  const convergenceClears = finalNextState.currentMarkerIndex > run.currentMarkerIndex;
+  let nextConvergenceState: ConvergenceState = convergenceState;
+  let roomAdded: number | null = null;
+  if (isConvergenceBoss && !convergenceClears) {
+    for (const [rule, r] of rulesInForce) {
+      nextConvergenceState = withRoomCounter(nextConvergenceState, rule, advanceRuleCounter(rule, r.params, r.counter, viggedContext.rollResult));
+    }
+    if (nextCharmSlot !== null) nextConvergenceState = withRoomCounter(nextConvergenceState, 'DISABLE_CREW', nextCharmSlot);
+    const roomsAfter = getRoomsInForce(convergenceOrder, finalNextState.bossPointHits);
+    if (roomsAfter.length > roomsInForce.length) {
+      roomAdded = roomsAfter[roomsAfter.length - 1] ?? null;
+      if (roomAdded !== null) {
+        nextConvergenceState = enterRoom(nextConvergenceState, roomAdded, serialiseCrewSlots(updatedCrewSlots, false), run.unlockedSlots, randomBelow);
+      }
+    }
+  }
+  const convergencePayload: ConvergencePayload | undefined = isConvergenceBoss && !convergenceClears
+    ? { rooms: getRoomsInForce(convergenceOrder, finalNextState.bossPointHits), added: roomAdded, state: nextConvergenceState }
+    : undefined;
+
   // ── CROSS_CALIBRATION: compute bossRating for socket payload ──────────────
   // Emitted on every roll in the boss fight. `changed` and `direction` tell the
   // client whether to animate a rating transition. On PIP (clamp at 0), changed
@@ -1102,7 +1172,7 @@ async function rollHandler(
   const bossRatingPayload = isCrossCalibrationBoss
     ? (() => {
         const oldRating = effectiveRating;
-        const newRating = finalNextState.bossPointHits;
+        const newRating = isConvergenceBoss ? nextConvergenceState.rating : finalNextState.bossPointHits;
         const changed = newRating !== oldRating;
         return {
           index: newRating,
@@ -1130,7 +1200,7 @@ async function rollHandler(
   const tidePayload: TidePayload | undefined = tideStage !== null && tidalParams !== null && !hitMarker
     ? {
         stage:     tideStage.index,
-        nextStage: getTideStage(tidalParams, finalNextState.bossPointHits).index,
+        nextStage: getTideStage(tidalParams, isConvergenceBoss ? nextConvergenceState.tide : finalNextState.bossPointHits).index,
         ...(undertowCents > 0 && { undertowCents }),
         ...(isWave && { waveShooters: covenantSaved ? 0 : sevenOutShooters }),
       }
@@ -1154,13 +1224,15 @@ async function rollHandler(
   // chosen at recruit time (recruit.ts), not here, so the first boss come-out
   // always fires against the crew the player actually recruited.
   const persistedBossPointHits = finalNextState.bossPointHits;
+  // Le Prix's charmed slot after this roll (her fight: bossPointHits; his: the room's counter).
+  const charmSlotAfter = isConvergenceBoss ? nextConvergenceState.charm : persistedBossPointHits;
 
   // ── Hype reset note for roll log ──────────────────────────────────────────
   let hypeResetNote: string | undefined;
   if (hitMarker) {
     hypeResetNote = 'Marker Cleared — Hype resets to 1.00×';
   } else if (finalContext.rollResult === 'SEVEN_OUT') {
-    if (isOrbitalDecay && isBossMarker(run.currentMarkerIndex)) {
+    if (isOrbitalDecay) {
       // FB-038: in his fight a Seven-Out resets hype — no Keepsake.
       hypeResetNote = 'Seven Out — Hype resets to 1.00× (no Keepsake in orbit)';
     } else if (hasSeaLegs) {
@@ -1183,7 +1255,6 @@ async function rollHandler(
   // own line and the crew-cash lines add up to what was actually paid. In an
   // escrow / transit fight the Vig's share follows the crew cash there.
   const vigBonusCents       = viggedRaw.additives - finalContext.additives;
-  const loadBearingCutCents = viggedContext.additives - loadBearingContext.additives;
   const fmtDollars = (cents: number): string => `$${(cents / 100).toFixed(2)}`;
   const crewCashLines: RollReceiptLine[] = [];
   if (vigBonusCents > 0) {
@@ -1194,11 +1265,9 @@ async function rollHandler(
                             { kind: 'win',  text: vigText },
     );
   }
-  if (loadBearingCutCents > 0 && bossMarkerConfig?.boss) {
-    crewCashLines.push({
-      kind: 'loss',
-      text: `${bossMarkerConfig.boss.name}: ${fmtDollars(loadBearingCutCents)} load-bearing (crew cash −${Math.round((1 - loadPenaltyFactor) * 100)}%)`,
-    });
+  // FB-040: a room rebuilt by this roll's Seven-Out.
+  if (roomAdded !== null) {
+    crewCashLines.push({ kind: 'loss', text: `ROOM REBUILT — ${GAUNTLET[roomAdded]?.boss?.name ?? 'a boss'}'s rule is now in force too` });
   }
 
   const receipt = buildRollReceipt(
@@ -1212,7 +1281,7 @@ async function rollHandler(
           releasedCents: escrowPayload.releasedCents,
           seizedCents:   escrowPayload.seizedCents,
           label:         isHierophantEscrow ? 'The offering' : 'The transmission',
-          seizedBy:      bossMarkerConfig.boss.name,
+          seizedBy:      bossNameOf('TRIBUTE'),
           seizeLabel:    isHierophantEscrow ? 'tribute' : 'lost in transmission',
         }
       : undefined,
@@ -1231,14 +1300,7 @@ async function rollHandler(
       : crewCashLines.length > 0 ? { extraLines: crewCashLines } : undefined,
   );
 
-  // ── CONVERGENCE: Targeted Demolition — persist the removed slot as null ───
-  // nextState.removedSlotIndex is non-null only on a CONVERGENCE SEVEN_OUT.
-  // The cascade ran with the pre-removal crew; the DB write permanently zeroes
-  // the targeted slot so it is absent from all future cascade runs.
-  const removedSlotIndex = finalNextState.removedSlotIndex;
-  const finalUpdatedCrewSlots: (CrewMember | null)[] = removedSlotIndex !== null
-    ? updatedCrewSlots.map((slot, i) => i === removedSlotIndex ? null : slot)
-    : [...updatedCrewSlots];
+  const finalUpdatedCrewSlots: (CrewMember | null)[] = [...updatedCrewSlots];
 
   // ── 11c. Mechanic freeze lifecycle ───────────────────────────────────────
   // If a freeze was applied this roll, decrement rollsRemaining.
@@ -1289,6 +1351,9 @@ async function rollHandler(
       // FB-039: The Emissary's signal lag + blackout.
       signalTransit:        signalTransitToPersist,
       signalDarkRolls:      signalDarkToPersist,
+      // FB-040: The Architect's room order + counters (cleared with the marker).
+      convergenceRooms:     isConvergenceBoss && !hitMarker ? convergenceOrder : null,
+      convergenceState:     isConvergenceBoss && !hitMarker ? nextConvergenceState : null,
       updatedAt:             new Date(),
     })
     .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
@@ -1407,7 +1472,6 @@ async function rollHandler(
     ...(finalContext.flags.sevenOutBlocked && { originalDice: dice }),
     ...(finalContext.flags.nudgedFrom !== undefined && { nudgedFrom: finalContext.flags.nudgedFrom }),
     ...(finalContext.flags.crapsOutBlocked && { crapsOutBlocked: true }),
-    ...(removedSlotIndex !== null && { removedCrewSlot: removedSlotIndex }),
     highestMarkerReached: (hitMarker && !isDevRun)
       ? Math.max(user.highestMarkerReached, newMarkerIndex)
       : user.highestMarkerReached,
@@ -1418,7 +1482,8 @@ async function rollHandler(
     ...(tidePayload !== undefined && { tide: tidePayload }),
     ...(orbitParams !== null && { orbit: { bleed: orbitBleed, hype: finalNextState.hype } }),
     ...(signalPayload !== undefined && { signal: signalPayload }),
-    ...(isDisableCrewBoss && { charmedCrewSlot: persistedBossPointHits }),
+    ...(convergencePayload !== undefined && { convergence: convergencePayload }),
+    ...(isDisableCrewBoss && { charmedCrewSlot: charmSlotAfter }),
     ...(charmedWouldHaveFired && { charmFired: true }),
     ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
     ...(pipTermination && { pipTermination: true as const }),
@@ -1454,7 +1519,7 @@ async function rollHandler(
       ...(finalContext.flags.nudgedFrom !== undefined && { nudgedFrom: finalContext.flags.nudgedFrom }),
       // Charmed crew slot for Mme. Le Prix (DISABLE_CREW boss) — mirrors WsTurnSettledPayload
       // so the HTTP path can update the store without depending on the WebSocket event.
-      ...(isDisableCrewBoss && { charmedCrewSlot: persistedBossPointHits }),
+      ...(isDisableCrewBoss && { charmedCrewSlot: charmSlotAfter }),
       ...(charmedWouldHaveFired && { charmFired: true }),
       ...(bossRatingPayload !== undefined && { bossRating: bossRatingPayload }),
       ...(pipTermination && { pipTermination: true as const }),
@@ -1467,7 +1532,7 @@ async function rollHandler(
       ...(tidePayload !== undefined && { tide: tidePayload }),
       ...(orbitParams !== null && { orbit: { bleed: orbitBleed, hype: finalNextState.hype } }),
       ...(signalPayload !== undefined && { signal: signalPayload }),
-      ...(removedSlotIndex !== null && { removedCrewSlot: removedSlotIndex }),
+      ...(convergencePayload !== undefined && { convergence: convergencePayload }),
     },
   });
 }
@@ -1501,7 +1566,8 @@ function computeNextState(
   newBankroll:         number,
   incomingBets:        Bets,
   hasSeaLegs:          boolean = false,
-  lastTriggeredSlot?:  number | null,
+  /** FB-038: The Commander's rule is in force (a Seven-Out resets Hype — no Keepsake). */
+  commanderInForce:    boolean = false,
   /** FB-032: this roll's Cut brought the boss Payoff total to/over the Payoff. */
   payoffReached:       boolean = false,
   /** FB-036: The Covenant keeps the shooter on this Seven-Out. */
@@ -1522,7 +1588,6 @@ function computeNextState(
   previousRollTotal:     number | null;
   shooterRollCount:      number;
   pointPhaseBlankStreak: number;
-  removedSlotIndex:      number | null;
 } {
   const { rollResult, flags } = finalCtx;
   const currentMarkerIndex = run.currentMarkerIndex;
@@ -1543,12 +1608,12 @@ function computeNextState(
   //   TIDAL_SURGE:       tide stage — advances on every come-out resolution.
   //   CROSS_CALIBRATION: Executive's rating (0–4).
   //   DISABLE_CREW:      Le Prix's charmed slot (overridden in the roll handler).
-  //   CONVERGENCE:       Architect's seven-out count (handled in the SEVEN_OUT branch).
+  //   CONVERGENCE:       Architect's Seven-Out count = rooms built − 1 (SEVEN_OUT branch);
+  //                      his rooms' own counters live in convergence_state (roll handler).
   // nextBossCounter() keeps this consistent across all result branches.
   const activeBossRule     = GAUNTLET[currentMarkerIndex]?.boss?.rule ?? null;
   const isTidalSurge       = activeBossRule === 'TIDAL_SURGE';
   const isDoubleTime       = activeBossRule === 'DOUBLE_TIME'         && isBossMarker(currentMarkerIndex);
-  const isOrbitalDecay     = activeBossRule === 'ORBITAL_DECAY'       && isBossMarker(currentMarkerIndex);
   const isConvergence      = activeBossRule === 'CONVERGENCE'         && isBossMarker(currentMarkerIndex);
   const isCrossCalibration = activeBossRule === 'CROSS_CALIBRATION'   && isBossMarker(currentMarkerIndex);
   const effectiveBossPointHits = run.bossPointHits;
@@ -1621,7 +1686,6 @@ function computeNextState(
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
-        removedSlotIndex:      null,
       };
     }
 
@@ -1642,7 +1706,6 @@ function computeNextState(
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
-        removedSlotIndex:      null,
       };
 
     // ── Point established ───────────────────────────────────────────────────
@@ -1666,7 +1729,6 @@ function computeNextState(
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
-        removedSlotIndex:      null,
       };
 
     // ── Point hit — check for marker / game completion ─────────────────────
@@ -1709,7 +1771,6 @@ function computeNextState(
         previousRollTotal:     finalCtx.diceTotal,
         shooterRollCount:      run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
-        removedSlotIndex:      null,
       };
     }
 
@@ -1770,7 +1831,7 @@ function computeNextState(
       // cascadeHypeDelta captures crew head-start above pre-roll level and stacks on top.
       const cascadeHypeDelta = Math.max(0, finalCtx.hype - run.hype);
       let nextHype: number;
-      if (isOrbitalDecay) {
+      if (commanderInForce) {
         // FB-038: The Commander — a Seven-Out resets hype (no Keepsake in his
         // fight); the orbital bleed is applied after the state machine.
         nextHype = Math.max(1.0, 1.0 + cascadeHypeDelta);
@@ -1787,21 +1848,6 @@ function computeNextState(
         nextHype = 1.0;
       }
 
-      // ── CONVERGENCE: Targeted Demolition — determine which slot to remove ──
-      // The most recently triggered slot (last CascadeEvent.slotIndex) takes the
-      // hit. If no crew fired this roll, fall back to the highest occupied active
-      // slot. null when the player has no crew left to remove.
-      const highestOccupiedSlot = (() => {
-        const stored = run.crewSlots as StoredCrewSlots;
-        for (let i = Math.min(run.unlockedSlots, stored.length) - 1; i >= 0; i--) {
-          if (stored[i] != null) return i;
-        }
-        return null;
-      })();
-      const convergenceDemolitionTarget = (isConvergence && !markerCleared)
-        ? (lastTriggeredSlot ?? highestOccupiedSlot)
-        : null;
-
       return {
         status:               nextStatus,
         phase:                'COME_OUT',
@@ -1812,16 +1858,16 @@ function computeNextState(
         bets:                 clearedBets,
         currentMarkerIndex:   nextMarkerIndex,
         consecutivePointHits:  0,  // Seven Out kills the streak
-        // CONVERGENCE: increment the seven-out counter on SEVEN_OUT (cap at 5).
-        // All other rules: delegate to nextBossCounter (resets on marker clear).
+        // CONVERGENCE: every Seven-Out builds the next room (counter capped so the
+        // rooms in force never exceed the eight there are). Includes a Seven-Out
+        // The Covenant saved. All other rules: nextBossCounter (resets on marker clear).
         bossPointHits: (isConvergence && !markerCleared)
-          ? Math.min(5, run.bossPointHits + 1)
+          ? Math.min(MAX_CONVERGENCE_ROOMS - 1, run.bossPointHits + 1)
           : nextBossCounter(effectiveBossPointHits, rollResult, markerCleared),
         // New shooter: counters reset. Blocked seven-out: shooter survives, counters continue.
         previousRollTotal:     shooterLost ? null : finalCtx.diceTotal,
         shooterRollCount:      shooterLost ? 0 : run.shooterRollCount + 1,
         pointPhaseBlankStreak: 0,
-        removedSlotIndex:      convergenceDemolitionTarget,
       };
     }
 
@@ -1865,8 +1911,7 @@ function computeNextState(
           previousRollTotal:     finalCtx.diceTotal,
           shooterRollCount:      run.shooterRollCount + 1,
           pointPhaseBlankStreak: 0,
-          removedSlotIndex:      null,
-        };
+          };
       }
 
       // Poseidon's Favor blocked a come-out craps-out: the roll doesn't count,
@@ -1886,8 +1931,7 @@ function computeNextState(
           previousRollTotal:     finalCtx.diceTotal,
           shooterRollCount:      run.shooterRollCount + 1,
           pointPhaseBlankStreak: 0,
-          removedSlotIndex:      null,
-        };
+          };
       }
 
       return {
@@ -1906,7 +1950,6 @@ function computeNextState(
         // The Pressure Cooker fires on the 5th blank in a row (4 prior blanks);
         // reset the count then so it fires again on blanks 10, 15, …
         pointPhaseBlankStreak: run.pointPhaseBlankStreak >= 4 ? 0 : run.pointPhaseBlankStreak + 1,
-        removedSlotIndex:      null,
       };
     }
   }

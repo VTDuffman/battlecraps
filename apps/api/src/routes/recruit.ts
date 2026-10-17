@@ -24,7 +24,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { eq, and, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { runs, crewDefinitions, type StoredCrewSlots } from '../db/schema.js';
-import { isBossMarker, getBossEntryCounter, getSlotsAfterBossComp, pickEntryCharmSlot, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, isOpeningPub, COMP_PERK_IDS, type CompRewardType, type CrewRarity } from '@battlecraps/shared';
+import { isBossMarker, getBossEntryCounter, getSlotsAfterBossComp, pickEntryCharmSlot, isConvergenceMarker, shuffleConvergenceRooms, enterRoom, EMPTY_CONVERGENCE_STATE, GAUNTLET, LUCKY_CHARM_ID, getCrewHireCost, isOpeningPub, COMP_PERK_IDS, type CompRewardType, type CrewRarity } from '@battlecraps/shared';
 import { randomBelow } from '../lib/rng.js';
 import { requireClerkAuth } from '../lib/clerkAuth.js';
 import { resolveUserByClerkId } from '../lib/resolveUser.js';
@@ -211,6 +211,15 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         bossEntryCharmSlot = pickEntryCharmSlot(newCrewSlots, run.unlockedSlots, randomBelow);
       }
 
+      // ── 5b'. FB-040: entering The Architect — draw his room order now (server
+      // RNG) and build the first room from the crew that will actually play it.
+      const isEnteringConvergence = isConvergenceMarker(run.currentMarkerIndex);
+      const convergenceRooms = isEnteringConvergence ? shuffleConvergenceRooms(randomBelow) : null;
+      const firstRoom        = convergenceRooms?.[0];
+      const convergenceState = convergenceRooms !== null && firstRoom !== undefined
+        ? enterRoom(EMPTY_CONVERGENCE_STATE, firstRoom, newCrewSlots, run.unlockedSlots, randomBelow)
+        : null;
+
       // ── 5c. Lucky Charm immediate hype floor ───────────────────────────────
       // If the resulting crew is Lucky Charm as the sole member, apply the 2.0×
       // hype floor right now so the recruit response (and UI) reflects it before
@@ -246,6 +255,9 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
             : getBossEntryCounter(run.currentMarkerIndex),
           // FB-032: fresh Cut for the next fight (the pub sits between markers).
           bossProgressCents: 0,
+          // FB-040: The Architect's rooms (null for every other marker).
+          convergenceRooms,
+          convergenceState,
           updatedAt:     new Date(),
         })
         .where(and(eq(runs.id, runId), eq(runs.updatedAt, run.updatedAt)))
@@ -272,6 +284,10 @@ export async function recruitPlugin(app: FastifyInstance): Promise<void> {
         // The client stashes this in pendingBossEntryCharm and reveals the ❤️
         // after the boss-intro cinematic clears — not during the pub screen.
         ...(bossEntryCharmSlot !== null && { bossEntryCharmSlot }),
+        // FB-040: The Architect's first room (its rule is in force from the first roll).
+        ...(convergenceRooms !== null && firstRoom !== undefined && convergenceState !== null && {
+          convergence: { rooms: [firstRoom], added: firstRoom, state: convergenceState },
+        }),
       });
     },
   );

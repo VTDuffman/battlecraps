@@ -301,11 +301,13 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     compPerkIds:        [COMP_PERK_IDS.THE_VIG, COMP_PERK_IDS.MEMBER_JACKET, COMP_PERK_IDS.SEA_LEGS, COMP_PERK_IDS.POSEIDONS_FAVOR],
   },
   {
-    name:        'Architect — 4 seven-outs, one crew left',
-    markerIndex: ARCHITECT,
-    // Each seven-out removes one crew member, so 4 seven-outs leaves 1 of 5.
-    crew:        [16, null, null, null, null],
-    bossCounter: 4,
+    // FB-040: three rooms stacked — Sarge's clock, the Executive's review and the
+    // Emissary's signal lag are all in force (a 7-out builds a random fourth).
+    name:             'Architect — three rooms stacked',
+    markerIndex:      ARCHITECT,
+    crew:             STARTER_CREW,
+    bossCounter:      2,
+    convergenceRooms: [5, 11, 23],
   },
   {
     name:          'Final marker — hit the point to win',

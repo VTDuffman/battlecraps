@@ -99,7 +99,7 @@ export interface BossRuleState {
 | `tribute.ts` | `TRIBUTE` | *(none)* | Escrow + seizure inline in `rolls.ts` |
 | `orbitalDecay.ts` | `ORBITAL_DECAY` | *(none)* | Orbital bleed inline in `rolls.ts` (FB-038) |
 | `firstContactProtocol.ts` | `CROSS_CALIBRATION`, `TRANSMISSION_DELAY`, `FIRST_CONTACT_PROTOCOL` (retired) | *(none)* | Shared empty hooks object; logic inline in `rolls.ts` |
-| `convergence.ts` | `CONVERGENCE` | *(none)* | Demolition + load-bearing inline in `rolls.ts`; removed crew are null in `crew_slots` |
+| `convergence.ts` | `CONVERGENCE` | *(none)* | His rooms run their bosses' own rules via `rulesInForce` in `rolls.ts` (shared `convergence.ts` — FB-040) |
 
 ### What `bossPointHits` means per rule
 
@@ -109,7 +109,7 @@ export interface BossRuleState {
 | `DISABLE_CREW` | Charmed slot index | Reselected after each come-out resolution |
 | `CROSS_CALIBRATION` | Performance rating 0–4 (enters at 2) | ±1 per Natural/Point Hit vs Craps Out/Seven-Out |
 | `TIDAL_SURGE` | Tide stage (mod 4) | +1 on each come-out resolution (Natural, Craps Out, Point Hit, Seven-Out) |
-| `CONVERGENCE` | Seven-outs this fight (cap 5) | +1 on SEVEN_OUT |
+| `CONVERGENCE` | Seven-Outs this fight = rooms built − 1 (cap 7); the rooms' own counters are in `convergence_state` | +1 on SEVEN_OUT (incl. a Covenant save) |
 
 Every marker-entry write uses `getBossEntryCounter(markerIndex)` (2 for The Executive, else 0); Le Prix's entry charm comes from `pickEntryCharmSlot()`.
 
@@ -365,13 +365,15 @@ ruleParams: { rule: 'TRANSMISSION_DELAY', blackoutRolls: 6 }
 
 **Rule:** `CONVERGENCE` | **Target:** $60,000,000 | **Index:** 26
 
-**Targeted demolition.** Each Seven-Out permanently removes **one** crew member: the last one that fired that roll (last `CascadeEvent.slotIndex`), or the highest occupied active slot if nobody fired. The slot is nulled in `crew_slots`, and `turn:settled` carries `removedCrewSlot` so the client clears it from the rail. Once every crew member is gone, the player rolls naked craps.
+**Convergence (FB-040).** The fight is fought in rooms rebuilt from the eight bosses before him. At fight entry (`recruit.ts` on the pub exit; `dev.ts`; a fallback on the first roll) the server shuffles them (`shuffleConvergenceRooms`, server RNG) into `runs.convergence_rooms`. The first room is in force from the first roll; **every Seven-Out builds the next room — including one The Covenant saved and Sarge's TIME'S UP — and the rooms stack: every rule in force stays in force.** Each room's rule runs exactly as in that boss's own fight, except: The Foreman's room has no Payoff (just the 20% skim — the fight clears on bankroll); the Executive's PIP still ends the run; the Emissary's blackout lasts as long as his room (i.e. the rest of the fight).
 
-**Load-bearing:** each Seven-Out this fight compounds a 15% cut to crew cash bonuses: `additives × 0.85^N` (N = `bossPointHits`, rounded down to the dollar), applied after The Vig.
+**Rules in force:** `rolls.ts` builds `rulesInForce` (rule → params, counter, boss name) — a boss fight's single rule (counter = `bossPointHits`), or The Architect's rooms in force (`getRoomsInForce(order, bossPointHits)`), each with its own counter from `runs.convergence_state` (`{ clock, charm, rating, tide }` — Sarge, Le Prix, the Executive, the Sovereign; `getRoomCounter`). Every boss branch reads `ruleOn` / `paramsFor` / `counterOf`; Le Prix's cascade hook and The Foreman's skim hook come from their rooms. After the roll each room's counter moves as in its own fight (`advanceRuleCounter`; Le Prix's charm re-picked), and a new room's counter starts fresh (`enterRoom`: Executive at 2, Le Prix a random filled slot). The Hierophant's escrow and the Emissary's signal use their own columns.
 
-**Counter:** `bossPointHits` is the Seven-Out count (cap 5), held on Point Hit. It is also injected into `TurnContext` as `bossSevenOutCount` (informational only).
+**Counter:** `bossPointHits` is the Seven-Out count = rooms built − 1 (cap 7), held on Point Hit. `turn:settled` carries `convergence { rooms, added, state }` plus each room's own facts (`escrow`, `signal`, `tide`, `orbit`, `bossRating`, `charmedCrewSlot` …); the receipt notes "ROOM REBUILT — …".
 
-**History:** until 2026-10-13 the cascade window also shrank (`[0..4−N]`) on top of the demolition, so players typically lost two crew per Seven-Out while the header showed one. The shrinking window was removed.
+**Tuning:** `scripts/sim/architect-convergence-sim.mjs` — stacking + random ≈ −19 / −24 / −20 (mixed / cash / hype) vs no rule; rotation alone was −3 to −5, softer than the old demolition.
+
+**History:** until FB-040 each Seven-Out permanently removed the last crew member to fire and cut crew cash a further 15% (load-bearing); before 2026-10-13 a shrinking cascade window sat on top of that.
 
 **Ends the game:** Index 26 is the final marker. A boss victory transitions to `GAME_OVER` (not `TRANSITION`), so the recruit/comp phase is never reached. The `compReward: 'NONE'` sentinel and the `BossVictoryCompPhase` early-return are defensive guards only.
 

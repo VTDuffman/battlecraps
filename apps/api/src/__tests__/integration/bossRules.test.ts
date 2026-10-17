@@ -710,45 +710,122 @@ describe('Crew-bonus escrow', () => {
 // highest occupied slot if nobody fired. The cascade window does not shrink.
 // ---------------------------------------------------------------------------
 
-describe('CONVERGENCE — The Architect (marker 26)', () => {
+describe('CONVERGENCE — The Architect (marker 26): rooms that stack (FB-040)', () => {
   const ACE     = { crewId: 17, cooldownState: 0 };
   const LOOKOUT = { crewId: 16, cooldownState: 0 };
+  const ROOMS   = { FORE: 2, SARGE: 5, PRIX: 8, EXEC: 11, HIERO: 14, SOV: 17, CMDR: 20, EMI: 23 };
+  const ALL     = Object.values(ROOMS);
+  /** A full order starting with `first` (the rest in a fixed order). */
+  const order = (...first: number[]) => [...first, ...ALL.filter((m) => !first.includes(m))];
+  const STATE = { clock: 0, charm: 0, rating: 2, tide: 0 };
+  const BET   = PASS_ONLY(100_000_000);
 
-  it('crew in slot 5 still fires after a seven-out (no shrinking window)', async () => {
-    const run = await createRun(userId, {
-      currentMarkerIndex: 26,
-      bankrollCents:      500_000_000,
-      unlockedSlots:      5,
-      bossPointHits:      1, // one seven-out already happened
-      crewSlots:          [ACE, null, null, null, LOOKOUT],
-    });
-
-    // 6+5 = 11 → NATURAL; The Lookout (slot index 4) fires on the 6.
-    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(100_000_000), 6, 5);
-    expect(status, JSON.stringify(body)).toBe(200);
-    const events = (body['roll'] as Record<string, unknown>)['cascadeEvents'] as Array<{ slotIndex: number }>;
-    expect(events.map((e) => e.slotIndex)).toContain(4);
-  });
-
-  it('when nobody fires on the seven-out, the highest occupied slot is removed', async () => {
+  async function architect(setup: Parameters<typeof createRun>[1], d1: number, d2: number, bets: Bets = BET) {
     const run = await createRun(userId, {
       currentMarkerIndex: 26,
       bankrollCents:      500_000_000,
       unlockedSlots:      5,
       bossPointHits:      0,
-      status:             'POINT_ACTIVE',
-      phase:              'POINT_ACTIVE',
-      currentPoint:       6,
-      bets:               PASS_ONLY(100_000_000),
-      crewSlots:          [ACE, LOOKOUT, null, null, null],
+      ...setup,
     });
+    const res = await rollWithDice(app, run.id, bets, d1, d2);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    return { run: res.body['run'] as Record<string, unknown>, roll: res.body['roll'] as Record<string, unknown> };
+  }
+  const POINT_6 = { status: 'POINT_ACTIVE' as const, phase: 'POINT_ACTIVE' as const, currentPoint: 6, bets: BET };
 
-    // 3+4 = 7 → SEVEN_OUT; no 1 and no 6, so neither crew fires.
-    const { status, body } = await rollWithDice(app, run.id, PASS_ONLY(100_000_000), 3, 4);
-    expect(status, JSON.stringify(body)).toBe(200);
-    const slots = (body['run'] as Record<string, unknown>)['crewSlots'] as Array<{ crewId: number } | null>;
+  it('draws the room order if the run has none; the first room is in force', async () => {
+    const { run, roll } = await architect({}, 3, 4);   // natural
+    const rooms = run['convergenceRooms'] as number[];
+    expect([...rooms].sort((a, b) => a - b)).toEqual([...ALL].sort((a, b) => a - b));
+    expect(roll['convergence']).toMatchObject({ rooms: [rooms[0]], added: null });
+  });
+
+  it("leaving the pub into his fight draws the rooms and builds the first", async () => {
+    const run = await createRun(userId, { currentMarkerIndex: 26, status: 'TRANSITION', bankrollCents: 3_300_000_000 });
+    const res = await app.inject({
+      method:  'POST',
+      url:     `/api/v1/runs/${run.id}/recruit`,
+      headers: { 'content-type': 'application/json', 'x-test-user-id': TEST_CLERK_ID },
+      payload: JSON.stringify({}),
+    });
+    expect(res.statusCode, res.body).toBe(200);
+    const body = JSON.parse(res.body) as Record<string, unknown>;
+    const conv = body['convergence'] as { rooms: number[]; added: number };
+    expect(conv.rooms).toHaveLength(1);
+    expect(conv.added).toBe(conv.rooms[0]);
+  });
+
+  it("Sarge's room: the 6th blank is a Seven-Out — and it builds the next room on top", async () => {
+    const { run, roll } = await architect({
+      ...POINT_6, convergenceRooms: order(ROOMS.SARGE, ROOMS.EXEC), convergenceState: { ...STATE, clock: 5 },
+    }, 5, 4);   // 9: a blank on the last allowed roll
+    expect(roll['rollResult']).toBe('SEVEN_OUT');
+    expect(roll['clockExpired']).toBe(true);
+    expect(run['bossPointHits']).toBe(1);
+    expect(roll['convergence']).toMatchObject({ rooms: [ROOMS.SARGE, ROOMS.EXEC], added: ROOMS.EXEC });
+    // The clock resets with the point; the Executive's review starts at Strong.
+    expect(run['convergenceState']).toMatchObject({ clock: 0, rating: 2 });
+  });
+
+  it('a roll that is not a Seven-Out builds nothing', async () => {
+    const { run, roll } = await architect({ ...POINT_6, convergenceRooms: order(ROOMS.CMDR), convergenceState: STATE }, 5, 4);
+    expect(run['bossPointHits']).toBe(0);
+    expect(roll['convergence']).toMatchObject({ rooms: [ROOMS.CMDR], added: null });
+  });
+
+  it('a Seven-Out The Covenant saves still rebuilds a room', async () => {
+    const { run, roll } = await architect({
+      ...POINT_6, compPerkIds: [5], convergenceRooms: order(ROOMS.CMDR, ROOMS.FORE), convergenceState: STATE,
+    }, 3, 4);
+    expect(roll['covenantSaved']).toBe(true);
+    expect(run['shooters']).toBe(5);
+    expect(roll['convergence']).toMatchObject({ rooms: [ROOMS.CMDR, ROOMS.FORE], added: ROOMS.FORE });
+  });
+
+  it("stacked rooms: the Executive's review at Action Required ends the run (PIP)", async () => {
+    const { run, roll } = await architect({
+      ...POINT_6, bossPointHits: 1, convergenceRooms: order(ROOMS.FORE, ROOMS.EXEC), convergenceState: { ...STATE, rating: 0 },
+    }, 3, 4);
+    expect(roll['pipTermination']).toBe(true);
+    expect(run['status']).toBe('GAME_OVER');
+  });
+
+  it("the Foreman's room skims 20% of the profit (no Payoff — no Cut is tracked)", async () => {
+    const { roll } = await architect({ convergenceRooms: order(ROOMS.FORE), convergenceState: STATE }, 3, 4);   // natural
+    // Profit 100_000_000 × 1.10 Hype = 110_000_000; skim 22_000_000.
+    expect(roll['bankrollDelta']).toBe(88_000_000);
+    expect(roll['bossCut']).toBeUndefined();
+  });
+
+  it("Le Prix's room: the charmed crew sits out, and the charm is re-picked on a resolution", async () => {
+    const { roll } = await architect({
+      crewSlots: [ACE, LOOKOUT, null, null, null],
+      convergenceRooms: order(ROOMS.PRIX), convergenceState: { ...STATE, charm: 1 },
+    }, 6, 5);   // natural; The Lookout (slot 1) would fire on the 6
+    const events = roll['cascadeEvents'] as Array<{ slotIndex: number }>;
+    expect(events.map((e) => e.slotIndex)).not.toContain(1);
+    expect(roll['charmFired']).toBe(true);
+    expect([0, 1]).toContain(roll['charmedCrewSlot']);
+  });
+
+  it('clears on bankroll — the gauntlet is won and the rooms are cleared', async () => {
+    const { run } = await architect({
+      bankrollCents: 5_950_000_000, convergenceRooms: order(ROOMS.SARGE), convergenceState: STATE,
+    }, 3, 4);   // natural
+    expect(run['status']).toBe('GAME_OVER');
+    expect(run['currentMarkerIndex']).toBe(27);
+    expect(run['convergenceRooms']).toBeNull();
+    expect(run['convergenceState']).toBeNull();
+  });
+
+  it('crew are never removed any more (the old demolition is retired)', async () => {
+    const { run } = await architect({
+      ...POINT_6, crewSlots: [ACE, LOOKOUT, null, null, null], convergenceRooms: order(ROOMS.CMDR), convergenceState: STATE,
+    }, 3, 4);   // seven-out
+    const slots = run['crewSlots'] as Array<{ crewId: number } | null>;
     expect(slots[0]?.crewId).toBe(17);
-    expect(slots[1]).toBeNull();
+    expect(slots[1]?.crewId).toBe(16);
   });
 });
 

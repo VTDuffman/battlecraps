@@ -328,6 +328,16 @@ await db.execute(sql`
 `);
 app.log.info('[migrate] signal_transit / signal_dark_rolls ensured');
 
+// FB-040: The Architect's Convergence — room order + room counters.
+// Mirrors drizzle/0011.
+await db.execute(sql`
+  ALTER TABLE runs ADD COLUMN IF NOT EXISTS convergence_rooms jsonb
+`);
+await db.execute(sql`
+  ALTER TABLE runs ADD COLUMN IF NOT EXISTS convergence_state jsonb
+`);
+app.log.info('[migrate] convergence_rooms / convergence_state ensured');
+
 // ---------------------------------------------------------------------------
 // Start listening
 // ---------------------------------------------------------------------------

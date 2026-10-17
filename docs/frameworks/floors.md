@@ -235,7 +235,7 @@ Mechanics are documented in full in [`boss_framework.md`](boss_framework.md), wh
 | `TIDAL_SURGE` | The Sovereign (6) | Tide LOW/EBB/HIGH/FLOW: Dead Calm (no odds) / Undertow (7-out takes 35%) / High Tide (7-out drowns 2) |
 | `ORBITAL_DECAY` | The Commander (7) | Orbital bleed: Hype above 1.0× loses 20% of its height every roll; a 7-out resets to 1.0× |
 | `TRANSMISSION_DELAY` | The Emissary (8) | Signal lag: crew effects land one roll late; a 7-out drops them and the crew go dark for 6 rolls |
-| `CONVERGENCE` | The Architect (9) | Each Seven-Out removes the last crew member to fire; 15% compounding cash cut |
+| `CONVERGENCE` | The Architect (9) | Rooms rebuilt from every boss you've beaten — each Seven-Out adds another rule; they stack (FB-040) |
 
 Retired rule types kept in the union for historical safety: `FIRST_CONTACT_PROTOCOL` (old Emissary — naturals nullified). `FOURS_INSTANT_LOSS` (old Executive) has been removed.
 
@@ -732,7 +732,7 @@ card, docs) lives in [`boss_framework.md` § Adding a New Boss](boss_framework.m
 |---|---|
 | **Title** | Designer of the Null Space |
 | **Venue** | The Null Space — The Zero Chamber |
-| **Teaser** | The Architect reclaims your crew one by one — a seven-out at a time — until you roll alone. |
+| **Teaser** | The Architect rebuilds every boss you beat, one seven-out at a time — and their rules stack until you face them all at once. |
 | **Dread tagline** | YOUR CREW IS TEMPORARY. |
 | **Rule** | `CONVERGENCE` |
 | **Comp reward** | None — the final floor; defeating The Architect wins the run. |

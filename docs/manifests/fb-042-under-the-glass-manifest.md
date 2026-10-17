@@ -37,6 +37,8 @@
 
 --- Implemented locally (2026-10-17): `CharmTrap` (DISABLE_CREW, 360×190, keepThroughClear) — a glass cloche on the felt holding the charmed crew member (pink haze, heart pulse; her 🌹 while empty / mid-flight), `[data-charm-trap-anchor]`. Rail: charmed slot = faint dashed outline + ❤️, not draggable; a drag that would shift the trapped slot is refused (the charm is held by slot index). `CharmFlight` rewritten with stages (store `charmFlight.stage`, `sinkCharmFlight()`): heart glass → new slot while the old one flies home, then the new one sinks under the glass (`playGlassClink`); falls back to the via-her-name arc when the glass isn't on screen. Charm fired: the trapped one presses up against the glass, two muffled knocks (`playGlassKnock`) + rings, 💫 daze — synced with the rail heartbeat. Store `freedCharmSlot` (who was under the glass when her fight ended). THE ROSE: cracks + shards + `playGlassShatter`, they fly home, then the rose (+1.2 s; hold 6.1 → 7.3 s). SHE TAKES THE CREW: the trapped one leaves first, from the glass (kept the loss; the "pull everyone under the glass" alternative not taken). ---
 
+--- Fix (2026-10-17): the point-on Le Prix presets loaded with nobody charmed — the charm waited for a boss-entry cinematic that never fires when a run loads mid-point. `connectToRun` now marks the marker's entry cinematics seen when it hydrates at POINT_ACTIVE (`entrySeenOnResume`) and charms the slot directly (`bossDisplayFromCounter`). This is also the fix for the late boss splash after a resume (Continue Run / dev run): the entry no longer plays after the first resolved roll. ---
+
 🛑 **Gate:** Le Prix presets — charm move, fired, win, loss.
 
 ## Phase 4: Polish + docs

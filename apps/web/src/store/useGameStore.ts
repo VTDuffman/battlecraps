@@ -35,7 +35,7 @@ import type {
   BossDefeatCinematicId,
   BossVictoryCinematicId,
 } from '@battlecraps/shared';
-import { validateOddsBet, getMaxBet, getBossMinBet, getBossPayoffCents, isBossMarker, pickBossBark, GAUNTLET, MARKER_TARGETS } from '@battlecraps/shared';
+import { validateOddsBet, getMaxBet, getBossMinBet, getBossPayoffCents, isBossMarker, pickBossBark, getFloorByMarkerIndex, GAUNTLET, MARKER_TARGETS } from '@battlecraps/shared';
 
 // ---------------------------------------------------------------------------
 // Bet field type — identifies a single wager within the Bets structure
@@ -1260,8 +1260,26 @@ function celebrationDelay(baseMs: number, holdUntil: number | null): number {
  * (TRANSITION) recomputes these on exit.
  * - CROSS_CALIBRATION: executiveRating = rating.
  * - DISABLE_CREW: queue the charm so it settles after the boss-entry cinematic
- *   (connectToRun resets bossEntryShownForMarker, so that cinematic replays).
+ *   (connectToRun resets bossEntryShownForMarker, so that cinematic replays) —
+ *   or, resuming mid-point (no entry cinematic, see entrySeenOnResume), charm
+ *   the slot straight away.
  */
+/**
+ * A run resumed mid-point (Continue Run, a reconnect, a dev run with a point
+ * on) is already inside its marker: mark the marker's entry cinematics seen so
+ * they don't fire late, the first time the table goes idle. A run resumed idle
+ * still plays its entry at load.
+ */
+function entrySeenOnResume(initialState: Partial<GameState>): Partial<GameState> {
+  if (initialState.status !== 'POINT_ACTIVE') return {};
+  const markerIndex = initialState.currentMarkerIndex ?? 0;
+  return {
+    bossEntryShownForMarker:   markerIndex,
+    markerIntroShownForMarker: markerIndex,
+    floorRevealShownForFloor:  getFloorByMarkerIndex(markerIndex).id,
+  };
+}
+
 function bossDisplayFromCounter(initialState: Partial<GameState>): Partial<GameState> {
   const markerIndex   = initialState.currentMarkerIndex ?? 0;
   const bossPointHits = initialState.bossPointHits;
@@ -1270,7 +1288,9 @@ function bossDisplayFromCounter(initialState: Partial<GameState>): Partial<GameS
 
   switch (GAUNTLET[markerIndex]?.boss?.rule) {
     case 'CROSS_CALIBRATION': return { executiveRating: bossPointHits };
-    case 'DISABLE_CREW':      return { pendingBossEntryCharm: bossPointHits };
+    case 'DISABLE_CREW':      return initialState.status === 'POINT_ACTIVE'
+      ? { charmedCrewSlot: bossPointHits, pendingBossEntryCharm: null }
+      : { pendingBossEntryCharm: bossPointHits };
     default:                  return {};
   }
 }
@@ -1496,6 +1516,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // Boss displays are normally driven by turn:settled; rebuild them from the
       // stored counter so a reload (or a dev run) mid-fight shows the right state.
       ...bossDisplayFromCounter(initialState),
+      ...entrySeenOnResume(initialState),
     });
 
     // ── Socket event handlers ─────────────────────────────────────────────

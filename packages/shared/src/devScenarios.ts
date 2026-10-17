@@ -90,7 +90,7 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     bossCounter: 3,
   },
   {
-    // The entry charm: the heart flies from her name to a crew member.
+    // The entry charm: the heart flies from her glass to a crew member, who sinks under it.
     name:        'Le Prix — fresh fight',
     markerIndex: LE_PRIX,
     crew:        STARTER_CREW,

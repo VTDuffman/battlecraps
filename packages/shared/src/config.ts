@@ -178,7 +178,7 @@ export type BossBarkTrigger =
   | 'roomBuilt';
 
 /** FB-032: boss defeat cinematics (one component each in the web registry). */
-export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS' | 'THE_WAVE' | 'LOSS_OF_SIGNAL' | 'TRANSLATED';
+export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS' | 'THE_WAVE' | 'LOSS_OF_SIGNAL' | 'TRANSLATED' | 'ARCHIVED';
 
 /** FB-033: boss victory moments (one component each in the web registry). */
 export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP' | 'THE_EYE_CLOSES' | 'THE_CROWN_SINKS' | 'ESCAPE_VELOCITY' | 'MESSAGE_RECEIVED' | 'THE_PATTERN_BREAKS';
@@ -905,6 +905,8 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       // FB-040: the final win — every room flashes past in reverse, the grid tears, it all folds to white.
       victoryCinematic: { id: 'THE_PATTERN_BREAKS', line: "…the pattern was incomplete after all. Interesting." },
       defeatAnnouncement: 'ARCHIVED',
+      // FB-040: the loss — your table is drawn up, stamped, rolled and filed.
+      defeatCinematic:    { id: 'ARCHIVED', line: "Filed. I'll build the next one from you." },
       // Mechanic
       rule:           'CONVERGENCE',
       ruleHeaderText: "CONVERGENCE — EVERY 7-OUT ADDS ANOTHER BOSS'S RULE · THEY STACK",

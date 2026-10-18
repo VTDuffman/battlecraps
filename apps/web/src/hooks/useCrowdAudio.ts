@@ -1541,6 +1541,25 @@ function playFoldToWhiteSting(ctx: AudioContext, dest: AudioNode): void {
   [1760, 2637, 3520].forEach((f, i) => strikeBell(ctx, dest, f, t0 + 0.8 + i * 0.02, 0.05, 3.2));
 }
 
+/** FB-040 loss: the blueprint sheet rolls up — a long papery rustle. */
+function playPaperRollSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  for (let i = 0; i < 8; i++) {
+    seaNoise(ctx, dest, t0 + i * 0.14, 0.18, { type: 'bandpass', from: 2200 - i * 120, to: 900, q: 0.9 }, 0.08, 0.02);
+  }
+}
+
+/** FB-040 loss: the drawer slides in and slams — a wooden slide, a slam, a latch click. */
+function playDrawerSlamSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 0.35, { type: 'lowpass', from: 900, to: 300 }, 0.1, 0.05);              // slide
+  const ts = t0 + 0.36;
+  seaNoise(ctx, dest, ts, 0.25, { type: 'lowpass', from: 420, to: 80 }, 0.4, 0.002);              // slam
+  strikeBell(ctx, dest, 82, ts, 0.14, 0.5);
+  beep(ctx, dest, 2400, ts + 0.12, 0.02, 0.05);                                                   // latch
+  beep(ctx, dest, 1800, ts + 0.15, 0.02, 0.04);
+}
+
 function playGlassShatterSting(ctx: AudioContext, dest: AudioNode): void {
   const t0 = ctx.currentTime + 0.01;
   seaNoise(ctx, dest, t0, 0.08, { type: 'highpass', from: 3000, to: 3000 }, 0.22, 0.001);
@@ -1645,6 +1664,16 @@ export function playGlassKnock(): void {
 /** FB-042: THE ROSE — the glass shatters. */
 export function playGlassShatter(): void {
   playStandalone(playGlassShatterSting);
+}
+
+/** FB-040 loss: the blueprint rolls up. */
+export function playPaperRoll(): void {
+  playStandalone(playPaperRollSting);
+}
+
+/** FB-040 loss: the drawer slams shut. */
+export function playDrawerSlam(): void {
+  playStandalone(playDrawerSlamSting);
 }
 
 /** FB-040 win: a room flashes past (step 0, 1, 2 … climbs). */

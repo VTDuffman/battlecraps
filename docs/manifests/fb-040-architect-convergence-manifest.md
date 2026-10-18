@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-040 The Architect — Convergence
 
 **Design doc:** `docs/design/fb-040-architect-convergence-design.md`
-**Status:** Phases 1–5 done locally (not pushed).
+**Status:** Phases 1–6 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Commit locally per phase; push when Mike says. After each phase: explicit test steps (Dev presets) + what to look for, including a phone-width check. **All crew/player references gender-neutral.** Big wins, big losses — it's the final boss.
 
@@ -54,6 +54,8 @@ Investigate the hand-off to the gauntlet victory sequence first. Rooms flash pas
 
 ## Phase 6: ARCHIVED (defeat)
 The table becomes a blueprint, rolls up, ARCHIVED · RUN #N stamp, filed in a drawer that shuts; "Filed. I'll build the next one from you."
+
+--- Implemented locally (2026-10-17): `ArchivedCinematic` (ARCHIVED, line "Filed. I'll build the next one from you."). The board itself turns to a cyan line sketch (WAAPI filter on `[data-table-root]`, 1 s); a blueprint sheet of the table replaces it (outlines + your crew drawn in on the rail, title block "DRAWN BY: THE ARCHITECT"); ARCHIVED · RUN #(first 6 of the run id) is stamped across it (`playStampThud`; "CAUSE: TERMINATED — PIP" on a PIP); the sheet rolls up from the bottom with a paper roll following the edge (`playPaperRoll`); the roll is carried to a filing cabinet ("RUNS · FILED", its open drawer stuffed with other rolled runs), drops in, and the drawer slams shut with a jolt (`playDrawerSlam` — slide, slam, latch); then his line. ~8.4 s, under the 9 s safety net. ---
 
 ## Phase 7: Dev Mode + docs
 Presets: "Architect — first room", "Architect — three rooms stacked", "Architect — one win from the end", "Architect — last shooter, rooms stacked". Docs: boss_framework, CLAUDE.md (rewrite the CONVERGENCE constraint), backlog.

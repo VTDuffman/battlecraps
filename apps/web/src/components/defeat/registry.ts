@@ -17,6 +17,7 @@ import { TheOrderCollectsCinematic } from './TheOrderCollectsCinematic.js';
 import { TheWaveCinematic } from './TheWaveCinematic.js';
 import { LossOfSignalCinematic } from './LossOfSignalCinematic.js';
 import { TranslatedCinematic } from './TranslatedCinematic.js';
+import { ArchivedCinematic } from './ArchivedCinematic.js';
 
 export interface DefeatCinematicProps {
   /** The boss's parting line (config.ts defeatCinematic.line). */
@@ -38,4 +39,5 @@ export const DEFEAT_CINEMATICS: Record<BossDefeatCinematicId, React.ComponentTyp
   THE_WAVE:               TheWaveCinematic,
   LOSS_OF_SIGNAL:         LossOfSignalCinematic,
   TRANSLATED:             TranslatedCinematic,
+  ARCHIVED:               ArchivedCinematic,
 };

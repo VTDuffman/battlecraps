@@ -25,8 +25,9 @@ export const VictoryCinematicHost: React.FC = () => {
   const Cinematic = VICTORY_CINEMATICS[pendingVictory.id];
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-0 z-[125]" role="status" aria-label="Victory">
-      <Cinematic key={pendingVictory.key} line={pendingVictory.line} onFinish={finish} />
+    // FB-040: the final win holds the table behind it — block input until it ends.
+    <div className={`${pendingVictory.heldFinal ? 'pointer-events-auto' : 'pointer-events-none'} fixed inset-0 z-[125]`} role="status" aria-label="Victory">
+      <Cinematic key={pendingVictory.key} line={pendingVictory.line} onFinish={finish} {...(pendingVictory.rooms && { rooms: pendingVictory.rooms })} />
     </div>,
     document.body,
   );

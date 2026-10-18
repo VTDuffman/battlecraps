@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-040 The Architect — Convergence
 
 **Design doc:** `docs/design/fb-040-architect-convergence-design.md`
-**Status:** Phases 1–4 done locally (not pushed).
+**Status:** Phases 1–5 done locally (not pushed).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Commit locally per phase; push when Mike says. After each phase: explicit test steps (Dev presets) + what to look for, including a phone-width check. **All crew/player references gender-neutral.** Big wins, big losses — it's the final boss.
 
@@ -49,6 +49,8 @@ The Architect's per-room rebuild lines (always) + generic; echo barks of each ro
 
 ## Phase 5: THE PATTERN BREAKS (victory)
 Investigate the hand-off to the gauntlet victory sequence first. Rooms flash past in reverse, the grid tears, the space folds to white, his line; then the victory sequence.
+
+--- Implemented locally (2026-10-17): the hand-off — the final win (status GAME_OVER past the last marker) never played a boss moment (only TRANSITION clears did) and the VICTORY sequence started at once. Now `victoryCinematic` also plays on the final win: `PendingVictory.heldFinal` holds the GAME_OVER flip and the marker advance until `finishVictoryCinematic()` (12 s safety net), then the gauntlet VICTORY sequence runs; the host blocks input while held; `rooms` (captured before they clear) are passed to the cinematic. `ThePatternBreaksCinematic` (THE_PATTERN_BREAKS, line = his victory quote): the rooms he built flash past newest-first, each its floor's felt + its boss's sigil and name, accelerating (twice through, `playRoomFlash` climbing); the blueprint tears across the middle and the halves fly apart on a flood of white (`playPatternTear`); everything folds to a point (`playFoldToWhite` — a rising sweep cut to a clear bell); white fades to night and his line resolves, "— THE ARCHITECT". ~8.6 s. Preview (no rooms) uses four. ---
 
 ## Phase 6: ARCHIVED (defeat)
 The table becomes a blueprint, rolls up, ARCHIVED · RUN #N stamp, filed in a drawer that shuts; "Filed. I'll build the next one from you."

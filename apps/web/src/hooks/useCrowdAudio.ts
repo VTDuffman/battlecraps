@@ -1507,6 +1507,40 @@ function playBlueprintRebuildSting(ctx: AudioContext, dest: AudioNode): void {
   }
 }
 
+/** FB-040 win: a room flashes past — a short whoosh + a tick that climbs with `step`. */
+function makeRoomFlashSting(step: number): (ctx: AudioContext, dest: AudioNode) => void {
+  return (ctx, dest) => {
+    const t0 = ctx.currentTime + 0.005;
+    seaNoise(ctx, dest, t0, 0.16, { type: 'bandpass', from: 1800 + step * 250, to: 600, q: 1.5 }, 0.07, 0.01);
+    beep(ctx, dest, 660 * Math.pow(1.122, step), t0, 0.06, 0.03);
+  };
+}
+
+/** FB-040 win: the pattern tears — a ripping noise over a low boom. */
+function playPatternTearSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  seaNoise(ctx, dest, t0, 0.55, { type: 'highpass', from: 1200, to: 4200 }, 0.2, 0.01);
+  seaNoise(ctx, dest, t0 + 0.05, 0.9, { type: 'lowpass', from: 300, to: 60 }, 0.32, 0.005);
+  strikeBell(ctx, dest, 55, t0 + 0.05, 0.12, 1.6);
+}
+
+/** FB-040 win: everything folds to a point — a rising sweep cut to a single clear bell. */
+function playFoldToWhiteSting(ctx: AudioContext, dest: AudioNode): void {
+  const t0 = ctx.currentTime + 0.01;
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(110, t0);
+  osc.frequency.exponentialRampToValueAtTime(1760, t0 + 0.75);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(0.08, t0 + 0.6);
+  g.gain.setValueAtTime(0.08, t0 + 0.74);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.78);
+  osc.connect(g); g.connect(dest);
+  osc.start(t0); osc.stop(t0 + 0.8);
+  [1760, 2637, 3520].forEach((f, i) => strikeBell(ctx, dest, f, t0 + 0.8 + i * 0.02, 0.05, 3.2));
+}
+
 function playGlassShatterSting(ctx: AudioContext, dest: AudioNode): void {
   const t0 = ctx.currentTime + 0.01;
   seaNoise(ctx, dest, t0, 0.08, { type: 'highpass', from: 3000, to: 3000 }, 0.22, 0.001);
@@ -1611,6 +1645,21 @@ export function playGlassKnock(): void {
 /** FB-042: THE ROSE — the glass shatters. */
 export function playGlassShatter(): void {
   playStandalone(playGlassShatterSting);
+}
+
+/** FB-040 win: a room flashes past (step 0, 1, 2 … climbs). */
+export function playRoomFlash(step: number): void {
+  playStandalone(makeRoomFlashSting(step));
+}
+
+/** FB-040 win: the pattern tears. */
+export function playPatternTear(): void {
+  playStandalone(playPatternTearSting);
+}
+
+/** FB-040 win: it all folds to white. */
+export function playFoldToWhite(): void {
+  playStandalone(playFoldToWhiteSting);
 }
 
 /** FB-040: The Architect rebuilds a room. */

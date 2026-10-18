@@ -181,7 +181,7 @@ export type BossBarkTrigger =
 export type BossDefeatCinematicId = 'DOCK_CLOSED' | 'DISHONORABLE_DISCHARGE' | 'SHE_TAKES_THE_CREW' | 'TERMINATED' | 'THE_ORDER_COLLECTS' | 'THE_WAVE' | 'LOSS_OF_SIGNAL' | 'TRANSLATED';
 
 /** FB-033: boss victory moments (one component each in the web registry). */
-export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP' | 'THE_EYE_CLOSES' | 'THE_CROWN_SINKS' | 'ESCAPE_VELOCITY' | 'MESSAGE_RECEIVED';
+export type BossVictoryCinematicId = 'HONORABLY_DISCHARGED' | 'THE_ROSE' | 'NAMEPLATE_SWAP' | 'THE_EYE_CLOSES' | 'THE_CROWN_SINKS' | 'ESCAPE_VELOCITY' | 'MESSAGE_RECEIVED' | 'THE_PATTERN_BREAKS';
 
 export interface BossConfig {
   // ── Identity ──────────────────────────────────────────────────────────────
@@ -902,6 +902,8 @@ export const GAUNTLET: readonly MarkerConfig[] = [
       },
       ruleBlurb: "Convergence: the fight opens in a room rebuilt from one of the bosses you've beaten, under that boss's rule. Every seven-out rebuilds another — and they stack: every rule stays in force. The order is random. The Executive's review can still end your run.",
       victoryQuote: "…the pattern was incomplete after all. Interesting.",
+      // FB-040: the final win — every room flashes past in reverse, the grid tears, it all folds to white.
+      victoryCinematic: { id: 'THE_PATTERN_BREAKS', line: "…the pattern was incomplete after all. Interesting." },
       defeatAnnouncement: 'ARCHIVED',
       // Mechanic
       rule:           'CONVERGENCE',

@@ -92,6 +92,14 @@ export interface PendingVictory {
   markerIndex: number;
   /** Dev Mode replay. */
   preview:     boolean;
+  /**
+   * FB-040: the final marker's win (The Architect) — the GAME_OVER flip and the
+   * marker advance are held until the cinematic finishes (finishVictoryCinematic),
+   * so it plays over the table before the gauntlet victory sequence.
+   */
+  heldFinal?:  { markerIndex: number };
+  /** FB-040: The Architect's rooms in force when he fell (THE PATTERN BREAKS flashes them past). */
+  rooms?:      number[];
 }
 
 export interface PendingDefeat {
@@ -1277,6 +1285,7 @@ const VICTORY_HOLD_MS_BY_ID: Readonly<Record<BossVictoryCinematicId, number>> = 
   THE_CROWN_SINKS:      9600,  // FB-037: The Sovereign (~9.2s — the sea floods in first)
   ESCAPE_VELOCITY:      8400,  // FB-038: The Commander (~8.0s)
   MESSAGE_RECEIVED:     8800,  // FB-039: The Emissary (~8.4s)
+  THE_PATTERN_BREAKS:   9000,  // FB-040: The Architect (~8.6s) — the final win; holds GAME_OVER instead (heldFinal)
 };
 
 /**
@@ -2304,15 +2313,30 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     // ── FB-033: boss victory cinematic — the roll that clears a boss marker ──
     // Plays over the table during the celebration hold (celebrationHoldUntil);
     // the Foreman's PAID IN FULL claims the same hold from his register.
-    const victoryCinematic = isTransition && isBossMarker(oldMarkerIndex)
+    // FB-040: the final marker's win (status GAME_OVER past the last marker)
+    // plays its moment too — holding GAME_OVER until it finishes.
+    const isFinalVictory = p.runStatus === 'GAME_OVER' && p.newMarkerIndex >= GAUNTLET.length;
+    const victoryCinematic = (isTransition || isFinalVictory) && isBossMarker(oldMarkerIndex)
       ? GAUNTLET[oldMarkerIndex]?.boss?.victoryCinematic
       : undefined;
     const settleNow = Date.now();
     const pendingVictory: PendingVictory | null = victoryCinematic
-      ? { key: settleNow, id: victoryCinematic.id, line: victoryCinematic.line, markerIndex: oldMarkerIndex, preview: false }
+      ? {
+          key: settleNow, id: victoryCinematic.id, line: victoryCinematic.line, markerIndex: oldMarkerIndex, preview: false,
+          ...(isFinalVictory && { heldFinal: { markerIndex: p.newMarkerIndex }, rooms: get().convergenceRooms }),
+        }
       : null;
+    const holdFinal = pendingVictory?.heldFinal !== undefined;
+    if (holdFinal && pendingVictory !== null) {
+      // Safety net: never leave the winning run stuck behind its cinematic.
+      const victoryKey = pendingVictory.key;
+      setTimeout(() => {
+        if (get().pendingVictory?.key === victoryKey) get().finishVictoryCinematic();
+      }, 12_000);
+    }
     const celebrationHoldUntil =
-      pendingVictory !== null       ? settleNow + VICTORY_HOLD_MS_BY_ID[pendingVictory.id]
+      holdFinal                     ? null
+      : pendingVictory !== null     ? settleNow + VICTORY_HOLD_MS_BY_ID[pendingVictory.id]
       : p.bossCut?.paidOff === true ? settleNow + PAYOFF_HOLD_MS
       : null;
 
@@ -2387,12 +2411,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       // after the player has clicked through all celebration phases.
       // FB-032: a boss defeat with a cinematic also holds GAME_OVER until
       // finishDefeatCinematic() releases it (see pendingDefeat below).
-      status:               isTransition || pendingDefeat !== null ? currentStatus : p.runStatus,
+      status:               isTransition || pendingDefeat !== null || holdFinal ? currentStatus : p.runStatus,
       pendingDefeat,
       pendingVictory,
       celebrationHoldUntil,
       pendingTransition:    isTransition,
-      currentMarkerIndex:   p.newMarkerIndex,
+      currentMarkerIndex:   holdFinal ? oldMarkerIndex : p.newMarkerIndex,
       celebrationSnapshot,
       lastDelta:            p.bankrollDelta,
       lastBetDelta:         null,
@@ -3198,7 +3222,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   finishVictoryCinematic() {
-    if (get().pendingVictory) set({ pendingVictory: null });
+    const pending = get().pendingVictory;
+    if (!pending) return;
+    // FB-040: the final win releases GAME_OVER (and the marker) — the victory sequence takes over.
+    set(pending.heldFinal && !pending.preview
+      ? { pendingVictory: null, status: 'GAME_OVER', currentMarkerIndex: pending.heldFinal.markerIndex }
+      : { pendingVictory: null });
   },
 
   previewVictoryCinematic(markerIndex) {

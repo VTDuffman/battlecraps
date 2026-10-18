@@ -17,12 +17,15 @@ import { TheEyeClosesCinematic } from './TheEyeClosesCinematic.js';
 import { TheCrownSinksCinematic } from './TheCrownSinksCinematic.js';
 import { EscapeVelocityCinematic } from './EscapeVelocityCinematic.js';
 import { MessageReceivedCinematic } from './MessageReceivedCinematic.js';
+import { ThePatternBreaksCinematic } from './ThePatternBreaksCinematic.js';
 
 export interface VictoryCinematicProps {
   /** The boss's line (config.ts victoryCinematic.line). */
   line:     string;
   /** Call when done — clears it (the celebration continues on its own timer). */
   onFinish: () => void;
+  /** FB-040: The Architect's rooms in force when he fell (undefined in a preview). */
+  rooms?:   number[];
 }
 
 export const VICTORY_CINEMATICS: Record<BossVictoryCinematicId, React.ComponentType<VictoryCinematicProps>> = {
@@ -33,4 +36,5 @@ export const VICTORY_CINEMATICS: Record<BossVictoryCinematicId, React.ComponentT
   THE_CROWN_SINKS:      TheCrownSinksCinematic,
   ESCAPE_VELOCITY:      EscapeVelocityCinematic,
   MESSAGE_RECEIVED:     MessageReceivedCinematic,
+  THE_PATTERN_BREAKS:   ThePatternBreaksCinematic,
 };

@@ -85,7 +85,8 @@ const RoomTile: React.FC<{ room: number; newest: boolean }> = ({ room, newest })
       title={boss?.name}
     >
       <span className="select-none leading-none" style={{ fontSize: 16 }}>{boss?.sigil ?? '?'}</span>
-      <span className="mt-1 max-w-full truncate px-0.5 font-pixel text-[7px] leading-none" style={{ color }}>{text}</span>
+      {/* leading-[1.5] + py-px: the pixel font draws taller than its box — truncate would clip the tops */}
+      <span className="mt-1.5 max-w-full truncate px-0.5 py-px font-pixel text-[7px] leading-[1.5]" style={{ color }}>{text}</span>
     </motion.div>
   );
 };

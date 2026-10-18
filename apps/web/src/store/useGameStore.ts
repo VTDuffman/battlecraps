@@ -1277,6 +1277,14 @@ function buildSlotIds(n: number): string[] {
  */
 const PAYOFF_HOLD_MS = 2600;   // FB-032: PAID IN FULL stamp (1.6s) + a beat
 /** Celebration hold per boss victory cinematic: its length + a beat. */
+/**
+ * Safety net for a defeat cinematic that never calls finishDefeatCinematic():
+ * 9 s by default; longer for a cinematic that runs longer (FB-040: ARCHIVED).
+ */
+const DEFEAT_SAFETY_MS_BY_ID: Readonly<Partial<Record<BossDefeatCinematicId, number>>> = {
+  ARCHIVED: 14_000,
+};
+
 const VICTORY_HOLD_MS_BY_ID: Readonly<Record<BossVictoryCinematicId, number>> = {
   HONORABLY_DISCHARGED: 4900,  // FB-033: Sarge (~4.6s)
   THE_ROSE:             7300,  // FB-034: Mme. Le Prix (~5.7s, +1.2s when the glass breaks — FB-042)
@@ -2307,7 +2315,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       const defeatKey = pendingDefeat.key;
       setTimeout(() => {
         if (get().pendingDefeat?.key === defeatKey) get().finishDefeatCinematic();
-      }, 9000);
+      }, DEFEAT_SAFETY_MS_BY_ID[pendingDefeat.id] ?? 9000);
     }
 
     // ── FB-033: boss victory cinematic — the roll that clears a boss marker ──

@@ -10,9 +10,10 @@
 // other rolled runs, drops in, and the drawer slams shut. Then his line.
 // He builds the next table from you. Big wins, big losses.
 //
-// Timeline (ms): 0 the board sketches → 1100 the sheet → 1500 stamp → 2500
-// roll up (1.1 s) → 3700 to the drawer → 4600 drops in → 5000 slam → 5600 line
-// → 8000 fade → 8400 onFinish (under the store's 9 s safety net).
+// Timeline (ms): 0 the board sketches → 1300 the sheet → 1900 stamp (held to
+// read) → 3600 roll up (2 s) → 5800 carried to the drawer → 7300 drops in →
+// 8100 slam → 8900 line (held ~3 s) → 11900 fade → 12400 onFinish (its own
+// 14 s safety net in the store — DEFEAT_SAFETY_MS_BY_ID).
 // =============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -24,16 +25,18 @@ import type { DefeatCinematicProps } from './registry.js';
 
 const CYAN      = '#67e8f9';
 const STAMP     = '#f43f5e';
-const SHEET_AT  = 1100;
-const STAMP_AT  = 1500;
-const ROLL_AT   = 2500;
-const ROLL_S    = 1.1;
-const CARRY_AT  = 3700;
-const DROP_AT   = 4600;
-const SLAM_AT   = 5000;
-const LINE_AT   = 5600;
-const FADE_AT   = 8000;
-const FINISH_AT = 8400;
+const SHEET_AT  = 1300;
+const STAMP_AT  = 1900;
+const ROLL_AT   = 3600;
+const ROLL_S    = 2.0;
+const CARRY_AT  = 5800;
+const CARRY_S   = 1.2;
+const DROP_AT   = 7300;
+const DROP_S    = 0.7;
+const SLAM_AT   = 8100;
+const LINE_AT   = 8900;
+const FADE_AT   = 11900;
+const FINISH_AT = 12400;
 
 const SKETCH = 'grayscale(1) invert(1) sepia(1) hue-rotate(150deg) saturate(4) contrast(1.6) brightness(1.1)';
 
@@ -70,7 +73,7 @@ export const ArchivedCinematic: React.FC<DefeatCinematicProps> = ({ line, pipTer
     const board = document.querySelector<HTMLElement>('[data-table-root]');
     const anim = reduceMotion ? undefined : board?.animate(
       [{ filter: 'none' }, { filter: SKETCH }],
-      { duration: 1000, easing: 'ease-in-out', fill: 'forwards' },
+      { duration: 1200, easing: 'ease-in-out', fill: 'forwards' },
     );
     const timers: number[] = [];
     const at = (ms: number, fn: () => void) => timers.push(window.setTimeout(fn, ms));
@@ -102,7 +105,7 @@ export const ArchivedCinematic: React.FC<DefeatCinematicProps> = ({ line, pipTer
           animate={rolling && !reduceMotion
             ? { opacity: 1, clipPath: 'inset(0% 0% 100% 0%)' }
             : { opacity: 1, clipPath: 'inset(0% 0% 0% 0%)' }}
-          transition={rolling ? { clipPath: { duration: ROLL_S, ease: 'easeIn' } } : { duration: 0.35 }}
+          transition={rolling ? { clipPath: { duration: ROLL_S, ease: [0.4, 0, 0.6, 1] } } : { duration: 0.5 }}
         >
           <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             {OUTLINE.map((d) => <path key={d} d={d} fill="none" stroke={CYAN} strokeOpacity={0.85} strokeWidth={0.4} vectorEffect="non-scaling-stroke" />)}
@@ -143,7 +146,7 @@ export const ArchivedCinematic: React.FC<DefeatCinematicProps> = ({ line, pipTer
           style={{ width: 'min(100vw, 512px)', marginTop: -14, background: `linear-gradient(180deg, #0a2c4e, #2b6ea8 40%, #b6e6ff 55%, #2b6ea8 70%, #0a2c4e)`, boxShadow: '0 6px 14px rgba(0,0,0,0.6)' }}
           initial={{ top: '100%' }}
           animate={{ top: '0%', height: [16, 34] }}
-          transition={{ duration: ROLL_S, ease: 'easeIn' }}
+          transition={{ duration: ROLL_S, ease: [0.4, 0, 0.6, 1] }}
         />
       )}
 
@@ -154,7 +157,7 @@ export const ArchivedCinematic: React.FC<DefeatCinematicProps> = ({ line, pipTer
           style={{ width: 260 }}
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0, x: shut && !reduceMotion ? [0, -7, 6, -3, 0] : 0 }}
-          transition={{ duration: 0.35, x: { duration: 0.3 } }}
+          transition={{ duration: 0.6, x: { duration: 0.35 } }}
         >
           {/* the open drawer (slides shut) */}
           <motion.div
@@ -188,7 +191,7 @@ export const ArchivedCinematic: React.FC<DefeatCinematicProps> = ({ line, pipTer
           animate={dropped
             ? { top: '56%', scaleX: 0.5, rotate: 90, opacity: [1, 1, 0] }
             : { top: '40%', scaleX: 1, rotate: -6 }}
-          transition={dropped ? { duration: 0.4, ease: 'easeIn' } : { duration: 0.8, ease: 'easeOut' }}
+          transition={dropped ? { duration: DROP_S, ease: 'easeIn' } : { duration: CARRY_S, ease: 'easeInOut' }}
         >
           <span className="absolute left-1/2 top-0 h-full w-3 -translate-x-1/2" style={{ background: STAMP, opacity: 0.85 }} />
         </motion.div>
@@ -200,7 +203,7 @@ export const ArchivedCinematic: React.FC<DefeatCinematicProps> = ({ line, pipTer
           className="absolute inset-x-0 top-[22%] flex justify-center px-6"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9 }}
+          transition={{ duration: 1.2 }}
         >
           <div className="max-w-md text-center">
             <div style={{ fontFamily: '"Share Tech Mono", monospace', fontSize: 'clamp(17px, 4.6vw, 22px)', color: '#e0f2fe', textShadow: `0 0 10px ${CYAN}88` }}>

@@ -1544,8 +1544,8 @@ function playFoldToWhiteSting(ctx: AudioContext, dest: AudioNode): void {
 /** FB-040 loss: the blueprint sheet rolls up — a long papery rustle. */
 function playPaperRollSting(ctx: AudioContext, dest: AudioNode): void {
   const t0 = ctx.currentTime + 0.01;
-  for (let i = 0; i < 8; i++) {
-    seaNoise(ctx, dest, t0 + i * 0.14, 0.18, { type: 'bandpass', from: 2200 - i * 120, to: 900, q: 0.9 }, 0.08, 0.02);
+  for (let i = 0; i < 13; i++) {
+    seaNoise(ctx, dest, t0 + i * 0.15, 0.2, { type: 'bandpass', from: 2300 - i * 90, to: 900, q: 0.9 }, 0.08, 0.02);
   }
 }
 

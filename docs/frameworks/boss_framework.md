@@ -127,10 +127,10 @@ Every marker-entry write uses `getBossEntryCounter(markerIndex)` (2 for The Exec
 8.  resolveCascade()    bossHooks.modifyCascadeOrder() (Le Prix)
 8b. Sarge's clock       DOUBLE_TIME: blank on the last allowed roll → SEVEN_OUT (clockExpired)
 9.  Boss bookkeeping    Executive PIP check; Le Prix charm reselection
-10. Additive pipeline   The Vig ×1.2 → Architect load-bearing ×0.85^N → escrow hold (Hierophant) → signal lag (Emissary: land last roll's packet, send this roll's)
+10. Additive pipeline   The Vig ×1.2 → escrow hold (Hierophant) → signal lag (Emissary: land last roll's packet, send this roll's)
 11. settleTurn()        then bossHooks.modifyPayout() (Foreman), then Executive +15% at Exceptional
 12. Bankroll extras     The Frequency bonus → escrow release/seizure
-13. computeNextState()  boss counters, Commander decay / The Keepsake, Architect demolition,
+13. computeNextState()  boss counters (his rooms' counters in convergence_state), Commander bleed / The Keepsake, a 7-out builds The Architect's next room,
                         Pressure Cooker streak; escrow held on a marker-clearing roll is paid out
 14. Persist + emit      `turn:settled` (bossRating, charmFired, pipTermination,
                         crapsOutBlocked, clockExpired, removedCrewSlot …)
@@ -275,7 +275,7 @@ ruleParams: { rule: 'TRIBUTE', escrowSeizurePct: 0.75 }
 - **Victory — THE EYE CLOSES** (`victoryCinematic`): his SVG eye (`cinematics/HierophantEye.tsx`) opens in a ring of candles before the sanctum doors, looks you over and closes; the candles go out one by one; the doors grind open and light floods in under a major choir (~8.2 s, hold 8.6 s).
 - **Defeat — THE ORDER COLLECTS** (`defeatCinematic`): hooded figures close in, your bankroll drains into the bowl, the eye opens and burns, three bell tolls, candles out to black, "The order always collects." (~8.3 s).
 
-**Comp:** The Covenant — **"The Order Protects"** (FB-036, replaced the old seizure-halving effect that did nothing once he was beaten — FB-029). Once per marker, the first Seven-Out doesn't cost a shooter: bets are still lost, Hype still resets, the point clears, and other seven-out consequences (Architect demolition, Emissary evaporation) still apply. `runs.covenant_spent_marker` stores the marker where it was used; the save is available whenever that ≠ `currentMarkerIndex`. It can save the last shooter. `turn:settled` carries `covenantSaved: true`; the client shows THE ORDER PROTECTS (`CovenantFlash`).
+**Comp:** The Covenant — **"The Order Protects"** (FB-036, replaced the old seizure-halving effect that did nothing once he was beaten — FB-029). Once per marker, the first Seven-Out doesn't cost a shooter: bets are still lost, Hype still resets, the point clears, and other seven-out consequences (The Architect building his next room, the Emissary dropping the signal) still apply. `runs.covenant_spent_marker` stores the marker where it was used; the save is available whenever that ≠ `currentMarkerIndex`. It can save the last shooter. `turn:settled` carries `covenantSaved: true`; the client shows THE ORDER PROTECTS (`CovenantFlash`).
 
 ---
 
@@ -343,7 +343,7 @@ ruleParams: { rule: 'ORBITAL_DECAY', bleedPct: 0.20 }
 
 **Signal lag + blackout (FB-039).** The crew fire as normal (dice and rescue effects — Lefty, the Mechanic, Floor Walker — act on the roll), but what they *add* — cash bonuses (after The Vig), Hype boosts and multipliers — is held **in transit** (`runs.signal_transit`) and **lands on the next roll** (that roll's settlement and the Hype it carries forward). On a **Seven-Out** the signal is lost: everything in transit (last roll's and this roll's) is dropped, and the whole crew goes **dark** for `blackoutRolls` (6) rolls — the cascade runs with no crew and cooldowns don't move (`runs.signal_dark_rolls`). A marker-clearing roll pays the cash in transit. `turn:settled` carries `signal { landed, sent, dropped, darkRolls, wasDark }`; the receipt shows crew cash "→ in transit", "Signal received" and "SIGNAL LOST".
 
-Replaced a one-roll cash escrow (simulated ≈ −1 to −3 — a weaker copy of The Hierophant). Tuned with `scripts/sim/emissary-delay-sim.mjs`: ≈ −13 (cash), −14 (mixed), −18 (hype), pass-line players with Floor-8 comps — the boss who fights your crew itself. (The Architect's crew demolition is slated for a Convergence redesign, FB-040, so the two don't overlap.)
+Replaced a one-roll cash escrow (simulated ≈ −1 to −3 — a weaker copy of The Hierophant). Tuned with `scripts/sim/emissary-delay-sim.mjs`: ≈ −13 (cash), −14 (mixed), −18 (hype), pass-line players with Floor-8 comps — the boss who fights your crew itself. (The Architect's old crew demolition was replaced by Convergence in FB-040, so the two don't overlap.)
 
 **History:** originally `FIRST_CONTACT_PROTOCOL` (come-out naturals nullified), retired in FB-026; then the one-roll escrow, replaced in FB-039.
 
@@ -372,6 +372,16 @@ ruleParams: { rule: 'TRANSMISSION_DELAY', blackoutRolls: 6 }
 **Counter:** `bossPointHits` is the Seven-Out count = rooms built − 1 (cap 7), held on Point Hit. `turn:settled` carries `convergence { rooms, added, state }` plus each room's own facts (`escrow`, `signal`, `tide`, `orbit`, `bossRating`, `charmedCrewSlot` …); the receipt notes "ROOM REBUILT — …".
 
 **Tuning:** `scripts/sim/architect-convergence-sim.mjs` — stacking + random ≈ −19 / −24 / −20 (mixed / cash / hype) vs no rule; rotation alone was −3 to −5, softer than the old demolition.
+
+In a full run (`gauntlet-economy-sim.mjs`, chained, pass line) he clears 82% (mixed) / 68% (cash) / 72% (hype) of the runs that reach him — the old demolition cleared 91 / 82 / 95.
+
+**Boss moments (FB-040):**
+- **The table** (`ConvergenceTable` in `BossTableWell`): a rail of 8 room tiles (lit with sigil + live readout — Sarge's clock, the review, the tide, the bowl, the orbit, the signal, the skim, the charmed crew; "?" blueprints for rooms not yet built) over the newest room's own tracker (`ROOM_TRACKERS`; The Foreman's room shows `ForemanSkim`, not his register). Every room's effects (Le Prix's glass, TideWater, Dead Calm, the crew blackout, the muffled crowd …) work in his fight via the client's `isRuleOn` / `ruleCounter` (`lib/bossRules.ts`). Header: "CONVERGENCE · ROOM n / 8".
+- **The table wears the room's floor:** `convergenceThemeRoom` → `selectTableMarkerIndex` drives the felt / theme, the Null Space greyscale and text colours, and the floor music. His header keeps the Null Space look.
+- **The rebuild** (`RoomRebuild`; first room after his entry cinematic, then every 7-out): the board itself (`[data-table-root]`, WAAPI) drains, washes out and fades to blueprint; the room locks in with a clunk (theme switched while it's invisible; strokes draft, the room's card shows); then the new table fades back in as a cyan line sketch and its colour fills in. ~2.8 s, non-blocking.
+- **Barks:** he names every room as it's built (`roomBarks`, by rule — always); inside a room, its boss's own moments bark from that boss's lines as an **echo** (`BossBark.speakerMarker`; cyan, glitching in, "— SARGE · ECHO"); his own win / loss by chance.
+- **Victory — THE PATTERN BREAKS** (`victoryCinematic`): the rooms he built flash past newest-first, accelerating; the blueprint tears and white floods through; everything folds to a point; his line out of the white. The final win holds GAME_OVER (`PendingVictory.heldFinal`) until it ends, then the gauntlet victory sequence runs.
+- **Defeat — ARCHIVED** (`defeatCinematic`): the board turns to a blueprint sketch, a sheet of it is stamped ARCHIVED · RUN #…, rolls up, is carried to a filing drawer of other rolled runs and the drawer slams; "Filed. I'll build the next one from you." (~12.4 s — its own 14 s safety net, `DEFEAT_SAFETY_MS_BY_ID`.)
 
 **History:** until FB-040 each Seven-Out permanently removed the last crew member to fire and cut crew cash a further 15% (load-bearing); before 2026-10-13 a shrinking cascade window sat on top of that.
 
@@ -453,8 +463,10 @@ TypeScript narrows the type inside each hook file via the `rule` discriminant. T
 | Commander fight, seven-out | Hype → 1.0× (The Keepsake doesn't apply) |
 | Emissary fight, any roll | Crew cash / Hype / multipliers go into `signalTransit`; last roll's land on this one |
 | Emissary fight, seven-out | Everything in transit dropped; `signalDarkRolls` → 6; crew don't fire until it counts down to 0 |
-| Architect fight, seven-out | Last-fired crew (or highest occupied slot) removed; `removedCrewSlot` emitted; header "N CREW LEFT" |
-| Architect fight, crew in slot 5 after a seven-out | Still fires (no shrinking window) |
+| Architect fight, entry | Room order shuffled (`convergence_rooms`); the first room's rule in force from the first roll; the first room is drawn in |
+| Architect fight, seven-out (incl. a Covenant save / TIME'S UP) | The next room is built and stacks; `convergence.added`; the rebuild plays; he names the room; header "ROOM n / 8" |
+| Architect fight, a room's moment | That room's boss barks it as an echo |
+| Architect fight, bad roll at Action Required (Executive's room) | PIP — the run ends (ARCHIVED, with the PIP cause) |
 | Architect boss defeat | Transitions to GAME_OVER (no comp awarded, no pub visit) |
 | Poseidon's Favor, shooter's first roll is 2/3/12 | No loss, still come-out, Pass Line still up; "POSEIDON'S FAVOR" shown |
 | All boss entry screens | `dreadTagline`, `entryLines`, `ruleBlurb` from config; no hardcoded strings |

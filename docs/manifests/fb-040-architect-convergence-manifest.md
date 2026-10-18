@@ -1,7 +1,7 @@
 # Implementation Manifest: FB-040 The Architect — Convergence
 
 **Design doc:** `docs/design/fb-040-architect-convergence-design.md`
-**Status:** Phases 1–6 done locally (not pushed).
+**Status:** Complete (2026-10-17).
 
 **Rules:** each phase ends at a 🛑 gate. `npm run typecheck`, `npm run build`, `npm run test` (+ API integration suite whenever the server changes) before a phase is done. Commit locally per phase; push when Mike says. After each phase: explicit test steps (Dev presets) + what to look for, including a phone-width check. **All crew/player references gender-neutral.** Big wins, big losses — it's the final boss.
 
@@ -59,5 +59,7 @@ The table becomes a blueprint, rolls up, ARCHIVED · RUN #N stamp, filed in a dr
 
 ## Phase 7: Dev Mode + docs
 Presets: "Architect — first room", "Architect — three rooms stacked", "Architect — one win from the end", "Architect — last shooter, rooms stacked". Docs: boss_framework, CLAUDE.md (rewrite the CONVERGENCE constraint), backlog.
+
+--- Implemented (2026-10-17): presets "Architect — first room", "one win from the end" (3 rooms, → THE PATTERN BREAKS), "last shooter, rooms stacked" (no Covenant, → ARCHIVED) — 37 total (plus "three rooms stacked" from Phase 1). `gauntlet-economy-sim.mjs` now models Convergence at marker 26 (per-boss counts; `archRule` / env `SIM_ARCH_RULE=demolition` for the old rule): isolated pass-line cost −17 / −21 / −23 (mixed / cash / hype) vs −9 / −13 / −7; chained clear-given-reached 82 / 68 / 72% vs 91 / 82 / 95%. Docs: boss_framework (moments, pipeline, checklist), CLAUDE.md (current state, final-win hold, defeat safety per cinematic, presets, Bosses line), backlog FB-040 → Implemented, design complete. ---
 
 🛑 **Gate:** FB-040 complete → push.

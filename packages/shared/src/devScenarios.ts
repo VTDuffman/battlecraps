@@ -310,6 +310,38 @@ export const DEV_SCENARIOS: readonly DevScenario[] = [
     convergenceRooms: [5, 11, 23],
   },
   {
+    // FB-040: a fresh fight — his entry cinematic, then the first room is drawn
+    // in (the blueprint rebuild) and he names it.
+    name:        'Architect — first room',
+    markerIndex: ARCHITECT,
+    crew:        STARTER_CREW,
+  },
+  {
+    // Three rooms stacked (Sarge, the Executive, the Emissary), point on, one win
+    // short of $60M: hit the point → THE PATTERN BREAKS, the three rooms flashing past.
+    name:             'Architect — one win from the end',
+    markerIndex:      ARCHITECT,
+    crew:             STARTER_CREW,
+    bossCounter:      2,
+    convergenceRooms: [5, 11, 23],
+    point:            6,
+    bets:             { passLine: FINAL_PASS_LINE, odds: 0, hardways: { hard4: 0, hard6: 0, hard8: 0, hard10: 0 } },
+    bankrollCents:    target(ARCHITECT) - FINAL_PASS_LINE,
+  },
+  {
+    // Last shooter, three rooms stacked (the Hierophant, the Commander, the
+    // Foreman), point on: a seven-out → ARCHIVED. (The Covenant is left out so the
+    // run can end.)
+    name:             'Architect — last shooter, rooms stacked',
+    markerIndex:      ARCHITECT,
+    crew:             STARTER_CREW,
+    shooters:         1,
+    bossCounter:      2,
+    convergenceRooms: [14, 20, 2],
+    point:            6,
+    compPerkIds:      [COMP_PERK_IDS.THE_VIG, COMP_PERK_IDS.MEMBER_JACKET, COMP_PERK_IDS.SEA_LEGS, COMP_PERK_IDS.POSEIDONS_FAVOR, COMP_PERK_IDS.THE_FREQUENCY],
+  },
+  {
     name:          'Final marker — hit the point to win',
     markerIndex:   ARCHITECT,
     crew:          STARTER_CREW,

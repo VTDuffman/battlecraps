@@ -26,7 +26,9 @@
 // Undertow: a 7-out takes 35% of the bankroll · High Tide: a 7-out drowns 2 shooters),
 // The Commander's orbital bleed (hype above 1.0× loses 20% after every roll), The
 // Emissary's signal lag (crew cash / hype / multipliers land a roll late, a 7-out drops
-// them) + 6-roll crew blackout after a 7-out, The Architect's demolition, The Covenant,
+// them) + 6-roll crew blackout after a 7-out, The Architect's Convergence (FB-040: rooms of
+// the 8 bosses before him in a random order, stacking with every 7-out — `archRule:
+// 'demolition'` brings back his old rule for comparison), The Covenant,
 // The Keepsake, Member's Jacket, hype reset per marker, shooters reset per marker.
 // `bossVersion: 'legacy'` swaps in the pre-FB-037/038/039 rules for Floors 6–8 (tide
 // minimum bets; tiered 7-out hype decay + death spiral; one-roll crew-cash delay). Marker clear = bankroll + chips on the table ≥ target
@@ -95,6 +97,7 @@ const BASE_LEVERS = {
   bossRules:    true,
   hires:        'slots',     // 'slots' = pay only to fill a new slot; 'floor' = also one hire per floor
   bossVersion:  'current',   // 'legacy' = the Floor 6–8 boss rules before FB-037/038/039
+  archRule:     process.env.SIM_ARCH_RULE ?? 'convergence', // FB-040 (env SIM_ARCH_RULE): 'convergence' (stacking rooms, random order) | 'demolition' (the old rule)
   crewHypeMult: 1,           // × the Hype the crew add each roll (all floors) — models raising HYPE_BOOST
   startCents:   OPENING_BANKROLL_CENTS, // a new (post-tutorial) run's bankroll
   startCrew:    1,           // free crew members a new run starts with (the opening pub's pick)
@@ -165,15 +168,32 @@ function playMarker(m, st) {
   let bankroll = st.bankroll, shooters = startShooters, hype = 1.0, streak = 0;
   let phase = 'COME_OUT', point = null, prevTotal = null, shooterRolls = 0, blankStreak = 0;
   let bets = { passLine: 0, odds: 0, hardways: { ...NO_HARD } };
-  let counter = m === BOSS.EXEC && rules ? 2 : 0;   // getBossEntryCounter
+  // Each boss rule keeps its own count (FB-040 — The Architect's rooms run several at once).
+  const cnt = {};
+  const c = (b) => cnt[b] ?? 0;
+  if (m === BOSS.EXEC && rules) cnt[BOSS.EXEC] = 2;   // getBossEntryCounter
+  let sevenOuts = 0;                                  // The Architect's (rooms built − 1)
   let pending = 0, covenantSpent = false, rolls = 0;
   let transit = EMPTY_PACKET, dark = 0;               // current Emissary: signal in transit, blackout rolls left
   let cut = 0;                                        // The Foreman's Cut toward the Payoff
   const filledSlots = () => st.crew.slice(0, st.slots).map((c, i) => (c ? i : -1)).filter((i) => i >= 0);
   const randBelow = (k) => Math.floor(rand() * k);
   const isBoss = (b) => rules && m === b;
+  // FB-040: The Architect's rooms — a random order of the 8 bosses before him; every
+  // room built so far is in force (they stack). on(b) = b's rule applies here.
+  const archConv = rules && m === BOSS.ARCH && L.archRule !== 'demolition';
+  const ROOM_ORDER = archConv ? [BOSS.FORE, BOSS.SARGE, BOSS.PRIX, BOSS.EXEC, BOSS.HIERO, BOSS.SOV, BOSS.CMDR, BOSS.EMI]
+    .map((b) => [b, rand()]).sort((x, y) => x[1] - y[1]).map(([b]) => b) : [];
+  const rooms = new Set(archConv ? [ROOM_ORDER[0]] : []);
+  const on = (b) => isBoss(b) || rooms.has(b);
+  const enterRoom = (b) => {
+    if (b === BOSS.EXEC) cnt[b] = 2;
+    else if (b === BOSS.PRIX) cnt[b] = pickEntryCharmSlot(st.crew, st.slots, randBelow) ?? 0;
+    else cnt[b] = 0;
+  };
+  if (archConv) enterRoom(ROOM_ORDER[0]);
   const legacy = L.bossVersion === 'legacy';
-  if (isBoss(BOSS.PRIX)) counter = pickEntryCharmSlot(st.crew, st.slots, randBelow) ?? 0;   // her entry charm
+  if (isBoss(BOSS.PRIX)) cnt[BOSS.PRIX] = pickEntryCharmSlot(st.crew, st.slots, randBelow) ?? 0;   // her entry charm
 
   const end = (cleared, death = null) => ({ cleared, bankroll, rolls, shootersUsed: startShooters - shooters, death });
 
@@ -181,14 +201,14 @@ function playMarker(m, st) {
     // ── Bets ──
     if (phase === 'COME_OUT' && bets.passLine === 0) {
       // Bet the normal table max (legacy Sovereign: raised to her tide minimum when it forces it).
-      const minBet = (isBoss(BOSS.SOV) ? tideMin(m, L, counter) : null) ?? minBetOf(m, L);
+      const minBet = (isBoss(BOSS.SOV) ? tideMin(m, L, c(BOSS.SOV)) : null) ?? minBetOf(m, L);
       let maxBet = Math.max(normalMaxBet(m, L), minBet);
       if (legacy && isBoss(BOSS.CMDR) && hype < 0.5) maxBet = Math.floor(maxBet / 2 / 500) * 500;
       if (bankroll < minBet) return end(false, 'broke');
       const stake = Math.min(maxBet, bankroll);
       bankroll -= stake; bets = { ...bets, passLine: stake };
     }
-    const tide = isBoss(BOSS.SOV) && !legacy ? getTideStage(SOV_PARAMS, counter).effect : null;
+    const tide = on(BOSS.SOV) && !legacy ? getTideStage(SOV_PARAMS, c(BOSS.SOV)).effect : null;
     if (strategy !== 'pass' && tide !== 'DEAD_CALM' && phase === 'POINT_ACTIVE' && bets.odds === 0 && bets.passLine > 0) {
       const mult = strategy === 'maxOdds' ? ODDS[point] : 1;
       const stake = Math.min(bets.passLine * mult, bankroll);
@@ -213,18 +233,18 @@ function playMarker(m, st) {
       ctx = { ...ctx, rollResult: 'NO_RESOLUTION', resolvedBets: { ...ctx.resolvedBets, passLine: ctx.bets.passLine } };
     }
     // Current Emissary: during the blackout the crew don't fire (and cooldowns don't move).
-    const signal = isBoss(BOSS.EMI) && !legacy;
+    const signal = on(BOSS.EMI) && !legacy;
     const blackedOut = signal && dark > 0;
-    const charm = isBoss(BOSS.PRIX);
+    const charm = on(BOSS.PRIX);
     const cascade = resolveCascade(
       blackedOut ? st.crew.map(() => null) : st.crew, ctx, () => [d6(), d6()],
       charm ? BOSS_RULE_HOOKS.DISABLE_CREW : undefined, charm ? PRIX_PARAMS : undefined,
-      charm ? { bossPointHits: counter, markerIndex: m } : undefined,
+      charm ? { bossPointHits: c(BOSS.PRIX), markerIndex: BOSS.PRIX } : undefined,
     );
     let fc = cascade.finalContext;
     if (L.crewHypeMult !== 1) fc = { ...fc, hype: Math.round((ctx.hype + (fc.hype - ctx.hype) * L.crewHypeMult) * 10_000) / 10_000 };
     // Sarge's Double Time: the 6th blank in a row in the point phase is a Seven-Out (after the cascade).
-    if (isBoss(BOSS.SARGE) && phase === 'POINT_ACTIVE' && fc.rollResult === 'NO_RESOLUTION' && counter + 1 >= SARGE_PARAMS.rollLimit) {
+    if (on(BOSS.SARGE) && phase === 'POINT_ACTIVE' && fc.rollResult === 'NO_RESOLUTION' && c(BOSS.SARGE) + 1 >= SARGE_PARAMS.rollLimit) {
       fc = { ...fc, rollResult: 'SEVEN_OUT', resolvedBets: { passLine: 0, odds: 0, hardways: { ...NO_HARD } } };
     }
     if (!blackedOut) st.crew = cascade.updatedCrewSlots;
@@ -245,14 +265,14 @@ function playMarker(m, st) {
       transit = sevenOutNow ? EMPTY_PACKET : sent;
       dark = sevenOutNow ? EMI_PARAMS.blackoutRolls : Math.max(0, dark - 1);
     }
-    if (isBoss(BOSS.ARCH) && add > 0) add = Math.floor(add * Math.pow(0.85, counter) / 100) * 100;
-    const escrowRule = isBoss(BOSS.HIERO) ? 'hiero' : legacy && isBoss(BOSS.EMI) ? 'emi' : null;
+    if (isBoss(BOSS.ARCH) && !archConv && add > 0) add = Math.floor(add * Math.pow(0.85, sevenOuts) / 100) * 100;   // old load-bearing
+    const escrowRule = on(BOSS.HIERO) ? 'hiero' : legacy && isBoss(BOSS.EMI) ? 'emi' : null;
     const held = escrowRule ? add : 0;
     fc = { ...fc, additives: escrowRule ? 0 : add };
 
     // Settle (+ Executive Exceptional bonus)
     let payout = settleTurn(fc);
-    if (isBoss(BOSS.FORE)) {
+    if (on(BOSS.FORE)) {
       const profit = payout - fc.baseStakeReturned;
       const tax = profit > 0 ? Math.round(profit * FORE_PARAMS.taxPct / 100) * 100 : 0;
       payout -= tax; cut += tax;
@@ -260,9 +280,9 @@ function playMarker(m, st) {
     const r = fc.rollResult;
     const bad = r === 'CRAPS_OUT' || r === 'SEVEN_OUT';
     const good = r === 'NATURAL' || r === 'POINT_HIT';
-    if (isBoss(BOSS.EXEC)) {
-      if (bad && counter === 0) { rolls++; return end(false, 'pip'); }
-      if (counter === 4) { const gp = payout - fc.baseStakeReturned; if (gp > 0) payout += Math.round(gp * 0.15 / 100) * 100; }
+    if (on(BOSS.EXEC)) {
+      if (bad && c(BOSS.EXEC) === 0) { rolls++; return end(false, 'pip'); }
+      if (c(BOSS.EXEC) === 4) { const gp = payout - fc.baseStakeReturned; if (gp > 0) payout += Math.round(gp * 0.15 / 100) * 100; }
     }
     bankroll += payout;
     if (comps.frequency && r === 'NATURAL' && phase === 'COME_OUT') {
@@ -303,7 +323,7 @@ function playMarker(m, st) {
         if (legacy && isBoss(BOSS.CMDR)) {
           const decay = preHype >= 2.5 ? 0.80 : preHype >= 1.5 ? 0.60 : 0.40;
           hype = Math.max(0.25, Math.round((preHype - decay + cascadeDelta) * 10_000) / 10_000);
-        } else if (isBoss(BOSS.CMDR)) {
+        } else if (on(BOSS.CMDR)) {
           hype = Math.max(1.0, 1.0 + cascadeDelta);   // no Keepsake in his fight
         } else {
           const base = comps.keepsake && L.keepsake ? 1.0 + (preHype - 1.0) / 2 : 1.0;
@@ -319,10 +339,10 @@ function playMarker(m, st) {
     if (phase === 'COME_OUT' && r !== 'NO_RESOLUTION') bets = { ...bets, passLine: 0, odds: 0 };
 
     // Boss counters
-    if (isBoss(BOSS.EXEC)) counter = Math.max(0, Math.min(4, counter + (good ? 1 : bad ? -1 : 0)));
-    if (isBoss(BOSS.SARGE)) counter = r === 'NO_RESOLUTION' ? counter + 1 : 0;
-    if (isBoss(BOSS.PRIX) && (good || bad)) { const f = filledSlots(); if (f.length) counter = f[randBelow(f.length)]; }
-    if (isBoss(BOSS.SOV) && (good || bad)) counter = (counter + 1) % 4;   // tide advances per come-out cycle
+    if (on(BOSS.EXEC)) cnt[BOSS.EXEC] = Math.max(0, Math.min(4, c(BOSS.EXEC) + (good ? 1 : bad ? -1 : 0)));
+    if (on(BOSS.SARGE)) cnt[BOSS.SARGE] = r === 'NO_RESOLUTION' ? c(BOSS.SARGE) + 1 : 0;
+    if (on(BOSS.PRIX) && (good || bad)) { const f = filledSlots(); if (f.length) cnt[BOSS.PRIX] = f[randBelow(f.length)]; }
+    if (on(BOSS.SOV) && (good || bad)) cnt[BOSS.SOV] = (c(BOSS.SOV) + 1) % 4;   // tide advances per come-out cycle
 
     // Marker clear: bankroll + chips on the table (returned) ≥ target.
     const onTable = bets.passLine + bets.odds;
@@ -333,16 +353,23 @@ function playMarker(m, st) {
     }
 
     // Current Commander: orbital bleed — after a roll that isn't a Seven-Out, hype above 1.0× loses 20%.
-    if (!legacy && isBoss(BOSS.CMDR) && !sevenOut && hype > 1.0) {
+    if (!legacy && on(BOSS.CMDR) && !sevenOut && hype > 1.0) {
       hype = Math.round((1 + (hype - 1) * (1 - CMDR_PARAMS.bleedPct)) * 10_000) / 10_000;
     }
 
     // The Architect: each Seven-Out demolishes the last crew to fire (else the highest occupied slot).
-    if (isBoss(BOSS.ARCH) && sevenOut) {
+    // FB-040: a 7-out builds the next room (it stacks; the Emissary's blackout carries on).
+    if (archConv && sevenOut) {
+      if (on(BOSS.EMI)) dark = EMI_PARAMS.blackoutRolls;
+      sevenOuts++;
+      const next = ROOM_ORDER[sevenOuts];
+      if (next !== undefined) { rooms.add(next); enterRoom(next); }
+    }
+    if (isBoss(BOSS.ARCH) && !archConv && sevenOut) {
       let idx = lastSlot;
       if (idx === null) for (let i = st.slots - 1; i >= 0; i--) if (st.crew[i]) { idx = i; break; }
       if (idx !== null) st.crew = st.crew.map((c, i) => (i === idx ? null : c));
-      counter = Math.min(5, counter + 1);
+      sevenOuts = Math.min(5, sevenOuts + 1);
     }
 
     if (shooters <= 0) return end(false, 'shooters');

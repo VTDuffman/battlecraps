@@ -1,6 +1,6 @@
 # FB-040: The Architect — Convergence (Design)
 
-**Status:** Design agreed 2026-10-17. Ready for implementation.
+**Status:** Implemented 2026-10-17. (Review changes: the rebuild fades the board itself — no wipes; the Foreman skims before the Executive bonus.)
 **Pattern:** boss #9 — the final boss — of the per-boss "moments" roll-out (FB-032 Foreman → FB-039 Emissary). Big wins, big losses. Includes a rule redesign, tuned by simulation. Builds on FB-042 (boss trackers on the table).
 
 ---
